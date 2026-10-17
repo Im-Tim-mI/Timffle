@@ -39,6 +39,8 @@ members = [
     "tools/fuzzer",
     "tools/stub-report",
 ]
+# vendor/rust-flash-lso is its own workspace (patched flash-lso, see [patch] below).
+exclude = ["vendor"]
 default-members = ["desktop"]
 resolver = "2"
 
@@ -208,7 +210,7 @@ incremental = true
 codegen-units = 64
 
 # Local fix for AMF3 encoder reference indices (cyclic/shared objects after an
-# XML/Date decoded to the wrong object). Local ../rust-flash-lso working tree,
-# based on pinned rev 61b7172; distribute its complete source alongside this repo.
+# XML/Date decoded to the wrong object). vendor/rust-flash-lso is a subtree of
+# https://github.com/ruffle-rs/rust-flash-lso at the pinned rev 61b7172 plus that fix.
 [patch."https://github.com/ruffle-rs/rust-flash-lso"]
-flash-lso = { path = "../rust-flash-lso/flash-lso" }
+flash-lso = { path = "vendor/rust-flash-lso/flash-lso" }
