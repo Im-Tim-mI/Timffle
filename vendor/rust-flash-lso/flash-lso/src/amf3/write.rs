@@ -7,7 +7,7 @@ use crate::amf3::length::Length;
 use crate::amf3::type_marker::TypeMarker;
 use crate::types::{Attribute, ClassDefinition, Element, ObjectId, Value};
 use crate::write::WriteExt;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::io::Result;
 use std::io::Write;
@@ -23,16 +23,63 @@ pub struct AMF3Encoder {
     /// The table used to cache repeated trait definitions
     trait_reference_table: RefCell<Vec<ClassDefinition>>,
 
-    /// The table used to cache repeated objects
-    object_reference_table: ElementCache<Value>,
+    /// Number of complex values (objects, arrays, dates, XML, byte arrays,
+    /// vectors, dictionaries) written in full so far. Decoders give each of
+    /// these the next index in their object reference table, in this order,
+    /// so this is also the index of the next one written.
+    object_count: Cell<usize>,
 
     /// Encoders used for handling externalized types
     pub external_encoders: HashMap<String, Box<dyn CustomEncoder>>,
 
+    /// Object reference index of every value written in full that carried a
+    /// valid `ObjectId`, so that later occurrences can be written as references.
     object_id_to_reference: RefCell<BTreeMap<ObjectId, (TypeMarker, usize)>>,
 }
 
 impl AMF3Encoder {
+    /// Write consecutive AMF3 values using shared reference tables (no LSO framing).
+    pub fn write_values<W: Write>(&self, writer: &mut W, values: &[Rc<Value>]) -> Result<()> {
+        for value in values {
+            self.write_value_element(writer, value)?;
+        }
+        Ok(())
+    }
+
+    /// Claims the next object reference index for a complex value that is
+    /// about to be written in full, and remembers it for `id` (if valid).
+    ///
+    /// Must be called before the value's children are written, since the
+    /// decoder assigns the index before reading them; this is what lets a
+    /// child refer back to its parent (a cycle).
+    fn begin_complex(&self, id: ObjectId, ty: TypeMarker) -> usize {
+        let index = self.object_count.get();
+        self.object_count.set(index + 1);
+        if id != ObjectId::INVALID {
+            self.object_id_to_reference
+                .borrow_mut()
+                .insert(id, (ty, index));
+        }
+        index
+    }
+
+    /// If a value with this `id` was already written in full, writes a
+    /// reference to it instead and returns `true`.
+    fn write_existing<'a, W: Write + 'a>(&self, writer: &mut W, id: ObjectId) -> Result<bool> {
+        if id == ObjectId::INVALID {
+            return Ok(false);
+        }
+        let existing = self.object_id_to_reference.borrow().get(&id).copied();
+        match existing {
+            Some((ty, index)) => {
+                self.write_type_marker(writer, ty)?;
+                self.write_object_reference(writer, index as u32)?;
+                Ok(true)
+            }
+            None => Ok(false),
+        }
+    }
+
     #[allow(clippy::unusual_byte_groupings)]
     pub(crate) fn write_int<'a, 'b: 'a, W: Write + 'a>(
         &self,
@@ -149,20 +196,13 @@ impl AMF3Encoder {
         items: &'b [i32],
         fixed_length: bool,
     ) -> Result<()> {
-        let len = self.object_reference_table.to_length(
-            Value::VectorInt(items.to_vec(), fixed_length),
-            items.len() as u32,
-        );
-
+        // No identity is known for these, so they are always written in full.
+        self.begin_complex(ObjectId::INVALID, TypeMarker::VectorInt);
         self.write_type_marker(writer, TypeMarker::VectorInt)?;
-        if len.is_reference() {
-            len.write(writer, self)?;
-        } else {
-            Length::Size(items.len() as u32).write(writer, self)?;
-            writer.write_u8(fixed_length as u8)?;
-            for item in items {
-                writer.write_i32(*item)?;
-            }
+        Length::Size(items.len() as u32).write(writer, self)?;
+        writer.write_u8(fixed_length as u8)?;
+        for item in items {
+            writer.write_i32(*item)?;
         }
         Ok(())
     }
@@ -173,20 +213,13 @@ impl AMF3Encoder {
         items: &'b [u32],
         fixed_length: bool,
     ) -> Result<()> {
-        let len = self.object_reference_table.to_length(
-            Value::VectorUInt(items.to_vec(), fixed_length),
-            items.len() as u32,
-        );
-
+        // No identity is known for these, so they are always written in full.
+        self.begin_complex(ObjectId::INVALID, TypeMarker::VectorUInt);
         self.write_type_marker(writer, TypeMarker::VectorUInt)?;
-        if len.is_reference() {
-            len.write(writer, self)?;
-        } else {
-            Length::Size(items.len() as u32).write(writer, self)?;
-            writer.write_u8(fixed_length as u8)?;
-            for item in items {
-                writer.write_u32(*item)?;
-            }
+        Length::Size(items.len() as u32).write(writer, self)?;
+        writer.write_u8(fixed_length as u8)?;
+        for item in items {
+            writer.write_u32(*item)?;
         }
         Ok(())
     }
@@ -197,20 +230,13 @@ impl AMF3Encoder {
         items: &'b [f64],
         fixed_length: bool,
     ) -> Result<()> {
-        let len = self.object_reference_table.to_length(
-            Value::VectorDouble(items.to_vec(), fixed_length),
-            items.len() as u32,
-        );
-
+        // No identity is known for these, so they are always written in full.
+        self.begin_complex(ObjectId::INVALID, TypeMarker::VectorDouble);
         self.write_type_marker(writer, TypeMarker::VectorDouble)?;
-        if len.is_reference() {
-            len.write(writer, self)?;
-        } else {
-            Length::Size(items.len() as u32).write(writer, self)?;
-            writer.write_u8(fixed_length as u8)?;
-            for item in items {
-                writer.write_f64(*item)?;
-            }
+        Length::Size(items.len() as u32).write(writer, self)?;
+        writer.write_u8(fixed_length as u8)?;
+        for item in items {
+            writer.write_f64(*item)?;
         }
         Ok(())
     }
@@ -220,15 +246,10 @@ impl AMF3Encoder {
         writer: &mut W,
         time: f64,
     ) -> Result<()> {
-        let len = self
-            .object_reference_table
-            .to_length(Value::Date(time, None), 0);
-
+        self.begin_complex(ObjectId::INVALID, TypeMarker::Date);
         self.write_type_marker(writer, TypeMarker::Date)?;
-        len.write(writer, self)?;
-        if len.is_size() {
-            writer.write_f64(time)?;
-        }
+        Length::Size(0).write(writer, self)?;
+        writer.write_f64(time)?;
         Ok(())
     }
 
@@ -247,15 +268,10 @@ impl AMF3Encoder {
         writer: &mut W,
         bytes: &'b [u8],
     ) -> Result<()> {
-        let len = self
-            .object_reference_table
-            .to_length(Value::ByteArray(bytes.to_vec()), bytes.len() as u32);
-
+        self.begin_complex(ObjectId::INVALID, TypeMarker::ByteArray);
         self.write_type_marker(writer, TypeMarker::ByteArray)?;
-        len.write(writer, self)?;
-        if len.is_size() {
-            writer.write_all(bytes)?;
-        }
+        Length::Size(bytes.len() as u32).write(writer, self)?;
+        writer.write_all(bytes)?;
         Ok(())
     }
 
@@ -265,18 +281,15 @@ impl AMF3Encoder {
         bytes: &'b str,
         string: bool,
     ) -> Result<()> {
-        let len = Length::Size(bytes.len() as u32);
-
-        if string {
-            self.write_type_marker(writer, TypeMarker::XmlString)?;
+        let marker = if string {
+            TypeMarker::XmlString
         } else {
-            self.write_type_marker(writer, TypeMarker::Xml)?;
-        }
-
-        len.write(writer, self)?;
-        if len.is_size() {
-            writer.write_all(bytes.as_bytes())?;
-        }
+            TypeMarker::Xml
+        };
+        self.begin_complex(ObjectId::INVALID, marker);
+        self.write_type_marker(writer, marker)?;
+        Length::Size(bytes.len() as u32).write(writer, self)?;
+        writer.write_all(bytes.as_bytes())?;
         Ok(())
     }
 
@@ -430,15 +443,10 @@ impl AMF3Encoder {
         custom_props: Option<&'b [Element]>,
         class_def: &'b Option<ClassDefinition>,
     ) -> Result<()> {
-        let had_object = Length::Size(0);
-
-        let obj = Value::Object(id, children.to_vec(), class_def.clone());
-        self.object_reference_table.store(obj.clone());
-        if let Length::Reference(r) = self.object_reference_table.to_length(obj, 0) {
-            self.object_id_to_reference
-                .borrow_mut()
-                .insert(id, (TypeMarker::Object, r));
+        if self.write_existing(writer, id)? {
+            return Ok(());
         }
+        self.begin_complex(id, TypeMarker::Object);
 
         let def = class_def.clone().unwrap_or_default();
         let def2 = def.clone();
@@ -450,22 +458,10 @@ impl AMF3Encoder {
             .position(|cd| *cd == def);
 
         self.write_type_marker(writer, TypeMarker::Object)?;
-        if had_object.is_reference() {
-            self.write_object_reference(writer, had_object.as_position().unwrap() as u32)?;
-        }
-        if !had_object.is_reference() {
-            if let Some(has_trait) = has_trait {
-                self.write_trait_reference(
-                    writer,
-                    has_trait as u32,
-                    children,
-                    custom_props,
-                    &def2,
-                )?;
-            }
-            if has_trait.is_none() {
-                self.write_object_full(writer, custom_props, children, &def)?;
-            }
+        if let Some(has_trait) = has_trait {
+            self.write_trait_reference(writer, has_trait as u32, children, custom_props, &def2)?;
+        } else {
+            self.write_object_full(writer, custom_props, children, &def)?;
         }
 
         Ok(())
@@ -530,26 +526,16 @@ impl AMF3Encoder {
         type_name: &'b str,
         fixed_length: bool,
     ) -> Result<()> {
-        let vo = Value::VectorObject(id, items.to_vec(), type_name.to_string(), fixed_length);
-        let len = self.object_reference_table.to_length(
-            Value::VectorObject(id, items.to_vec(), type_name.to_string(), fixed_length),
-            items.len() as u32,
-        );
-        self.object_reference_table.store(vo.clone());
-        if let Length::Reference(r) = self.object_reference_table.to_length(vo, 0) {
-            self.object_id_to_reference
-                .borrow_mut()
-                .insert(id, (TypeMarker::VectorObject, r));
+        if self.write_existing(writer, id)? {
+            return Ok(());
         }
-
+        self.begin_complex(id, TypeMarker::VectorObject);
         self.write_type_marker(writer, TypeMarker::VectorObject)?;
-        len.write(writer, self)?;
-        if len.is_size() {
-            writer.write_u8(fixed_length as u8)?;
-            self.write_string(writer, type_name)?;
-            for i in items {
-                self.write_value_element(writer, i)?;
-            }
+        Length::Size(items.len() as u32).write(writer, self)?;
+        writer.write_u8(fixed_length as u8)?;
+        self.write_string(writer, type_name)?;
+        for i in items {
+            self.write_value_element(writer, i)?;
         }
         Ok(())
     }
@@ -561,26 +547,16 @@ impl AMF3Encoder {
         items: &'b [(Rc<Value>, Rc<Value>)],
         weak_keys: bool,
     ) -> Result<()> {
-        let dict = Value::Dictionary(id, items.to_vec(), weak_keys);
-
-        let len = self
-            .object_reference_table
-            .to_length(dict.clone(), items.len() as u32);
-        self.object_reference_table.store(dict.clone());
-        if let Length::Reference(r) = self.object_reference_table.to_length(dict, 0) {
-            self.object_id_to_reference
-                .borrow_mut()
-                .insert(id, (TypeMarker::Dictionary, r));
+        if self.write_existing(writer, id)? {
+            return Ok(());
         }
-
+        self.begin_complex(id, TypeMarker::Dictionary);
         self.write_type_marker(writer, TypeMarker::Dictionary)?;
-        len.write(writer, self)?;
-        if len.is_size() {
-            writer.write_u8(weak_keys as u8)?;
-            for i in items {
-                self.write_value_element(writer, &i.0)?;
-                self.write_value_element(writer, &i.1)?;
-            }
+        Length::Size(items.len() as u32).write(writer, self)?;
+        writer.write_u8(weak_keys as u8)?;
+        for i in items {
+            self.write_value_element(writer, &i.0)?;
+            self.write_value_element(writer, &i.1)?;
         }
         Ok(())
     }
@@ -608,23 +584,17 @@ impl AMF3Encoder {
             Value::Null => self.write_null_element(writer),
             Value::Undefined => self.write_undefined_element(writer),
             Value::ECMAArray(id, dense, elements, _) => {
-                self.object_reference_table.store(s.clone());
-                if let Length::Reference(r) = self.object_reference_table.to_length(s.clone(), 0) {
-                    self.object_id_to_reference
-                        .borrow_mut()
-                        .insert(*id, (TypeMarker::Array, r));
+                if self.write_existing(writer, *id)? {
+                    return Ok(());
                 }
-
+                self.begin_complex(*id, TypeMarker::Array);
                 self.write_ecma_array_element(writer, dense, elements)
             }
             Value::StrictArray(id, children) => {
-                self.object_reference_table.store(s.clone());
-                if let Length::Reference(r) = self.object_reference_table.to_length(s.clone(), 0) {
-                    self.object_id_to_reference
-                        .borrow_mut()
-                        .insert(*id, (TypeMarker::Array, r));
+                if self.write_existing(writer, *id)? {
+                    return Ok(());
                 }
-
+                self.begin_complex(*id, TypeMarker::Array);
                 self.write_strict_array_element(writer, children)
             }
             Value::Date(time, _tz) => self.write_date_element(writer, *time),
@@ -658,13 +628,14 @@ impl AMF3Encoder {
             Value::Unsupported => self.write_undefined_element(writer),
             Value::Reference(_) => unimplemented!(),
             Value::Amf3ObjectReference(id) => {
-                let (ty, r) = *self
-                    .object_id_to_reference
-                    .borrow()
-                    .get(id)
-                    .expect("Invalid reference");
-                self.write_type_marker(writer, ty)?;
-                self.write_object_reference(writer, r as u32)
+                if self.write_existing(writer, *id)? {
+                    Ok(())
+                } else {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "AMF3 reference has no preceding object",
+                    ))
+                }
             }
         }
     }
@@ -727,5 +698,43 @@ mod write_number_tests {
         let mut v = vec![];
         e.write_int(&mut v, -268435455).unwrap();
         assert_eq!(v, &[192, 128, 128, 1]);
+    }
+}
+
+#[cfg(test)]
+mod reference_index_tests {
+    use super::*;
+
+    #[test]
+    fn every_full_complex_value_reserves_a_slot() {
+        let encoder = AMF3Encoder::default();
+        let values = vec![
+            Value::XML("<a/>".into(), true), Value::Date(0.0, None),
+            Value::ByteArray(vec![]), Value::VectorInt(vec![], false),
+            Value::VectorUInt(vec![], false), Value::VectorDouble(vec![], false),
+            Value::StrictArray(ObjectId(10), vec![]),
+            Value::VectorObject(ObjectId(11), vec![], "".into(), false),
+            Value::Dictionary(ObjectId(12), vec![], false),
+            Value::Object(ObjectId(13), vec![], None),
+        ];
+        let mut bytes = Vec::new();
+        for value in values { encoder.write_value(&mut bytes, &value).unwrap(); }
+        assert_eq!(encoder.object_count.get(), 10);
+        bytes.clear();
+        encoder.write_value(&mut bytes, &Value::Amf3ObjectReference(ObjectId(13))).unwrap();
+        assert_eq!(bytes, vec![TypeMarker::Object as u8, 18]);
+        bytes.clear();
+        encoder.write_value(&mut bytes, &Value::Object(ObjectId(13), vec![], None)).unwrap();
+        assert_eq!(bytes, vec![TypeMarker::Object as u8, 18]);
+        assert_eq!(encoder.object_count.get(), 10);
+        encoder.write_value(&mut bytes, &Value::Object(ObjectId(14), vec![], None)).unwrap();
+        assert_eq!(encoder.object_count.get(), 11);
+    }
+
+    #[test]
+    fn invalid_reference_is_an_error_not_silent_undefined() {
+        let e = AMF3Encoder::default().write_value(&mut Vec::new(),
+            &Value::Amf3ObjectReference(ObjectId(42))).unwrap_err();
+        assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
     }
 }
