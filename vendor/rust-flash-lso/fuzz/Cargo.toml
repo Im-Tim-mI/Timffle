@@ -1,0 +1,51 @@
+
+[package]
+name = "flash-lso-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.12"
+flash-lso = { path = "../flash-lso", default-features = false, features = ["amf3"]}
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+
+[[bin]]
+name = "fuzz_amf0_body"
+path = "fuzz_targets/fuzz_amf0_body.rs"
+
+[[bin]]
+name = "fuzz_amf0_element_array"
+path = "fuzz_targets/fuzz_amf0_element_array.rs"
+
+[[bin]]
+name = "fuzz_amf0_header"
+path = "fuzz_targets/fuzz_amf0_header.rs"
+
+[[bin]]
+name = "fuzz_amf3_int_signed"
+path = "fuzz_targets/fuzz_amf3_int_signed.rs"
+
+[[bin]]
+name = "fuzz_amf3_int_unsigned"
+path = "fuzz_targets/fuzz_amf3_int_unsigned.rs"
+
+[[bin]]
+name = "fuzz_amf3_string"
+path = "fuzz_targets/fuzz_amf3_string.rs"
+
+[[bin]]
+name = "fuzz_amf3_body"
+path = "fuzz_targets/fuzz_amf3_body.rs"
+
+[[bin]]
+name = "fuzz_amf3_single_element"
+path = "fuzz_targets/fuzz_amf3_single_element.rs"

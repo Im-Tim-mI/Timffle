@@ -1,0 +1,8 @@
+[workspace]
+resolver = "3"
+members = [
+    "flash-lso",
+    "lso-to-json",
+    "web"
+]
+

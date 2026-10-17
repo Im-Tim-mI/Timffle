@@ -1,0 +1,38 @@
+[package]
+name = "flash-lso"
+version = "0.6.0"
+authors = ["CUB3D <callumthom11@gmail.com>"]
+description = "Fast and safe SOL/AMF0/AMF3 parsing. Supports serde, Adobe flex and cyclic references"
+repository = "https://github.com/CUB3D/rust-sol"
+readme = "README.md"
+license = "MIT"
+keywords = ["sol", "amf", "parser", "serializer", "flash"]
+edition = "2024"
+categories = ["data-structures", "encoding", "parser-implementations"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nom = "=8.0.0"
+enumset = "=1.1.13"
+thiserror = "=2.0.18"
+serde = { version = "=1.0.228", optional = true, features = ["derive", "rc"] }
+
+[dev-dependencies]
+pretty_assertions = "=1.4.1"
+serde_json = "=1.0.150"
+criterion = "=0.8.2"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[features]
+default = ["amf3"]
+flex = []
+serde = ["dep:serde", "enumset/serde"]
+all = ["serde", "flex"]
+amf3 = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
