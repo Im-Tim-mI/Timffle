@@ -1,0 +1,79 @@
+# test=d33utils3d
+start projectVector identity
+  projectVector identity: (1,2,3,1)
+start projectVector persp
+  projectVector persp: (66.6667,33.3333,166.6667,1.5)
+start projectVector persp w=2 in
+  projectVector persp w=2 in: (66.6667,33.3333,166.6667,1.5)
+start projectVector sample
+  projectVector sample: (14.2427,-19.36,34.592,1)
+start projectVector w becomes 0
+  projectVector w becomes 0: (16768.4992,8384.2496,-83842.496,0)
+start projectVector null matrix
+  projectVector null matrix THREW Error#2007 TypeError
+start projectVector null vector
+  projectVector null vector THREW Error#2007 TypeError
+start projectVectors persp 2 verts
+  projectVectors persp 2 verts: proj=66.6667,33.3333,20,10 uvt=0,0,0.6667,0,0,1
+start projectVectors persp 2 verts, prefilled
+  projectVectors persp 2 verts, prefilled: proj=66.6667,33.3333,20,10,9,9,9 uvt=7,7,0.6667,7,7,1,7
+start projectVectors sample 1 vert
+  projectVectors sample 1 vert: proj=14.2427,-19.36 uvt=0,0,1
+start projectVectors 5 numbers
+  projectVectors 5 numbers: proj=0,0 uvt=0,0,0
+start projectVectors uvt with data
+  projectVectors uvt with data: proj=66.6667,33.3333,20,10 uvt=0.1,0.2,0.6667,0.4,0.5,1
+start projectVectors short uvt
+  projectVectors short uvt: proj=66.6667,33.3333,20,10 uvt=0.1,0,0.6667,0,0,1
+start projectVectors w zero
+  projectVectors w zero: proj=16843.009,8421.5045 uvt=0,0,-8421.5045
+start projectVectors sets uvt.z from 1/w
+  projectVectors sets uvt.z from 1/w: 0.1,0.2,0.6667
+start pointTowards identity+t 0
+  pointTowards identity+t 0: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointTowards sample 0
+  pointTowards sample 0: 0.6818,0.0229,-0.7311,0,0.237,0.9387,0.2504,0,0.692,-0.344,0.6346,0,10,-20,30,1
+start pointTowards sample defaults 0
+  pointTowards sample defaults 0: 0.6818,0.0229,-0.7311,0,0.237,0.9387,0.2504,0,0.692,-0.344,0.6346,0,10,-20,30,1
+start pointTowards identity+t 0.25
+  pointTowards identity+t 0.25: 0.9923,0.0653,0.1049,0,0.0266,0.7161,-0.6975,0,-0.1207,0.6949,0.7089,0,10,20,30,1
+start pointTowards sample 0.25
+  pointTowards sample 0.25: 0.597,0.3115,-0.7393,0,0.4949,0.5823,0.645,0,0.6314,-0.7509,0.1934,0,10,-20,30,1
+start pointTowards sample defaults 0.25
+  pointTowards sample defaults 0.25: 0.5245,-0.0256,-0.851,0,0.4098,0.8837,0.226,0,0.7463,-0.4673,0.474,0,10,-20,30,1
+start pointTowards identity+t 0.5
+  pointTowards identity+t 0.5: 0.9738,0.1845,0.133,0,0.1297,0.0299,-0.9911,0,-0.1868,0.9824,0.0052,0,10,20,30,1
+start pointTowards sample 0.5
+  pointTowards sample 0.5: 0.5901,0.5648,-0.5769,0,0.6846,0.0288,0.7284,0,0.428,-0.8247,-0.3697,0,10,-20,30,1
+start pointTowards sample defaults 0.5
+  pointTowards sample defaults 0.5: 0.3418,-0.046,-0.9387,0,0.5652,0.808,0.1662,0,0.7508,-0.5873,0.3022,0,10,-20,30,1
+start pointTowards identity+t 1
+  pointTowards identity+t 1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointTowards sample 1
+  pointTowards sample 1: 0.7886,0.6134,-0.0438,0,0.6124,-0.7898,-0.034,0,-0.0555,0,-0.9985,0,10,-20,30,1
+start pointTowards sample defaults 1
+  pointTowards sample defaults 1: -0.0555,0,-0.9985,0,0.7886,0.6134,-0.0438,0,0.6124,-0.7898,-0.034,0,10,-20,30,1
+start pointTowards identity+t 1.5
+  pointTowards identity+t 1.5: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointTowards sample 1.5
+  pointTowards sample 1.5: 0.7886,0.6134,-0.0438,0,0.6124,-0.7898,-0.034,0,-0.0555,0,-0.9985,0,10,-20,30,1
+start pointTowards sample defaults 1.5
+  pointTowards sample defaults 1.5: -0.0555,0,-0.9985,0,0.7886,0.6134,-0.0438,0,0.6124,-0.7898,-0.034,0,10,-20,30,1
+start pointTowards identity+t -0.5
+  pointTowards identity+t -0.5: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointTowards sample -0.5
+  pointTowards sample -0.5: 0.6818,0.0229,-0.7311,0,0.237,0.9387,0.2504,0,0.692,-0.344,0.6346,0,10,-20,30,1
+start pointTowards sample defaults -0.5
+  pointTowards sample defaults -0.5: 0.6818,0.0229,-0.7311,0,0.237,0.9387,0.2504,0,0.692,-0.344,0.6346,0,10,-20,30,1
+start pointTowards null at/up defaults 0.5 identity
+  pointTowards null at/up defaults 0.5 identity: 0,-0.7071,-0.7071,0,0.7071,0.5,-0.5,0,0.7071,-0.5,0.5,0,0,0,0,1
+start pointTowards doesn't modify input
+  pointTowards doesn't modify input: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards null mat
+  pointTowards null mat THREW Error#2007 TypeError
+start pointTowards null pos
+  pointTowards null pos THREW Error#2007 TypeError
+start pointTowards degenerate
+  pointTowards degenerate: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+end
+# done

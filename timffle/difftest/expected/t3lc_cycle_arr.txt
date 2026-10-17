@@ -1,0 +1,8 @@
+# test=t3lc_cycle_arr
+sends returned
+tx status level=status
+received "control"
+tx status level=status
+received Array[int:1,"two",<cycle>]
+v[2] === v: true
+# done

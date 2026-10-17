@@ -1,0 +1,97 @@
+# test=d26steps
+start throw ArgumentError
+  throw ArgumentError THREW Error#0 ArgumentError
+start try/catch ArgumentError
+  try/catch ArgumentError THREW Error#1009 TypeError
+start recompose quat norm +1e-7
+  recompose quat norm +1e-7: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm -1e-7
+  recompose quat norm -1e-7: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm +4e-7
+  recompose quat norm +4e-7: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm -4e-7
+  recompose quat norm -4e-7: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm +0.000001
+  recompose quat norm +0.000001: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm -0.000001
+  recompose quat norm -0.000001: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm +0.000002
+  recompose quat norm +0.000002: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm -0.000002
+  recompose quat norm -0.000002: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm +0.000005
+  recompose quat norm +0.000005: true 1.0607,0,-1.0607,0,0,2,0,0,0.3536,0,0.3536,0,10,20,30,1
+start recompose quat norm -0.000005
+  recompose quat norm -0.000005: true 1.0607,0,-1.0606,0,0,2,0,0,0.3535,0,0.3536,0,10,20,30,1
+start recompose quat norm +0.00001
+  recompose quat norm +0.00001 THREW Error#2004 ArgumentError
+start recompose quat norm -0.00001
+  recompose quat norm -0.00001 THREW Error#2004 ArgumentError
+start recompose quat norm +0.00002
+  recompose quat norm +0.00002 THREW Error#2004 ArgumentError
+start recompose quat norm -0.00002
+  recompose quat norm -0.00002 THREW Error#2004 ArgumentError
+start recompose quat norm +0.00005
+  recompose quat norm +0.00005 THREW Error#2004 ArgumentError
+start recompose quat norm -0.00005
+  recompose quat norm -0.00005 THREW Error#2004 ArgumentError
+start recompose quat norm +0.0001
+  recompose quat norm +0.0001 THREW Error#2004 ArgumentError
+start recompose quat norm -0.0001
+  recompose quat norm -0.0001 THREW Error#2004 ArgumentError
+start recompose quat norm +0.001
+  recompose quat norm +0.001 THREW Error#2004 ArgumentError
+start recompose quat norm -0.001
+  recompose quat norm -0.001 THREW Error#2004 ArgumentError
+start recompose quat norm +0.01
+  recompose quat norm +0.01 THREW Error#2004 ArgumentError
+start recompose quat norm -0.01
+  recompose quat norm -0.01 THREW Error#2004 ArgumentError
+start recompose quat unnormalised (0,1,0,1)
+  recompose quat unnormalised (0,1,0,1) THREW Error#2004 ArgumentError
+start recompose quat zero
+  recompose quat zero THREW Error#2004 ArgumentError
+start recompose quat rounded y45
+  recompose quat rounded y45 THREW Error#2004 ArgumentError
+start recompose euler bad style
+  recompose euler bad style THREW Error#2187 Error
+start recompose euler style null explicit
+  recompose euler style null explicit: true 1.0068,0.848,-0.7191,0,-1.0142,1.6439,0.5187,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose axisAngle zero axis
+  recompose axisAngle zero axis: true 1.0451,0,0,0,0,1.3934,0,0,0,0,0.3484,0,10,20,30,1
+start recompose axisAngle unnormalised axis
+  recompose axisAngle unnormalised axis: true 1.3816,0,-0.5841,0,0,2,0,0,0.1947,0,0.4605,0,10,20,30,1
+start recompose axisAngle 3 args
+  recompose axisAngle 3 args: true 1.5,0,0,0,0,2,0,0,0,0,0.5,0,10,20,30,1
+start recompose scale zero x
+  recompose scale zero x: true 0,0,0,0,-1.0142,1.6439,0.5187,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose scale zero y
+  recompose scale zero y: true 0.6712,0.5654,-0.4794,0,0,0,0,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose scale zero z
+  recompose scale zero z: true 0.6712,0.5654,-0.4794,0,-1.0142,1.6439,0.5187,0,0,0,0,0,10,20,30,1
+start recompose scale negative x
+  recompose scale negative x: true -0.6712,-0.5654,0.4794,0,-1.0142,1.6439,0.5187,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose scale tiny 1e-10
+  recompose scale tiny 1e-10: true 0,0,0,0,-1.0142,1.6439,0.5187,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose two components
+  recompose two components: false 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start recompose four components
+  recompose four components: true 1.0068,0.848,-0.7191,0,-1.0142,1.6439,0.5187,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose zero components
+  recompose zero components: false 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start recompose one component
+  recompose one component: false 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start recompose null
+  recompose null THREW Error#2007 TypeError
+start recompose w ignored?
+  recompose w ignored?: true 1.0068,0.848,-0.7191,0,-1.0142,1.6439,0.5187,0,0.2703,0.0345,0.4192,0,10,20,30,1
+start recompose null element
+  recompose null element: false 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start pointAt null
+  pointAt null THREW Error#2007 TypeError
+start transformVector null
+  transformVector null THREW Error#2007 TypeError
+start interpolate t=2
+  interpolate t=2: 1,0,0,0,0,1,0,0,0,0,1,0,10,0,0,1
+end
+# done

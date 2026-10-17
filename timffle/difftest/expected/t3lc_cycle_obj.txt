@@ -1,0 +1,8 @@
+# test=t3lc_cycle_obj
+sends returned
+tx status level=status
+received "control"
+tx status level=status
+received Object{me:<cycle>,name:"self"}
+v.me === v: true
+# done

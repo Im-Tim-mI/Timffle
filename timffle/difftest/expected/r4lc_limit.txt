@@ -1,0 +1,15 @@
+# test=r4lc_limit
+base: conn=r4rx method=len: max accepted=40890 units; 40891 -> #2084
+conn +20 chars (no receiver): max accepted=40902 units; 40903 -> #2084
+conn r4zz (no receiver, same length): max accepted=40922 units; 40923 -> #2084
+method +20 chars: max accepted=40870 units; 40871 -> #2084
+underscore conn _r4: max accepted=40933 units; 40934 -> #2084
+domain-prefixed conn: max accepted=40890 units; 40891 -> #2084
+3-byte UTF-8 char: max accepted=13630 units; 13631 -> #2084
+extra Number arg before: max accepted=40881 units; 40882 -> #2084
+extra 10-char string after: max accepted=40878 units; 40879 -> #2084
+extra object arg after: max accepted=40882 units; 40883 -> #2084
+same name after close: max accepted=40922 units; 40923 -> #2084
+same name reconnected: max accepted=40890 units; 40891 -> #2084
+done
+# done

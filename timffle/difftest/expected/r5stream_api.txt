@@ -1,0 +1,8 @@
+# test=r5stream_api
+position=0 length=0
+stop ok
+position=0
+negative=0
+perUser=false
+perUser=true
+# done

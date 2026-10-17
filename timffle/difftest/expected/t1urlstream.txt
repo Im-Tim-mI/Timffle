@@ -1,0 +1,81 @@
+# test=t1urlstream
+
+== initial state of an unopened stream
+connected=false bytesAvailable=<Error#2029 flash.errors::IOError> endian=bigEndian objectEncoding=3
+readByte on unopened THREW Error#2029 flash.errors::IOError
+close on unopened THREW Error#2029 flash.errors::IOError
+
+== progressive: 4 x 8192 bytes, 0.4 s apart, reading 3000 bytes per progress
+right after load(): connected=true bytesAvailable=0 order=
+first progress: bytesTotal=32768 connected=true bubbles=false
+at complete: connected=true accounting=true lastLoaded=32768
+order=open,progress,httpStatus(200),complete
+progressive (some progress with loaded<total)=true
+multiple progress events=true
+bytesTotal values seen=[32768] nonMonotonic=0
+bytesAvailable == loaded - consumed at every progress=true
+consumed=32768 badBytes=0
+~ progressCount=5 firstProgressMs=15 totalMs=1271
+300 ms after complete: connected=true bytesAvailable=0
+close after complete ok
+
+== no Content-Length (3 x 4096)
+order=open,progress,httpStatus(200),complete bytesTotal values seen=[0] connected=true bytesAvailable=12288
+
+== close() mid-stream on first progress
+before close: connected=true availableIsPartial=true
+after close: connected=false bytesAvailable=<Error#2029 flash.errors::IOError>
+readByte after close THREW Error#2029 flash.errors::IOError
+order=open,progress eventsAfterClose=[] connected=false bytesAvailable=<Error#2029 flash.errors::IOError>
+
+== stop() mid-stream on first progress (FP 11.4 API)
+after stop: connected=true availableIsPartial=true
+order=open,progress,httpStatus(200),complete eventsAfterStop=[progress,complete] connected=true bytesAvailable=49152
+
+== HTTP 404
+ioError text=Error #2032 errorID=2032 bubbles=false
+order=open,progress,httpStatus(404),ioError connected=true bytesAvailable=7
+
+== connection refused (port 18767)
+ioError text=Error #2032 errorID=2032 bubbles=false
+order=httpStatus(0),ioError connected=true bytesAvailable=0
+
+== truncated body (Content-Length 16384, server sends 8192 then closes)
+order=open,progress,httpStatus(200),complete lastLoaded=8192 bytesTotal=16384 connected=true bytesAvailable=8192
+
+== typed reads, endian, EOF
+at complete: connected=true bytesAvailable=40
+readUnsignedByte=5 readByte=18
+readShort=7980 readUnsignedShort=14662
+readInt=1398828410 readUnsignedInt=2274664878
+LE readInt=-489305925 readUnsignedInt=369753327
+LE readDouble=1.16472697228973e+301 readFloat=-1.9277896612379664e-8
+readBoolean=true remaining=5
+readBytes(b,1,3) into 'XY' -> len=4 ByteArray(len=4 pos=2 58CCD9E6)
+readBytes length>available THREW Error#2030 flash.errors::EOFError
+after over-long readBytes: connected=true bytesAvailable=2
+readBytes(c) with length=0 took 2 -> connected=true bytesAvailable=0
+readInt at EOF THREW Error#2030 flash.errors::EOFError
+after EOF read: connected=true bytesAvailable=0
+position=0 length=0
+
+== partial typed read at EOF leaves bytes untouched
+at complete: connected=true bytesAvailable=3
+readInt with 3 bytes THREW Error#2030 flash.errors::EOFError
+after failed readInt: connected=true bytesAvailable=3
+readUTFBytes(5) with 3 bytes THREW Error#2030 flash.errors::EOFError
+after failed readUTFBytes: connected=true bytesAvailable=3
+readUnsignedByte=5
+
+== load() again while the first load is streaming
+reloading at first progress; connected=true
+after second load(): connected=true bytesAvailable=0
+first end=complete connected=true bytesAvailable=9 firstByte=5 (blob byte0=5, slow byte0=3)
+order=open,progress,open,progress,httpStatus(200),complete ends=1 connected=true bytesAvailable=9
+
+== close from open listener
+order=open connected=false bytesAvailable=<Error#2029 flash.errors::IOError>
+
+== close from httpStatus listener
+order=open,progress,httpStatus(200),complete connected=false bytesAvailable=<Error#2029 flash.errors::IOError>
+# done

@@ -1,0 +1,42 @@
+# Build outputs
+/build/
+/out/
+dist/
+target/
+node_modules/
+__pycache__/
+*.pyc
+
+# Never commit key material or credentials
+*.pem
+*.key
+*.crx
+*.p12
+*.pfx
+.env
+.env.*
+*.secret
+credentials*
+accounts*
+
+# Test outputs and local scratch (difftest builds its SWFs into bin/)
+difftest/bin/
+difftest/results/
+difftest/logs/
+tools/**/results/
+tools/**/out/
+*.log
+*.tmp
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+difftest/.wineprefix/
+
+# native-regress run outputs
+tools/native-regress/browser-*/
+tools/native-regress/regress-*.exit
+tools/native-regress/regress-summary.txt

@@ -1,0 +1,15 @@
+# test=r6amf_cycles
+object self-cycle: r.self===r true tag=o
+array self-cycle: length=3 r[2]===r true r[1]=two
+indirect cycle: r.kid.parent===r true
+shared object: r.a===r.b true r.a.n=1
+shared array: r.a===r.b true r.b[0]=7
+cycle after XML: r[1].self===r[1] true r[1].self.tag=c r[0]=XML(<a b="1"/>)
+cycle after Date: r[1].self===r[1] true r[1].self.tag=c r[0]=Date(1577934245000)
+cycle after ByteArray: r[1].self===r[1] true r[1].self.tag=c r[0]=ByteArray(len=2 pos=0 6869)
+cycle after Vector.<int>: r[1].self===r[1] true r[1].self.tag=c r[0]=__AS3__.vec::Vector.<int>[int:3]
+Vector.<Object> containing itself: length=2 r[1]===r true r[0]=x
+Dictionary value cycle: class=flash.utils::Dictionary r.self===r true n=5
+cycle through Dictionary: r.dict.owner===r true
+done
+# done

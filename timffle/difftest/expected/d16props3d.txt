@@ -1,0 +1,78 @@
+# test=d16props3d
+fresh: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=1,0,0,1,0,0 | matrix3D=null
+x=10 y=20: x=10 y=20 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=1,0,0,1,10,20 | matrix3D=null
+z=0: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+z=30: x=0 y=0 z=30 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,0,0,30,1
+x=10 y=20 z=30: x=10 y=20 z=30 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+rotationX=0: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+rotationX=30: x=0 y=0 z=0 rotX=30 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,0.866,0.5,0,0,-0.5,0.866,0,0,0,0,1
+rotationY=30: x=0 y=0 z=0 rotX=0 rotY=30 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,0,0,0,1
+rotationZ=30: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=30 rot=30 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.866,0.5,0,0,-0.5,0.866,0,0,0,0,1,0,0,0,0,1
+rotation=30 (2D): x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=30 sx=1 sy=1 sz=1
+   matrix=0.866,0.5,-0.5,0.866,0,0 | matrix3D=null
+scaleZ=1: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+scaleZ=2: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=2
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,2,0,0,0,0,1
+scaleX=2 scaleY=3 scaleZ=4: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=2 sy=3 sz=4
+   matrix=null | matrix3D=2,0,0,0,0,3,0,0,0,0,4,0,0,0,0,1
+rotX=20 rotY=30 rotZ=40: x=0 y=0 z=0 rotX=20 rotY=30 rotZ=40 rot=40 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.6634,0.5567,-0.5,0,-0.473,0.8298,0.2962,0,0.5798,0.04,0.8138,0,0,0,0,1
+rotZ=40 rotY=30 rotX=20 (other order of setting): x=0 y=0 z=0 rotX=20 rotY=30 rotZ=40 rot=40 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.6634,0.5567,-0.5,0,-0.473,0.8298,0.2962,0,0.5798,0.04,0.8138,0,0,0,0,1
+full: x=10 y=20 z=30 rot 20/30/40 scale 1.5/0.5/2: x=10 y=20 z=30 rotX=20 rotY=30 rotZ=40 rot=40 sx=1.5 sy=0.5 sz=2
+   matrix=null | matrix3D=0.9951,0.835,-0.75,0,-0.2365,0.4149,0.1481,0,1.1595,0.08,1.6276,0,10,20,30,1
+rotationX=90: x=0 y=0 z=0 rotX=90 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,0,1,0,0,-1,0,0,0,0,0,1
+rotationY=90: x=0 y=0 z=0 rotX=0 rotY=90 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0,0,-1,0,0,1,0,0,1,0,0,0,0,0,0,1
+rotationX=180: x=0 y=0 z=0 rotX=180 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,-1,0,0,0,0,-1,0,0,0,0,1
+rotationX=-45: x=0 y=0 z=0 rotX=-45 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,0.7071,-0.7071,0,0,0.7071,0.7071,0,0,0,0,1
+rotationY=200: x=0 y=0 z=0 rotX=0 rotY=200 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=-0.9397,0,0.342,0,0,1,0,0,-0.342,0,-0.9397,0,0,0,0,1
+rotX=45 then rotation=20: x=0 y=0 z=0 rotX=45 rotY=0 rotZ=20 rot=20 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.9397,0.342,0,0,-0.2418,0.6645,0.7071,0,0.2418,-0.6645,0.7071,0,0,0,0,1
+rotX=45 then scaleX=2: x=0 y=0 z=0 rotX=45 rotY=0 rotZ=0 rot=0 sx=2 sy=1 sz=1
+   matrix=null | matrix3D=2,0,0,0,0,0.7071,0.7071,0,0,-0.7071,0.7071,0,0,0,0,1
+rotX=45 then x=7: x=7 y=0 z=0 rotX=45 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,0.7071,0.7071,0,0,-0.7071,0.7071,0,7,0,0,1
+rotX=45 then matrix=identity: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=1,0,0,1,0,0 | matrix3D=null
+rotX=45 then matrix3D=null: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=1,0,0,1,0,0 | matrix3D=null
+matrix3D = identity: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+matrix3D = translation(5,6,7): x=5 y=6 z=7 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,5,6,7,1
+matrix3D = rotX 30: x=0 y=0 z=0 rotX=30 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,0.866,0.5,0,0,-0.5,0.866,0,0,0,0,1
+matrix3D = rotY 30: x=0 y=0 z=0 rotX=0 rotY=30 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,0,0,0,1
+matrix3D = rotZ 30: x=0 y=0 z=0 rotX=0 rotY=0 rotZ=30 rot=30 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.866,0.5,0,0,-0.5,0.866,0,0,0,0,1,0,0,0,0,1
+matrix3D = rotX 20, rotY 30, rotZ 40 (append order): x=0 y=0 z=0 rotX=20 rotY=30 rotZ=40 rot=40 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=0.6634,0.5567,-0.5,0,-0.473,0.8298,0.2962,0,0.5798,0.04,0.8138,0,0,0,0,1
+matrix3D = scale 2,3,4 then translate 1,2,3: x=1 y=2 z=3 rotX=0 rotY=0 rotZ=0 rot=0 sx=2 sy=3 sz=4
+   matrix=null | matrix3D=2,0,0,0,0,3,0,0,0,0,4,0,1,2,3,1
+matrix3D = shear-ish raw: x=10 y=20 z=30 rotX=0 rotY=0 rotZ=11.3099 rot=11.3099 sx=1.0198 sy=0.9217 sz=1
+   matrix=null | matrix3D=1,0.2,0,0,0.3,1,0,0,0,0,1,0,10,20,30,1
+matrix3D = perspective-ish raw (w != 1): x=0 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0.001,0,0,0,1
+matrix3D = rotX 30 then rotationX read/modify -> 50: x=0 y=0 z=0 rotX=50 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,0.6428,0.766,0,0,-0.766,0.6428,0,0,0,0,1
+matrix3D object shared: assign, then change the caller's matrix: x=50 y=0 z=0 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,50,0,0,1
+matrix3D getter returns a copy?: x=100 y=0 z=10 rotX=0 rotY=0 rotZ=0 rot=0 sx=1 sy=1 sz=1
+   matrix=null | matrix3D=1,0,0,0,0,1,0,0,0,0,1,0,100,0,10,1
+# done

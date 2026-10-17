@@ -1,0 +1,15 @@
+# test=d40utils3dnull
+start projectVectors null matrix
+  projectVectors null matrix THREW Error#2007 TypeError
+start projectVectors null verts
+  projectVectors null verts THREW Error#2007 TypeError
+start projectVectors null projectedVerts
+  projectVectors null projectedVerts THREW Error#2007 TypeError
+start projectVectors null uvts
+  projectVectors null uvts THREW Error#2007 TypeError
+start projectVectors empty verts
+  projectVectors empty verts: 1 | 2
+start projectVectors fixed-length output
+  projectVectors fixed-length output THREW Error#1126 RangeError
+end
+# done

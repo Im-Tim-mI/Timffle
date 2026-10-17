@@ -1,0 +1,95 @@
+# test=d29steps
+start interpolate -1
+  interpolate -1: 1,0,0,0,0,0.9397,0.342,0,0,-0.342,0.9397,0,10,20,30,1
+start interpolateTo -1
+  interpolateTo -1: 1,0,0,0,0,0.9397,0.342,0,0,-0.342,0.9397,0,10,20,30,1
+start interpolate -0.5
+  interpolate -0.5: 1,0,0,0,0,0.9397,0.342,0,0,-0.342,0.9397,0,10,20,30,1
+start interpolateTo -0.5
+  interpolateTo -0.5: 1,0,0,0,0,0.9397,0.342,0,0,-0.342,0.9397,0,10,20,30,1
+start interpolate 0
+  interpolate 0: 1,0,0,0,0,0.9397,0.342,0,0,-0.342,0.9397,0,10,20,30,1
+start interpolateTo 0
+  interpolateTo 0: 1,0,0,0,0,0.9397,0.342,0,0,-0.342,0.9397,0,10,20,30,1
+start interpolate 0.3
+  interpolate 0.3: 0.8651,0.0677,-0.4971,0,0.0677,0.9661,0.2493,0,0.4971,-0.2493,0.8311,0,22,8,21,1
+start interpolateTo 0.3
+  interpolateTo 0.3: 0.8651,0.0677,-0.4971,0,0.0677,0.9661,0.2493,0,0.4971,-0.2493,0.8311,0,22,8,21,1
+start interpolate 1
+  interpolate 1: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolateTo 1
+  interpolateTo 1: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolate 1.5
+  interpolate 1.5: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolateTo 1.5
+  interpolateTo 1.5: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolate 2
+  interpolate 2: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolateTo 2
+  interpolateTo 2: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolate 10
+  interpolate 10: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolateTo 10
+  interpolateTo 10: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolate NaN
+  interpolate NaN: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,1
+start interpolateTo NaN
+  interpolateTo NaN: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,1
+start interpolate Infinity
+  interpolate Infinity: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start interpolateTo Infinity
+  interpolateTo Infinity: -0.1736,0,-0.9848,0,0,1,0,0,0.9848,0,-0.1736,0,50,-20,0,1
+start appendRotation 30 axis 0,2,0
+  appendRotation 30 axis 0,2,0: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,0,0,0,1
+start prependRotation 30 axis 0,2,0
+  prependRotation 30 axis 0,2,0: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,1,2,3,1
+start appendRotation 30 axis 0,0,0
+  appendRotation 30 axis 0,0,0: 0.866,0,0,0,0,0.866,0,0,0,0,0.866,0,0,0,0,1
+start prependRotation 30 axis 0,0,0
+  prependRotation 30 axis 0,0,0: 0.866,0,0,0,0,0.866,0,0,0,0,0.866,0,1,2,3,1
+start appendRotation 30 axis 1,1,0
+  appendRotation 30 axis 1,1,0: 0.933,0.067,-0.3536,0,0.067,0.933,0.3536,0,0.3536,-0.3536,0.866,0,0,0,0,1
+start prependRotation 30 axis 1,1,0
+  prependRotation 30 axis 1,1,0: 0.933,0.067,-0.3536,0,0.067,0.933,0.3536,0,0.3536,-0.3536,0.866,0,1,2,3,1
+start appendRotation 30 axis 0,0.5,0
+  appendRotation 30 axis 0,0.5,0: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,0,0,0,1
+start prependRotation 30 axis 0,0.5,0
+  prependRotation 30 axis 0,0.5,0: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,1,2,3,1
+start appendRotation 30 axis 1,2,3
+  appendRotation 30 axis 1,2,3: 0.8756,0.42,-0.2386,0,-0.3818,0.9043,0.191,0,0.296,-0.0762,0.9522,0,0,0,0,1
+start prependRotation 30 axis 1,2,3
+  prependRotation 30 axis 1,2,3: 0.8756,0.42,-0.2386,0,-0.3818,0.9043,0.191,0,0.296,-0.0762,0.9522,0,1,2,3,1
+start appendRotation 30 axis 0,1,0,5
+  appendRotation 30 axis 0,1,0,5: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,0,0,0,1
+start prependRotation 30 axis 0,1,0,5
+  prependRotation 30 axis 0,1,0,5: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,1,2,3,1
+start appendRotation null axis
+  appendRotation null axis THREW Error#2007 TypeError
+start appendRotation pivot w
+  appendRotation pivot w: 0.866,0,-0.5,0,0,1,0,0,0.5,0,0.866,0,1.3397,0,5,1
+start new Matrix3D(8 numbers)
+  new Matrix3D(8 numbers): 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start new Matrix3D(20 numbers)
+  new Matrix3D(20 numbers): 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start rawData = 8 numbers
+  rawData = 8 numbers: 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start rawData = null
+  rawData = null: 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1
+start copyColumnTo(4)
+  copyColumnTo(4) THREW Error#2004 ArgumentError
+start copyRowFrom(4)
+  copyRowFrom(4) THREW Error#2004 ArgumentError
+start invert zero matrix
+  invert zero matrix THREW Error#2183 ArgumentError
+start determinant projective
+  determinant projective: 1
+start transformVectors short output
+  transformVectors short output: 1,2,3,4,5,6
+start transformVectors length 5 input
+  transformVectors length 5 input: 1,2,3
+start transformVector projective
+  transformVector projective: (10,20,30,2)
+start position set w
+  position set w: 1,0,0,0,0,1,0,0,0,0,1,0,1,2,3,1
+end
+# done

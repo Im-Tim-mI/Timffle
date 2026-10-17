@@ -1,0 +1,69 @@
+# test=r8urlloader_cancel
+== close-only
+  close() ok
+  final: data=null loaded=0
+== close-then-load
+  close() ok
+  complete data=BBB loaded=3
+  final: data=BBB loaded=3
+== load-again-without-close
+  complete data=BBB loaded=3
+  final: data=BBB loaded=3
+== late-answer-of-closed-load
+  close() ok
+  complete data=BBB loaded=3
+  final: data=BBB loaded=3
+== queue-switch-twice
+  close() ok
+  close() ok
+  complete data=CCC loaded=3
+  final: data=CCC loaded=3
+== retry-same-url
+  close() ok
+  complete data=AAA loaded=3
+  final: data=AAA loaded=3
+== close-idle
+  close() THREW Error#2029 flash.errors::IOError
+  final: data=null loaded=0
+== close-after-complete
+  complete data=BBB loaded=3
+  close() after complete ok
+  close() again THREW Error#2029 flash.errors::IOError
+  final: data=BBB loaded=3
+== close-in-open
+  close() in open ok
+  final: data=null loaded=0
+== close-in-progress
+  close() in progress ok
+  final: data=null loaded=3
+== close-in-httpStatus
+  close() in httpStatus ok
+  final: data=null loaded=3
+== close-in-complete
+  complete data=BBB loaded=3
+  close() in complete ok
+  final: data=BBB loaded=3
+== load-in-ioerror
+  ioError
+  complete data=BBB loaded=3
+  final: data=BBB loaded=3
+== next-item-in-complete
+  complete data=AAA loaded=3
+  close() ok
+  complete data=BBB loaded=3
+  final: data=BBB loaded=3
+== load-in-open
+  complete data=BBB loaded=3
+  final: data=BBB loaded=3
+== close-after-ioerror
+  ioError
+  close() after ioError ok
+== close-twice
+  close() #1 ok
+  close() #2 THREW Error#2029 flash.errors::IOError
+  final: data=null loaded=0
+== data-kept-after-closed-reload
+  complete data=AAA loaded=3
+  close() ok
+  final: data=AAA loaded=3
+# done

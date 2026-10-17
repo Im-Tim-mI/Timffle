@@ -77,7 +77,7 @@ export function upgradeLegacyDefaults(settings: ProxySettings): ProxySettings {
  * Never resolvable (reserved .invalid TLD). The page bridge intercepts this
  * URL before any network access and forwards the socket to the helper.
  */
-export const HELPER_SOCKET_HOST = "ruffle-socket.invalid";
+export const HELPER_SOCKET_HOST = "timffle-socket.invalid";
 export const HELPER_PROXY_URL = `ws://${HELPER_SOCKET_HOST}/connect?host={host}&port={port}`;
 
 export type ProxyValidationError =

@@ -1,0 +1,181 @@
+# test=t2localconn
+
+== basics
+isSupported=true
+domain=127.0.0.1
+client===lc by default: true
+isPerUser=false
+allowDomain('*') ok
+allowDomain() ok
+allowInsecureDomain ok
+
+== connect rules
+a.connect("t2dup") ok
+b.connect("t2dup") THREW Error#2082 ArgumentError
+a(again).connect("t2other") THREW Error#2082 ArgumentError
+a.close() ok
+b(after a closed).connect("t2dup") ok
+b.close() ok
+b.close() THREW Error#2083 ArgumentError
+a.connect(null) THREW Error#2007 TypeError
+a.connect("") THREW Error#2085 ArgumentError
+a.connect("has:colon") THREW Error#2004 ArgumentError
+a.connect("_underscore") ok
+a.close() ok
+
+== delivery timing: one message to a connected client
+rx.connect("t2rx") ok
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] after send
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=1
+    arg0=int:1
+
+== five sends in one frame keep order
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=1
+    arg0=int:0
+[f+1] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=1
+    arg0=int:1
+[f+1] tx status level=status code=null bubbles=false targetIsLc=true
+[f+2] rx.m called argc=1
+    arg0=int:2
+[f+2] tx status level=status code=null bubbles=false targetIsLc=true
+[f+2] rx.m called argc=1
+    arg0=int:3
+[f+2] tx status level=status code=null bubbles=false targetIsLc=true
+[f+3] rx.m called argc=1
+    arg0=int:4
+
+== send to an unconnected name
+[f+0] send("t2nobody","m", 0 args) returned
+[f+0] end of action
+[f+0] tx status level=error code=null bubbles=false targetIsLc=true
+
+== AMF argument round-trip
+[f+0] send("t2rx","m", 10 args) returned
+[f+0] send("t2rx","m", 4 args) returned
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=10
+    arg0=int:-5
+    arg1=Number:4294967295
+    arg2=Number:0.5
+    arg3=Number:NaN
+    arg4=Number:Infinity
+    arg5=Boolean:true
+    arg6=null
+    arg7=undefined
+    arg8="中文 é"
+    arg9=Date(1577934245000)
+[f+1] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=4
+    arg0=Array[undefined,undefined,undefined,"x"]
+    arg1=ByteArray(len=6 pos=0 627974657321)
+    arg2=__AS3__.vec::Vector.<int>[int:7,int:-8]
+    arg3=Object{a:Object{v:int:1},b:Object{v:int:1}}
+[f+1] tx status level=status code=null bubbles=false targetIsLc=true
+[f+2] rx.m called argc=1
+    arg0=XML(<a b="1">
+  <c/>
+</a>)
+[f+2] tx status level=status code=null bubbles=false targetIsLc=true
+[f+2] rx.m called argc=1
+    arg0=Object{n:int:3}
+
+== 40 KB payload limit
+[f+0] send("t2rx","len", 1 args) returned
+[f+0] send("t2rx","len", 1 args) THREW Error#2084 ArgumentError
+[f+0] send("t2rx","len", 1 args) THREW Error#2084 ArgumentError
+[f+0] send("t2rx","len", 1 args) THREW Error#2084 ArgumentError
+[f+0] send("t2rx","len", 1 args) THREW Error#2084 ArgumentError
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.len got string of length 40000
+
+== method missing on client
+[f+0] send("t2rx","nope", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+
+== protected / odd method names
+[f+0] send("t2rx","send", 0 args) THREW Error#2004 ArgumentError
+[f+0] send("t2rx","connect", 0 args) THREW Error#2004 ArgumentError
+[f+0] send("t2rx","close", 0 args) THREW Error#2004 ArgumentError
+[f+0] send("t2rx","", 0 args) THREW Error#2085 ArgumentError
+[f+0] send("t2rx",null, 0 args) THREW Error#2007 TypeError
+[f+0] end of action
+
+== client set to null / primitive
+client=null THREW Error#2004 TypeError
+client now Object{len:Function{}}
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+
+== connection-name prefixes and case
+[f+0] send("127.0.0.1:t2rx","m", 1 args) returned
+[f+0] send("localhost:t2rx","m", 1 args) returned
+[f+0] send("127.0.0.1:t2rx","m", 1 args) returned
+[f+0] send("other.example:t2rx","m", 1 args) returned
+[f+0] send("T2RX","m", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=1
+    arg0="127.0.0.1:t2rx"
+[f+1] tx status level=error code=null bubbles=false targetIsLc=true
+[f+1] tx status level=status code=null bubbles=false targetIsLc=true
+[f+2] rx.m called argc=1
+    arg0="127.0.0.1:t2rx"
+[f+2] tx status level=error code=null bubbles=false targetIsLc=true
+[f+2] tx status level=status code=null bubbles=false targetIsLc=true
+[f+3] rx.m called argc=1
+    arg0="T2RX"
+
+== underscore names are domain-free
+u.connect("_t2u") ok
+[f+0] send("_t2u","m", 1 args) returned
+[f+0] send("127.0.0.1:_t2u","m", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] u.m called argc=1
+    arg0="plain"
+[f+1] tx status level=error code=null bubbles=false targetIsLc=true
+u.close() ok
+
+== receiver sends to itself
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] end of action
+[f+0] rx status level=status code=null bubbles=false targetIsLc=true
+[f+1] rx.m called argc=1
+    arg0="loopback"
+
+== send then close receiver in the same frame
+[f+0] send("t2rx","m", 1 args) returned
+rx.close() ok
+[f+0] end of action
+[f+0] tx status level=error code=null bubbles=false targetIsLc=true
+
+== send after receiver closed
+[f+0] send("t2rx","m", 1 args) returned
+[f+0] end of action
+[f+0] tx status level=error code=null bubbles=false targetIsLc=true
+
+== client method throws an Error
+rx.connect("t2rx") ok
+[f+0] send("t2rx","boom", 0 args) returned
+[f+0] end of action
+[f+0] tx status level=status code=null bubbles=false targetIsLc=true
+[f+1] boom called
+[f+1] rx asyncError text=Error #2095 errorID=42 error=Error#42 Error
+# done

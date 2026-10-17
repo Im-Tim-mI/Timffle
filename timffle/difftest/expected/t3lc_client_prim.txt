@@ -1,0 +1,7 @@
+# test=t3lc_client_prim
+client=int:5 THREW Error#2004 TypeError
+client="str" THREW Error#2004 TypeError
+client=Boolean:true THREW Error#2004 TypeError
+client=Number:1.5 THREW Error#2004 TypeError
+client still original: true
+# done

@@ -123,7 +123,7 @@ test("only well-formed helper URLs are intercepted", () => {
         helperUrl("a/b", 1),
         helperUrl("a@b", 1),
         helperUrl("", 1),
-        "ws://ruffle-socket.invalid/connect?port=1",
+        "ws://timffle-socket.invalid/connect?port=1",
         42,
         null,
     ]) {

@@ -1,0 +1,24 @@
+# test=r9urlloader_open_timing
+== open-before-body
+  open
+  -- 500 ms
+  complete data=AAA
+  final: data=AAA
+== close-between-open-and-body
+  open
+  -- 500 ms
+  close() ok
+  -- 1500 ms
+  final: data=null
+== replace-between-open-and-body
+  open
+  -- 500 ms
+  open
+  complete data=BBB
+  -- 1500 ms
+  final: data=BBB
+== queued-loader-style-timeout
+  open
+  complete data=AAA
+  final: data=AAA
+# done

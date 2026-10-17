@@ -1,0 +1,5 @@
+# test=t0hello
+stage=true
+playerType=StandAlone
+~ version=WIN 32,0,0,465
+# done

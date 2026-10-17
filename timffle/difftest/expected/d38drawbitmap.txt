@@ -1,0 +1,32 @@
+# test=d38drawbitmap
+3D source (rotationY=45) is drawn flat at the origin: ok
+~   expected (0,0)-(100,50) drawn (0,0)-(101,51)
+the matrix is ignored for a 3D source: ok
+~   expected (0,0)-(100,50) drawn (0,0)-(101,51)
+3D source drawn with a scale 2 matrix: ok
+~   expected (0,0)-(200,100) drawn (0,0)-(201,101)
+z=200 source is drawn flat: ok
+~   expected (0,0)-(100,50) drawn (0,0)-(101,51)
+3D container, 2D child: the container's transform is ignored: ok
+~   expected (100,100)-(200,150) drawn (100,100)-(201,151)
+2D container with a rotationX=50 z=60 child: ok
+~   expected (130.8,89.5)-(217.3,119.9) drawn (130,89)-(219,121)
+same drawn with translate(30,20): the matrix is ignored: ok
+~   expected (130.8,89.5)-(217.3,119.9) drawn (130,89)-(219,121)
+same drawn with a scale 2 matrix: ignored too: ok
+~   expected (130.8,89.5)-(217.3,119.9) drawn (130,89)-(219,121)
+no projection, child rotationY=50 z=100: ok
+~   expected (104.8,65.2)-(147.5,118.3) drawn (105,65)-(148,120)
+no projection, container on the stage: ok
+~   expected (104.8,65.2)-(147.5,118.3) drawn (105,65)-(148,120)
+projection fov 55 centre (200,100): ok
+~   expected (104.8,62.3)-(147.5,109.4) drawn (105,62)-(148,111)
+projection fov 70 centre (200,100), child flat at z=100: ok
+~   expected (111.1,70.4)-(185.2,107.4) drawn (111,70)-(186,109)
+projection fov 70 centre (200,100), child rotationY=50 z=100: ok
+~   expected (111.1,63)-(148.5,109.2) drawn (111,63)-(149,111)
+same, container on the stage at (50,50): ok
+~   expected (111.1,63)-(148.5,109.2) drawn (111,63)-(149,111)
+projection fov 90 centre (100,200), child rotationY=-30 z=-50: ok
+~   expected (73.3,13.3)-(166.6,110) drawn (73,12)-(168,112)
+# done

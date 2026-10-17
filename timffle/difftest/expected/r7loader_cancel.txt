@@ -1,0 +1,87 @@
+# test=r7loader_cancel
+== close-only
+  close() ok
+  final: bytesLoaded=0 url=null content=false numChildren=0
+== close-then-load
+  close() ok
+  init assetB.swf?delay=0&c=close-then-load 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0&c=close-then-load 200x80 content=true
+  final: bytesLoaded=>0 url=assetB.swf?delay=0&c=close-then-load content=true numChildren=1
+== load-again-without-close
+  init assetB.swf?delay=0&c=load-again 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0&c=load-again 200x80 content=true
+  final: bytesLoaded=>0 url=assetB.swf?delay=0&c=load-again content=true numChildren=1
+== late-answer-of-closed-load
+  close() ok
+  init assetB.swf?delay=1.5&c=late 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=1.5&c=late 200x80 content=true
+  final: bytesLoaded=>0 url=assetB.swf?delay=1.5&c=late content=true numChildren=1
+== queue-switch-twice
+  close() ok
+  close() ok
+  init assetA.swf?delay=0.2&c=q3 100x50 content=true
+  httpStatus
+  complete assetA.swf?delay=0.2&c=q3 100x50 content=true
+  final: bytesLoaded=>0 url=assetA.swf?delay=0.2&c=q3 content=true numChildren=1
+== retry-same-url
+  close() ok
+  init assetA.swf?delay=1.2&c=retry-2 100x50 content=true
+  httpStatus
+  complete assetA.swf?delay=1.2&c=retry-2 100x50 content=true
+  final: bytesLoaded=>0 url=assetA.swf?delay=1.2&c=retry-2 content=true numChildren=1
+== close-idle
+  close() THREW Error#2029 flash.errors::IOError
+  final: bytesLoaded=0 url=null content=false numChildren=0
+== close-after-complete
+  init assetB.swf?delay=0&c=after-complete 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0&c=after-complete 200x80 content=true
+  close() after complete THREW Error#2029 flash.errors::IOError
+  final: bytesLoaded=>0 url=assetB.swf?delay=0&c=after-complete content=true numChildren=1
+== close-in-open
+  close() in open ok
+  final: bytesLoaded=0 url=null content=false numChildren=0
+== close-in-progress
+  close() in progress ok
+  final: bytesLoaded=0 url=null content=false numChildren=0
+== close-in-complete
+  init assetB.swf?delay=0&c=in-complete 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0&c=in-complete 200x80 content=true
+  close() in complete THREW Error#2029 flash.errors::IOError
+  final: bytesLoaded=>0 url=assetB.swf?delay=0&c=in-complete content=true numChildren=1
+== load-in-ioerror
+  httpStatus
+  ioError
+  init assetB.swf?delay=0&c=after-ioerror 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0&c=after-ioerror 200x80 content=true
+  final: bytesLoaded=>0 url=assetB.swf?delay=0&c=after-ioerror content=true numChildren=1
+== next-item-in-complete
+  init assetA.swf?delay=0.2&c=next-1 100x50 content=true
+  httpStatus
+  complete assetA.swf?delay=0.2&c=next-1 100x50 content=true
+  unload
+  close() THREW Error#2029 flash.errors::IOError
+  init assetB.swf?delay=0.2&c=next-2 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0.2&c=next-2 200x80 content=true
+  final: bytesLoaded=>0 url=assetB.swf?delay=0.2&c=next-2 content=true numChildren=1
+== load-in-open
+  init assetB.swf?delay=0&c=in-open-2 200x80 content=true
+  httpStatus
+  complete assetB.swf?delay=0&c=in-open-2 200x80 content=true
+  final: bytesLoaded=>0 url=assetB.swf?delay=0&c=in-open-2 content=true numChildren=1
+== close-after-ioerror
+  httpStatus
+  ioError
+  close() after ioError THREW Error#2029 flash.errors::IOError
+  final: content=false numChildren=0
+== close-twice
+  close() #1 ok
+  close() #2 THREW Error#2029 flash.errors::IOError
+  final: bytesLoaded=0 url=null content=false numChildren=0
+# done

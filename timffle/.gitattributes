@@ -1,0 +1,3 @@
+# Windows batch files keep their bytes as committed (start-mole.cmd needs CRLF; the installer
+# launchers are stored with LF and converted to CRLF by helper/package.py).
+*.cmd -text

@@ -1,0 +1,28 @@
+# test=d19render3d
+rotationY=45 #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (200,81.8)-(265.1,180) getBounds 200,81 65x99 drawn (201,82)-(266,180)
+rotationX=60 #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (300,150)-(424.2,196.3) getBounds 300,150 125x47 drawn (301,151)-(425,197)
+rotationZ=30 z=50 #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (223.9,204.1)-(360.4,326.7) getBounds 224,204 137x123 drawn (225,205)-(361,327)
+rotation 30/40/20 scale 1.2/0.8/1 z=80 #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (406.4,252.4)-(504,346) getBounds 406,252 98x94 drawn (407,253)-(504,346)
+matrix3D appendRotation 35 about (1,1,0) #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (157,123.4)-(267.3,203.9) getBounds 157,123 111x81 drawn (158,124)-(268,204)
+3D container with a 2D child and a 3D child #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (155.2,66.9)-(248,165) getBounds 155,67 93x98 drawn (156,67)-(249,165)
+3D container with a 2D child and a 3D child #2: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (138.2,196)-(265.7,258.1) getBounds 138,196 128x62 drawn (139,197)-(266,259)
+projection owner (centre (300,100), fov 70) with rotationY=60 z=100 #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (212.7,100)-(259.8,180.5) getBounds 212,100 48x81 drawn (213,101)-(260,181)
+~ nested owners (the inner one 3D itself) #1: inside points drawn ok, outside points not drawn WRONG, hit inside ok, no hit outside WRONG, getBounds WRONG, drawn box WRONG
+~   expected box (167.7,120.7)-(263.6,191.3) getBounds 165,118 119x66 drawn (166,119)-(267,183)
+cacheAsBitmap on a rotationY=40 object #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (220,105.4)-(296.6,200) getBounds 220,105 77x95 drawn (221,106)-(297,200)
+cacheAsBitmap on a 3D container with a 3D child #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (188.4,104.7)-(285.2,198.1) getBounds 188,104 98x94 drawn (189,105)-(286,199)
+alpha and a blend mode on a rotated object #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (260,150)-(378.2,233.8) getBounds 260,150 119x84 drawn (261,151)-(379,234)
+scaled and offset 2D container around a 3D child #1: inside points drawn ok, outside points not drawn ok, hit inside ok, no hit outside ok, getBounds ok, drawn box ok
+~   expected box (377.1,301.6)-(449.2,372.4) getBounds 377,301 73x72 drawn (378,302)-(450,373)
+# done

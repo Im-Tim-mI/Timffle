@@ -1,0 +1,53 @@
+# test=d36pointtowards
+start pointTowards degenerate sample 0
+  pointTowards degenerate sample 0: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards degenerate at zero 0
+  pointTowards degenerate at zero 0: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards degenerate at||up 0
+  pointTowards degenerate at||up 0: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards zero linear 0
+  pointTowards zero linear 0: 1,0,0,0,0,-1,0,0,0,0,-1,0,10,20,30,1
+start pointTowards scale only 0
+  pointTowards scale only 0: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointTowards NaN pos 0
+  pointTowards NaN pos 0: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,10,-20,30,1
+start pointTowards projective mat 0
+  pointTowards projective mat 0: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointTowards mirror 0
+  pointTowards mirror 0: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointTowards degenerate sample 0.5
+  pointTowards degenerate sample 0.5: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards degenerate at zero 0.5
+  pointTowards degenerate at zero 0.5: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards degenerate at||up 0.5
+  pointTowards degenerate at||up 0.5: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards zero linear 0.5
+  pointTowards zero linear 0.5: 0.9868,0.16,-0.027,0,0.1598,-0.9871,-0.0066,0,-0.0277,0.0022,-0.9996,0,10,20,30,1
+start pointTowards scale only 0.5
+  pointTowards scale only 0.5: 0.9738,0.1845,0.133,0,0.1297,0.0299,-0.9911,0,-0.1868,0.9824,0.0052,0,10,20,30,1
+start pointTowards NaN pos 0.5
+  pointTowards NaN pos 0.5: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,10,-20,30,1
+start pointTowards projective mat 0.5
+  pointTowards projective mat 0.5: 0.9738,0.1845,0.133,0,0.1297,0.0299,-0.9911,0,-0.1868,0.9824,0.0052,0,10,20,30,1
+start pointTowards mirror 0.5
+  pointTowards mirror 0.5: 0.9738,0.1845,0.133,0,0.1297,0.0299,-0.9911,0,-0.1868,0.9824,0.0052,0,10,20,30,1
+start pointTowards degenerate sample 1
+  pointTowards degenerate sample 1: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards degenerate at zero 1
+  pointTowards degenerate at zero 1: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards degenerate at||up 1
+  pointTowards degenerate at||up 1: 1.2287,0,-1.1472,0,0.2943,0.7048,0.5603,0,0.8085,-0.2565,1.5395,0,10,-20,30,1
+start pointTowards zero linear 1
+  pointTowards zero linear 1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointTowards scale only 1
+  pointTowards scale only 1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointTowards NaN pos 1
+  pointTowards NaN pos 1: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,10,-20,30,1
+start pointTowards projective mat 1
+  pointTowards projective mat 1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointTowards mirror 1
+  pointTowards mirror 1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointTowards NaN percent
+  pointTowards NaN percent: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,1
+end
+# done

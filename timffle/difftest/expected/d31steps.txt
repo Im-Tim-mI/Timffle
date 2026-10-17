@@ -1,0 +1,133 @@
+# test=d31steps
+start pointAt d tiny 0.1
+  pointAt d tiny 0.1: 1,0,0,0,0,-1,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny+bigy 0.1
+  pointAt d tiny+bigy 0.1: 0.02,0.9998,0,0,0.9998,-0.02,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny 0.001
+  pointAt d tiny 0.001: 1,0,0,0,0,-1,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny+bigy 0.001
+  pointAt d tiny+bigy 0.001: 0.0002,1,0,0,1,-0.0002,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny 0.00001
+  pointAt d tiny 0.00001: 1,0,0,0,0,-1,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny+bigy 0.00001
+  pointAt d tiny+bigy 0.00001: 0,1,0,0,1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny 0.000001
+  pointAt d tiny 0.000001: 1,0,0,0,0,-1,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny+bigy 0.000001
+  pointAt d tiny+bigy 0.000001: 0,1,0,0,1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d tiny 1e-7
+  pointAt d tiny 1e-7: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d tiny+bigy 1e-7
+  pointAt d tiny+bigy 1e-7: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d tiny 1e-9
+  pointAt d tiny 1e-9: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d tiny+bigy 1e-9
+  pointAt d tiny+bigy 1e-9: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d tiny 1e-12
+  pointAt d tiny 1e-12: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d tiny+bigy 1e-12
+  pointAt d tiny+bigy 1e-12: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt at tiny 0.1
+  pointAt at tiny 0.1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 0.1
+  pointAt up tiny 0.1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at tiny 0.001
+  pointAt at tiny 0.001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 0.001
+  pointAt up tiny 0.001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at tiny 0.00001
+  pointAt at tiny 0.00001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 0.00001
+  pointAt up tiny 0.00001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at tiny 0.000001
+  pointAt at tiny 0.000001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 0.000001
+  pointAt up tiny 0.000001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at tiny 1e-7
+  pointAt at tiny 1e-7: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 1e-7
+  pointAt up tiny 1e-7: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at tiny 1e-9
+  pointAt at tiny 1e-9: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 1e-9
+  pointAt up tiny 1e-9: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at tiny 1e-12
+  pointAt at tiny 1e-12: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt up tiny 1e-12
+  pointAt up tiny 1e-12: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 0.1
+  pointAt at||up 0.1: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 0.001
+  pointAt at||up 0.001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 0.00001
+  pointAt at||up 0.00001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 0.000001
+  pointAt at||up 0.000001: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 1e-7
+  pointAt at||up 1e-7: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 1e-9
+  pointAt at||up 1e-9: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt at||up 1e-12
+  pointAt at||up 1e-12: 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,-0.0555,0,-0.9985,0,10,20,30,1
+start pointAt d||worldUp 0.1
+  pointAt d||worldUp 0.1: 0.001,1,0,0,1,-0.001,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||-worldUp 0.1
+  pointAt d||-worldUp 0.1: 0.001,-1,0,0,-1,-0.001,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||worldUp 0.001
+  pointAt d||worldUp 0.001: 0,1,0,0,1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||-worldUp 0.001
+  pointAt d||-worldUp 0.001: 0,-1,0,0,-1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||worldUp 0.00001
+  pointAt d||worldUp 0.00001: 0,1,0,0,1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||-worldUp 0.00001
+  pointAt d||-worldUp 0.00001: 0,-1,0,0,-1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||worldUp 0.000001
+  pointAt d||worldUp 0.000001: 0,1,0,0,1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||-worldUp 0.000001
+  pointAt d||-worldUp 0.000001: 0,-1,0,0,-1,0,0,0,0,0,-1,0,10,20,30,1
+start pointAt d||worldUp 1e-7
+  pointAt d||worldUp 1e-7: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d||-worldUp 1e-7
+  pointAt d||-worldUp 1e-7: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d||worldUp 1e-9
+  pointAt d||worldUp 1e-9: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d||-worldUp 1e-9
+  pointAt d||-worldUp 1e-9: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d||worldUp 1e-12
+  pointAt d||worldUp 1e-12: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt d||-worldUp 1e-12
+  pointAt d||-worldUp 1e-12: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt scale(0,1,1)
+  pointAt scale(0,1,1) THREW Error#2183 ArgumentError
+start pointAt scale(1,0,1)
+  pointAt scale(1,0,1) THREW Error#2183 ArgumentError
+start pointAt scale(1,1,0)
+  pointAt scale(1,1,0) THREW Error#2183 ArgumentError
+start pointAt scale(1e-10,1,1)
+  pointAt scale(1e-10,1,1): 0.9474,0.3158,-0.0526,0,0.3153,-0.9488,-0.0175,0,0,0,0,0,10,20,30,1
+start pointAt zero linear
+  pointAt zero linear: 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+start pointAt c1==c0
+  pointAt c1==c0: 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+start pointAt NaN pos
+  pointAt NaN pos: NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
+start pointAt NaN at
+  pointAt NaN at: NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
+start pointAt Infinity pos
+  pointAt Infinity pos: NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN
+start pointAt huge pos 1e30
+  pointAt huge pos 1e30: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt huge pos 1e20
+  pointAt huge pos 1e20: 1,0,0,0,0,1,0,0,0,0,1,0,10,20,30,1
+start pointAt tiny diff 1e-20 on huge position
+  pointAt tiny diff 1e-20 on huge position: 1,0,0,0,0,1,0,0,0,0,1,0,100000002004087730000,0,0,1
+start appendRotation zero axis pivot
+  appendRotation zero axis pivot: 0.866,0,0,0,0,0.866,0,0,0,0,0.866,0,1.3397,2.6795,4.0192,1
+start appendRotation tiny axis 1e-20
+  appendRotation tiny axis 1e-20: 1,0,0,0,0,0.866,0.5,0,0,-0.5,0.866,0,0,0,0,1
+start appendRotation tiny axis 1e-30
+  appendRotation tiny axis 1e-30: 0.866,0,0,0,0,0.866,0,0,0,0,0.866,0,0,0,0,1
+start appendRotation NaN axis
+  appendRotation NaN axis: NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,0,NaN,NaN,NaN,1
+end
+# done

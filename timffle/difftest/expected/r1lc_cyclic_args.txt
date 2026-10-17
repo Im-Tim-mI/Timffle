@@ -1,0 +1,16 @@
+# test=r1lc_cyclic_args
+all sends returned
+tx status: status
+selfObject: name=self v.me === v: true v.me.me === v: true
+tx status: status
+selfArray: length=3 v[0]=1 v[1]=two v[2] === v: true
+tx status: status
+indirect: v.child.parent === v: true v.child.name=kid
+tx status: status
+arrayInObject: v.list[0] === v: true v.list[1]=x
+tx status: status
+shared: v.a.n=1 v.b.n=1 v.a === v.b: true
+tx status: status
+twoArgs: a.me === a: true b.me === b: true a === b: true
+done
+# done
