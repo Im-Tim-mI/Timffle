@@ -24,6 +24,8 @@ status() {
     if (s == "M") print "| changed | `" $2 "` |"
     else if (s == "A") print "| added by Timffle | `" $2 "` |"
     else if (s == "D") print "| deleted | `" $2 "` |"
+    else if (s == "C" && substr($1, 2) == "100") print "| unchanged copy of `" $2 "` | `" $3 "` |"
+    else if (s == "C") print "| added by Timffle (similar to `" $2 "`) | `" $3 "` |"
     else print "| " $1 " | `" $2 "` |"
   }'
 }
@@ -42,8 +44,9 @@ To see a change: \`git log -p ${RUFFLE_BASE%"${RUFFLE_BASE#????????????}"}..HEAD
 | Change | File |
 |---|---|
 HEADER
-git diff --no-renames --name-status "$RUFFLE_BASE" HEAD -- . ':(exclude)timffle' ':(exclude)vendor/rust-flash-lso' \
-  | LC_ALL=C sort -k2 | status
+# Copies of modified files (e.g. Ruffle's README.md kept as README.ruffle.md) are reported as such.
+git diff --no-renames -C --name-status "$RUFFLE_BASE" HEAD -- . ':(exclude)timffle' ':(exclude)vendor/rust-flash-lso' \
+  | LC_ALL=C sort -t "$(printf '\t')" -k2 | status
 
 cat <<HEADER
 
