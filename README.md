@@ -1,3 +1,5 @@
+<p align="center"><img src="timffle/branding/timffle-logo.svg" alt="Timffle" width="480"></p>
+
 # Timffle
 
 > **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支（fork）**，專注在讓淘米台灣的 Flash 遊戲——**摩爾莊園、賽爾號、小花仙、彈彈堂**——在 Chrome 裡繼續玩。

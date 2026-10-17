@@ -22,6 +22,9 @@
 | `web/packages/core/src/internal/player/inner.tsx` | 右鍵「關於 Timffle」開 Timffle repo | 手改；有檢查 |
 | `web/packages/core/src/internal/ui/splash-screen.tsx` | 載入畫面的字標（原本是 RUFFLE 字標） | `timffle/branding/make_branding.py` 產生；有檢查 |
 | 擴充功能與 Demo 的圖示、`logo.svg` | Timffle 自己的圖示與字標 | `timffle/branding/make_branding.py` 產生 |
+| 播放鍵（`web/packages/core/src/internal/ui/container.tsx`） | 遊戲開始前的圓形播放鍵改成 Timffle 藍色漸層（原本是 Ruffle 的橘紅色） | 手改；有檢查 |
+| 桌面版的圖片：`desktop/assets/about_logo.png`、`favicon.ico`、`favicon-32.rgba`、`Assets.xcassets/RuffleMacIcon.iconset/*.png`、`desktop/packages/linux/rs.ruffle.Ruffle.svg`、Windows 安裝程式的 `banner.png`／`dialog.png` | Timffle 的字標與圖示（檔名沿用上游，因為建置檔引用這些名稱） | `timffle/branding/make_branding.py` 產生 |
+| README 開頭的標誌、GitHub 社群預覽圖 `timffle/branding/social-preview.png`（1280×640） | 社群預覽圖要在 GitHub repo 的 Settings → General → Social preview 手動上傳 | `make_branding.py` 產生 |
 | `web/packages/demo/index.html`、`navbar.tsx` | 網頁 Demo 的標題、標誌與連結 | `rebrand.py` 自動＋手改 |
 | 連線小幫手 | `timffle-socket-helper`、Native Messaging `timffle_socket_helper`、資料夾 `TimffleSocketHelper`、發行包 `timffle-chrome-<版本>.zip` | 本來就是 Timffle 的程式碼 |
 
@@ -43,7 +46,7 @@
 
 Timffle 目前只發行 Chrome 擴充功能。下列部分仍是上游 Ruffle 的名稱、圖示與識別碼，**散布它們的建置前必須先完成改名**：
 
-- **桌面版**（`desktop/`）：視窗標題、關於對話框與 `about_logo.png`、`desktop/assets/texts/*.ftl`、各平台打包（`desktop/packages/`：Windows MSI、macOS bundle、Linux desktop 檔、Flatpak 的 `rs.ruffle.Ruffle` ID）、設定資料夾名稱。
+- **桌面版**（`desktop/`）：**圖片已經換成 Timffle**，但視窗標題、`desktop/assets/texts/*.ftl`、各平台打包（`desktop/packages/`：Windows MSI、macOS bundle、Linux desktop 檔、Flatpak 的 `rs.ruffle.Ruffle` ID）、設定資料夾名稱、macOS 的 `RuffleBlue`／`RuffleOrange` 色彩資源都還是 Ruffle 的。`desktop/packages/linux/screenshots/*.png` 是 Ruffle 桌面版執行別人遊戲的截圖（metainfo 也直接連到 Ruffle repo 的網址），要等桌面版改名後重新截圖替換。
 - **Safari 擴充功能**（`web/packages/extension/safari/`）：bundle ID `rs.ruffle.*`。
 - **npm 套件**（`web/packages/selfhosted/npm-package.json5`、`web/packages/core/package.json`）：套件名稱是 Ruffle 的（例如 `@ruffle-rs/ruffle`），不要發布；自架播放器的畫面文字已經是 Timffle（共用 core 的文字）。
 - **Firefox**：附加元件 ID 已換成 Timffle 的，但沒有在 Firefox 上測試過。
@@ -62,7 +65,7 @@ python3 timffle/branding/make_branding.py --check
 
 ## 標誌與圖示
 
-`timffle/branding/make_branding.py` 用純幾何圖形（矩形與多邊形，不依賴字型）產生 Timffle 的字標與圖示，刻意與 Ruffle 的標誌不同（藍色、直立方塊字、「T」圖示）。這是 Timffle 的原創作品，以本 repo 的授權（MIT 或 Apache-2.0）提供。要換設計：改這支程式後執行它，產生的檔案（`timffle/branding/*.svg`、擴充功能與 Demo 的 `logo.svg`／`icon*.png`、載入畫面的 `splash-logo.tsx.txt`）一起 commit，並把 `splash-logo.tsx.txt` 的內容貼回 `splash-screen.tsx`。
+`timffle/branding/make_branding.py` 用純幾何圖形（矩形與多邊形，不依賴字型）產生 Timffle 的字標與圖示，刻意與 Ruffle 的標誌不同（藍色、直立方塊字、「T」圖示）。這是 Timffle 的原創作品，以本 repo 的授權（MIT 或 Apache-2.0）提供。要換設計：改這支程式後執行它，產生的檔案（`timffle/branding/` 內的檔案、擴充功能與 Demo 的 `logo.svg`／`icon*.png`、桌面版的圖片、載入畫面的 `splash-logo.tsx.txt`）一起 commit，並把 `splash-logo.tsx.txt` 的內容貼回 `splash-screen.tsx`。
 
 ## 尚未確認的事
 

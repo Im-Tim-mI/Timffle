@@ -27,12 +27,12 @@ export function MainContainer() {
                                 <stop
                                     xmlns="http://www.w3.org/2000/svg"
                                     offset="0%"
-                                    stop-color="#FDA138"
+                                    stop-color="#2896E1"
                                 ></stop>
                                 <stop
                                     xmlns="http://www.w3.org/2000/svg"
                                     offset="100%"
-                                    stop-color="#FD3A40"
+                                    stop-color="#12548C"
                                 ></stop>
                             </linearGradient>
                             <g xmlns="http://www.w3.org/2000/svg" id="b">

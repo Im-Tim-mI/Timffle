@@ -1,3 +1,5 @@
+<p align="center"><img src="timffle/branding/timffle-logo.svg" alt="Timffle" width="480"></p>
+
 # Timffle
 
 > **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/)** focused on keeping the Taomee Taiwan Flash games — **摩爾莊園, 賽爾號, 小花仙 and 彈彈堂** — playable in Chrome.

@@ -133,6 +133,8 @@ CODE_CHECKS = [
     ("web/packages/core/src/internal/ui/splash-screen.tsx", 'aria-label="Timffle"', "var(--ruffle-orange)"),
     ("web/packages/extension/assets/options.html", 'class="timffle-attribution"', None),
     ("web/packages/demo/src/navbar.tsx", 'alt="Timffle"', 'alt="Ruffle"'),
+    # Play button: Timffle blue (the icon gradient) instead of Ruffle's orange-to-red.
+    ("web/packages/core/src/internal/ui/container.tsx", 'stop-color="#2896E1"', 'stop-color="#FDA138"'),
 ]
 
 
