@@ -2,18 +2,19 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身 ruffle-mole-chrome 的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.2.0（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身 ruffle-mole-chrome 的紀錄。
 
-## 0.8.0.26296（Timffle 第一版，未發行）
+## 0.8.0.26296 — 2026-10-17（Timffle 第一版）
 
 **專案改名為 Timffle，並改成 Ruffle 的完整分支。** 行為與 0.8.0.26295 相同，只有名稱、圖示、連結與 repo 結構改變。
 
 - **Repo 結構**：不再是「補丁組」，而是 Ruffle 的完整原始碼樹＋完整 git 歷史（到 `nightly-2026-10-13`，保留所有 Ruffle 貢獻者的作者紀錄），前身的五份補丁變成之後的 commit；rust-flash-lso 以 git subtree（含歷史）收錄在 `vendor/rust-flash-lso/`，`Cargo.toml` 直接指向它。原本的小幫手、代理、差異測試、工具與文件移到 `timffle/`。不再需要 `setup-ruffle.sh`／`make-patches.sh`。
-- **品牌**：擴充功能名稱「Timffle - Flash Emulator」、Timffle 自己的圖示與載入畫面字標、所有語系的介面文字、「關於」與「更新」連結、Firefox 附加元件 ID；錯誤畫面的「回報錯誤」改開 Timffle 的 issue（不再送到 Ruffle）。選項頁加上「Ruffle 的非官方分支」聲明與致謝。程式碼識別名稱與公開 API（`window.RufflePlayer` 等）不變。見 `timffle/docs/BRANDING.md`；`timffle/scripts/rebrand.py` 可在跟進上游後重新套用並檢查。
+- **品牌**：擴充功能名稱「Timffle - Flash Emulator」、Timffle 自己的圖示、載入畫面字標與藍色播放鍵（取代 Ruffle 的橘紅色漸層）、所有語系的介面文字、「關於」與「更新」連結、Firefox 附加元件 ID；錯誤畫面的「回報錯誤」改開 Timffle 的 issue（不再送到 Ruffle）。選項頁加上「Ruffle 的非官方分支」聲明與致謝。程式碼識別名稱與公開 API（`window.RufflePlayer` 等）不變。見 `timffle/docs/BRANDING.md`；`timffle/scripts/rebrand.py` 可在跟進上游後重新套用並檢查。
 - **小幫手有更新（1.2.0）**：改名為 `timffle-socket-helper`（Native Messaging `timffle_socket_helper`、資料夾 `TimffleSocketHelper`、測試用環境變數 `TIMFFLE_SOCKET_HELPER_ALLOW_PRIVATE`）。功能與 1.1.0 相同，但**名稱不同，必須重跑安裝程式**；舊的 `ruffle-socket-helper` 請用舊壓縮檔的移除程式移除。擴充功能 ID 不變。
 - **發行 ZIP**：改名 `timffle-chrome-<版本>.zip`（根資料夾 `timffle/`），並附上 `NOTICE.md` 與 `LICENSES/`（Ruffle 的 `LICENSE.md`／`web/LICENSE.md`、Timffle 的 MIT／Apache-2.0、rust-flash-lso 的 MIT、Go 標準函式庫的 BSD-3-Clause）——補上前身的待辦。
 - **授權**：Ruffle 的 `LICENSE.md` 留在根目錄原處；Timffle 的 `LICENSE-MIT`／`LICENSE-APACHE` 在 `timffle/`；新增 `NOTICE.md`、`timffle/MODIFIED-FILES.md`（Apache-2.0 第 4(b) 條的修改清單，腳本產生）。
 - **GitHub**：移除 Ruffle 的 CI workflow、dependabot 與 FUNDING 設定（它們屬於 Ruffle 的帳號與服務）；issue／PR 範本換成 Timffle 的。`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 開頭加上 Timffle 的說明。
 - 已知問題（沿用自 0.8.0.26295）：網域名稱「一律先父網域」的解析方式會讓上游的 `avm2/loader_duplicate_class` 測試失敗；改用混合規則的計畫見 `timffle/docs/UPSTREAM.md`「已知待辦」。
 - 驗證：在本 repo 的樹上完整建置 wasm 與擴充功能成功（型別檢查、單元測試 38/38）；小幫手 `go test`（含 localtest）通過、Wine 上的 Windows 登錄測試通過；封裝測試 23/23；對最終 ZIP 的整合測試 73/73（高負載下一個計時敏感項目失敗過一次，重跑 3 次皆通過）；本機代理 10/10、比對工具 11/11、品牌檢查通過。**沒有重跑**對真 Flash 的差異測試（核心程式碼未變）、完整上游 `cargo test`、真實帳號登入。詳見 `timffle/docs/BUILD.md` 第 3 節。
+- **發行包**（tag `v0.8.0.26296` = `864920ce1`）：wasm 以 `--remap-path-prefix` 編譯，`build-extension.sh` 預設就會這樣做；`package-release.sh` 在打包前後用 `check-no-build-paths.py` 檢查，ZIP 裡沒有建置機的家目錄或使用者名稱（先前一份未發布的 ZIP 有帶，沒有上傳）。逐檔掃描也沒有私鑰、憑證區塊與遊戲內部名稱。與那份未發布的 ZIP 相比，91 個檔案中只有 wasm（路徑）、`NOTICE.md` 與 5 個 JS 檔（建置資訊，其中 2 個再加播放鍵顏色）不同；小幫手與安裝程式位元組相同，所以整合測試 73/73 沒有重跑。在無頭 Chrome 載入這份擴充功能跑 8 個差異測試：6 個與真 Flash 逐行相同，另 2 個只差已知的 `playerType` 與 LocalConnection 的 release／debugger 錯誤字樣（一個以 400 ms 計時的測試在同一份 wasm 的另一次執行中偶發誤判過一次，之後 3 次通過）。未簽章、未公證。發行包 SHA-256：`aa06fa468917363546d0d87c22c257f354d31ed535ff8068d6e0fdd523a32473`。
 
 ## 0.8.0.26295 — 2026-10-17
 
