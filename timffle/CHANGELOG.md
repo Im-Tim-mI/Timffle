@@ -12,6 +12,7 @@
 - **發行 ZIP**：改名 `timffle-chrome-<版本>.zip`（根資料夾 `timffle/`），並附上 `NOTICE.md` 與 `LICENSES/`（Ruffle 的 `LICENSE.md`／`web/LICENSE.md`、Timffle 的 MIT／Apache-2.0、rust-flash-lso 的 MIT、Go 標準函式庫的 BSD-3-Clause）——補上前身的待辦。
 - **授權**：Ruffle 的 `LICENSE.md` 留在根目錄原處；Timffle 的 `LICENSE-MIT`／`LICENSE-APACHE` 在 `timffle/`；新增 `NOTICE.md`、`timffle/MODIFIED-FILES.md`（Apache-2.0 第 4(b) 條的修改清單，腳本產生）。
 - **GitHub**：移除 Ruffle 的 CI workflow、dependabot 與 FUNDING 設定（它們屬於 Ruffle 的帳號與服務）；issue／PR 範本換成 Timffle 的。`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 開頭加上 Timffle 的說明。
+- 已知問題（沿用自 0.8.0.26295）：網域名稱「一律先父網域」的解析方式會讓上游的 `avm2/loader_duplicate_class` 測試失敗；改用混合規則的計畫見 `timffle/docs/UPSTREAM.md`「已知待辦」。
 - 驗證：在本 repo 的樹上完整建置 wasm 與擴充功能成功（型別檢查、單元測試 38/38）；小幫手 `go test`（含 localtest）通過、Wine 上的 Windows 登錄測試通過；封裝測試 23/23；對最終 ZIP 的整合測試 73/73（高負載下一個計時敏感項目失敗過一次，重跑 3 次皆通過）；本機代理 10/10、比對工具 11/11、品牌檢查通過。**沒有重跑**對真 Flash 的差異測試（核心程式碼未變）、完整上游 `cargo test`、真實帳號登入。詳見 `timffle/docs/BUILD.md` 第 3 節。
 
 ## 0.8.0.26295 — 2026-10-17

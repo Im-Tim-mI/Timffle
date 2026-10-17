@@ -64,7 +64,13 @@ timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md              
 
 Timffle 的 Flash 相容性修正（AVM2 網路、LocalConnection、3D／`Matrix3D` 等）對上游也有價值。送 PR 給 Ruffle 前：
 
-1. 從 Ruffle 的最新 `master` 開分支，只挑相關的 commit（`git cherry-pick`），不要帶到 `timffle/`、品牌或擴充功能 Socket 橋接的改動。
+1. 從 Ruffle 的最新 `master` 開分支（在另一個 clone，例如 tim 的 fork `Im-Tim-mI/ruffle`），只挑相關的改動，不要帶到 `timffle/`、品牌或擴充功能 Socket 橋接的改動。Ruffle 要求 PR 以最新 master 為基底、rebase、不含 merge，而且**不接受一次幾百上千行的大 PR**——一個 PR 一個小修正。
 2. 註解與測試裡不要出現遊戲專屬名稱（遊戲內部的類別名稱、遊戲的英文名稱），改用中性描述；本 repo 已照這個規則整理過，新加的註解也要遵守。
-3. 依 Ruffle 的 [CONTRIBUTING](../../CONTRIBUTING.md) 補 SWF 回歸測試（`tests/swfs/`）。
-4. 以個人身分提交，說明這些行為是用真 Flash Player 量測的。
+3. 依 Ruffle 的 [CONTRIBUTING](../../CONTRIBUTING.md) 補 SWF 回歸測試（`tests/swfs/`），預期輸出要從真 Flash 錄製；`cargo fmt`、`cargo clippy` 要乾淨。
+4. **Ruffle 的 AI 工具規定**：有 LLM 參與撰寫的程式碼必須標示（PR 範本的勾選項＋commit 的 `Assisted-by:` trailer），提交者本人必須審閱並完全理解改動，而且**不可以由 LLM 與維護者溝通**（PR 說明、留言、Discord 都要由本人處理）。
+5. 先查上游是否已有相同工作（例如串流 `URLStream`、3D 屬性、`Matrix3D` 都有進行中的 PR），不要重複。
+
+## 已知待辦（程式碼）
+
+- **網域名稱解析**：`avm2: Network, …` commit 裡「一律先問父網域」的做法，會讓上游經真 Flash 驗證的回歸測試 `avm2/loader_duplicate_class` 失敗（Flash 會依網域快取綁定）。準備送上游的版本改成混合規則——**有多個命名空間的 multiname 從根網域先找，單一命名空間的名稱維持就近優先**——它通過上游完整測試套件。Timffle 還沒有換成混合規則；換之前要用遊戲的實際檔案重跑賽車座位相關的差異測試（那些測試因含遊戲檔案而不在 repo 內）。
+- 完整的上游 `cargo test -p tests --test tests` 還沒有在 Timffle 的樹上跑過。
