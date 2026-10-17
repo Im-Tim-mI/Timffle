@@ -46,6 +46,11 @@ impl<'gc> CallStack<'gc> {
     pub fn is_empty(&self) -> bool {
         self.stack.is_empty()
     }
+
+    /// The number of ActionScript methods currently executing.
+    pub fn len(&self) -> usize {
+        self.stack.len()
+    }
 }
 
 impl Default for CallStack<'_> {

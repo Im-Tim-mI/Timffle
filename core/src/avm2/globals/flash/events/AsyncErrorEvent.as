@@ -11,7 +11,7 @@ package flash.events {
             text:String = "",
             error:Error = null
         ) {
-            super(type, bubbles, cancelable, text);
+            super(type, bubbles, cancelable, text, error == null ? 0 : error.errorID);
             this.error = error;
         }
 

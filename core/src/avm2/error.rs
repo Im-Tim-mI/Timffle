@@ -1087,6 +1087,7 @@ pub fn make_error_2027<'gc>(
     ))
 }
 
+make_error_fn!(make_error_2029, 2029, io_error);
 make_error_fn!(make_error_2030, 2030, eof_error);
 make_error_fn!(make_error_2037, 2037, error);
 make_error_fn!(make_error_2058, 2058, io_error);
@@ -1102,7 +1103,7 @@ pub fn make_error_2085<'gc>(activation: &mut Activation<'_, 'gc>, param_name: &s
     make_error!(argument_error(
         activation,
         error_message!(2085, param_name),
-        2007,
+        2085,
     ))
 }
 
@@ -1161,6 +1162,7 @@ make_error_fn!(
 make_error_fn!(make_error_2180, 2180, argument_error);
 make_error_fn!(make_error_2182, 2182, argument_error);
 make_error_fn!(make_error_2183, 2183, argument_error);
+make_error_fn!(make_error_2189, 2189, argument_error);
 
 #[inline(never)]
 #[cold]
@@ -1439,6 +1441,25 @@ fn io_error<'a, 'gc>(
 ) -> ErrorObject<'gc> {
     let class = activation.avm2().classes().ioerror;
     error_constructor(activation, class, message, code)
+}
+
+#[inline(never)]
+#[cold]
+fn stack_overflow_error<'a, 'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    message: impl Into<Cow<'a, str>>,
+    code: u32,
+) -> ErrorObject<'gc> {
+    let class = activation.avm2().classes().stackoverflowerror;
+    error_constructor(activation, class, message, code)
+}
+
+/// The catchable `flash.errors.StackOverflowError` (Error #1023) Flash Player throws when
+/// ActionScript recurses too deeply. See `avm2::MAX_CALL_DEPTH`.
+#[inline(never)]
+#[cold]
+pub fn make_error_stack_overflow<'gc>(activation: &mut Activation<'_, 'gc>) -> Error<'gc> {
+    make_error!(stack_overflow_error(activation, error_message!(1023), 1023))
 }
 
 #[inline(never)]

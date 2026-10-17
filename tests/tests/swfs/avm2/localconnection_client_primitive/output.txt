@@ -1,0 +1,12 @@
+client = 5: threw TypeError #2004
+client = -1: threw TypeError #2004
+client = 1.5: threw TypeError #2004
+client = str: threw TypeError #2004
+client = : threw TypeError #2004
+client = true: threw TypeError #2004
+client = false: threw TypeError #2004
+client = null: threw TypeError #2004
+client = null: threw TypeError #2004
+client is still the original: true
+an object is accepted: true
+done

@@ -13,7 +13,6 @@ use flash_lso::packet::Header;
 use flash_lso::types::AMFVersion;
 use flash_lso::types::ObjectId;
 use flash_lso::types::Value as AMFValue;
-use fnv::FnvHashMap;
 use ruffle_wstr::WStr;
 use std::rc::Rc;
 
@@ -281,7 +280,7 @@ pub fn call<'gc>(
     let responder = args.try_get_object(1).and_then(|o| o.as_responder());
     let mut arguments = Vec::new();
 
-    let mut object_table = FnvHashMap::default();
+    let mut object_table = crate::avm2::amf::ObjectTable::default();
     for arg in args.get_slice_from(2..) {
         let value = serialize_value(activation, arg, AMFVersion::AMF0, &mut object_table);
         arguments.push(Rc::new(value));

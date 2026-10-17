@@ -1,6 +1,5 @@
 package flash.net {
-    import __ruffle__.stub_method;
-
+    import flash.errors.IOError;
     import flash.events.EventDispatcher;
     import flash.net.URLRequest;
 
@@ -17,16 +16,36 @@ package flash.net {
         [Ruffle(NativeAccessible)]
         public var bytesTotal:uint;
 
+        // Bumped by `load()` and `close()`. A download only touches this object
+        // while its generation is still current, so a closed or replaced
+        // download delivers no further data or events.
+        [Ruffle(NativeAccessible)]
+        private var _generation:uint = 0;
+
+        // `true` from `load()` until `close()`: like Flash, `close()` only succeeds
+        // while a stream is open, even when the load has long since completed or failed.
+        private var _open:Boolean = false;
+
         public function URLLoader(request:URLRequest = null) {
             if (request != null) {
                 this.load(request);
             }
         }
 
-        public native function load(request:URLRequest):void;
+        public function load(request:URLRequest):void {
+            this._generation++;
+            this._open = true;
+            this._load(request, this._generation);
+        }
+
+        private native function _load(request:URLRequest, generation:uint):void;
 
         public function close():void {
-            stub_method("flash.net.URLLoader", "close");
+            if (!this._open) {
+                throw new IOError("Error #2029: This URLStream object does not have a stream opened.", 2029);
+            }
+            this._generation++;
+            this._open = false;
         }
     }
 }

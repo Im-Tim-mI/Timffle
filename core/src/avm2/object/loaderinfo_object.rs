@@ -182,9 +182,21 @@ impl<'gc> LoaderInfoObject<'gc> {
         self.0.init_event_fired.get()
     }
 
+    pub fn complete_event_fired(self) -> bool {
+        self.0.complete_event_fired.get()
+    }
+
     pub fn reset_init_and_complete_events(self) {
         self.0.init_event_fired.set(false);
         self.0.complete_event_fired.set(false);
+    }
+
+    /// The root clip of the content this loader info currently describes, if it has one yet.
+    pub fn content_clip(self) -> Option<DisplayObject<'gc>> {
+        match self.0.loaded_stream.get() {
+            LoaderStream::NotYetLoaded(_, root, _) => root,
+            LoaderStream::Swf(_, root) => Some(root),
+        }
     }
 
     /// Fires the 'init' and 'complete' events if they haven't been fired yet.
@@ -278,7 +290,41 @@ impl<'gc> LoaderInfoObject<'gc> {
             Avm2::dispatch_event(context, unload_evt, self.into());
         }
 
-        // Reset properties
+        self.reset_properties(context);
+
+        // Remove the Loader's content element if it exists.
+        if let Some(child) = content {
+            loader.remove_child(context, child);
+        }
+    }
+
+    /// Puts this loader info (and its `Loader`) back into the state of a `Loader` that has never
+    /// loaded anything, after the load into it was cancelled by `Loader.close()` or by another
+    /// `load()`. Unlike `unload`, nothing is dispatched: a cancelled load never became visible
+    /// to ActionScript, so it has no `unload` to report.
+    pub fn reset_after_cancel(self, context: &mut UpdateContext<'gc>) {
+        let mut loader = self
+            .0
+            .loader
+            .expect("LoaderInfo must have been created by Loader")
+            .display_object()
+            .as_container()
+            .unwrap();
+
+        let content = loader.child_by_index(0);
+
+        self.reset_properties(context);
+        // `content` and `url` read as `null` again.
+        self.0.expose_content.set(false);
+
+        // A cancelled load may already have attached its (not yet initialized) content.
+        if let Some(child) = content {
+            loader.remove_child(context, child);
+        }
+    }
+
+    /// Resets the properties that describe the loaded content.
+    fn reset_properties(self, context: &mut UpdateContext<'gc>) {
         let movie = &context.root_swf;
         let empty_swf = SwfMovie::new(
             context.gc(),
@@ -288,11 +334,6 @@ impl<'gc> LoaderInfoObject<'gc> {
         self.set_loader_stream(loader_stream, context.gc());
         self.set_errored(false);
         self.reset_init_and_complete_events();
-
-        // Remove the Loader's content element if it exists.
-        if let Some(child) = content {
-            loader.remove_child(context, child);
-        }
     }
 }
 

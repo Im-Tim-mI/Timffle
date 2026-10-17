@@ -16,7 +16,36 @@ use flash_lso::types::{AMFVersion, Element, Lso, ObjectId};
 use flash_lso::types::{Attribute, ClassDefinition, Value as AmfValue};
 use fnv::FnvHashMap;
 
-pub type ObjectTable<'gc> = FnvHashMap<Object<'gc>, Rc<AmfValue>>;
+/// Per-serialization bookkeeping for objects that have already been visited.
+#[derive(Default)]
+pub struct ObjectTable<'gc> {
+    /// Fully serialized objects, reused when the same object occurs again.
+    done: FnvHashMap<Object<'gc>, Rc<AmfValue>>,
+    /// Objects whose serialization is still in progress (i.e. ancestors of the
+    /// value currently being serialized). Meeting one of these again means the
+    /// object graph is cyclic, so a reference to its id is emitted instead of
+    /// recursing forever.
+    in_progress: FnvHashMap<Object<'gc>, ObjectId>,
+    next_id: i64,
+}
+
+impl<'gc> ObjectTable<'gc> {
+    /// Marks `obj` as being serialized and returns the id its value should carry,
+    /// or `Err(reference)` if `obj` is already being serialized (a cycle).
+    fn begin(&mut self, obj: Object<'gc>) -> Result<ObjectId, AmfValue> {
+        if let Some(id) = self.in_progress.get(&obj) {
+            return Err(AmfValue::Amf3ObjectReference(*id));
+        }
+        let id = ObjectId(self.next_id);
+        self.next_id += 1;
+        self.in_progress.insert(obj, id);
+        Ok(id)
+    }
+
+    fn end(&mut self, obj: Object<'gc>) {
+        self.in_progress.remove(&obj);
+    }
+}
 
 /// Serialize a Value to an AmfValue
 pub fn serialize_value<'gc>(
@@ -36,142 +65,178 @@ pub fn serialize_value<'gc>(
         Value::Integer(i) => AmfValue::Integer(i),
         Value::String(s) => AmfValue::String(s.to_string()),
         Value::Object(o) => {
-            if o.as_function_object().is_some() {
-                // NOTE: `FunctionObject`-valued keys are skipped during
-                // serialization of objects in `recursive_serialize`. However,
-                // if AS3 attempts to directly serialize a `Function` with e.g.
-                // `byteArray.writeObject(new Function())`, this path will be
-                // hit and an `undefined` will be written.
-                AmfValue::Undefined
-            } else if o.as_display_object().is_some() {
-                AmfValue::Undefined
-            } else if let Some(array_storage) = o.as_array_storage() {
-                let len = array_storage.length() as u32;
-                drop(array_storage);
-
-                let mut values = Vec::new();
-                // Don't serialize properties from the vtable (we don't want a 'length' field)
-                recursive_serialize(activation, o, &mut values, None, amf_version, object_table)
-                    .unwrap();
-
-                if amf_version == AMFVersion::AMF3 {
-                    let mut dense = vec![];
-                    let mut sparse = vec![];
-                    // ActionScript `Array`s can have non-number properties, and these properties
-                    // are confirmed and tested to also be serialized, so do not limit the values
-                    // iterated over by the length of the internal array data.
-                    for (i, elem) in values.into_iter().enumerate() {
-                        if elem.name == i.to_string() {
-                            dense.push(elem.value);
-                        } else {
-                            sparse.push(elem);
-                        }
-                    }
-
-                    AmfValue::ECMAArray(ObjectId::INVALID, dense, sparse, len)
-                } else {
-                    // TODO: is this right?
-                    AmfValue::ECMAArray(ObjectId::INVALID, vec![], values, len)
-                }
-            } else if let Some(vec) = o.as_vector_storage() {
-                let val_type = vec.value_type();
-                if val_type == Some(activation.avm2().class_defs().int) {
-                    let int_vec: Vec<_> = vec.iter().map(|v| v.as_i32()).collect();
-                    AmfValue::VectorInt(int_vec, vec.is_fixed())
-                } else if val_type == Some(activation.avm2().class_defs().uint) {
-                    let uint_vec: Vec<_> = vec.iter().map(|v| v.as_u32()).collect();
-                    AmfValue::VectorUInt(uint_vec, vec.is_fixed())
-                } else if val_type == Some(activation.avm2().class_defs().number) {
-                    let num_vec: Vec<_> = vec.iter().map(|v| v.as_f64()).collect();
-                    AmfValue::VectorDouble(num_vec, vec.is_fixed())
-                } else {
-                    let obj_vec: Vec<_> = vec
-                        .iter()
-                        .map(|v| serialize_value(activation, v, amf_version, object_table))
-                        .collect();
-
-                    let val_type = val_type.unwrap_or(activation.avm2().class_defs().object);
-
-                    let name = class_to_alias(activation, val_type);
-                    AmfValue::VectorObject(ObjectId::INVALID, obj_vec, name, vec.is_fixed())
-                }
-            } else if let Some(date) = o.as_date_object() {
-                let time = date
-                    .date_time()
-                    .map(|date_time| date_time.timestamp_millis() as f64);
-
-                // "Invalid Date" is serialized as a NaN
-                let time = time.unwrap_or(f64::NAN);
-
-                AmfValue::Date(time, None)
-            } else if let Some(xml) = o.as_xml_object() {
-                // `is_string` is `true` for the AS3 XML class
-                AmfValue::XML(xml.node().xml_to_xml_string(activation).to_string(), true)
-            } else if let Some(bytearray) = o.as_bytearray() {
-                AmfValue::ByteArray(bytearray.bytes().to_vec())
-            } else if let Some(dictionary) = o.as_dictionary_object() {
-                // FIXME change this once weak keys are implemented
-                let has_weak_keys = false;
-
-                let mut dictionary_body = Vec::new();
-
-                let mut last_index = dictionary.get_next_enumerant(0, activation).unwrap();
-                while last_index != 0 {
-                    let name = dictionary
-                        .get_enumerant_name(last_index, activation)
-                        .unwrap();
-                    let value = dictionary
-                        .get_enumerant_value(last_index, activation)
-                        .unwrap();
-
-                    // Serialize both name and value
-                    let name = get_or_create_value(activation, name, object_table, amf_version);
-                    let value = get_or_create_value(activation, value, object_table, amf_version);
-
-                    dictionary_body.push((name, value));
-
-                    last_index = dictionary
-                        .get_next_enumerant(last_index, activation)
-                        .unwrap();
-                }
-
-                AmfValue::Dictionary(ObjectId::INVALID, dictionary_body, has_weak_keys)
-            } else {
-                let class = o.instance_class();
-                let name = class_to_alias(activation, class);
-
-                let mut attributes = EnumSet::empty();
-                if !class.is_sealed() {
-                    attributes.insert(Attribute::Dynamic);
-                }
-
-                let mut object_body = Vec::new();
-                let mut static_properties = Vec::new();
-                recursive_serialize(
-                    activation,
-                    o,
-                    &mut object_body,
-                    Some(&mut static_properties),
-                    amf_version,
-                    object_table,
-                )
-                .unwrap();
-                AmfValue::Object(
-                    ObjectId::INVALID,
-                    object_body,
-                    if amf_version == AMFVersion::AMF3 {
-                        Some(ClassDefinition {
-                            name,
-                            attributes,
-                            // FIXME - implement this
-                            static_properties,
-                        })
-                    } else {
-                        None
-                    },
-                )
+            // A repeated (non-cyclic) object is written again in full, carrying the
+            // same id so the deserializer can restore identity.
+            if let Some(done) = object_table.done.get(&o) {
+                return AmfValue::clone(done);
             }
+            // Every object gets an id, so that cycles back to it can be written as
+            // references.
+            let id = match object_table.begin(o) {
+                Ok(id) => id,
+                Err(reference) => return reference,
+            };
+            let value = serialize_object(activation, o, id, amf_version, object_table);
+            object_table.end(o);
+            object_table.done.insert(o, Rc::new(value.clone()));
+            value
         }
+    }
+}
+
+fn serialize_object<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    o: Object<'gc>,
+    id: ObjectId,
+    amf_version: AMFVersion,
+    object_table: &mut ObjectTable<'gc>,
+) -> AmfValue {
+    if o.as_function_object().is_some() {
+        // NOTE: `FunctionObject`-valued keys are skipped during
+        // serialization of objects in `recursive_serialize`. However,
+        // if AS3 attempts to directly serialize a `Function` with e.g.
+        // `byteArray.writeObject(new Function())`, this path will be
+        // hit and an `undefined` will be written.
+        AmfValue::Undefined
+    } else if o.as_display_object().is_some() {
+        AmfValue::Undefined
+    } else if let Some(array_storage) = o.as_array_storage() {
+        let len = array_storage.length() as u32;
+        drop(array_storage);
+
+        let mut values = Vec::new();
+        // Don't serialize properties from the vtable (we don't want a 'length' field)
+        recursive_serialize(activation, o, &mut values, None, amf_version, object_table).unwrap();
+
+        if amf_version == AMFVersion::AMF3 {
+            let mut dense = vec![];
+            let mut sparse = vec![];
+            // ActionScript `Array`s can have non-number properties, and these properties
+            // are confirmed and tested to also be serialized, so do not limit the values
+            // iterated over by the length of the internal array data.
+            for (i, elem) in values.into_iter().enumerate() {
+                if elem.name == i.to_string() {
+                    dense.push(elem.value);
+                } else {
+                    sparse.push(elem);
+                }
+            }
+
+            AmfValue::ECMAArray(id, dense, sparse, len)
+        } else {
+            // TODO: is this right?
+            AmfValue::ECMAArray(id, vec![], values, len)
+        }
+    } else if let Some(vec) = o.as_vector_storage() {
+        let val_type = vec.value_type();
+        if val_type == Some(activation.avm2().class_defs().int) {
+            let int_vec: Vec<_> = vec.iter().map(|v| v.as_i32()).collect();
+            AmfValue::VectorInt(int_vec, vec.is_fixed())
+        } else if val_type == Some(activation.avm2().class_defs().uint) {
+            let uint_vec: Vec<_> = vec.iter().map(|v| v.as_u32()).collect();
+            AmfValue::VectorUInt(uint_vec, vec.is_fixed())
+        } else if val_type == Some(activation.avm2().class_defs().number) {
+            let num_vec: Vec<_> = vec.iter().map(|v| v.as_f64()).collect();
+            AmfValue::VectorDouble(num_vec, vec.is_fixed())
+        } else {
+            let obj_vec: Vec<_> = vec
+                .iter()
+                .map(|v| serialize_value(activation, v, amf_version, object_table))
+                .collect();
+
+            let val_type = val_type.unwrap_or(activation.avm2().class_defs().object);
+
+            let name = class_to_alias(activation, val_type);
+            AmfValue::VectorObject(id, obj_vec, name, vec.is_fixed())
+        }
+    } else if let Some(date) = o.as_date_object() {
+        let time = date
+            .date_time()
+            .map(|date_time| date_time.timestamp_millis() as f64);
+
+        // "Invalid Date" is serialized as a NaN
+        let time = time.unwrap_or(f64::NAN);
+
+        AmfValue::Date(time, None)
+    } else if let Some(xml) = o.as_xml_object() {
+        // `is_string` is `true` for the AS3 XML class
+        AmfValue::XML(xml.node().xml_to_xml_string(activation).to_string(), true)
+    } else if let Some(bytearray) = o.as_bytearray() {
+        AmfValue::ByteArray(bytearray.bytes().to_vec())
+    } else if let Some(dictionary) = o.as_dictionary_object() {
+        // FIXME change this once weak keys are implemented
+        let has_weak_keys = false;
+
+        let mut dictionary_body = Vec::new();
+
+        let mut last_index = dictionary.get_next_enumerant(0, activation).unwrap();
+        while last_index != 0 {
+            let name = dictionary
+                .get_enumerant_name(last_index, activation)
+                .unwrap();
+            let value = dictionary
+                .get_enumerant_value(last_index, activation)
+                .unwrap();
+
+            // Serialize both name and value
+            let name = get_or_create_value(activation, name, object_table, amf_version);
+            let value = get_or_create_value(activation, value, object_table, amf_version);
+
+            dictionary_body.push((name, value));
+
+            last_index = dictionary
+                .get_next_enumerant(last_index, activation)
+                .unwrap();
+        }
+
+        AmfValue::Dictionary(id, dictionary_body, has_weak_keys)
+    } else {
+        let class = o.instance_class();
+        let name = class_to_alias(activation, class);
+
+        let mut attributes = EnumSet::empty();
+        if !class.is_sealed() {
+            attributes.insert(Attribute::Dynamic);
+        }
+
+        let mut object_body = Vec::new();
+        let mut static_properties = Vec::new();
+        recursive_serialize(
+            activation,
+            o,
+            &mut object_body,
+            Some(&mut static_properties),
+            amf_version,
+            object_table,
+        )
+        .unwrap();
+        AmfValue::Object(
+            id,
+            object_body,
+            if amf_version == AMFVersion::AMF3 {
+                Some(ClassDefinition {
+                    name,
+                    attributes,
+                    // FIXME - implement this
+                    static_properties,
+                })
+            } else {
+                None
+            },
+        )
+    }
+}
+
+/// The number of bytes `values` take when written one after another as AMF3,
+/// sharing reference tables. Flash measures `LocalConnection.send` payloads
+/// this way.
+pub fn amf3_values_len(values: &[Rc<AmfValue>]) -> usize {
+    // No synthetic array: it would shift reference indices (and their U29 sizes).
+    let encoder = flash_lso::amf3::write::AMF3Encoder::default();
+    let mut bytes = Vec::new();
+    match encoder.write_values(&mut bytes, values) {
+        Ok(()) => bytes.len(),
+        Err(_) => usize::MAX,
     }
 }
 
@@ -274,7 +339,7 @@ fn get_or_create_value<'gc>(
     amf_version: AMFVersion,
 ) -> Rc<AmfValue> {
     if let Some(obj) = val.as_object() {
-        match object_table.get(&obj) {
+        match object_table.done.get(&obj) {
             Some(rc_val) => {
                 // Even though we'll clone the same 'Rc<AmfValue>' for each occurrence
                 // of 'Object', flash_lso doesn't serialize this correctly yet.
@@ -286,18 +351,11 @@ fn get_or_create_value<'gc>(
                 );
                 rc_val.clone()
             }
-            None => {
-                let value = serialize_value(activation, val, amf_version, object_table);
-                let rc_val = Rc::new(value);
-
-                // We cannot use Entry, since we need to pass in 'object_table' to 'serialize_value'
-                object_table.insert(obj, rc_val.clone());
-                rc_val
-            }
+            // `serialize_value` records the object in `object_table.done` itself.
+            None => Rc::new(serialize_value(activation, val, amf_version, object_table)),
         }
     } else {
-        let value = serialize_value(activation, val, amf_version, object_table);
-        Rc::new(value)
+        Rc::new(serialize_value(activation, val, amf_version, object_table))
     }
 }
 
@@ -315,6 +373,20 @@ pub fn deserialize_value_impl<'gc>(
     val: &AmfValue,
     object_map: &mut BTreeMap<ObjectId, Object<'gc>>,
 ) -> Result<Value<'gc>, Error<'gc>> {
+    // Valid object ids are unique per object, so seeing one again means this is
+    // the same object occurring a second time (e.g. `{a: x, b: x}`): reuse it to
+    // keep identity, as Flash does.
+    if let AmfValue::Object(id, ..)
+    | AmfValue::ECMAArray(id, ..)
+    | AmfValue::StrictArray(id, ..)
+    | AmfValue::VectorObject(id, ..)
+    | AmfValue::Dictionary(id, ..) = val
+        && *id != ObjectId::INVALID
+        && let Some(obj) = object_map.get(id)
+    {
+        return Ok((*obj).into());
+    }
+
     Ok(match val {
         AmfValue::Null => Value::Null,
         AmfValue::Undefined => Value::Undefined,

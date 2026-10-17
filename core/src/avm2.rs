@@ -85,6 +85,25 @@ mod vtable;
 pub use crate::avm2::activation::Activation;
 pub use crate::avm2::array::ArrayStorage;
 pub use crate::avm2::call_stack::CallStack;
+
+/// The deepest chain of nested ActionScript calls before a catchable
+/// `flash.errors.StackOverflowError` (Error #1023) is thrown, as Flash Player does when a script
+/// recurses too deeply (about 2400 levels for a method with a `try` block, about 12000 for a
+/// trivial one).
+///
+/// Ruffle runs ActionScript on the native stack. On the web that is the WebAssembly call stack of
+/// the browser, which holds little more than 1200 nested calls; overflowing it traps with
+/// `RangeError: Maximum call stack size exceeded` and leaves the whole player locked up for good
+/// (every later tick fails with "Unable to lock Ruffle core"). A game whose own `try`/`catch`
+/// expects the Flash behaviour (one game's recursive A* path finder) survives the error, and one
+/// that does not still only loses that one script run. The limit stays well below what Chrome
+/// manages for a plain or `try`-wrapped recursion (checked up to 1300), because chains that run
+/// through native methods (callbacks of `Array.forEach`, event dispatch) use more native stack per
+/// ActionScript call. Desktop builds have a much bigger stack and no limit here.
+#[cfg(target_family = "wasm")]
+pub const MAX_CALL_DEPTH: usize = 900;
+#[cfg(not(target_family = "wasm"))]
+pub const MAX_CALL_DEPTH: usize = usize::MAX;
 pub use crate::avm2::class::Class;
 #[allow(unused)] // For debug_ui
 pub use crate::avm2::domain::{Domain, DomainPtr};
@@ -190,6 +209,10 @@ pub struct Avm2<'gc> {
     pub debug_output: bool,
 
     pub optimizer_enabled: bool,
+
+    /// Set while a `StackOverflowError` is being constructed. Building the error object runs
+    /// ActionScript constructors, which must not trip `MAX_CALL_DEPTH` again.
+    building_stack_overflow_error: bool,
 }
 
 impl<'gc> Avm2<'gc> {
@@ -240,6 +263,7 @@ impl<'gc> Avm2<'gc> {
             debug_output: false,
 
             optimizer_enabled: true,
+            building_stack_overflow_error: false,
         }
     }
 
@@ -631,6 +655,28 @@ impl<'gc> Avm2<'gc> {
 
     pub fn call_stack(&self) -> GcRefLock<'gc, CallStack<'gc>> {
         self.call_stack
+    }
+
+    /// How many ActionScript methods are currently executing.
+    pub fn call_depth(&self) -> usize {
+        self.call_stack.borrow().len()
+    }
+
+    /// Whether the next method call has to fail with a `StackOverflowError` because the call
+    /// stack is already `MAX_CALL_DEPTH` deep.
+    #[inline(always)]
+    pub fn call_depth_exceeded(&self) -> bool {
+        self.call_depth() >= MAX_CALL_DEPTH && !self.building_stack_overflow_error
+    }
+
+    /// Builds the error `exec` throws when `call_depth_exceeded` says so.
+    #[cold]
+    #[inline(never)]
+    pub fn stack_overflow_error(activation: &mut Activation<'_, 'gc>) -> Error<'gc> {
+        activation.context.avm2.building_stack_overflow_error = true;
+        let error = crate::avm2::error::make_error_stack_overflow(activation);
+        activation.context.avm2.building_stack_overflow_error = false;
+        error
     }
 
     pub fn capture_call_stack(&self) -> CallStack<'gc> {

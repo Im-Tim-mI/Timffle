@@ -181,13 +181,7 @@ impl<'gc> LocalConnections<'gc> {
         // Similarly, if one becomes unavailable between send and update, it'll error
         // If something *else* takes its place between send and update, it'll use that instead
 
-        let mut connection_name = connection_name.to_ascii_lowercase();
-        if !connection_name.contains(b':') && !connection_name.starts_with(b'_') {
-            let mut result = WString::from_utf8(Self::get_superdomain(domain));
-            result.push_char(':');
-            result.push_str(&connection_name);
-            connection_name = result;
-        }
+        let connection_name = Self::qualified_name(domain, &connection_name);
 
         let kind = if self.find_listener(&connection_name).is_some() {
             QueuedMessageKind::Message {
@@ -202,6 +196,25 @@ impl<'gc> LocalConnections<'gc> {
             source: source.into(),
             kind,
         });
+    }
+
+    /// The name a message to `connection_name` is actually addressed to:
+    /// lowercased, and prefixed with the sender's superdomain unless it already
+    /// has a prefix or starts with an underscore.
+    pub fn qualified_name(domain: &str, connection_name: &WStr) -> WString {
+        let mut connection_name = connection_name.to_ascii_lowercase();
+        if !connection_name.contains(b':') && !connection_name.starts_with(b'_') {
+            let mut result = WString::from_utf8(Self::get_superdomain(domain));
+            result.push_char(':');
+            result.push_str(&connection_name);
+            connection_name = result;
+        }
+        connection_name
+    }
+
+    /// Whether something is listening on this (already qualified) name.
+    pub fn has_listener(&self, qualified_name: &WStr) -> bool {
+        self.find_listener(qualified_name).is_some()
     }
 
     fn find_listener(&self, name: &WStr) -> Option<LocalConnectionKind<'gc>> {
@@ -222,7 +235,7 @@ impl<'gc> LocalConnections<'gc> {
         if let Ok(url) = url::Url::parse(url) {
             if url.scheme() == "file" {
                 Cow::Borrowed("localhost")
-            } else if let Some(domain) = url.domain() {
+            } else if let Some(domain) = url.host_str() {
                 Cow::Owned(domain.to_owned())
             } else {
                 // no domain?
@@ -235,6 +248,9 @@ impl<'gc> LocalConnections<'gc> {
     }
 
     pub fn get_superdomain(domain: &str) -> &str {
+        if domain.parse::<std::net::IpAddr>().is_ok() {
+            return domain;
+        }
         domain.rsplit_once('.').map(|(_, b)| b).unwrap_or(domain)
     }
 }

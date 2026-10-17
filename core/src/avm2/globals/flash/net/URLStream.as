@@ -1,157 +1,161 @@
 package flash.net {
-    import __ruffle__.stub_constructor;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-
-    import flash.events.Event;
+    import flash.errors.IOError;
     import flash.events.EventDispatcher;
+    import flash.utils.ByteArray;
     import flash.utils.Endian;
     import flash.utils.IDataInput;
-    import flash.utils.ByteArray;
-    import flash.events.Event;
-    import flash.events.HTTPStatusEvent;
-    import flash.events.IOErrorEvent;
-    import flash.events.ProgressEvent;
-    import flash.events.SecurityErrorEvent;
 
     public class URLStream extends EventDispatcher implements IDataInput {
+        // Data received so far; its position is the read position, so
+        // `bytesAvailable` is whatever has arrived but not been read yet.
+        // It is filled in chunk by chunk by `crate::loader::load_url_stream`,
+        // which also dispatches the open/progress/httpStatus/complete/ioError events.
+        // `null` while no stream is open: before the first `load()` and after `close()`.
+        [Ruffle(NativeAccessible)]
+        private var _buffer:ByteArray = null;
+
         private var _endian:String = Endian.BIG_ENDIAN;
+        private var _objectEncoding:uint = 3;
         private var _connected:Boolean = false;
 
-        // FIXME - we currently implement `URLStream` using a `URLLoader`,
-        // which means that content can't actually be "streamed" (it becomes
-        // available all at once when the entire download finishes).
-        // We should write an actual "streaming" implementation that exposes
-        // content as it comes in over the network, but this will require changes
-        // to `NavigatorBackend`. See https://github.com/ruffle-rs/ruffle/pull/11046
-        private var _loader:URLLoader = new URLLoader();
+        // Bumped by `load()` and `close()`. A download only touches this object
+        // while its generation is still current, so a closed or replaced
+        // download delivers no further data or events.
+        [Ruffle(NativeAccessible)]
+        private var _generation:uint = 0;
 
         public function URLStream() {
-            stub_constructor("flash.net.URLStream", "streaming support");
+            super();
+        }
 
-            this._loader.dataFormat = URLLoaderDataFormat.BINARY;
-            var self = this;
+        public function load(request:URLRequest):void {
+            this._generation++;
+            this._buffer = new ByteArray();
+            this._buffer.endian = this._endian;
+            this._buffer.objectEncoding = this._objectEncoding;
+            this._connected = true;
+            this._load(request, this._generation);
+        }
 
-            this._loader.addEventListener(Event.OPEN, function(e:*):void {
-                self.dispatchEvent(new Event(Event.OPEN));
-            });
-            this._loader.addEventListener(Event.COMPLETE, function(e:*):void {
-                self._loader.data.endian = self._endian;
-                self.dispatchEvent(new Event(Event.COMPLETE));
-            });
-            this._loader.addEventListener(IOErrorEvent.IO_ERROR, function(e:*):void {
-                self.dispatchEvent(new IOErrorEvent(IOErrorEvent.IO_ERROR));
-            });
-            this._loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, function(e:*):void {
-                self.dispatchEvent(new SecurityErrorEvent(SecurityErrorEvent.SECURITY_ERROR));
-            });
-            this._loader.addEventListener(ProgressEvent.PROGRESS, function(e:*):void {
-                self._loader.data.endian = self._endian;
-                self.dispatchEvent(new ProgressEvent(ProgressEvent.PROGRESS, false, false, e.bytesLoaded, e.bytesTotal));
-            });
-            this._loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, function(e:*):void {
-                self.dispatchEvent(new HTTPStatusEvent(HTTPStatusEvent.HTTP_STATUS, false, false, e.status, e.redirected));
-            });
+        private native function _load(request:URLRequest, generation:uint):void;
+
+        // Flash Player's HTTP streams are not seekable. These FP 11.4 APIs
+        // accept calls but neither seek nor stop the download (unlike close).
+        [API("682")]
+        public function stop():void {}
+
+        [API("682")]
+        public function get position():Number { return 0; }
+        [API("682")]
+        public function set position(value:Number):void {}
+        [API("682")]
+        public function get length():Number { return 0; }
+
+        public function close():void {
+            if (!this._connected) {
+                throw new IOError("Error #2029: This URLStream object does not have a stream opened.", 2029);
+            }
+            this._generation++;
+            this._buffer = null;
+            this._connected = false;
+        }
+
+        // Every read requires an open stream, like in Flash.
+        private function get buffer():ByteArray {
+            if (this._buffer == null) {
+                throw new IOError("Error #2029: This URLStream object does not have a stream opened.", 2029);
+            }
+            return this._buffer;
         }
 
         public function get bytesAvailable():uint {
-            if (this._loader.data) {
-                return this._loader.data.bytesAvailable;
-            }
-            return 0;
+            return this.buffer.bytesAvailable;
         }
 
         public function get connected():Boolean {
-            return _connected;
+            return this._connected;
         }
 
         public function get endian():String {
-            return _endian;
+            return this._endian;
         }
 
         public function set endian(value:String):void {
             if (value === Endian.BIG_ENDIAN || value === Endian.LITTLE_ENDIAN) {
                 this._endian = value;
-                if (this._loader.data) {
-                    this._loader.data.endian = value;
+                if (this._buffer) {
+                    this._buffer.endian = value;
                 }
             } else {
                 throw new ArgumentError("Error #2008: Parameter endian must be one of the accepted values.", 2008);
             }
         }
 
-        public function load(request:URLRequest):void {
-            this._loader.load(request);
-            this._connected = true;
-        }
-
-        public function close():void {
-            this._loader.close();
-            this._connected = false;
-        }
-
         public function get objectEncoding():uint {
-            stub_getter("flash.net.URLStream", "objectEncoding");
-            return 0;
+            return this._objectEncoding;
         }
+
         public function set objectEncoding(value:uint):void {
-            stub_setter("flash.net.URLStream", "objectEncoding");
+            this._objectEncoding = value;
+            if (this._buffer) {
+                this._buffer.objectEncoding = value;
+            }
         }
 
         public function readBoolean():Boolean {
-            return this._loader.data.readBoolean();
+            return this.buffer.readBoolean();
         }
 
         public function readByte():int {
-            return this._loader.data.readByte();
+            return this.buffer.readByte();
         }
 
         public function readBytes(bytes:ByteArray, offset:uint = 0, length:uint = 0):void {
-            this._loader.data.readBytes(bytes, offset, length);
+            this.buffer.readBytes(bytes, offset, length);
         }
 
         public function readDouble():Number {
-            return this._loader.data.readDouble();
+            return this.buffer.readDouble();
         }
 
         public function readFloat():Number {
-            return this._loader.data.readFloat();
+            return this.buffer.readFloat();
         }
 
         public function readInt():int {
-            return this._loader.data.readInt();
+            return this.buffer.readInt();
         }
 
         public function readMultiByte(length:uint, charSet:String):String {
-            return this._loader.data.readMultiByte(length, charSet);
+            return this.buffer.readMultiByte(length, charSet);
         }
 
         public function readObject():* {
-            return this._loader.data.readObject();
+            return this.buffer.readObject();
         }
 
         public function readShort():int {
-            return this._loader.data.readShort();
+            return this.buffer.readShort();
         }
 
         public function readUnsignedByte():uint {
-            return this._loader.data.readUnsignedByte();
+            return this.buffer.readUnsignedByte();
         }
 
         public function readUnsignedInt():uint {
-            return this._loader.data.readUnsignedInt();
+            return this.buffer.readUnsignedInt();
         }
 
         public function readUnsignedShort():uint {
-            return this._loader.data.readUnsignedShort();
+            return this.buffer.readUnsignedShort();
         }
 
         public function readUTF():String {
-            return this._loader.data.readUTF();
+            return this.buffer.readUTF();
         }
 
         public function readUTFBytes(length:uint):String {
-            return this._loader.data.readUTFBytes(length);
+            return this.buffer.readUTFBytes(length);
         }
     }
 }

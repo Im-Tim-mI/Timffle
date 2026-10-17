@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 
 use crate::avm2::ClassObject;
 use crate::avm2::activation::Activation;
-use crate::avm2::error::make_error_2007;
+use crate::avm2::error::{make_error_2007, make_error_2029};
 use crate::avm2::globals::flash::display::display_object::initialize_for_allocator;
 use crate::avm2::globals::slots::flash_display_loader as loader_slots;
 use crate::avm2::globals::slots::flash_net_url_request as url_request_slots;
@@ -80,8 +80,6 @@ pub fn load<'gc>(
     let loader_info = loader_info.as_loader_info_object().unwrap();
 
     if loader_info.init_event_fired() {
-        // FIXME: When calling load/loadBytes, then calling load/loadBytes again
-        // before the `init` event is fired, the first load is cancelled.
         avm2_stub_method!(
             activation,
             "flash.display.Loader",
@@ -89,6 +87,8 @@ pub fn load<'gc>(
             "reusing a Loader"
         );
     }
+
+    cancel_previous_load(activation, loader_info);
 
     // Unload the loader, in case something was already loaded.
     loader_info.unload(activation.context);
@@ -261,8 +261,6 @@ pub fn load_bytes<'gc>(
     let loader_info = loader_info.as_loader_info_object().unwrap();
 
     if loader_info.init_event_fired() {
-        // FIXME: When calling load/loadBytes, then calling load/loadBytes again
-        // before the `init` event is fired, the first load is cancelled.
         avm2_stub_method!(
             activation,
             "flash.display.Loader",
@@ -270,6 +268,8 @@ pub fn load_bytes<'gc>(
             "reusing a Loader"
         );
     }
+
+    cancel_previous_load(activation, loader_info);
 
     // Unload the loader, in case something was already loaded.
     loader_info.unload(activation.context);
@@ -292,7 +292,7 @@ pub fn load_bytes<'gc>(
 
     let loader_sandbox_type = activation.caller_movie_or_root().sandbox_type();
 
-    if let Err(e) = LoadManager::load_movie_into_clip_bytes(
+    match LoadManager::load_movie_into_clip_bytes(
         activation.context,
         content.into(),
         bytes,
@@ -306,9 +306,15 @@ pub fn load_bytes<'gc>(
             }),
         },
     ) {
-        return Err(Error::rust_error(
-            format!("Error in Loader.loadBytes: {e:?}").into(),
-        ));
+        Ok(()) => {}
+        // A `progress` listener already cancelled this load again (`Loader.close()`, or
+        // another `load()` into the same Loader).
+        Err(crate::loader::Error::Cancelled) => {}
+        Err(e) => {
+            return Err(Error::rust_error(
+                format!("Error in Loader.loadBytes: {e:?}").into(),
+            ));
+        }
     }
 
     Ok(Value::Undefined)
@@ -331,4 +337,60 @@ pub fn unload<'gc>(
     loader_info.unload(activation.context);
 
     Ok(Value::Undefined)
+}
+
+/// `Loader.close`: cancels the load that is still in progress.
+///
+/// Like Flash, it throws when there is none (never loaded, already completed, failed, or
+/// already closed).
+pub fn close<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    let loader_info = this
+        .get_slot(loader_slots::_CONTENT_LOADER_INFO)
+        .as_object()
+        .unwrap();
+
+    let loader_info = loader_info.as_loader_info_object().unwrap();
+
+    if !activation
+        .context
+        .load_manager
+        .avm2_load_in_progress(loader_info)
+    {
+        return Err(make_error_2029(activation));
+    }
+
+    cancel_previous_load(activation, loader_info);
+
+    Ok(Value::Undefined)
+}
+
+/// Cancels the load into `loader_info` that is still in progress, if any, as `Loader.close()`
+/// does and as calling `Loader.load()`/`loadBytes()` again does to the call before it.
+///
+/// A cancelled load dispatches no further event, and its late result is dropped instead of being
+/// delivered as the answer to whatever the same Loader is loading by then.
+fn cancel_previous_load<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    loader_info: LoaderInfoObject<'gc>,
+) {
+    let in_progress = activation
+        .context
+        .load_manager
+        .avm2_load_in_progress(loader_info);
+
+    activation
+        .context
+        .load_manager
+        .cancel_avm2_loads(loader_info);
+
+    if in_progress {
+        // The Loader goes back to what it was before the cancelled load began.
+        loader_info.reset_after_cancel(activation.context);
+    }
 }

@@ -1,0 +1,8 @@
+connected=false endian=bigEndian encoding=3
+error=2029
+error=2029
+error=2029
+error=2085
+error=2085
+asyncErrorID=42
+done

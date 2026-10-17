@@ -240,6 +240,11 @@ pub fn exec<'gc>(
     activation: &mut Activation<'_, 'gc>,
     callee: Option<FunctionObject<'gc>>,
 ) -> Result<Value<'gc>, Error<'gc>> {
+    // Throw Flash's catchable StackOverflowError before the native stack runs out.
+    if activation.context.avm2.call_depth_exceeded() {
+        return Err(crate::avm2::Avm2::stack_overflow_error(activation));
+    }
+
     let mc = activation.gc();
 
     let caller_dxns = activation.default_xml_namespace();

@@ -39,7 +39,7 @@ use crate::tag_utils::{SwfMovie, SwfMovieData};
 use crate::vminterface::Instantiator;
 use chardetng::EncodingDetector;
 use encoding_rs::{UTF_8, WINDOWS_1252};
-use gc_arena::Collect;
+use gc_arena::{Collect, Gc};
 use indexmap::IndexMap;
 use ruffle_common::tag_utils::LoadBytesInfo;
 use ruffle_macros::istr;
@@ -283,6 +283,50 @@ impl<'gc> LoadManager<'gc> {
         false
     }
 
+    /// Cancels every load that is still running into the given AVM2 `LoaderInfo`.
+    ///
+    /// This is what `Loader.close()` does, and what calling `Loader.load()` or
+    /// `Loader.loadBytes()` again does to the call before it. A cancelled load dispatches no
+    /// further events and never touches its `Loader` again; its request may still run to the
+    /// end, but the result is dropped (the loader handle is gone, see `Error::Cancelled`).
+    ///
+    /// Without this, the late result of a cancelled load is delivered as if it were the answer
+    /// to whatever the same `Loader` is loading now.
+    pub fn cancel_avm2_loads(&mut self, loader_info: LoaderInfoObject<'gc>) {
+        self.0
+            .retain(|_, loader| !loader.is_avm2_load_into(loader_info));
+    }
+
+    /// Whether a load into the given AVM2 `LoaderInfo` is still waiting for its `complete`
+    /// event, i.e. whether `Loader.close()` has something to cancel.
+    pub fn avm2_load_in_progress(&self, loader_info: LoaderInfoObject<'gc>) -> bool {
+        // Once `complete` has fired, an entry that is still around is only waiting to be removed.
+        if loader_info.complete_event_fired() {
+            return false;
+        }
+
+        self.0.values().any(|loader| {
+            loader.is_avm2_load_into(loader_info)
+                && match loader.loader_status {
+                    LoaderStatus::Pending | LoaderStatus::Parsing => true,
+                    // The content has arrived, but `init` and `complete` only follow once its
+                    // first frame has run. That is still a load in progress, unless the
+                    // `LoaderInfo` has been reset since (`Loader.unload()`) or the content's
+                    // constructor failed (its events never come).
+                    LoaderStatus::Succeeded => {
+                        loader_info
+                            .content_clip()
+                            .is_some_and(|clip| DisplayObject::ptr_eq(clip, loader.target_clip))
+                            && !loader
+                                .target_clip
+                                .as_movie_clip()
+                                .is_some_and(|mc| mc.avm2_constructor_failed())
+                    }
+                    LoaderStatus::Failed => false,
+                }
+        })
+    }
+
     /// Kick off a movie clip load.
     ///
     /// Returns the loader's async process, which you will need to spawn.
@@ -464,6 +508,8 @@ impl<'gc> LoadManager<'gc> {
             if matches!(status, Some(LoaderStatus::Parsing)) {
                 match MovieLoader::preload_tick(handle, context, limit, 0, false) {
                     Ok(f) => did_finish = did_finish && f,
+                    // Cancelled by a `progress` listener (`Loader.close()`, or another `load()`).
+                    Err(Error::Cancelled) => {}
                     Err(e) => tracing::error!("Error encountered while preloading movie: {}", e),
                 }
             }
@@ -503,7 +549,13 @@ impl Default for LoadManager<'_> {
 async fn wait_for_full_response(
     response: OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse>,
 ) -> Result<(Vec<u8>, String, u16, bool), ErrorResponse> {
-    let response = response.await?;
+    read_full_response(response.await?).await
+}
+
+/// Reads the whole body of a response whose headers have already arrived.
+async fn read_full_response(
+    response: Box<dyn SuccessResponse>,
+) -> Result<(Vec<u8>, String, u16, bool), ErrorResponse> {
     let url = response.url().to_string();
     let status = response.status();
     let redirected = response.redirected();
@@ -600,6 +652,14 @@ pub struct MovieLoader<'gc> {
 }
 
 impl<'gc> MovieLoader<'gc> {
+    /// Whether this is a load into the given AVM2 `LoaderInfo`.
+    fn is_avm2_load_into(&self, loader_info: LoaderInfoObject<'gc>) -> bool {
+        matches!(
+            self.vm_data,
+            MovieLoaderVMData::Avm2 { loader_info: info, .. } if Gc::ptr_eq(info.0, loader_info.0)
+        )
+    }
+
     fn replace_root_movie(&mut self, new_root: DisplayObject<'gc>) {
         self.target_clip = new_root;
         if let MovieLoaderVMData::Avm1 { base_clip, .. } = &mut self.vm_data {
@@ -749,21 +809,24 @@ impl<'gc> MovieLoader<'gc> {
 
             let response = wait_for_full_response(fetch).await;
             let player = player.lock().unwrap();
-            match response {
+            let result = match response {
                 Ok((body, url, status, redirected)) if replacing_root_movie => {
                     Self::on_success_root_movie(
                         player, handle, loader_url, body, url, status, redirected,
-                    )?;
+                    )
                 }
                 Ok((body, url, status, redirected)) => {
-                    Self::on_success(player, handle, loader_url, body, url, status, redirected)?;
+                    Self::on_success(player, handle, loader_url, body, url, status, redirected)
                 }
-                Err(response) => {
-                    Self::on_error(player, handle, response)?;
-                }
-            }
+                Err(response) => Self::on_error(player, handle, response),
+            };
 
-            Ok(())
+            match result {
+                // The load was cancelled while its request was running (`Loader.close()`, or
+                // another `load()` into the same Loader). Nothing is left to report.
+                Err(Error::Cancelled) => Ok(()),
+                result => result,
+            }
         })
     }
 
@@ -1210,12 +1273,23 @@ pub fn load_stylesheet<'gc>(
 /// Kick off a data load into a `URLLoader`, updating
 /// its `data` property when the load completes.
 ///
+/// `generation` is the value of the loader's `_generation` slot when `load()` was called;
+/// `close()` and further `load()` calls change it, after which this download stops touching the
+/// loader: it dispatches no further event and does not set `data`.
+///
 /// Returns the loader's async process, which you will need to spawn.
 pub fn load_data_into_url_loader<'gc>(
     uc: &UpdateContext<'gc>,
     target: Avm2ScriptObject<'gc>,
     request: Request,
+    generation: u32,
 ) -> OwnedFuture<(), Error> {
+    use crate::avm2::globals::slots::flash_net_url_loader as url_loader_slots;
+
+    fn is_current<'gc>(target: Avm2Object<'gc>, generation: u32) -> bool {
+        target.get_slot(url_loader_slots::_GENERATION).as_u32() == generation
+    }
+
     let player = uc.player_handle();
     let target = Avm2ScriptObjectHandle::stash(uc, target);
 
@@ -1224,10 +1298,38 @@ pub fn load_data_into_url_loader<'gc>(
             .lock()
             .unwrap()
             .fetch(request, FetchReason::UrlLoader);
-        let response = wait_for_full_response(fetch).await;
+
+        // Like Flash, `open` fires as soon as the response headers have arrived, long before the
+        // body is complete. Scripts rely on that: one game's queued loader gives up on (and retries)
+        // a download that has not opened within 5 seconds. A failed request (connection error or
+        // non-2xx status) never opens.
+        let response = match fetch.await {
+            Ok(response) => {
+                let opened = player.lock().unwrap().update(|uc| {
+                    let target = Avm2Object::from(target.fetch(uc));
+                    if !is_current(target, generation) {
+                        return false;
+                    }
+                    let open_evt = Avm2EventObject::bare_default_event(uc, "open");
+                    Avm2::dispatch_event(uc, open_evt, target);
+                    // Like Flash, stop as soon as a listener closes (or replaces) the load.
+                    is_current(target, generation)
+                });
+                if !opened {
+                    return Ok(());
+                }
+                read_full_response(response).await
+            }
+            Err(error) => Err(error),
+        };
 
         player.lock().unwrap().update(|uc| {
             let target = Avm2Object::from(target.fetch(uc));
+
+            // The load was closed, or replaced by another one, while its request was running.
+            if !is_current(target, generation) {
+                return Ok(());
+            }
 
             let mut activation = Avm2Activation::from_nothing(uc);
 
@@ -1236,18 +1338,6 @@ pub fn load_data_into_url_loader<'gc>(
                 activation: &mut Avm2Activation<'a, 'gc>,
                 target: Avm2Object<'gc>,
             ) {
-                use crate::avm2::globals::slots::flash_net_url_loader as url_loader_slots;
-
-                let body_len = Avm2Value::from_usize_lossy(body.len());
-
-                // TODO - update these as the download progresses
-                target
-                    .set_slot(url_loader_slots::BYTES_LOADED, body_len, activation)
-                    .unwrap();
-                target
-                    .set_slot(url_loader_slots::BYTES_TOTAL, body_len, activation)
-                    .unwrap();
-
                 let data_format = target
                     .get_slot(url_loader_slots::DATA_FORMAT)
                     .coerce_to_string(activation)
@@ -1286,22 +1376,28 @@ pub fn load_data_into_url_loader<'gc>(
                 }
             }
 
+            fn set_bytes<'a, 'gc: 'a>(
+                len: usize,
+                activation: &mut Avm2Activation<'a, 'gc>,
+                target: Avm2Object<'gc>,
+            ) {
+                let len = Avm2Value::from_usize_lossy(len);
+
+                // TODO - update these as the download progresses
+                target
+                    .set_slot(url_loader_slots::BYTES_LOADED, len, activation)
+                    .unwrap();
+                target
+                    .set_slot(url_loader_slots::BYTES_TOTAL, len, activation)
+                    .unwrap();
+            }
+
             match response {
                 Ok((body, _, status, redirected)) => {
                     let total_len = body.len();
 
-                    // FIXME - the "open" event should be fired earlier, just before
-                    // we start to fetch the data.
-                    // However, the "open" event should not be fired if an IO error
-                    // occurs opening the connection (e.g. if a file does not exist on disk).
-                    // We currently have no way of detecting this, so we settle for firing
-                    // the event after the entire fetch is complete. This causes there
-                    // to a longer delay between the initial load triggered by the script
-                    // and the "load" event firing, but it ensures that we match
-                    // the Flash behavior w.r.t when an event is fired vs not fired.
-                    let open_evt = Avm2EventObject::bare_default_event(activation.context, "open");
-                    Avm2::dispatch_event(activation.context, open_evt, target);
-                    set_data(body, &mut activation, target);
+                    // `open` was already dispatched when the response headers arrived.
+                    set_bytes(total_len, &mut activation, target);
 
                     // FIXME - we should fire "progress" events as we receive data, not
                     // just at the end
@@ -1313,11 +1409,20 @@ pub fn load_data_into_url_loader<'gc>(
                     );
 
                     Avm2::dispatch_event(activation.context, progress_evt, target);
+                    if !is_current(target, generation) {
+                        return Ok(());
+                    }
 
                     let http_status_evt =
                         Avm2EventObject::http_status_event(&mut activation, status, redirected);
 
                     Avm2::dispatch_event(activation.context, http_status_evt, target);
+                    if !is_current(target, generation) {
+                        return Ok(());
+                    }
+
+                    // Flash only sets `data` once everything has arrived, right before `complete`.
+                    set_data(body, &mut activation, target);
 
                     let complete_evt =
                         Avm2EventObject::bare_default_event(activation.context, "complete");
@@ -1333,6 +1438,7 @@ pub fn load_data_into_url_loader<'gc>(
                     // Testing with Flash shoes that the 'data' property is cleared
                     // when an error occurs
 
+                    set_bytes(0, &mut activation, target);
                     set_data(Vec::new(), &mut activation, target);
 
                     let (status_code, redirected) =
@@ -1348,6 +1454,9 @@ pub fn load_data_into_url_loader<'gc>(
                     );
 
                     Avm2::dispatch_event(activation.context, http_status_evt, target);
+                    if !is_current(target, generation) {
+                        return Ok(());
+                    }
 
                     // FIXME - Match the exact error message generated by Flash
                     let io_error_evt = Avm2EventObject::io_error_event(
@@ -1362,6 +1471,163 @@ pub fn load_data_into_url_loader<'gc>(
 
             Ok(())
         })
+    })
+}
+
+/// Stream a download into a `URLStream`, delivering data as it arrives.
+///
+/// Event order matches Flash Player 32: `open`, one `progress` per received
+/// chunk, then `httpStatus` and `complete` once the body ends. Failures to
+/// connect (or non-2xx responses) produce `httpStatus` followed by `ioError`.
+///
+/// `generation` is the value of the stream's `_generation` slot when `load()`
+/// was called; `close()` and further `load()` calls change it, after which this
+/// download stops touching the stream.
+pub fn load_url_stream<'gc>(
+    uc: &UpdateContext<'gc>,
+    target: Avm2ScriptObject<'gc>,
+    request: Request,
+    generation: u32,
+) -> OwnedFuture<(), Error> {
+    use crate::avm2::globals::slots::flash_net_url_stream as url_stream_slots;
+
+    fn is_current<'gc>(target: Avm2Object<'gc>, generation: u32) -> bool {
+        target.get_slot(url_stream_slots::_GENERATION).as_u32() == generation
+    }
+
+    let player = uc.player_handle();
+    let target = Avm2ScriptObjectHandle::stash(uc, target);
+
+    Box::pin(async move {
+        let fetch = player
+            .lock()
+            .unwrap()
+            .fetch(request, FetchReason::UrlLoader);
+
+        let mut response = match fetch.await {
+            Ok(response) => response,
+            Err(response) => {
+                tracing::error!(
+                    "Error during URLStream load of {:?}: {:?}",
+                    response.url,
+                    response.error
+                );
+                player.lock().unwrap().update(|uc| {
+                    let target = Avm2Object::from(target.fetch(uc));
+                    if !is_current(target, generation) {
+                        return;
+                    }
+                    let mut activation = Avm2Activation::from_nothing(uc);
+
+                    let (status_code, redirected) =
+                        if let Error::HttpNotOk(_, status_code, redirected, _) = response.error {
+                            (status_code, redirected)
+                        } else {
+                            (0, false)
+                        };
+                    let http_status_evt = Avm2EventObject::http_status_event(
+                        &mut activation,
+                        status_code,
+                        redirected,
+                    );
+                    Avm2::dispatch_event(activation.context, http_status_evt, target);
+                    if !is_current(target, generation) {
+                        return;
+                    }
+
+                    // FIXME - Match the exact error message generated by Flash
+                    let io_error_evt =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2032", 2032);
+                    Avm2::dispatch_event(activation.context, io_error_evt, target);
+                });
+                return Ok(());
+            }
+        };
+
+        let status = response.status();
+        let redirected = response.redirected();
+        // Flash reports a `bytesTotal` of 0 when the length is unknown.
+        let bytes_total = response
+            .expected_length()
+            .ok()
+            .flatten()
+            .map_or(0, |len| len as usize);
+
+        let opened = player.lock().unwrap().update(|uc| {
+            let target = Avm2Object::from(target.fetch(uc));
+            if !is_current(target, generation) {
+                return false;
+            }
+            let open_evt = Avm2EventObject::bare_default_event(uc, "open");
+            Avm2::dispatch_event(uc, open_evt, target);
+            is_current(target, generation)
+        });
+        if !opened {
+            return Ok(());
+        }
+
+        let mut bytes_loaded = 0;
+        loop {
+            let chunk = response.next_chunk().await;
+            let keep_going = player.lock().unwrap().update(|uc| {
+                let target = Avm2Object::from(target.fetch(uc));
+                if !is_current(target, generation) {
+                    return false;
+                }
+                let mut activation = Avm2Activation::from_nothing(uc);
+
+                match chunk {
+                    Ok(Some(data)) => {
+                        if data.is_empty() {
+                            return true;
+                        }
+                        let buffer = target.get_slot(url_stream_slots::_BUFFER).as_object();
+                        if let Some(mut buffer) = buffer.as_ref().and_then(|o| o.as_bytearray_mut())
+                        {
+                            // Append without moving the read position.
+                            let end = buffer.len();
+                            if let Err(e) = buffer.write_at(&data, end) {
+                                tracing::error!("URLStream buffer overflow: {e:?}");
+                            }
+                        }
+                        bytes_loaded += data.len();
+
+                        let progress_evt = Avm2EventObject::progress_event(
+                            &mut activation,
+                            "progress",
+                            bytes_loaded,
+                            bytes_total,
+                        );
+                        Avm2::dispatch_event(activation.context, progress_evt, target);
+                        is_current(target, generation)
+                    }
+                    end => {
+                        if let Err(e) = end {
+                            // Flash Player 32 still reports `complete` when the
+                            // connection closes before the announced length.
+                            tracing::warn!("URLStream body ended early: {e:?}");
+                        }
+                        let http_status_evt =
+                            Avm2EventObject::http_status_event(&mut activation, status, redirected);
+                        Avm2::dispatch_event(activation.context, http_status_evt, target);
+                        // Flash queues the terminal event with HTTP_STATUS:
+                        // closing in that handler does not suppress COMPLETE.
+                        let complete_evt = if status == 0 || (200..300).contains(&status) {
+                            Avm2EventObject::bare_default_event(activation.context, "complete")
+                        } else {
+                            Avm2EventObject::io_error_event(&mut activation, "Error #2032", 2032)
+                        };
+                        Avm2::dispatch_event(activation.context, complete_evt, target);
+                        false
+                    }
+                }
+            });
+            if !keep_going {
+                break;
+            }
+        }
+
+        Ok(())
     })
 }
 
@@ -1840,6 +2106,7 @@ impl<'gc> MovieLoader<'gc> {
                             callback: Box::new(move |uc, dobj: DisplayObject<'_>| {
                                 if let Err(e) =
                                     MovieLoader::movie_loader_complete(handle, uc, Some(dobj), 0, false)
+                                    && !matches!(e, Error::Cancelled)
                                 {
                                     tracing::error!("Error finishing loading of Loader.loadBytes movie {dobj:?}: {e:?}");
                                 }
@@ -1942,7 +2209,8 @@ impl<'gc> MovieLoader<'gc> {
                                         Some(bitmap_obj),
                                         status,
                                         redirected,
-                                    ) {
+                                    ) && !matches!(e, Error::Cancelled)
+                                    {
                                         tracing::error!("Error finishing loading of Loader.loadBytes image {bitmap_obj:?}: {e:?}");
                                     }
                                 }),
@@ -2057,6 +2325,12 @@ impl<'gc> MovieLoader<'gc> {
                 );
 
                 Avm2::dispatch_event(uc, progress_evt, loader_info.into());
+
+                // A `progress` listener can cancel this load (`Loader.close()`, or another
+                // `load()` into the same Loader); whoever reported progress must stop there.
+                if uc.load_manager.get_loader(handle).is_none() {
+                    return Err(Error::Cancelled);
+                }
             }
         }
 
@@ -2132,6 +2406,13 @@ impl<'gc> MovieLoader<'gc> {
             }
         }
 
+        // The content's constructor and first frame ran script, which can cancel this load
+        // (`Loader.close()`, or another `load()` into the same Loader). The content is then
+        // dropped instead of being attached to a Loader that has moved on.
+        if uc.load_manager.get_loader(handle).is_none() {
+            return Err(Error::Cancelled);
+        }
+
         if let MovieLoaderVMData::Avm2 { loader_info, .. } = vm_data {
             let dobj = dobj.unwrap();
 
@@ -2189,6 +2470,11 @@ impl<'gc> MovieLoader<'gc> {
             }
         }
 
+        // Adding the content ran script too ('added' listeners), which can also cancel this load.
+        if uc.load_manager.get_loader(handle).is_none() {
+            return Err(Error::Cancelled);
+        }
+
         match vm_data {
             MovieLoaderVMData::Avm1 {
                 broadcaster,
@@ -2225,8 +2511,11 @@ impl<'gc> MovieLoader<'gc> {
             }
         }
 
-        let loader = uc.load_manager.get_loader_mut(handle).unwrap();
-        loader.loader_status = LoaderStatus::Succeeded;
+        // The listeners above can cancel this load (`Loader.close()`, or another `load()`); then
+        // there is no status left to update.
+        if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
+            loader.loader_status = LoaderStatus::Succeeded;
+        }
 
         Ok(())
     }
@@ -2298,8 +2587,11 @@ impl<'gc> MovieLoader<'gc> {
             }
         }
 
-        let loader = uc.load_manager.get_loader_mut(handle).unwrap();
-        loader.loader_status = LoaderStatus::Failed;
+        // An `ioError` listener can start another load into the same Loader (retrying, for
+        // example), which cancels this one; then there is no status left to update.
+        if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
+            loader.loader_status = LoaderStatus::Failed;
+        }
 
         Ok(())
     }

@@ -16,6 +16,8 @@ package flash.net {
             return true;
         }
 
+        public var isPerUser:Boolean = false;
+
         public native function get domain():String;
 
         public native function close():void;

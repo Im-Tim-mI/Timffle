@@ -7,8 +7,9 @@ use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{Error, Object};
 
-/// Native function definition for `URLLoader.load`
-pub fn load<'gc>(
+/// Native function definition for `URLLoader._load`: starts a download whose events and `data`
+/// are delivered when it finishes, unless `close()` or a later `load()` supersedes it first.
+pub fn _load<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
@@ -16,14 +17,16 @@ pub fn load<'gc>(
     let this = this.as_object().unwrap();
 
     let request = args.get_object(activation, 0, "request")?;
+    let generation = args.get_u32(1);
 
-    spawn_fetch(activation, this, request)
+    spawn_fetch(activation, this, request, generation)
 }
 
 fn spawn_fetch<'gc>(
     activation: &mut Activation<'_, 'gc>,
     loader_object: Object<'gc>,
     url_request: Object<'gc>,
+    generation: u32,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let request = request_from_url_request(activation, url_request)?;
 
@@ -31,6 +34,7 @@ fn spawn_fetch<'gc>(
         activation.context,
         loader_object.as_script_object().unwrap(),
         request,
+        generation,
     );
     activation.context.navigator.spawn_future(future);
     Ok(Value::Undefined)

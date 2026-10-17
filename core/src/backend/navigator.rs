@@ -119,6 +119,8 @@ pub fn normalize_navigate_target(target: &str) -> &str {
 
 /// A fetch request.
 pub struct Request {
+    /// URLStream consumes error response bodies before reporting ioError.
+    pub preserve_error_body: bool,
     /// The URL of the request.
     url: String,
 
@@ -147,6 +149,7 @@ impl Request {
             method: NavigationMethod::Get,
             body: None,
             headers: Default::default(),
+            preserve_error_body: false,
         }
     }
 
@@ -157,6 +160,7 @@ impl Request {
             method: NavigationMethod::Post,
             body,
             headers: Default::default(),
+            preserve_error_body: false,
         }
     }
 
@@ -168,6 +172,7 @@ impl Request {
             method,
             body,
             headers: Default::default(),
+            preserve_error_body: false,
         }
     }
 

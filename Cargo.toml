@@ -206,3 +206,9 @@ lto = "off"
 incremental = true
 # Right between the defaults of 16 and 256, for crate fragment caching.
 codegen-units = 64
+
+# Local fix for AMF3 encoder reference indices (cyclic/shared objects after an
+# XML/Date decoded to the wrong object). Local ../rust-flash-lso working tree,
+# based on pinned rev 61b7172; distribute its complete source alongside this repo.
+[patch."https://github.com/ruffle-rs/rust-flash-lso"]
+flash-lso = { path = "../rust-flash-lso/flash-lso" }

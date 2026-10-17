@@ -1,5 +1,5 @@
 use crate::avm2::activation::Activation;
-use crate::avm2::amf::deserialize_value;
+use crate::avm2::amf::deserialize_value_impl;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, EventObject, Object, TObject};
@@ -131,13 +131,23 @@ impl<'gc> LocalConnectionObject<'gc> {
         let mut activation = Activation::from_domain(context, domain);
         let mut arguments = Vec::with_capacity(amf_arguments.len());
 
+        // One object map for all arguments: an object passed twice (or referenced
+        // from two arguments) arrives as the same object, as in Flash.
+        let mut object_map = Default::default();
         for argument in amf_arguments {
-            arguments
-                .push(deserialize_value(&mut activation, &argument).unwrap_or(Value::Undefined));
+            arguments.push(
+                deserialize_value_impl(&mut activation, &argument, &mut object_map)
+                    .unwrap_or(Value::Undefined),
+            );
         }
         let arguments = FunctionArgs::from_slice(&arguments);
 
         let client = Value::from(self.client());
+        if !self.client().instance_class().is_sealed()
+            && !client.has_public_property(method_name, &mut activation)
+        {
+            return;
+        }
         if let Err(e) = client.call_public_property(method_name, arguments, &mut activation) {
             match e.as_avm_error() {
                 Some(error) => {

@@ -199,12 +199,28 @@ impl<'gc> Domain<'gc> {
 
     /// Resolve a Multiname and return the script that provided it.
     ///
+    /// Like Flash Player (avmplus `DomainEnv::getNamedScript`), the parent
+    /// domains are asked first: a definition in an ancestor always wins over one
+    /// in this domain. That is not only about the same name being defined twice
+    /// (`export_definition` already ignores a duplicate of an ancestor's
+    /// definition); it also decides which of two *different* namespaces of the
+    /// multiname's namespace set is found. One game's client DLLs define a
+    /// `flash.system::trace` function, and every `import flash.system.*` script
+    /// that calls `trace(...)` must still reach the built-in public `trace` of
+    /// the root domain.
+    ///
     /// If a name does not exist or cannot be resolved, no script or name will
     /// be returned.
     pub fn get_defining_script(
         self,
         multiname: &Multiname<'gc>,
     ) -> Option<(QName<'gc>, Script<'gc>)> {
+        if let Some(parent) = self.0.parent
+            && let Some(found) = parent.get_defining_script(multiname)
+        {
+            return Some(found);
+        }
+
         if let Some(name) = multiname.local_name()
             && let Some((ns, script)) = self.cell().defs.get_with_ns_for_multiname(multiname)
         {
@@ -212,23 +228,18 @@ impl<'gc> Domain<'gc> {
             return Some((qname, *script));
         }
 
-        if let Some(parent) = self.0.parent {
-            return parent.get_defining_script(multiname);
-        }
-
         None
     }
 
+    /// Parent domains first, as in `get_defining_script`.
     fn get_class_inner(self, multiname: &Multiname<'gc>) -> Option<Class<'gc>> {
-        if let Some(class) = self.cell().classes.get_for_multiname(multiname) {
-            return Some(*class);
+        if let Some(parent) = self.0.parent
+            && let Some(class) = parent.get_class_inner(multiname)
+        {
+            return Some(class);
         }
 
-        if let Some(parent) = self.0.parent {
-            return parent.get_class_inner(multiname);
-        }
-
-        None
+        self.cell().classes.get_for_multiname(multiname).copied()
     }
 
     pub fn get_class(
