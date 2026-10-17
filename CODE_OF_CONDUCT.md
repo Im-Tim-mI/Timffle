@@ -1,3 +1,7 @@
+> [!NOTE]
+> **Timffle：** 本檔是上游 Ruffle 的行為準則，原樣保留；在 Timffle 的 repo 同樣適用，但 Timffle 不是 Ruffle 的官方場所，Ruffle 的管理團隊不負責 Timffle。Timffle 的相關問題請聯絡 repo 維護者（https://github.com/Im-Tim-mI）。
+> This is upstream Ruffle's code of conduct, kept as is. It applies in the Timffle repository too, but Timffle is not an official Ruffle venue and Ruffle's moderators are not responsible for it; for Timffle, contact the repository maintainer (https://github.com/Im-Tim-mI).
+
 # Code of Conduct
 
 This project uses the <a href=https://www.rust-lang.org/policies/code-of-conduct>Rust Code Of Conduct</a>.

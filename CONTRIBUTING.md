@@ -1,3 +1,7 @@
+> [!NOTE]
+> **Timffle：** 本檔是上游 Ruffle 的貢獻指南，原樣保留。對 **Timffle** 的貢獻請開在 https://github.com/Im-Tim-mI/Timffle ，並另外遵守 [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md) 的「貢獻規則」。只和上游 Ruffle 有關的修正，請直接貢獻給 [Ruffle](https://github.com/ruffle-rs/ruffle)（依下面的指南）。
+> This is upstream Ruffle's contributing guide, kept as is. Contributions to **Timffle** go to https://github.com/Im-Tim-mI/Timffle and also follow the contribution rules in [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md). Fixes that are purely about upstream Ruffle should go to [Ruffle](https://github.com/ruffle-rs/ruffle) following the guide below.
+
 # Contributing to Ruffle
 
 🎉 Thanks for your interest in Ruffle! Contributions of all kinds are welcome.

@@ -1,188 +1,256 @@
-<p align="center">
-  <a href="https://ruffle.rs"><img alt="Ruffle" src="https://ruffle.rs/logo.svg" /></a>
-</p>
-<p align="center">
-  <a href="https://github.com/ruffle-rs/ruffle/actions"><img alt="Rust Build Status" src="https://img.shields.io/github/actions/workflow/status/ruffle-rs/ruffle/test_rust.yml?label=Rust%20Build&logo=github&branch=master" /></a>
-  <a href="https://github.com/ruffle-rs/ruffle/actions/workflows/test_web.yml"><img alt="Web Build Status" src="https://img.shields.io/github/actions/workflow/status/ruffle-rs/ruffle/test_web.yml?label=Web%20Build&logo=github&branch=master" /></a>
-  <a href="https://discord.gg/ruffle"><img alt="Ruffle Discord" src="https://img.shields.io/discord/610531541889581066?label=&color=7389d8&labelColor=6a7ec2&logoColor=ffffff&logo=discord" /></a>
-  <a href="https://crowdin.com/project/ruffle"><img alt="Ruffle translations" src="https://badges.crowdin.net/ruffle/localized.svg" /></a>
-  <br />
-  <a href="https://addons.mozilla.org/en-US/firefox/addon/ruffle_rs/"><img alt="Firefox Extension" src="https://img.shields.io/amo/v/ruffle_rs?logo=firefoxbrowser&logoColor=white&label=firefox" /></a>
-  <a href="https://chromewebstore.google.com/detail/ruffle-flash-emulator/donbcfbmhbcapadipfkeojnmajbakjdc"><img alt="Chrome Extension" src="https://img.shields.io/chrome-web-store/v/donbcfbmhbcapadipfkeojnmajbakjdc?logo=googlechrome&logoColor=white&label=chrome" /></a>
-  <a href="https://flathub.org/apps/rs.ruffle.Ruffle"><img alt="Ruffle Flathub" src="https://img.shields.io/flathub/v/rs.ruffle.Ruffle?color=007acc&logo=flathub" /></a>
-  <a href="https://www.npmjs.com/package/@ruffle-rs/ruffle"><img alt="Ruffle npm" src="https://img.shields.io/npm/v/@ruffle-rs/ruffle?color=007acc&logo=npm" /></a>
-  <a href="https://aur.archlinux.org/packages/ruffle-nightly-bin"><img alt="Ruffle AUR" src="https://img.shields.io/aur/version/ruffle-nightly-bin?logo=archlinux" /></a>
-  <br />
-  <strong><a href="https://ruffle.rs">website</a> | <a href="https://ruffle.rs/demo">demo</a> | <a href="https://github.com/ruffle-rs/ruffle/releases">nightly builds</a> | <a href="https://github.com/ruffle-rs/ruffle/wiki">wiki</a></strong>
-</p>
+# Timffle
 
-# Ruffle
+> **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支（fork）**，專注在讓淘米台灣的 Flash 遊戲——**摩爾莊園、賽爾號、小花仙、彈彈堂**——在 Chrome 裡繼續玩。
+> 它由「修補過的 Ruffle Flash 模擬器」加上「只需安裝一次的連線小幫手」組成。
 
-Ruffle is an Adobe Flash Player emulator written in the Rust programming language. Ruffle targets both the desktop and the web using WebAssembly.
+[English](README.en.md) ｜ 版本 `0.8.0.26296`（基於 Ruffle nightly 2026-10-13）｜ 授權 MIT 或 Apache-2.0（雙授權，任選其一，與 Ruffle 相同）
 
-## Table of Contents
-* [Project status](#project-status)
-* [Using Ruffle](#using-ruffle)
-* [Building from source](#building-from-source)
-  * [Prerequisites](#prerequisites)
-  * [Linux prerequisites](#linux-prerequisites)
-  * [Desktop](#desktop)
-    * [Build](#build)
-    * [macOS](#macos)
-  * [Web or Extension](#web-or-extension)
-  * [Android](#android)
-  * [Scanner](#scanner)
-  * [Exporter](#exporter)
-* [Structure](#structure)
-* [Sponsors](#sponsors)
-* [License](#license)
-* [Contributing](#contributing)
+> [!IMPORTANT]
+> **Timffle 與 Ruffle 專案、Ruffle LLC 沒有隸屬或合作關係，也沒有得到它們的認可。** Flash 模擬核心幾乎全部是 Ruffle 與其[數百位貢獻者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 歷史、作者紀錄與授權檔。
+> **Timffle 的問題請回報到 [Timffle 的 Issues](https://github.com/Im-Tim-mI/Timffle/issues)，不要回報給 Ruffle。** 「Ruffle」名稱與標誌屬於 Ruffle 專案，所以本分支改用 Timffle 這個名字與自己的圖示（見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。Ruffle 原本的說明文件保留在 [`README.ruffle.md`](README.ruffle.md)。
 
+---
 
-## Project status
+## 目錄
 
-Ruffle supports ActionScript 1, 2 and 3 pretty well, but it's still not finished by any means. Please report any issues in the [Issue Tracker](https://github.com/ruffle-rs/ruffle/issues).
+1. [用途](#1-用途)
+2. [支援的遊戲與目前狀態](#2-支援的遊戲與目前狀態)
+3. [安裝方法](#3-安裝方法)
+4. [使用方式與設定](#4-使用方式與設定)
+5. [疑難排解](#5-疑難排解)
+6. [運作原理](#6-運作原理)
+7. [Timffle 與 Ruffle 的差異](#7-timffle-與-ruffle-的差異)
+8. [從原始碼建置](#8-從原始碼建置)
+9. [測試](#9-測試)
+10. [已知限制](#10-已知限制)
+11. [Repo 結構](#11-repo-結構)
+12. [跟進上游 Ruffle](#12-跟進上游-ruffle)
+13. [授權、致謝與聲明](#13-授權致謝與聲明)
 
-## Using Ruffle
+---
 
-The easiest way to try out Ruffle is to visit the [web demo page](https://ruffle.rs/demo/), then click the "Select File" button to load a SWF file of your choice.
+## 1. 用途
 
-[Nightly builds](https://ruffle.rs/downloads#nightly-releases) of Ruffle are available for desktop and web platforms.
+Adobe 已在 2020 年底終止 Flash，Chrome 也移除了 Flash。淘米台灣的《摩爾莊園》《賽爾號》《小花仙》《彈彈堂》仍是 Flash（ActionScript 3）網頁遊戲，而且**用 TCP Socket 連遊戲伺服器**。要在現在的 Chrome 裡玩，會碰到兩個問題：
 
-For more detailed instructions, see our [wiki page](https://github.com/ruffle-rs/ruffle/wiki/Using-Ruffle).
+1. **Ruffle 還不完全支援這些遊戲需要的功能**（LocalConnection、URLStream、`Loader`／`URLLoader` 的取消、3D 透視、`Matrix3D`…），遊戲會卡住、點了沒反應、或畫面位置錯誤。
+2. **Chrome 擴充功能不能開 TCP 連線**，所以官方 Ruffle 擴充功能連不上這類遊戲的伺服器。
 
-## Building from source
+Timffle 同時解決這兩件事：
 
-### Prerequisites
+| 用途 | 說明 |
+|---|---|
+| **玩遊戲** | 安裝 Chrome 插件＋連線小幫手後，打開遊戲網址就能登入、玩（個人使用、懷舊、封存）。 |
+| **Chrome ↔ TCP 的參考實作** | 「擴充功能＋Native Messaging 小幫手」讓 `flash.net.Socket` 能連 TCP，並有完整的安全限制（網站白名單、只連公開網路位址、不監聽任何連接埠、不常駐）。 |
+| **Flash 相容性修正** | 對 Ruffle 的修正都是獨立的 git commit（見[第 7 節](#7-timffle-與-ruffle-的差異)），未來可以整理後回饋給 Ruffle。 |
+| **以真 Flash 為標準答案的差異測試** | [`timffle/difftest/`](timffle/difftest/) 用 Adobe Flash Player 32 的實際輸出當「正確答案」逐行比對；[`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md) 記錄量到的 Flash 行為。 |
 
-* Latest stable channel of [Rust](https://www.rust-lang.org/tools/install)
-* Java, available on your PATH as `java` (required for building the library containing the builtin Flash classes for ActionScript 3)
+## 2. 支援的遊戲與目前狀態
 
-### Linux prerequisites
+| 遊戲 | 網址 | 狀態 |
+|---|---|---|
+| 摩爾莊園 | https://mole.61.com.tw/ | **已用真實帳號在 Linux＋Chrome 155 驗證**（前身 ruffle-mole-chrome 0.8.0.26294）：登入、本地帳號頁（3D 轉盤）、進入世界、走路、換地圖、賽車座位。 |
+| 賽爾號 | http://seer.61.com.tw/ | 預設放行 Socket 連線，**未實測遊玩**。 |
+| 小花仙 | http://hua.61.com.tw/ | 預設放行 Socket 連線，**未實測遊玩**。 |
+| 彈彈堂 | http://ddt.61.com.tw/main_index.php | 預設放行 Socket 連線，**未實測遊玩**。 |
 
-The following are typical dependencies for Linux:
+平台驗證範圍：
 
-* Ubuntu/Debian:
-  ```shell
-  sudo apt install pkg-config libasound2-dev libudev-dev libfontconfig-dev libfreetype6-dev libssl-dev default-jre-headless g++
-  ```
+| 平台 | 驗證程度 |
+|---|---|
+| Linux x64＋Chrome 155 | **實機驗證**：安裝／移除、自動啟停、二進位傳輸、連線失敗處理、摩爾莊園遊戲流程 |
+| Windows x64 | 小幫手與安裝／移除程式在 **Wine 模擬環境**測試（Wine 不是 Windows 實機） |
+| Windows ARM64、macOS（Intel／Apple Silicon）、Linux ARM64 | 只做了交叉編譯，**未實機測試** |
 
-* Fedora/RHEL:
-  ```shell
-  sudo dnf install pkgconf-pkg-config alsa-lib-devel systemd-devel fontconfig-devel freetype-devel openssl-devel java-latest-openjdk-headless gcc-c++
-  ```
+安裝程式替 **Google Chrome** 註冊小幫手（Linux／macOS 上，Beta／Dev／Canary 與 Chromium 只在你用過、使用者資料夾已存在時才註冊）；Edge、Brave 等其他 Chromium 系瀏覽器不會被註冊。小幫手尚未取得 Microsoft 或 Apple 的簽章／公證。
 
-### Desktop
+## 3. 安裝方法
 
-#### Build
+### 需求
 
-Use the following command to build and run the desktop app:
+- **Chrome 桌面版**（Windows 10/11、macOS、Linux；實測 Chrome 155），需要 Manifest V3 擴充功能與 Native Messaging。
+- 不需要 Node.js、不需要系統管理員權限、不需要另外開任何服務或視窗。
 
-`cargo run --release --package=ruffle_desktop`
+### 步驟
 
-To run a specific SWF file, pass the SWF path as an argument:
+1. **下載**：到本 repo 的 [Releases](https://github.com/Im-Tim-mI/Timffle/releases) 下載 `timffle-chrome-<版本>.zip`，並核對 SHA-256：
 
-`cargo run --release --package=ruffle_desktop -- test.swf`
+   ```sh
+   sha256sum -c timffle-<版本>-SHA256SUMS.txt     # Linux
+   shasum -a 256 -c timffle-<版本>-SHA256SUMS.txt # macOS
+   ```
 
-To build in debug mode, simply omit `--release` from the command.
+   解壓縮後會得到 `timffle/`，裡面有 `extension/`（Chrome 插件）、`helper/`（連線小幫手與安裝／移除程式）、`LICENSES/`（授權檔）、`NOTICE.md`、`README.txt`。**請把整個資料夾放在固定位置**，之後不要刪除或搬移。
 
-Desktop has a few optional features which you can specify via `--features`, comma separated:
+2. **安裝連線小幫手（只要一次）**——它讓 Chrome 插件能連到遊戲伺服器：
 
-* `tracy`: Enables profiling to [Tracy](https://github.com/wolfpld/tracy). You may need to expand the log filter to see everything, e.g. `RUST_LOG="warn,ruffle=debug"`
-* `tracy_images`: Enables Tracy frame captures. Implies `tracy`.
-* `tracy_avm`: Enables profiling AVM execution with Tracy. Implies `tracy`.
-* `render_debug_labels`: Enables debug labels during rendering, useful for debugging graphics with [renderdoc](https://renderdoc.org/) or similar.
+   | 系統 | 做法 |
+   |---|---|
+   | Windows 10/11 | 開啟 `helper` 資料夾，雙擊 `install-windows.cmd`。若出現「Windows 已保護您的電腦」，確認是這個檔案後按「其他資訊」→「仍要執行」。看到「已安裝連線小幫手」即完成。 |
+   | macOS | 雙擊 `helper/install-macos.command`。小幫手沒有 Apple 簽章，若被擋下：「系統設定」→「隱私權與安全性」→ 找到被擋的項目按「仍要打開」，再雙擊一次。 |
+   | Linux | 在 `helper` 資料夾開終端機：`sh install-linux.sh` |
 
-#### macOS
+   安裝程式只做「每個使用者」的安裝：把小幫手放到使用者目錄，並向 Chrome 註冊 Native Messaging（Windows 寫入 `HKCU` 登錄、macOS／Linux 寫入使用者的 `NativeMessagingHosts` 資料夾）。不裝系統服務、不開機自動啟動、不會自動解除下載標記或停用任何安全功能。
 
-Ruffle desktop can be built from our [Homebrew Tap](https://github.com/ruffle-rs/homebrew-ruffle/):
+3. **載入 Chrome 插件**：
+   1. 開啟 `chrome://extensions`，打開右上角「**開發人員模式**」。
+   2. 按「**載入未封裝項目**」，選擇解壓縮出來的 `extension` 資料夾。
+   3. 如果裝過 Ruffle（官方版）或舊的 ruffle-mole-chrome 插件，請先停用或移除，避免兩個插件搶著接管。
 
-`brew install --HEAD ruffle-rs/ruffle/ruffle`
+4. **確認小幫手有裝好**：在插件的「選項」頁找到「Socket 連線」，「連線小幫手」旁應顯示「已安裝（版本 1.2.0）」。若顯示找不到：重新執行安裝程式，**完全關閉 Chrome 再開**。
 
-_Note: because it is HEAD-only, you'll need to run `brew upgrade --fetch-HEAD ruffle` each time you want to update._
+5. **開始玩**：打開 https://mole.61.com.tw/ ，按播放器的播放鍵後照常登入，不用設定代理。賽爾號、小花仙、彈彈堂同樣直接打開各自的網站。首次載入插件後請重新整理已開啟的遊戲頁；若仍顯示下載 Flash 的提示，等幾秒再重新整理一次。
 
-### Web or Extension
+### 從 ruffle-mole-chrome 換到 Timffle
 
-Follow [the instructions in the web directory](web/README.md#building-from-source) for building
-either the web or browser extension version of Ruffle.
+Timffle 的連線小幫手改名為 `timffle-socket-helper`（Native Messaging 名稱 `timffle_socket_helper`，安裝資料夾 `TimffleSocketHelper`），與舊的 `ruffle-socket-helper` 不會互相覆寫。換版時：用**舊壓縮檔**裡的移除程式移除舊小幫手 → 移除舊插件 → 依上面步驟安裝 Timffle。擴充功能 ID 不變（`eandddnbchclalbjkhfelhjhpijifcog`）。
 
-This project is tested with BrowserStack.
+### 更新
 
-### Android
+用新版 ZIP 的 `extension/` 內容覆蓋原本載入的資料夾 → 到 `chrome://extensions` 對該插件按「重新載入」→ 遊戲頁強制重新整理（Windows／Linux：`Ctrl+Shift+R`，macOS：`Cmd+Shift+R`）。只有在 [CHANGELOG](timffle/CHANGELOG.md) 寫明小幫手有更新時，才需要重跑安裝程式。
 
-Follow the [instructions](https://github.com/ruffle-rs/ruffle-android/blob/main/CONTRIBUTING.md#building-from-source) in the `ruffle-android` project for building the Android application of Ruffle.
+### 移除
 
-### Scanner
+1. 執行 `helper` 資料夾裡的 `uninstall-windows.cmd`、`uninstall-macos.command` 或 `uninstall-linux.sh`（只會刪除安裝程式自己建立的檔案和設定）。
+2. 到 `chrome://extensions` 移除插件。
 
-If you have a collection of "real world" SWFs to test against, the scanner may be used to benchmark
-ruffle's parsing capabilities. Provided with a folder and an output filename, it will attempt to read
-all of the Flash files and report on the success of such a task.
+小幫手的安裝位置：Windows `%LOCALAPPDATA%\TimffleSocketHelper`、macOS `~/Library/Application Support/TimffleSocketHelper`、Linux `~/.local/share/timffle-socket-helper`。
 
-`cargo run --release --package=ruffle_scanner -- scan folder/with/swfs/ results.csv`
+## 4. 使用方式與設定
 
-### Exporter
+插件的「選項」頁有一個「**Socket 連線（遊戲伺服器）**」區塊（中英對照）：
 
-If you have a SWF file and would like to capture an image of it, you may use the exporter tool.
-This currently requires hardware acceleration, but can be run headless (with no window).
+- **連線方式**：預設且建議「連線小幫手」；進階使用者可改成「自訂 WebSocket 代理」，自己執行 [`timffle/relay/`](timffle/relay/) 裡的本機 WebSocket↔TCP 代理（需要 Node.js 22+，Chrome 可能詢問本機網路存取權限）。
+- **允許的網站來源（每行一個）**：只有清單內的網站來源（協定＋主機＋選用連接埠，不接受 `*` 或路徑）才能使用 Socket 連線。預設是摩爾莊園、賽爾號、小花仙、彈彈堂的 `mole／seer／hua／ddt.61.com.tw`，各含 `http://` 與 `https://`。要加其他網站請自行新增——**只加入你信任的網站**，因為被允許的網站可以透過小幫手連到任何公開網路上的 TCP 位址。
+- 儲存或停用後，請重新載入遊戲頁。
 
-- `cargo run --release --package=exporter -- path/to/file.swf`
-- `cargo run --release --package=exporter -- path/to/file.swf path/to/screenshots --frames 5`
+## 5. 疑難排解
 
-## Structure
+| 症狀 | 可能原因／處理 |
+|---|---|
+| 選項頁顯示找不到小幫手 | 重新執行 `helper` 裡的安裝程式，然後**完全關閉 Chrome**（含背景程序）再開。Chrome 只在啟動時讀取 Native Messaging 註冊。 |
+| 打開遊戲仍顯示「下載 Flash」 | 確認插件已啟用且沒有 Ruffle 擴充功能同時啟用；重新整理，等幾秒再重新整理一次。 |
+| 第一次點擊（播放鍵或遊戲裡的「開始」）沒反應 | 再點一次。自動化測試中觀察到第一次點擊偶爾不起作用，原因沒有查明。 |
+| 畫面上的中文變成方框或消失 | Linux 缺少中日韓字型：安裝 `fonts-noto-cjk` 之類的字型套件後重開 Chrome。本插件對這些遊戲預設使用瀏覽器字型繪製裝置文字。 |
+| Windows／macOS 擋下安裝程式或小幫手 | 未簽章的預期行為，請確認檔案來源後依提示執行；不要為此停用系統的安全保護。 |
+| 登入後主控台出現 `Error #2030`（來自遊戲的登入禮包模組） | 已知：遊戲自己的競態條件；重現實驗中真 Flash 32 也丟同一個錯誤。 |
+| 想回報問題 | 到 [Timffle Issues](https://github.com/Im-Tim-mI/Timffle/issues)，附上 Chrome 版本、作業系統與開發人員工具 Console 的輸出（先遮蔽帳號、密碼與 token）。**請不要把 Timffle 的問題回報給 Ruffle。** |
 
-- `core` - core emulator and common code
-- `swf` - SWF and ActionScript parser
-- `desktop` - desktop client (uses `wgpu-rs`)
-- `web` - web client and browser extension (uses `wasm-bindgen`)
-- `render` - various rendering backends for both desktop and web
-- `video` - video decoding backends
-- `flv` - Flash Video decoder
-- `wstr` - a Flash-compatible implementation of strings
-- `scanner` - a utility to bulk parse SWF files
-- `exporter` - a utility to generate PNG screenshots of a SWF file
+## 6. 運作原理
 
-## Sponsors
+```
+遊戲頁面  https://mole.61.com.tw/
+   │   Timffle（WebAssembly，Ruffle 核心＋修正）接管 Flash 元件；遊戲呼叫 flash.net.Socket
+   ▼
+Chrome 擴充功能（Manifest V3）
+   │   page bridge → content script → service worker
+   │   只放行「允許的網站來源」；每個 Socket 對應一條 Native Messaging 連線
+   ▼
+連線小幫手 timffle-socket-helper（Go；由 Chrome 按需啟動，用完退出）
+   │   只連公開網路位址：擋私網、本機、連結本地、多播與保留位址（含 IPv4 對映 IPv6）
+   ▼
+遊戲伺服器（TCP）
+```
 
-You can support the development of Ruffle via [GitHub Sponsors](https://github.com/sponsors/ruffle-rs). Your sponsorship will help to ensure the accessibility of Flash content for the future. Thank you!
+- **Chrome 不允許擴充功能開 TCP**，所以需要原生程式；Native Messaging 是 Chrome 官方支援的做法。小幫手**不監聽任何連接埠、不裝服務、不常駐**，每個 Socket 一個程序，連線結束就退出。
+- **只有一個擴充功能 ID 能叫用小幫手**：`eandddnbchclalbjkhfelhjhpijifcog`（由 [`timffle/extension-key/`](timffle/extension-key/) 的公鑰決定）。
+- 小幫手**不記錄連線內容**，有流量控制與上限（單次送出 ≤ 64 KiB、單次接收 ≤ 32 KiB、緩衝 ≤ 1 MiB、停滯 30 秒逾時、全域最多 16 個 Socket）。
 
-Sincere thanks to the diamond level sponsors of Ruffle:
+完整說明：[`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md)、[`timffle/docs/PROTOCOL.md`](timffle/docs/PROTOCOL.md)。
 
-<p align="center">
-  <a href="https://www.newgrounds.com"><img src="https://ruffle.rs/sponsors/newgrounds.png" alt="Newgrounds.com"></a>
-  <a href="https://www.cpmstar.com"><img src="https://ruffle.rs/sponsors/cpmstar.png" alt="CPMStar"></a>
-  <a href="https://deepnight.net"><img src="https://ruffle.rs/sponsors/deepnight.png" alt="Sébastien Bénard"></a>
-  <a href="https://www.crazygames.com"><img src="https://ruffle.rs/sponsors/crazygames.png" alt="Crazy Games"></a>
-  <a href="https://www.coolmathgames.com"><img src="https://ruffle.rs/sponsors/coolmathgames.png" alt="Cool Math Games"></a>
-  <a href="https://www.nytimes.com/"><img src="https://ruffle.rs/sponsors/nyt.png" alt="The New York Times"></a>
-  <a href="https://www.armorgames.com/"><img src="https://ruffle.rs/sponsors/armorgames.png" alt="Armor Games"></a>
-  <a href="https://www.ondaeduca.com/"><img src="https://ruffle.rs/sponsors/ondaeduca.png" alt="Onda Educa"></a>
-  <a href="https://www.twoplayergames.org/"><img src="https://ruffle.rs/sponsors/twoplayergames.png" alt="TwoPlayerGames.org"></a>
-  <a href="https://www.wowgame.jp/"><img src="https://ruffle.rs/sponsors/wowgame.png" alt="wowgame.jp"></a>
-  <a href="http://kupogames.com/"><img src="https://ruffle.rs/sponsors/mattroszak.png" alt="Matt Roszak"></a>
-  <a href="https://www.dolldivine.com/"><img src="https://ruffle.rs/sponsors/dolldivine.png" alt="Doll Divine"></a>
-  <a href="https://movavi.com/"><img src="https://ruffle.rs/sponsors/movavi.svg" alt="Movavi"></a>
-  <a href="https://www.kongregate.com/"><img src="https://ruffle.rs/sponsors/kongregate.svg" alt="Kongregate"></a>
-  <a href="https://www.bubbleshooter.net/"><img src="https://ruffle.rs/sponsors/bubble-shooter.png" alt="Bubble Shooter"></a>
-  <a href="https://www.neopets.com/"><img src="https://ruffle.rs/sponsors/neopets.png" alt="Neopets"></a>
-</p>
+## 7. Timffle 與 Ruffle 的差異
 
-## License
+基底是 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/ruffle-rs/ruffle/commit/46fec3f1b2e625fae7035bb3b00d6d5c0ec0d413)）。之後的每一項改動都是獨立的 commit：
 
-Ruffle is licensed under either of
+| Commit 標題 | 內容 |
+|---|---|
+| `extension: Native socket helper bridge and socket settings` | Chrome 擴充功能的 Socket 橋接、與小幫手通訊、「Socket 連線」設定頁、四站預設允許清單、單元測試 |
+| `web: WebSocket socket backend fixes and canvas generic fonts` | 網頁版 Socket 後端、canvas 裝置字型的通用名稱修正（否則中文會消失） |
+| `avm2: Network, LocalConnection, URLStream and loader fixes` | `LocalConnection`、`URLStream`、`Loader`／`URLLoader` 取消、AMF3 循環參照、網域名稱「先父網域」解析、網頁版遞迴深度保護 |
+| `render: 3D transforms, Matrix3D semantics and perspective projection` | `z`／`rotationX/Y/Z`／`scaleZ`／`matrix3D`、`perspectiveProjection`、`Matrix3D`、`Utils3D`、投影後的 `getBounds`／命中測試／`BitmapData.draw` |
+| `vendor: Add rust-flash-lso …` ＋ `flash-lso: Fix AMF3 encoder reference indices` | 以 subtree 收錄 [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso)（含其完整歷史）並修正 AMF3 編碼器 |
+| `web: Rebrand the web extension and player UI as Timffle` | 使用者看得到的名稱、圖示與連結改成 Timffle（見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)） |
 
-- Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-- MIT License (http://opensource.org/licenses/MIT)
+每項修正的細節與原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改過的 Ruffle 檔案清單（Apache-2.0 第 4(b) 條的「修改聲明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差異：`git diff 46fec3f -- . ':!timffle'`。
 
-at your option.
+## 8. 從原始碼建置
 
-Ruffle depends on third-party libraries under compatible licenses. See [LICENSE.md](LICENSE.md) for full information.
+需要：git、Rust 1.99（含 `wasm32-unknown-unknown`）、wasm-bindgen CLI 0.2.127（要與 `Cargo.lock` 一致）、binaryen（`wasm-opt`）、Node.js 24＋npm、Go 1.27、Python 3。本 repo 已包含所有原始碼（含修補過的 flash-lso），**不需要另外下載 Ruffle**：
 
-### Contributing
+```sh
+git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
+VERSION4=0.8.0.26296 timffle/scripts/build-extension.sh   # 建置 wasm 與 Chrome 擴充功能 → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26296 timffle/scripts/package-release.sh   # 交叉編譯小幫手（7 個平台）並封裝發行 ZIP（含授權檔）→ timffle/build/out/
+```
 
-Ruffle welcomes contribution from everyone. See [CONTRIBUTING.md](CONTRIBUTING.md) for help getting started.
+步驟、工具版本、擴充功能金鑰與常見問題：[`timffle/docs/BUILD.md`](timffle/docs/BUILD.md)。Ruffle 原有的桌面版等其他部分，建置方式與上游相同（見 [`README.ruffle.md`](README.ruffle.md)），但請先讀 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)：**目前只有網頁版改了品牌**，散布其他部分的建置前必須先改名。
 
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you shall be dual licensed as above, without any
-additional terms or conditions.
+## 9. 測試
 
-The entire Ruffle community, including the chat room and GitHub project, is expected to abide by the [Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct) that the Rust project itself follows.
+| 測試 | 內容 | 位置 |
+|---|---|---|
+| 差異測試（對真 Flash） | 用 Haxe 寫小 SWF，在 Adobe Flash Player 32（Wine）與 Timffle 各跑一次，逐行比對；30 項 golden。 | [`timffle/difftest/`](timffle/difftest/) |
+| 小幫手單元測試 | Go：協定、連線政策、流量控制、安裝／移除 | `timffle/helper/*_test.go` |
+| 封裝測試 | 發行 ZIP 的內容、權限與私鑰檢查 | `timffle/helper/installer-tests/` |
+| 擴充功能單元測試 | 設定、頁面橋接、背景權限 | `web/packages/extension/tests/` |
+| 品牌檢查 | 使用者看得到的文字不得再出現「Ruffle」產品名 | `python3 timffle/scripts/rebrand.py --check` |
+| 瀏覽器＋小幫手整合測試 | 無頭 Chrome＋真小幫手，只連 localhost | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
+| Ruffle 自身回歸測試 | 上游測試套件加上我們新增的測試 | `cargo test -p tests --test tests` |
+
+方法與重現步驟：[`timffle/docs/TESTING.md`](timffle/docs/TESTING.md)。每個版本實際跑過哪些測試、結果如何，記在 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)。
+
+## 10. 已知限制
+
+- **平台**：Windows 只在 Wine 測過、macOS 未實測；小幫手**未簽章**。
+- **其他遊戲**：賽爾號、小花仙、彈彈堂只是預設放行 Socket，沒有實測遊玩。
+- **品牌**：只有網頁版（擴充功能、網頁 Demo、播放器畫面文字）改成 Timffle；桌面版、Safari 擴充功能、npm 套件仍是上游 Ruffle 的名稱與圖示，**不要以 Timffle 名義散布它們的建置**（見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。
+- **3D**：巢狀的「投影擁有者」與 Flash 不同；Flash 對 3D 圖做約 1 像素的雙線性濾波，Timffle 邊緣較俐落；透視只在 wgpu 渲染器實作。`Matrix3D.determinant`／`invert` 與 Flash 差在最後一位有效數字。
+- **命中測試**：Flash 的 `hitTestPoint(x, y, true)` 以整數像素判斷，Timffle 用精確座標；邊緣偶有 1～2 格差異。
+- **網頁版遞迴深度**：WebAssembly 呼叫堆疊比 Flash 淺，保護上限 900 層；賽車地圖少數遠距離尋路會被截斷。
+- 其他已知差異：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) 末尾與 [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md)。
+
+## 11. Repo 結構
+
+本 repo 就是 Ruffle 的完整原始碼樹（`core/`、`web/`、`desktop/`、`render/`、`swf/`… 與上游相同的位置），再加上：
+
+```
+README.md / README.en.md   Timffle 的說明（本檔與英文版）
+README.ruffle.md           Ruffle 原本的 README（原樣保留）
+LICENSE.md                 Ruffle 的授權檔（原樣保留；含第三方相依的授權清單）
+NOTICE.md                  Timffle 的聲明、著作權、第三方元件與商標說明
+vendor/rust-flash-lso/     rust-flash-lso（git subtree，含歷史；MIT，見其 LICENSE）
+timffle/                   Timffle 自己的部分：
+  LICENSE-MIT / LICENSE-APACHE   Timffle 原創部分的授權
+  CHANGELOG.md                   版本歷史
+  MODIFIED-FILES.md              修改過的 Ruffle 檔案清單（腳本產生）
+  docs/                          架構、通訊協定、建置、測試、品牌、跟進上游、對 Ruffle 的修正、Flash 行為紀錄
+  helper/                        連線小幫手（Go）、安裝／移除程式、封裝腳本
+  relay/                         進階：本機 WebSocket↔TCP 代理（內含 MIT 授權的 ws 函式庫）
+  extension-key/                 擴充功能公鑰與 ID（私鑰不在 repo 內）
+  difftest/                      差異測試：Haxe 測試、真 Flash 的 golden、執行／比對腳本
+  tools/                         Chrome 冒煙測試、整合測試、真實帳號測試、截圖工具
+  branding/                      Timffle 標誌與圖示的產生程式
+  scripts/                       建置、封裝、品牌替換與檢查、修改清單
+```
+
+## 12. 跟進上游 Ruffle
+
+Timffle 會持續跟進 Ruffle。做法（細節見 [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md)）：
+
+```sh
+git remote add upstream https://github.com/ruffle-rs/ruffle.git   # 只需一次
+git fetch upstream tag nightly-YYYY-MM-DD --no-tags
+git merge nightly-YYYY-MM-DD           # 用 merge 保留雙方歷史，不要 rebase 已公開的分支
+python3 timffle/scripts/rebrand.py     # 上游新增或翻譯的文字重新換成 Timffle
+python3 timffle/scripts/rebrand.py --check
+timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md
+```
+
+## 13. 授權、致謝與聲明
+
+- **Ruffle**：Copyright (c) 2018-2022 Ruffle LLC 與 Ruffle 貢獻者，MIT 或 Apache-2.0 雙授權，授權全文與第三方相依清單在 [`LICENSE.md`](LICENSE.md)（原樣保留）。Ruffle 的貢獻者紀錄完整保留在本 repo 的 git 歷史中（`git shortlog -sn 46fec3f`）。
+- **rust-flash-lso**：Copyright (c) 2020 Callum Thomson，MIT，見 [`vendor/rust-flash-lso/LICENSE`](vendor/rust-flash-lso/LICENSE)。
+- **Timffle 的修改與原創部分**：Copyright (c) 2026 Im-Tim-mI 與 Timffle 貢獻者，**MIT 或 Apache-2.0，任選其一**：[`timffle/LICENSE-MIT`](timffle/LICENSE-MIT)、[`timffle/LICENSE-APACHE`](timffle/LICENSE-APACHE)。
+- 除非你明確另外聲明，你有意提交到本專案的任何貢獻，依 Apache-2.0 對「貢獻」的定義，都以上述雙授權提供，不附加任何額外條款。
+- **商標**：「Ruffle」名稱與標誌屬於 Ruffle 專案；Timffle 只以描述方式提及（例如「Ruffle 的分支」「基於 Ruffle」）。「摩爾莊園」「賽爾號」「小花仙」「彈彈堂」「淘米」「Flash」「Adobe」「Chrome」等屬於各自的權利人。
+- **本 repo 不包含任何遊戲素材**（遊戲的 SWF、DLL、圖片、遊戲程式碼、伺服器位址、封包格式與加解密），也不修改遊戲檔案。請遵守遊戲的服務條款，只用自己的帳號。完整聲明見 [`NOTICE.md`](NOTICE.md)。

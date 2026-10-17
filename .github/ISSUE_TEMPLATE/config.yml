@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ruffle（上游專案 / upstream project）
+    url: https://github.com/ruffle-rs/ruffle
+    about: 只有在官方 Ruffle 也能重現、且與 Timffle 的修改無關時，才回報給 Ruffle。 / Report to Ruffle only problems that also happen in official Ruffle and are unrelated to Timffle's changes.
