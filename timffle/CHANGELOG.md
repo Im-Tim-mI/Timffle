@@ -2,6 +2,11 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.2.0（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 未發布
+
+- **wgpu 渲染器在只有 256 個頂點 uniform 向量的 GPU 上不再當掉**（Android 模擬器與許多手機 GPU 都是這個 WebGL 2 最低值）。上游 Ruffle 從 2026-09 起每次繪製把最多 200 組 transform 放進一個 uniform 陣列（約 1200 個向量）；有些 WebGL 實作會把它算進 `GL_MAX_VERTEX_UNIFORM_VECTORS`，建立管線時驗證失敗，播放器整個停掉。網頁版建立 wgpu-webgl 前先查這個上限，每次繪製的 transform 數改成「(上限 − 64) ÷ 6」（256 時為 32），超出的照常分批畫；上限夠大的裝置（一般 PC 是 4096）維持 200，行為不變。改動在 `render/wgpu/src/dynamic_transforms.rs`、`render/wgpu/src/lib.rs`、`web/src/builder.rs`。
+- 驗證：在回報 256 的 Android 模擬器（`-gpu swiftshader_indirect`）裡，原本 wgpu-webgl 會 panic，改後能建立渲染器並載入摩爾莊園，Timffle 瀏覽器的 10 項裝置測試（含 Ruffle 的 8 個 socket SWF）通過；該模式的 GPU 轉譯層連一般 WebGL 都畫不對，所以畫面另外在桌面無頭 Chrome 把上限假裝成 256 檢查（每次 32 組）：摩爾莊園首頁與真實上限（200 組）的畫面一致。回報 4096 的 `-gpu swangle_indirect` 模擬器畫面正常。**沒有**在實體手機上試、沒有跑完整上游測試。
+
 ## 0.8.0.26296 — 2026-10-17（Timffle 第一版）
 
 **專案改名為 Timffle，並改成 Ruffle 的完整分支。** 行為與 0.8.0.26295 相同，只有名稱、圖示、連結與 repo 結構改變。
