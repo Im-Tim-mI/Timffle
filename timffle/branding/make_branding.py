@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate the Timffle logo (word mark) and icons.
 
-The artwork is plain geometry (rectangles and polygons), so it renders the same everywhere and needs no
-font. It is original Timffle artwork, deliberately unlike the Ruffle logo, and is covered by the
-repository licence (MIT OR Apache-2.0).
+The artwork is plain geometry (rectangles, polygons, a gradient and one soft shadow), so it renders the same
+everywhere and needs no font. The icon is a white T and a yellow play triangle on an azure tile. It is
+original Timffle artwork, deliberately unlike the Ruffle logo, and is covered by the repository licence
+(MIT OR Apache-2.0).
 
 Usage: python3 timffle/branding/make_branding.py [--check]
   Writes timffle/branding/{timffle-logo.svg,timffle-icon.svg,splash-logo.tsx.txt,social-preview.png}, the copies
@@ -13,17 +14,18 @@ Usage: python3 timffle/branding/make_branding.py [--check]
 Needs Pillow (python3-pil) for the PNG icons.
 """
 import io
+import math
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
 BRANDING = ROOT / "timffle" / "branding"
 
 FACE = "#38b6ff"  # letter face
 SHADE = "#145a86"  # letter shadow / depth
-ICON_BG_TOP = (40, 150, 225)
+ICON_BG_TOP = (40, 150, 225)  # background panels (social preview, installer dialog), not the icon tile
 ICON_BG_BOTTOM = (18, 84, 140)
 
 # Block letters on a 100-unit-high grid: (width, [shapes]); a shape is ("rect", x, y, w, h) or ("poly", [(x, y), ...]).
@@ -85,36 +87,104 @@ def splash_tsx():
     return "\n".join(lines) + "\n"
 
 
-ICON_T = [("rect", 18, 22, 64, 16), ("rect", 41, 22, 18, 58)]  # on a 100x100 canvas
+# The icon, on a 100-unit square canvas: a white T and a yellow play triangle on an azure rounded tile. The T is
+# the letter, the triangle says "player", and it sits in the empty corner under the crossbar. The SVG and the
+# Pillow rendering below are drawn from the same numbers.
+ICON_TOP = (36, 148, 238)  # tile gradient, top and bottom
+ICON_BOTTOM = (10, 70, 160)
+ICON_PLAY = (255, 208, 56)  # the play triangle
+ICON_SHADOW = (4, 30, 90)  # one soft shadow under the T and the triangle
+ICON_SHADOW_OPACITY = 0.37
+ICON_SHADOW_DY, ICON_SHADOW_BLUR = 2.2, 2.4
+ICON_TILE = (2, 2, 98, 98, 22)  # x0, y0, x1, y1, corner radius
+ICON_T = [(15.5, 19, 79.5, 36, 5), (38.5, 19, 56.5, 81, 5)]  # crossbar and stem: x0, y0, x1, y1, corner radius
+ICON_TRI = [(64, 45), (64, 81), (88, 63)]  # the play triangle ...
+ICON_TRI_R = 3.2  # ... with its corners rounded by this radius
+
+
+def num(v):
+    return f"{v:.2f}".rstrip("0").rstrip(".")
+
+
+def inset_triangle(pts, r):
+    """The triangle moved inwards by r on every side. Drawn with a round stroke of width 2r it is the original
+    triangle with rounded corners."""
+    (ax, ay), (bx, by), (cx, cy) = pts
+    a, b, c = math.dist(pts[1], pts[2]), math.dist(pts[0], pts[2]), math.dist(pts[0], pts[1])
+    s = a + b + c
+    ix, iy = (a * ax + b * bx + c * cx) / s, (a * ay + b * by + c * cy) / s  # incenter
+    rho = abs((bx - ax) * (cy - ay) - (cx - ax) * (by - ay)) / s  # inradius
+    f = (rho - r) / rho
+    return [(ix + (x - ix) * f, iy + (y - iy) * f) for x, y in pts]
 
 
 def icon_svg():
-    body = "".join(svg_shape(s, 4, 4, SHADE) for s in ICON_T) + "".join(svg_shape(s, 0, 0, "#ffffff") for s in ICON_T)
+    tri = " ".join(f"{num(x)},{num(y)}" for x, y in inset_triangle(ICON_TRI, ICON_TRI_R))
+    play = "#%02x%02x%02x" % ICON_PLAY
+    shadow = "#%02x%02x%02x" % ICON_SHADOW
+    bars = "".join(f'<rect x="{num(x0)}" y="{num(y0)}" width="{num(x1 - x0)}" height="{num(y1 - y0)}" rx="{num(r)}" fill="#ffffff"/>'
+                   for x0, y0, x1, y1, r in ICON_T)
+    tx0, ty0, tx1, ty1, tr = ICON_TILE
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Timffle">'
-            "<title>Timffle</title><defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
-            f'<stop offset="0" stop-color="rgb{ICON_BG_TOP}"/><stop offset="1" stop-color="rgb{ICON_BG_BOTTOM}"/>'
-            '</linearGradient></defs><rect x="2" y="2" width="96" height="96" rx="20" fill="url(#g)"/>'
-            + body + "</svg>\n")
+            "<title>Timffle</title><defs>"
+            '<linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0" stop-color="rgb{ICON_TOP}"/><stop offset="1" stop-color="rgb{ICON_BOTTOM}"/></linearGradient>'
+            '<filter id="s" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">'
+            f'<feGaussianBlur in="SourceAlpha" stdDeviation="{num(ICON_SHADOW_BLUR)}"/><feOffset dy="{num(ICON_SHADOW_DY)}" result="b"/>'
+            f'<feFlood flood-color="{shadow}" flood-opacity="{num(ICON_SHADOW_OPACITY)}"/><feComposite in2="b" operator="in"/>'
+            '<feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'
+            f'<rect x="{num(tx0)}" y="{num(ty0)}" width="{num(tx1 - tx0)}" height="{num(ty1 - ty0)}" rx="{num(tr)}" fill="url(#g)"/>'
+            f'<g filter="url(#s)">{bars}'
+            f'<polygon points="{tri}" fill="{play}" stroke="{play}" stroke-width="{num(2 * ICON_TRI_R)}" stroke-linejoin="round"/></g>'
+            "</svg>\n")
+
+
+def fit_to_pixels(box, size):
+    """Small icons only: move the edges of a rounded rectangle onto whole pixels of the target size, so the T stays
+    crisp in the toolbar. The SVG is the master and is not fitted."""
+    x0, y0, x1, y1, r = box
+    s = size / 100
+    nx0, ny0, nx1, ny1 = (round(v * s) / s for v in (x0, y0, x1, y1))
+    return nx0, ny0, max(nx1, nx0 + 1 / s), max(ny1, ny0 + 1 / s), r
 
 
 def icon_image(size):
-    """Render the icon with Pillow, supersampled 8x, as an RGBA image."""
-    n = 100 * 8
+    """Render the icon with Pillow, supersampled, as an RGBA image."""
+    ss = max(2, min(8, 2048 // size))
+    n = size * ss
     k = n / 100
-    bg = Image.new("RGBA", (n, n))
-    grad = ImageDraw.Draw(bg)
+    x0, y0, x1, y1, r = ICON_TILE
+    # tile: vertical gradient over the tile's own height, through a rounded-rectangle mask
+    grad = Image.new("RGBA", (n, n))
+    gd = ImageDraw.Draw(grad)
     for y in range(n):
-        t = y / (n - 1)
-        c = tuple(round(a + (b - a) * t) for a, b in zip(ICON_BG_TOP, ICON_BG_BOTTOM)) + (255,)
-        grad.line([(0, y), (n, y)], fill=c)
-    mask = Image.new("L", (n, n), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([2 * k, 2 * k, 98 * k, 98 * k], radius=20 * k, fill=255)
+        t = min(1.0, max(0.0, (y - y0 * k) / ((y1 - y0) * k - 1)))
+        gd.line([(0, y), (n, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(ICON_TOP, ICON_BOTTOM)) + (255,))
+    tile = Image.new("L", (n, n), 0)
+    ImageDraw.Draw(tile).rounded_rectangle([x0 * k, y0 * k, x1 * k - 1, y1 * k - 1], radius=r * k, fill=255)
     img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    img.paste(bg, (0, 0), mask)
-    d = ImageDraw.Draw(img)
-    for off, fill in ((4, SHADE), (0, "#ffffff")):
-        for _, x, y, w, h in ICON_T:
-            d.rounded_rectangle([(x + off) * k, (y + off) * k, (x + off + w) * k, (y + off + h) * k], radius=3 * k, fill=fill)
+    img.paste(grad, (0, 0), tile)
+    # the T (white) and the play triangle (yellow)
+    white = Image.new("L", (n, n), 0)
+    wd = ImageDraw.Draw(white)
+    for box in ICON_T:
+        bx0, by0, bx1, by1, br = fit_to_pixels(box, size) if size <= 48 else box
+        wd.rounded_rectangle([bx0 * k, by0 * k, bx1 * k - 1, by1 * k - 1], radius=br * k, fill=255)
+    play = Image.new("L", (n, n), 0)
+    pd = ImageDraw.Draw(play)
+    ins = inset_triangle(ICON_TRI, ICON_TRI_R)
+    pd.polygon([(x * k, y * k) for x, y in ins], fill=255)
+    for i in range(3):
+        (px, py), (qx, qy) = ins[i], ins[(i + 1) % 3]
+        pd.line([(px * k, py * k), (qx * k, qy * k)], fill=255, width=round(2 * ICON_TRI_R * k))
+        pd.ellipse([(px - ICON_TRI_R) * k, (py - ICON_TRI_R) * k, (px + ICON_TRI_R) * k, (py + ICON_TRI_R) * k], fill=255)
+    # one soft shadow for both, then the shapes
+    shadow = ImageChops.offset(ImageChops.lighter(white, play), 0, round(ICON_SHADOW_DY * k)).filter(
+        ImageFilter.GaussianBlur(ICON_SHADOW_BLUR * k))
+    shadow_rgba = Image.new("RGBA", (n, n), ICON_SHADOW + (round(255 * ICON_SHADOW_OPACITY),))
+    img.alpha_composite(Image.composite(shadow_rgba, Image.new("RGBA", (n, n), (0, 0, 0, 0)), shadow))
+    img.alpha_composite(Image.composite(Image.new("RGBA", (n, n), (255, 255, 255, 255)), Image.new("RGBA", (n, n), (0, 0, 0, 0)), white))
+    img.alpha_composite(Image.composite(Image.new("RGBA", (n, n), ICON_PLAY + (255,)), Image.new("RGBA", (n, n), (0, 0, 0, 0)), play))
     return img.resize((size, size), Image.LANCZOS)
 
 
