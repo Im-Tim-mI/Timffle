@@ -8,7 +8,7 @@ use crate::bitmap::bitmap_data::{
 };
 use crate::bitmap::turbulence::Turbulence;
 use crate::context::{RenderContext, UpdateContext};
-use crate::display_object::{RenderOptions, TDisplayObject};
+use crate::display_object::{BoundsMode, RenderOptions, TDisplayObject};
 use gc_arena::Mutation;
 use ruffle_render::backend::RenderBackend;
 use ruffle_render::bitmap::{PixelRegion, PixelSnapping};
@@ -1382,8 +1382,47 @@ pub fn draw<'gc>(
     clip_rect: Option<Rectangle<Twips>>,
     quality: StageQuality,
 ) -> Result<(), BitmapDataDrawError> {
+    // Flash Player ignores the matrix when what it draws is 3D, or has 3D content (measured: translations,
+    // scales and rotations alike; the colour transform still applies).
+    let mut transform = transform;
+    if let IBitmapDrawable::DisplayObject(object) = &source
+        && crate::display_object::any_3d()
+        && object.subtree_has_own_3d()
+    {
+        transform.matrix = Matrix::IDENTITY;
+    }
+
+    // The transform of the drawn object itself is ignored, but not the projection it gives to its 3D children
+    // (measured on Flash Player).
+    let source_projection = match &source {
+        IBitmapDrawable::DisplayObject(object) => object.base().perspective_projection(),
+        IBitmapDrawable::BitmapData(_) => None,
+    };
+    let projection_owner = Transform {
+        perspective_projection: source_projection,
+        ..Default::default()
+    };
+
     // Calculate the maximum potential area that this draw call will affect
-    let bounds = transform.matrix * source.bounds();
+    let mut bounds = transform.matrix * source.bounds();
+    if let IBitmapDrawable::DisplayObject(object) = &source
+        && crate::display_object::any_3d()
+        && object.subtree_has_own_3d()
+    {
+        // 3D content below the drawn object is drawn projected, which can reach beyond its flat bounds.
+        let (stage_width, stage_height) = context.stage.stage_size();
+        let state = ruffle_render::transform::ChainState::new(
+            transform.matrix,
+            f64::from(stage_width),
+            f64::from(stage_height),
+        )
+        .push(&projection_owner);
+        let mut saw_3d = false;
+        let projected = object.bounds_with_chain(&state, BoundsMode::Engine, &mut saw_3d);
+        if saw_3d && projected.is_valid() {
+            bounds = projected;
+        }
+    }
     let mut dirty_region = PixelRegion::from(bounds);
     dirty_region.clamp(target.width(), target.height());
     if dirty_region.width() == 0 || dirty_region.height() == 0 {
@@ -1466,7 +1505,14 @@ pub fn draw<'gc>(
     }
 
     let mut transform_stack = ruffle_render::transform::TransformStack::new();
+    // 3D objects without a projection owner below the drawn object are projected about the centre of the stage.
+    let (stage_width, stage_height) = context.stage.stage_size();
+    transform_stack.set_stage_width(stage_width as f64);
     transform_stack.push(&transform);
+    transform_stack.set_root_projection((stage_width as f64 / 2.0, stage_height as f64 / 2.0));
+    if source_projection.is_some() {
+        transform_stack.push(&projection_owner);
+    }
 
     let mut cache_draws = vec![];
     let mut render_context = RenderContext {

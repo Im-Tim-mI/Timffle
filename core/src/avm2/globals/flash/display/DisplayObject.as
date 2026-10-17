@@ -128,16 +128,10 @@ package flash.display {
         public native function globalToLocal(point:Point):Point;
 
         [API("662")]
-        public function local3DToGlobal(point3d:Vector3D):Point {
-            stub_method("flash.display.DisplayObject", "local3DToGlobal");
-            return new Point(0, 0);
-        }
+        public native function local3DToGlobal(point3d:Vector3D):Point;
 
         [API("662")]
-        public function globalToLocal3D(point:Point):Vector3D {
-            stub_method("flash.display.DisplayObject", "globalToLocal3D");
-            return new Vector3D(0, 0, 0);
-        }
+        public native function globalToLocal3D(point:Point):Vector3D;
 
         public native function getBounds(targetCoordinateSpace:DisplayObject):Rectangle;
 

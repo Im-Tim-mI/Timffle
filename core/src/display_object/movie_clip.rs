@@ -2718,7 +2718,9 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
                 }
             }
 
-            let point = local_matrix * point;
+            let Some(point) = self.global_to_local(point) else {
+                return false;
+            };
             if let Some(drawing) = self.drawing()
                 && drawing.hit_test(point, &local_matrix)
             {
@@ -3250,7 +3252,8 @@ impl<'gc> TInteractiveObject<'gc> for MovieClip<'gc> {
             // Check drawing, because this selects the current clip, it must have mouse enabled
             if self.world_bounds(BoundsMode::Engine).contains(point)
                 && let Some(drawing) = self.drawing()
-                && drawing.hit_test(local_matrix * point, &local_matrix)
+                && let Some(local_point) = self.global_to_local(point)
+                && drawing.hit_test(local_point, &local_matrix)
             {
                 return if self.mouse_enabled() {
                     Avm2MousePick::Hit(self.into())

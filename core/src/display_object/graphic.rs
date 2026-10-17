@@ -277,7 +277,10 @@ impl<'gc> TDisplayObject<'gc> for Graphic<'gc> {
             let Some(local_matrix) = self.global_to_local_matrix() else {
                 return false;
             };
-            let point = local_matrix * point;
+            // (the stroke widths below need the matrix, the point needs the projection of a 3D object)
+            let Some(point) = self.global_to_local(point) else {
+                return false;
+            };
             if let Some(drawing) = self.0.drawing.get() {
                 if drawing.borrow().hit_test(point, &local_matrix) {
                     return true;

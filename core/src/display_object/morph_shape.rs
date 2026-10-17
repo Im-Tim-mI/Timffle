@@ -153,9 +153,12 @@ impl<'gc> TDisplayObject<'gc> for MorphShape<'gc> {
                 let Some(local_matrix) = self.global_to_local_matrix() else {
                     return false;
                 };
+                let Some(local_point) = self.global_to_local(point) else {
+                    return false;
+                };
                 return ruffle_render::shape_utils::shape_hit_test(
                     &frame.shape,
-                    local_matrix * point,
+                    local_point,
                     &local_matrix,
                 );
             } else {

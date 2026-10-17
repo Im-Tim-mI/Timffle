@@ -618,10 +618,17 @@ impl<'gc> Stage<'gc> {
         context.transform_stack.push(&Transform {
             matrix: self.0.viewport_matrix.get(),
             color_transform: Default::default(),
-            // TODO: Verify perspective_projection when its rendering is implemented.
-            perspective_projection: self.as_displayobject().base().perspective_projection(),
-            tz: 0.0,
+            // The stage's own `perspectiveProjection` is only a placeholder in Flash Player (it
+            // is never used to draw). 3D objects that have no projection owner below the stage
+            // are projected about the centre of the stage.
+            perspective_projection: None,
+            matrix3d: None,
         });
+        let (stage_width, stage_height) = self.stage_size();
+        context.transform_stack.set_stage_width(stage_width as f64);
+        context
+            .transform_stack
+            .set_root_projection((stage_width as f64 / 2.0, stage_height as f64 / 2.0));
 
         // All of our Stage3D instances get rendered *underneath* the main stage.
         // Note that the stage background color is actually the lowest possible

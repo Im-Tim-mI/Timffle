@@ -18,13 +18,15 @@ use gc_arena::barrier::{Write, unlock};
 use gc_arena::lock::Lock;
 use gc_arena::{Collect, Gc, Mutation};
 use ruffle_macros::{enum_trait_object, istr};
+use ruffle_render::matrix3d::{Matrix3D, Trs3D};
 use ruffle_render::perspective_projection::PerspectiveProjection;
 use ruffle_render::pixel_bender::PixelBenderShaderHandle;
-use ruffle_render::transform::{Transform, TransformStack};
+use ruffle_render::transform::{ChainState, Mat4, Transform, TransformStack};
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::num::NonZero;
+use std::sync::atomic::{AtomicBool, Ordering};
 use swf::{ColorTransform, Fixed8};
 
 mod avm1_button;
@@ -271,7 +273,12 @@ pub struct DisplayObjectBase<'gc> {
     matrix: Cell<Matrix>,
     color_transform: Cell<ColorTransform>,
     perspective_projection: Cell<Option<PerspectiveProjection>>,
-    tz: Cell<f64>,
+    /// The 3D matrix of this object. An object becomes 3D when ActionScript sets any of `z`, `rotationX`,
+    /// `rotationY`, `rotationZ`, `scaleZ` or `transform.matrix3D`; `matrix` then holds the affine
+    /// approximation (x/y/a/b/c/d) of this matrix for the code that only knows 2D.
+    matrix3d: Cell<Option<Matrix3D>>,
+    /// The rotation and scale properties of a 3D object (as set by ActionScript, or derived from `matrix3d`).
+    trs3d: Cell<Trs3D>,
 
     // Cached transform properties `_xscale`, `_yscale`, `_rotation`.
     // These are expensive to calculate, so they will be calculated and cached
@@ -348,7 +355,8 @@ impl Default for DisplayObjectBase<'_> {
             matrix: Default::default(),
             color_transform: Default::default(),
             perspective_projection: Default::default(),
-            tz: Cell::new(0.0),
+            matrix3d: Cell::new(None),
+            trs3d: Cell::new(Trs3D::default()),
             rotation: Cell::new(Degrees::from_radians(0.0)),
             scale_x: Cell::new(Percent::from_unit(1.0)),
             scale_y: Cell::new(Percent::from_unit(1.0)),
@@ -409,7 +417,11 @@ impl<'gc> DisplayObjectBase<'gc> {
             },
             color_transform: self.color_transform.get(),
             perspective_projection: self.perspective_projection.get(),
-            tz: self.tz.get(),
+            matrix3d: if apply_matrix {
+                self.matrix3d.get()
+            } else {
+                None
+            },
         }
     }
 
@@ -419,6 +431,8 @@ impl<'gc> DisplayObjectBase<'gc> {
 
     pub fn set_matrix(&self, matrix: Matrix) {
         self.matrix.set(matrix);
+        // A 2D matrix takes the object out of 3D.
+        self.matrix3d.set(None);
         self.set_scale_rotation_cached(false);
     }
 
@@ -451,6 +465,7 @@ impl<'gc> DisplayObjectBase<'gc> {
         let changed = matrix.tx != x;
         matrix.tx = x;
         self.matrix.set(matrix);
+        self.write_translation3d(0, x);
         self.set_transformed_by_script(true);
         changed
     }
@@ -464,19 +479,148 @@ impl<'gc> DisplayObjectBase<'gc> {
         let changed = matrix.ty != y;
         matrix.ty = y;
         self.matrix.set(matrix);
+        self.write_translation3d(1, y);
         self.set_transformed_by_script(true);
         changed
     }
 
     fn z(&self) -> f64 {
-        self.tz.get()
+        self.matrix3d
+            .get()
+            .map_or(0.0, |matrix| f64::from(matrix.raw_data[14]))
     }
 
-    fn set_z(&self, tz: f64) -> bool {
-        let changed = self.tz.get() != tz;
+    fn set_z(&self, z: f64) -> bool {
+        self.enter_3d();
+        let mut matrix = self.matrix3d.get().unwrap_or(Matrix3D::IDENTITY);
+        let z = z as f32;
+        let changed = matrix.raw_data[14] != z;
+        matrix.raw_data[14] = z;
+        self.matrix3d.set(Some(matrix));
         self.set_transformed_by_script(true);
-        self.tz.set(tz);
         changed
+    }
+
+    pub fn has_matrix3d(&self) -> bool {
+        self.matrix3d.get().is_some()
+    }
+
+    pub fn matrix3d(&self) -> Option<Matrix3D> {
+        self.matrix3d.get()
+    }
+
+    /// Makes this object 3D, keeping what its 2D matrix does.
+    fn enter_3d(&self) {
+        if self.matrix3d.get().is_none() {
+            ANY_3D.store(true, Ordering::Relaxed);
+            let matrix = Matrix3D::from_matrix(self.matrix.get());
+            self.trs3d.set(matrix.decompose_trs());
+            self.matrix3d.set(Some(matrix));
+        }
+    }
+
+    /// Sets (or, with `None`, removes) the 3D matrix, as `transform.matrix3D` does.
+    /// Removing it leaves a 2D identity matrix, like Flash Player.
+    pub fn set_matrix3d(&self, matrix3d: Option<Matrix3D>) {
+        self.set_transformed_by_script(true);
+        match matrix3d {
+            Some(matrix) => {
+                ANY_3D.store(true, Ordering::Relaxed);
+                self.trs3d.set(matrix.decompose_trs());
+                self.matrix3d.set(Some(matrix));
+                self.matrix.set(matrix.to_matrix());
+            }
+            None => {
+                self.matrix3d.set(None);
+                self.matrix.set(Matrix::IDENTITY);
+                self.set_scale_rotation_cached(false);
+            }
+        }
+    }
+
+    /// Writes one component of the translation (0 = x, 1 = y) into the 3D matrix, if there is one.
+    fn write_translation3d(&self, axis: usize, value: Twips) {
+        if let Some(mut matrix) = self.matrix3d.get() {
+            matrix.raw_data[12 + axis] = value.to_pixels() as f32;
+            self.matrix3d.set(Some(matrix));
+        }
+    }
+
+    /// Changes the rotation/scale properties of the 3D object, and rebuilds its matrix from them.
+    fn edit_trs3d(&self, edit: impl FnOnce(&mut Trs3D)) -> bool {
+        self.enter_3d();
+        let before = self.trs3d.get();
+        let mut trs = before;
+        edit(&mut trs);
+        self.trs3d.set(trs);
+        self.set_transformed_by_script(true);
+        if let Some(matrix) = self.matrix3d.get() {
+            // A NaN property counts as 0 for the matrix, but stays what a script reads back.
+            let clean = |v: f64| if v.is_nan() { 0.0 } else { v };
+            let rebuilt = Matrix3D::from_trs(
+                [
+                    matrix.raw_data[12],
+                    matrix.raw_data[13],
+                    matrix.raw_data[14],
+                ],
+                &Trs3D {
+                    rotation: trs.rotation.map(clean),
+                    scale: trs.scale.map(clean),
+                },
+            );
+            self.matrix3d.set(Some(rebuilt));
+            self.matrix.set(rebuilt.to_matrix());
+        }
+        trs != before
+    }
+
+    pub fn rotation_x(&self) -> f64 {
+        if self.has_matrix3d() {
+            self.trs3d.get().rotation[0]
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_rotation_x(&self, degrees: f64) -> bool {
+        self.edit_trs3d(|trs| trs.rotation[0] = degrees)
+    }
+
+    pub fn rotation_y(&self) -> f64 {
+        if self.has_matrix3d() {
+            self.trs3d.get().rotation[1]
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_rotation_y(&self, degrees: f64) -> bool {
+        self.edit_trs3d(|trs| trs.rotation[1] = degrees)
+    }
+
+    /// `rotationZ`: the same as `rotation`, but it makes the object 3D.
+    pub fn rotation_z(&self) -> f64 {
+        if self.has_matrix3d() {
+            self.trs3d.get().rotation[2]
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_rotation_z(&self, degrees: f64) -> bool {
+        self.edit_trs3d(|trs| trs.rotation[2] = degrees)
+    }
+
+    pub fn scale_z(&self) -> f64 {
+        if self.has_matrix3d() {
+            self.trs3d.get().scale[2]
+        } else {
+            1.0
+        }
+    }
+
+    pub fn set_scale_z(&self, scale: f64) -> bool {
+        self.edit_trs3d(|trs| trs.scale[2] = scale)
     }
 
     /// Caches the scale and rotation factors for this display object, if necessary.
@@ -516,11 +660,17 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn rotation(&self) -> Degrees {
+        if self.has_matrix3d() {
+            return Degrees::from_radians(self.trs3d.get().rotation[2].to_radians());
+        }
         self.cache_scale_rotation();
         self.rotation.get()
     }
 
     fn set_rotation(&self, degrees: Degrees) -> bool {
+        if self.has_matrix3d() {
+            return self.set_rotation_z(degrees.into_radians().to_degrees());
+        }
         self.set_transformed_by_script(true);
         self.cache_scale_rotation();
         let changed = self.rotation.get() != degrees;
@@ -557,11 +707,17 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn scale_x(&self) -> Percent {
+        if self.has_matrix3d() {
+            return Percent::from_unit(self.trs3d.get().scale[0]);
+        }
         self.cache_scale_rotation();
         self.scale_x.get()
     }
 
     fn set_scale_x(&self, mut value: Percent) -> bool {
+        if self.has_matrix3d() {
+            return self.edit_trs3d(|trs| trs.scale[0] = value.unit());
+        }
         let changed = self.scale_x.get() != value;
         self.set_transformed_by_script(true);
         self.cache_scale_rotation();
@@ -592,11 +748,17 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn scale_y(&self) -> Percent {
+        if self.has_matrix3d() {
+            return Percent::from_unit(self.trs3d.get().scale[1]);
+        }
         self.cache_scale_rotation();
         self.scale_y.get()
     }
 
     fn set_scale_y(&self, mut value: Percent) -> bool {
+        if self.has_matrix3d() {
+            return self.edit_trs3d(|trs| trs.scale[1] = value.unit());
+        }
         let changed = self.scale_y.get() != value;
         self.set_transformed_by_script(true);
         self.cache_scale_rotation();
@@ -911,14 +1073,6 @@ impl<'gc> DisplayObjectBase<'gc> {
     fn set_meta_data(this: &Write<Self>, value: Avm2Object<'gc>) {
         unlock!(this, Self, meta_data).set(Some(value));
     }
-
-    pub fn has_matrix3d_stub(&self) -> bool {
-        self.contains_flag(DisplayObjectFlags::HAS_MATRIX3D_STUB)
-    }
-
-    pub fn set_has_matrix3d_stub(&self, value: bool) {
-        self.set_flag(DisplayObjectFlags::HAS_MATRIX3D_STUB, value)
-    }
 }
 
 /// Indicates which kind of bounds should be returned by `self_bounds`.
@@ -948,10 +1102,81 @@ impl BoundsMode {
     }
 }
 
+/// The linearisation of a projective mapping (local pixels to stage pixels) at the local origin, as a 2D matrix.
+fn linearise(f: &Mat4, fallback: Matrix) -> Matrix {
+    let (Some(o), Some(x), Some(y)) = (
+        f.project(0.0, 0.0, 0.0),
+        f.project(1.0, 0.0, 0.0),
+        f.project(0.0, 1.0, 0.0),
+    ) else {
+        return fallback;
+    };
+    Matrix {
+        a: (x.0 - o.0) as f32,
+        b: (x.1 - o.1) as f32,
+        c: (y.0 - o.0) as f32,
+        d: (y.1 - o.1) as f32,
+        tx: Twips::from_pixels(o.0),
+        ty: Twips::from_pixels(o.1),
+    }
+}
+
+/// The bounding box, on the stage, of a rectangle of the local space of the object at the end of `state`.
+/// If any corner is at or behind the viewpoint the result is empty, like Flash Player's.
+fn project_rect(state: &ChainState, rect: Rectangle<Twips>) -> Rectangle<Twips> {
+    let Some(f) = state.projective() else {
+        return state.matrix() * rect;
+    };
+    if !rect.is_valid() {
+        return Default::default();
+    }
+    let corners = [
+        (rect.x_min, rect.y_min),
+        (rect.x_min, rect.y_max),
+        (rect.x_max, rect.y_min),
+        (rect.x_max, rect.y_max),
+    ];
+    // Flash Player rounds the projected corners to quarter pixels, and the box to whole pixels.
+    let (mut x_min, mut x_max) = (f64::INFINITY, f64::NEG_INFINITY);
+    let (mut y_min, mut y_max) = (f64::INFINITY, f64::NEG_INFINITY);
+    for (x, y) in corners {
+        let Some((px, py)) = f.project(x.to_pixels(), y.to_pixels(), 0.0) else {
+            return Default::default();
+        };
+        let (px, py) = ((px * 4.0).round() / 4.0, (py * 4.0).round() / 4.0);
+        x_min = x_min.min(px);
+        x_max = x_max.max(px);
+        y_min = y_min.min(py);
+        y_max = y_max.max(py);
+    }
+    Rectangle {
+        x_min: twips_nearest(x_min.floor()),
+        x_max: twips_nearest(x_max.ceil()),
+        y_min: twips_nearest(y_min.floor()),
+        y_max: twips_nearest(y_max.ceil()),
+    }
+}
+
+/// Pixels to the nearest twip (`Twips::from_pixels` truncates), kept in the range twips can hold.
+fn twips_nearest(pixels: f64) -> Twips {
+    Twips::new((pixels * 20.0).round().clamp(-2.0e9, 2.0e9) as i32)
+}
+
+/// Set the first time any object becomes 3D. The 3D aware (and slower) geometry is only used after that.
+static ANY_3D: AtomicBool = AtomicBool::new(false);
+
+/// Whether any display object has been made 3D so far.
+pub fn any_3d() -> bool {
+    ANY_3D.load(Ordering::Relaxed)
+}
+
 struct DrawCacheInfo {
     bitmap: BitmapInfo,
     dirty: bool,
     base_transform: Transform,
+    /// The matrix the object is rendered into the bitmap with: `base_transform.matrix`, or for a 3D object just
+    /// its scale (the bitmap is a picture of the object's own plane, which is then projected).
+    render_matrix: Matrix,
     bounds: Rectangle<Twips>,
     draw_offset: Point<i32>,
     filters: Vec<Filter>,
@@ -982,8 +1207,15 @@ pub fn render_base<'gc>(
     let cache_info = if context.use_bitmap_cache && this.is_bitmap_cached() {
         let mut cache_info: Option<DrawCacheInfo> = None;
         let base_transform = context.transform_stack.transform();
+        let render_matrix = if base_transform.matrix3d.is_some() {
+            let m = base_transform.matrix;
+            let scale = |x: f32, y: f32| (x.hypot(y)).max(0.01);
+            Matrix::scale(scale(m.a, m.b), scale(m.c, m.d))
+        } else {
+            base_transform.matrix
+        };
         let bounds: Rectangle<Twips> = this.render_bounds_with_transform(
-            &base_transform.matrix,
+            &render_matrix,
             false, // we want to do the filter growth for this object ourselves, to know the offsets
             &context.stage.view_matrix(),
         );
@@ -1017,10 +1249,10 @@ pub fn render_base<'gc>(
                     y_max: filter_rect.y_max.to_pixels().ceil() as i32,
                 };
                 let draw_offset = Point::new(filter_rect.x_min, filter_rect.y_min);
-                if cache.is_dirty(&base_transform.matrix, width, height) {
+                if cache.is_dirty(&render_matrix, width, height) {
                     cache.update(
                         context.renderer,
-                        base_transform.matrix,
+                        render_matrix,
                         width,
                         height,
                         filter_rect.width() as u32,
@@ -1032,6 +1264,7 @@ pub fn render_base<'gc>(
                         bitmap,
                         dirty: true,
                         base_transform,
+                        render_matrix,
                         bounds,
                         draw_offset,
                         filters,
@@ -1041,6 +1274,7 @@ pub fn render_base<'gc>(
                         bitmap,
                         dirty: false,
                         base_transform,
+                        render_matrix,
                         bounds,
                         draw_offset,
                         filters,
@@ -1068,9 +1302,9 @@ pub fn render_base<'gc>(
         // In order to render an object to a texture, we need to draw its entire bounds.
         // Calculate the offset from tx/ty in order to accommodate any drawings that extend the bounds
         // negatively
-        let offset_x = cache_info.bounds.x_min - cache_info.base_transform.matrix.tx
+        let offset_x = cache_info.bounds.x_min - cache_info.render_matrix.tx
             + Twips::from_pixels_i32(cache_info.draw_offset.x);
-        let offset_y = cache_info.bounds.y_min - cache_info.base_transform.matrix.ty
+        let offset_y = cache_info.bounds.y_min - cache_info.render_matrix.ty
             + Twips::from_pixels_i32(cache_info.draw_offset.y);
 
         if cache_info.dirty {
@@ -1080,10 +1314,10 @@ pub fn render_base<'gc>(
                 matrix: Matrix {
                     tx: -offset_x,
                     ty: -offset_y,
-                    ..cache_info.base_transform.matrix
+                    ..cache_info.render_matrix
                 },
                 perspective_projection: cache_info.base_transform.perspective_projection,
-                tz: Default::default(),
+                matrix3d: None,
             });
             let mut offscreen_context = RenderContext {
                 renderer: context.renderer,
@@ -1112,18 +1346,52 @@ pub fn render_base<'gc>(
             context,
             |context| {
                 let region = cache_info.bitmap.full_region();
-                context.commands.render_bitmap(
-                    cache_info.bitmap.handle,
+                let current = context.transform_stack.transform();
+                let transform = if let Some(matrix3d) = current.matrix3d {
+                    // A 3D object: the bitmap is a picture of the object's plane at the scale it was rendered
+                    // with, whose first pixel is at (offset / scale) in the object's own pixels. Put the picture
+                    // into that space, then project it like the object.
+                    let (scale_x, scale_y) = (
+                        f64::from(cache_info.render_matrix.a),
+                        f64::from(cache_info.render_matrix.d),
+                    );
+                    let into_local = Mat4::from_matrix(&Matrix {
+                        a: (1.0 / scale_x) as f32,
+                        d: (1.0 / scale_y) as f32,
+                        tx: Twips::from_pixels(offset_x.to_pixels() / scale_x),
+                        ty: Twips::from_pixels(offset_y.to_pixels() / scale_y),
+                        ..Default::default()
+                    });
+                    Transform {
+                        // (what a renderer that cannot project would draw: the picture, at the origin)
+                        matrix: Matrix {
+                            tx: current.matrix.tx + offset_x,
+                            ty: current.matrix.ty + offset_y,
+                            ..Default::default()
+                        },
+                        matrix3d: Some(
+                            Mat4::from_matrix3d(&matrix3d)
+                                .mul(&into_local)
+                                .to_matrix3d(),
+                        ),
+                        color_transform: cache_info.base_transform.color_transform,
+                        perspective_projection: cache_info.base_transform.perspective_projection,
+                    }
+                } else {
                     Transform {
                         matrix: Matrix {
-                            tx: context.transform_stack.transform().matrix.tx + offset_x,
-                            ty: context.transform_stack.transform().matrix.ty + offset_y,
+                            tx: current.matrix.tx + offset_x,
+                            ty: current.matrix.ty + offset_y,
                             ..Default::default()
                         },
                         color_transform: cache_info.base_transform.color_transform,
                         perspective_projection: cache_info.base_transform.perspective_projection,
-                        tz: cache_info.base_transform.tz,
-                    },
+                        matrix3d: None,
+                    }
+                };
+                context.commands.render_bitmap(
+                    cache_info.bitmap.handle,
+                    transform,
                     true,
                     PixelSnapping::Always, // cacheAsBitmap forces pixel snapping
                     region,
@@ -1210,7 +1478,7 @@ pub fn apply_standard_mask_and_scroll<'gc, F>(
             matrix: Matrix::translate(-rect.x_min, -rect.y_min),
             color_transform: Default::default(),
             perspective_projection: None,
-            tz: 0.0,
+            matrix3d: None,
         });
     }
 
@@ -1372,13 +1640,117 @@ pub trait TDisplayObject<'gc>:
     /// The local bounding box of this object including children, in its parent's coordinate system.
     #[no_dynamic]
     fn local_bounds(self, mode: BoundsMode) -> Rectangle<Twips> {
+        if let Some(bounds) = self.projected_local_bounds(mode) {
+            return bounds;
+        }
         self.bounds_with_transform(&self.base().matrix(), mode)
+    }
+
+    /// The bounds of this object in its parent's space, if anything of it or above it is 3D: the stage bounds of
+    /// the projection, taken back to the parent's space.
+    #[no_dynamic]
+    fn projected_local_bounds(self, mode: BoundsMode) -> Option<Rectangle<Twips>> {
+        if !any_3d() || !self.subtree_has_own_3d() {
+            // Nothing of this object is 3D: its bounds in the parent's space are those of the plain 2D matrices,
+            // even inside a 3D parent.
+            return None;
+        }
+        let state = self.chain_state_to_stage()?;
+        let mut saw_3d = state.is_3d();
+        let stage_bounds = self.bounds_with_chain(&state, mode, &mut saw_3d);
+        if !saw_3d {
+            return None;
+        }
+        if !stage_bounds.is_valid() {
+            return Some(stage_bounds);
+        }
+        let Some(parent) = self.parent() else {
+            return Some(stage_bounds);
+        };
+        if parent.as_stage().is_some() {
+            return Some(stage_bounds);
+        }
+        let mut bounds: Option<Rectangle<Twips>> = None;
+        for (x, y) in [
+            (stage_bounds.x_min, stage_bounds.y_min),
+            (stage_bounds.x_min, stage_bounds.y_max),
+            (stage_bounds.x_max, stage_bounds.y_min),
+            (stage_bounds.x_max, stage_bounds.y_max),
+        ] {
+            let Some(point) = parent.global_to_local(Point::new(x, y)) else {
+                return Some(stage_bounds);
+            };
+            bounds = Some(match bounds {
+                Some(bounds) => bounds.encompass(point),
+                None => Rectangle {
+                    x_min: point.x,
+                    x_max: point.x,
+                    y_min: point.y,
+                    y_max: point.y,
+                },
+            });
+        }
+        bounds
     }
 
     /// The world bounding box of this object including children, relative to the stage.
     #[no_dynamic]
     fn world_bounds(self, mode: BoundsMode) -> Rectangle<Twips> {
+        if let Some(state) = self.chain_state_to_stage() {
+            // Bounds that follow the 3D projection, if anything here is 3D.
+            let mut saw_3d = state.is_3d();
+            let bounds = self.bounds_with_chain(&state, mode, &mut saw_3d);
+            if saw_3d {
+                return bounds;
+            }
+        }
         self.bounds_with_transform(&self.local_to_global_matrix(), mode)
+    }
+
+    /// Whether this object or something below it has a 3D matrix of its own.
+    #[no_dynamic]
+    fn subtree_has_own_3d(self) -> bool {
+        self.base().has_matrix3d()
+            || self.as_container().is_some_and(|ctr| {
+                ctr.iter_render_list()
+                    .any(|child| child.subtree_has_own_3d())
+            })
+    }
+
+    /// The bounds of this object and its children, where `state` is the chain from the stage down to this object.
+    /// This is `bounds_with_transform` for objects that can be 3D, whose projected bounds are those of the
+    /// projected corners. `saw_3d` is set if the chain or anything below is 3D.
+    fn bounds_with_chain(
+        self,
+        state: &ChainState,
+        mode: BoundsMode,
+        saw_3d: &mut bool,
+    ) -> Rectangle<Twips> {
+        // A scroll rect completely overrides an object's bounds,
+        // and can even grow the bounding box to be larger than the actual content
+        if let Some(scroll_rect) = self.scroll_rect() {
+            return project_rect(
+                state,
+                Rectangle {
+                    x_min: Twips::ZERO,
+                    y_min: Twips::ZERO,
+                    x_max: scroll_rect.width(),
+                    y_max: scroll_rect.height(),
+                },
+            );
+        }
+
+        let mut bounds = project_rect(state, self.self_bounds(mode));
+
+        if let Some(ctr) = self.as_container() {
+            for child in ctr.iter_render_list() {
+                let child_state = state.push(&child.base().transform(true));
+                *saw_3d |= child_state.is_3d();
+                bounds = bounds.union(&child.bounds_with_chain(&child_state, mode, saw_3d));
+            }
+        }
+
+        bounds
     }
 
     /// The world bounding box of this object, as reported by `Transform.pixelBounds`.
@@ -1522,12 +1894,129 @@ pub trait TDisplayObject<'gc>:
     }
 
     /// Returns the matrix for transforming from this object's local space to global stage space.
+    ///
+    /// For a 3D object (or one inside a 3D parent) the mapping is projective, not affine, and this is its
+    /// linearisation at the local origin. `local_to_global` and `global_to_local` (points) and `world_bounds`
+    /// follow the perspective projection exactly, like what is drawn.
     fn local_to_global_matrix(self) -> Matrix {
-        let mut matrix = Matrix::IDENTITY;
+        let mut own = Matrix::IDENTITY;
         if let Some(rect) = self.scroll_rect() {
-            matrix = Matrix::translate(-rect.x_min, -rect.y_min) * matrix;
+            own = Matrix::translate(-rect.x_min, -rect.y_min) * own;
         }
-        self.local_to_global_matrix_without_own_scroll_rect() * matrix
+        let plain = self.local_to_global_matrix_without_own_scroll_rect() * own;
+        match self.projective_to_stage() {
+            Some(f) => linearise(&f.mul(&Mat4::from_matrix(&own)), plain),
+            None => plain,
+        }
+    }
+
+    /// The state of the chain of display objects from the stage down to this object (included), which folds
+    /// all the matrices, 3D ones and perspective projections, into one mapping to the stage.
+    /// `None` if this object is not on a stage, or if no 3D has ever been used.
+    #[no_dynamic]
+    fn chain_state_to_stage(self) -> Option<ChainState> {
+        if !any_3d() {
+            return None;
+        }
+        let mut chain: Vec<DisplayObject<'gc>> = vec![self.into()];
+        let mut node = self.parent();
+        let stage = loop {
+            let ancestor = node?;
+            if let Some(stage) = ancestor.as_stage() {
+                break stage;
+            }
+            chain.push(ancestor);
+            node = ancestor.parent();
+        };
+        let (width, height) = stage.stage_size();
+        let mut state = ChainState::new(Matrix::IDENTITY, width as f64, height as f64);
+        for (i, node) in chain.iter().enumerate().rev() {
+            state = state.push(&node.base().transform(true));
+            if i != 0
+                && let Some(rect) = node.scroll_rect()
+            {
+                state = state.push(&Transform {
+                    matrix: Matrix::translate(-rect.x_min, -rect.y_min),
+                    ..Default::default()
+                });
+            }
+        }
+        Some(state)
+    }
+
+    /// The mapping from this object's local space (in pixels) to the stage (in pixels), if some object of
+    /// the chain from the stage down to this object is 3D. `None` for plain 2D chains.
+    #[no_dynamic]
+    fn projective_to_stage(self) -> Option<Mat4> {
+        self.chain_state_to_stage()?.projective()
+    }
+
+    /// The mapping from this object's local space (in pixels) to the stage (in pixels) for 3D coordinates:
+    /// the same as `projective_to_stage`, but also for a chain of plain 2D objects (which Flash projects
+    /// with the default projection too). `None` if this object is not on a stage.
+    #[no_dynamic]
+    fn mapping_to_stage(self) -> Option<Mat4> {
+        let mut chain: Vec<DisplayObject<'gc>> = vec![self.into()];
+        let mut node = self.parent();
+        let stage = loop {
+            let ancestor = node?;
+            if let Some(stage) = ancestor.as_stage() {
+                break stage;
+            }
+            chain.push(ancestor);
+            node = ancestor.parent();
+        };
+        let (width, height) = stage.stage_size();
+        let mut state = ChainState::new(Matrix::IDENTITY, width as f64, height as f64);
+        for (i, node) in chain.iter().enumerate().rev() {
+            state = state.push(&node.base().transform(true));
+            if i != 0
+                && let Some(rect) = node.scroll_rect()
+            {
+                state = state.push(&Transform {
+                    matrix: Matrix::translate(-rect.x_min, -rect.y_min),
+                    ..Default::default()
+                });
+            }
+        }
+        Some(state.mapping())
+    }
+
+    /// The product of the 3D matrices (2D ones embedded) from the stage down to this object, with no
+    /// projection. Used for `Transform.getRelativeMatrix3D`.
+    #[no_dynamic]
+    fn matrix3d_to_stage(self) -> Mat4 {
+        let mut chain: Vec<DisplayObject<'gc>> = vec![self.into()];
+        let mut node = self.parent();
+        while let Some(ancestor) = node {
+            if ancestor.as_stage().is_some() {
+                break;
+            }
+            chain.push(ancestor);
+            node = ancestor.parent();
+        }
+        let mut product = Mat4::IDENTITY;
+        for node in chain.iter().rev() {
+            let local = match node.base().matrix3d() {
+                Some(matrix3d) => Mat4::from_matrix3d(&matrix3d),
+                None => Mat4::from_matrix(&node.base().matrix()),
+            };
+            product = product.mul(&local);
+        }
+        product
+    }
+
+    /// Like `projective_to_stage`, for the space of this object's content (which a scroll rect shifts).
+    #[no_dynamic]
+    fn projective_content_to_stage(self) -> Option<Mat4> {
+        let f = self.projective_to_stage()?;
+        Some(match self.scroll_rect() {
+            Some(rect) => f.mul(&Mat4::from_matrix(&Matrix::translate(
+                -rect.x_min,
+                -rect.y_min,
+            ))),
+            None => f,
+        })
     }
 
     /// Returns the matrix for transforming from global stage to this object's local space.
@@ -1540,6 +2029,10 @@ pub trait TDisplayObject<'gc>:
     /// Converts a local position to a global stage position
     #[no_dynamic]
     fn local_to_global(self, local: Point<Twips>) -> Point<Twips> {
+        if let Some(f) = self.projective_content_to_stage() {
+            let (x, y) = f.project_unguarded(local.x.to_pixels(), local.y.to_pixels(), 0.0);
+            return Point::new(twips_nearest(x), twips_nearest(y));
+        }
         self.local_to_global_matrix() * local
     }
 
@@ -1547,6 +2040,11 @@ pub trait TDisplayObject<'gc>:
     /// Returns `None` if the object has zero scale.
     #[no_dynamic]
     fn global_to_local(self, global: Point<Twips>) -> Option<Point<Twips>> {
+        if let Some(f) = self.projective_content_to_stage() {
+            // The point of this object's plane that is shown at `global`.
+            let (x, y) = f.unproject_plane(global.x.to_pixels(), global.y.to_pixels())?;
+            return Some(Point::new(twips_nearest(x), twips_nearest(y)));
+        }
         self.global_to_local_matrix().map(|matrix| matrix * global)
     }
 
@@ -1555,6 +2053,12 @@ pub trait TDisplayObject<'gc>:
     /// This matches Flash's behavior for `mouseX`/`mouseY` on an object with zero scale.
     #[no_dynamic]
     fn local_mouse_position(self, context: &UpdateContext<'gc>) -> Point<Twips> {
+        if self.projective_content_to_stage().is_some()
+            && let Some(local) = self.global_to_local(*context.mouse_position)
+        {
+            // 3D: the point of this object's plane that is under the mouse
+            return local;
+        }
         let stage = context.stage;
         let pixel_ratio = stage.view_matrix().a;
         let virtual_to_device = Matrix::scale(pixel_ratio, pixel_ratio);

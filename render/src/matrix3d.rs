@@ -207,3 +207,223 @@ impl Matrix3D {
         self.raw_data[14] = tz;
     }
 }
+
+/// The rotation (in degrees, about the x, y and z axes) and the scale of a 3D object. Flash derives these
+/// properties from a matrix by Gram-Schmidt orthogonalisation of its columns and builds the matrix back as
+/// `T * Rz * Ry * Rx * S`, which is why a matrix with shear does not survive a round trip.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Trs3D {
+    pub rotation: [f64; 3],
+    pub scale: [f64; 3],
+}
+
+impl Default for Trs3D {
+    fn default() -> Self {
+        Trs3D {
+            rotation: [0.0; 3],
+            scale: [1.0; 3],
+        }
+    }
+}
+
+fn dot3(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn cross3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+fn scale3(a: [f64; 3], s: f64) -> [f64; 3] {
+    [a[0] * s, a[1] * s, a[2] * s]
+}
+
+fn sub3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+/// A unit vector perpendicular to `a` (`a` need not be normalised).
+fn perpendicular(a: [f64; 3]) -> [f64; 3] {
+    let helper = if a[0].abs() < 0.9 {
+        [1.0, 0.0, 0.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let p = cross3(a, helper);
+    let n = dot3(p, p).sqrt();
+    if n > 0.0 {
+        scale3(p, 1.0 / n)
+    } else {
+        [0.0, 0.0, 1.0]
+    }
+}
+
+impl Matrix3D {
+    /// The rotation and scale of the matrix, the way Flash reports them for a display object.
+    pub fn decompose_trs(&self) -> Trs3D {
+        let m = self.raw_data.map(f64::from);
+        let c0 = [m[0], m[1], m[2]];
+        let c1 = [m[4], m[5], m[6]];
+        let c2 = [m[8], m[9], m[10]];
+
+        let sx = dot3(c0, c0).sqrt();
+        let u0 = if sx > 0.0 {
+            scale3(c0, 1.0 / sx)
+        } else {
+            [1.0, 0.0, 0.0]
+        };
+        let t1 = sub3(c1, scale3(u0, dot3(c1, u0)));
+        let sy = dot3(t1, t1).sqrt();
+        let u1 = if sy > 0.0 {
+            scale3(t1, 1.0 / sy)
+        } else {
+            perpendicular(u0)
+        };
+        let t2 = sub3(sub3(c2, scale3(u0, dot3(c2, u0))), scale3(u1, dot3(c2, u1)));
+        let mut sz = dot3(t2, t2).sqrt();
+        let mut u2 = if sz > 0.0 {
+            scale3(t2, 1.0 / sz)
+        } else {
+            cross3(u0, u1)
+        };
+        if dot3(cross3(u0, u1), u2) < 0.0 {
+            // A reflection: carry it on the z scale.
+            u2 = scale3(u2, -1.0);
+            sz = -sz;
+        }
+
+        // R = Rz * Ry * Rx with the unit columns u0, u1, u2.
+        let ry = (-u0[2]).clamp(-1.0, 1.0).asin();
+        let (rx, rz) = if u0[2].abs() < 0.999_999 {
+            (u1[2].atan2(u2[2]), u0[1].atan2(u0[0]))
+        } else if u0[2] < 0.0 {
+            // ry = +90 degrees: only rx - rz is defined
+            (u1[0].atan2(u1[1]), 0.0)
+        } else {
+            // ry = -90 degrees: only rx + rz is defined
+            ((-u1[0]).atan2(u1[1]), 0.0)
+        };
+        Trs3D {
+            rotation: [rx.to_degrees(), ry.to_degrees(), rz.to_degrees()],
+            scale: [sx, sy, sz],
+        }
+    }
+
+    /// `T * Rz * Ry * Rx * S` with the translation given in pixels.
+    pub fn from_trs(translation: [f32; 3], trs: &Trs3D) -> Self {
+        let [rx, ry, rz] = trs.rotation.map(f64::to_radians);
+        let (sx, cx) = rx.sin_cos();
+        let (sy, cy) = ry.sin_cos();
+        let (sz, cz) = rz.sin_cos();
+        // columns of R = Rz * Ry * Rx
+        let r0 = [cy * cz, cy * sz, -sy];
+        let r1 = [sx * sy * cz - cx * sz, sx * sy * sz + cx * cz, sx * cy];
+        let r2 = [cx * sy * cz + sx * sz, cx * sy * sz - sx * cz, cx * cy];
+        let [kx, ky, kz] = trs.scale;
+        let col = |r: [f64; 3], k: f64| [(r[0] * k) as f32, (r[1] * k) as f32, (r[2] * k) as f32];
+        let (c0, c1, c2) = (col(r0, kx), col(r1, ky), col(r2, kz));
+        Self {
+            raw_data: [
+                c0[0],
+                c0[1],
+                c0[2],
+                0.0,
+                c1[0],
+                c1[1],
+                c1[2],
+                0.0,
+                c2[0],
+                c2[1],
+                c2[2],
+                0.0,
+                translation[0],
+                translation[1],
+                translation[2],
+                1.0,
+            ],
+        }
+    }
+}
+
+#[cfg(test)]
+mod trs_tests {
+    use super::*;
+
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-3
+    }
+
+    #[test]
+    fn matches_what_flash_reports() {
+        // rotationX/Y/Z = 20/30/40 gives these columns in Flash
+        let m = Matrix3D::from_trs(
+            [0.0; 3],
+            &Trs3D {
+                rotation: [20.0, 30.0, 40.0],
+                scale: [1.0; 3],
+            },
+        );
+        let flash = [
+            0.6634, 0.5567, -0.5, -0.473, 0.8298, 0.2962, 0.5798, 0.04, 0.8138,
+        ];
+        let mine = [
+            m.raw_data[0],
+            m.raw_data[1],
+            m.raw_data[2],
+            m.raw_data[4],
+            m.raw_data[5],
+            m.raw_data[6],
+            m.raw_data[8],
+            m.raw_data[9],
+            m.raw_data[10],
+        ];
+        for (a, b) in mine.iter().zip(flash) {
+            assert!(close(*a as f64, b), "{mine:?}");
+        }
+        let back = m.decompose_trs();
+        assert!(
+            close(back.rotation[0], 20.0)
+                && close(back.rotation[1], 30.0)
+                && close(back.rotation[2], 40.0)
+        );
+        assert!(back.scale.iter().all(|s| close(*s, 1.0)));
+    }
+
+    #[test]
+    fn a_matrix_with_shear_decomposes_like_flash() {
+        // [1, 0.2, 0, 0, 0.3, 1, 0, 0, ...]: Flash reports sx 1.0198, sy 0.9217, rotationZ 11.3099
+        let m = Matrix3D {
+            raw_data: [
+                1.0, 0.2, 0.0, 0.0, 0.3, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 10.0, 20.0, 30.0, 1.0,
+            ],
+        };
+        let t = m.decompose_trs();
+        assert!(
+            close(t.scale[0], 1.0198) && close(t.scale[1], 0.9217) && close(t.scale[2], 1.0),
+            "{t:?}"
+        );
+        assert!(
+            close(t.rotation[2], 11.3099) && close(t.rotation[0], 0.0) && close(t.rotation[1], 0.0),
+            "{t:?}"
+        );
+    }
+
+    #[test]
+    fn scale_comes_before_rotation() {
+        let m = Matrix3D::from_trs(
+            [1.0, 2.0, 3.0],
+            &Trs3D {
+                rotation: [0.0, 0.0, 0.0],
+                scale: [2.0, 3.0, 4.0],
+            },
+        );
+        assert_eq!(m.raw_data[0], 2.0);
+        assert_eq!(m.raw_data[5], 3.0);
+        assert_eq!(m.raw_data[10], 4.0);
+        assert_eq!(m.raw_data[12], 1.0);
+    }
+}

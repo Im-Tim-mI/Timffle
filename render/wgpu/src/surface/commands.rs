@@ -14,6 +14,7 @@ use ruffle_render::bitmap::{BitmapHandle, PixelRegion, PixelSnapping};
 use ruffle_render::commands::{CommandHandler, CommandList, RenderBlendMode};
 use ruffle_render::lines::{emulate_line, emulate_line_rect};
 use ruffle_render::matrix::Matrix;
+use ruffle_render::matrix3d::Matrix3D;
 use ruffle_render::pixel_bender::PixelBenderShaderHandle;
 use ruffle_render::quality::StageQuality;
 use ruffle_render::transform::Transform;
@@ -634,36 +635,27 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
 
     fn add_to_current(
         &mut self,
-        matrix: Matrix,
-        tz: f64,
+        world_matrix: [[f32; 4]; 4],
         color_transform: ColorTransform,
         command_builder: impl FnOnce(u32) -> DrawCommand,
     ) {
-        self.add_to_current_with_vertices(matrix, tz, color_transform, None, |instance_index, _| {
-            command_builder(instance_index)
-        })
+        self.add_to_current_with_vertices(
+            world_matrix,
+            color_transform,
+            None,
+            |instance_index, _| command_builder(instance_index),
+        )
     }
 
     fn add_to_current_with_vertices(
         &mut self,
-        matrix: Matrix,
-        tz: f64,
+        world_matrix: [[f32; 4]; 4],
         color_transform: ColorTransform,
         vertices: Option<&[PosUvVertex]>,
         command_builder: impl FnOnce(u32, Option<wgpu::BufferAddress>) -> DrawCommand,
     ) {
         let transform = Transforms {
-            world_matrix: [
-                [matrix.a, matrix.b, 0.0, 0.0],
-                [matrix.c, matrix.d, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [
-                    matrix.tx.to_pixels() as f32,
-                    matrix.ty.to_pixels() as f32,
-                    tz as f32,
-                    1.0,
-                ],
-            ],
+            world_matrix,
             mult_color: color_transform.mult_rgba_normalized(),
             add_color: color_transform.add_rgba_normalized(),
         };
@@ -750,9 +742,8 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             BlendType::Trivial(blend_mode) => {
                 let transform = Transform {
                     matrix: Matrix::scale(target.width() as f32, target.height() as f32),
-                    tz: 0.0,
                     color_transform: Default::default(),
-                    perspective_projection: None,
+                    ..Default::default()
                 };
                 let texture = target.take_color_texture();
                 let bind_group =
@@ -775,8 +766,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
                             label: None,
                         });
                 self.add_to_current(
-                    transform.matrix,
-                    transform.tz,
+                    world_matrix(transform.matrix, None, (1.0, 1.0)),
                     transform.color_transform,
                     |instance_index| DrawCommand::RenderTexture {
                         _texture: texture,
@@ -827,8 +817,14 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
         let texture = as_texture(&bitmap);
 
         let mut matrix = transform.matrix;
-        pixel_snapping.apply(&mut matrix);
-        matrix *= Matrix::scale(region.width() as f32, region.height() as f32);
+        if transform.matrix3d.is_none() {
+            pixel_snapping.apply(&mut matrix);
+        }
+        let world = world_matrix(
+            matrix,
+            transform.matrix3d.as_ref(),
+            (region.width() as f32, region.height() as f32),
+        );
 
         let vertices: &[PosUvVertex] = {
             let (u0, u1, v0, v1) = (
@@ -846,8 +842,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
         };
 
         self.add_to_current_with_vertices(
-            matrix,
-            transform.tz,
+            world,
             transform.color_transform,
             Some(vertices),
             |instance_index, vertex_offset| DrawCommand::RenderBitmap {
@@ -862,33 +857,32 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
     }
 
     fn render_stage3d(&mut self, bitmap: BitmapHandle, transform: Transform) {
-        let mut matrix = transform.matrix;
-        {
+        let world = {
             let texture = as_texture(&bitmap);
-            matrix *= Matrix::scale(
-                texture.texture.width() as f32,
-                texture.texture.height() as f32,
-            );
-        }
-        self.add_to_current(
-            matrix,
-            transform.tz,
-            transform.color_transform,
-            |instance_index| DrawCommand::RenderBitmap {
+            world_matrix(
+                transform.matrix,
+                transform.matrix3d.as_ref(),
+                (
+                    texture.texture.width() as f32,
+                    texture.texture.height() as f32,
+                ),
+            )
+        };
+        self.add_to_current(world, transform.color_transform, |instance_index| {
+            DrawCommand::RenderBitmap {
                 bitmap,
                 instance_index,
                 vertex_offset: None,
                 smoothing: false,
                 blend_mode: TrivialBlend::Normal,
                 render_stage3d: true,
-            },
-        );
+            }
+        });
     }
 
     fn render_shape(&mut self, shape: ShapeHandle, transform: Transform) {
         self.add_to_current(
-            transform.matrix,
-            transform.tz,
+            world_matrix(transform.matrix, transform.matrix3d.as_ref(), (1.0, 1.0)),
             transform.color_transform,
             |instance_index| DrawCommand::RenderShape {
                 shape,
@@ -899,8 +893,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
 
     fn draw_rect(&mut self, color: Color, matrix: Matrix) {
         self.add_to_current(
-            matrix,
-            0.0,
+            world_matrix(matrix, None, (1.0, 1.0)),
             ColorTransform::multiply_from(color),
             |instance_index| DrawCommand::DrawRect { instance_index },
         );
@@ -915,8 +908,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             matrix.tx += Twips::HALF_PX;
             matrix.ty += Twips::HALF_PX;
             self.add_to_current(
-                matrix,
-                0.0,
+                world_matrix(matrix, None, (1.0, 1.0)),
                 ColorTransform::multiply_from(color),
                 |instance_index| DrawCommand::DrawLine { instance_index },
             );
@@ -932,8 +924,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             matrix.tx += Twips::HALF_PX;
             matrix.ty += Twips::HALF_PX;
             self.add_to_current(
-                matrix,
-                0.0,
+                world_matrix(matrix, None, (1.0, 1.0)),
                 ColorTransform::multiply_from(color),
                 |instance_index| DrawCommand::DrawLineRect { instance_index },
             );
@@ -1024,13 +1015,45 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
                 label: None,
             });
 
-        self.add_to_current(matrix, 0.0, Default::default(), |instance_index| {
-            DrawCommand::RenderAlphaMask {
+        self.add_to_current(
+            world_matrix(matrix, None, (1.0, 1.0)),
+            Default::default(),
+            |instance_index| DrawCommand::RenderAlphaMask {
                 maskee,
                 mask,
                 binds,
                 instance_index,
-            }
-        });
+            },
+        );
     }
+}
+
+/// The matrix that takes the coordinates of a shape or bitmap (pixels) to the screen (pixels): the full
+/// projective mapping of a 3D object, or the 2D matrix. The result is for column vectors, column-major.
+/// `scale` is applied to the local coordinates first.
+fn world_matrix(matrix: Matrix, matrix3d: Option<&Matrix3D>, scale: (f32, f32)) -> [[f32; 4]; 4] {
+    if let Some(matrix3d) = matrix3d {
+        let mut world: [[f32; 4]; 4] = bytemuck::cast(matrix3d.raw_data);
+        for row in 0..4 {
+            world[0][row] *= scale.0;
+            world[1][row] *= scale.1;
+        }
+        return world;
+    }
+    let matrix = if scale == (1.0, 1.0) {
+        matrix
+    } else {
+        matrix * Matrix::scale(scale.0, scale.1)
+    };
+    [
+        [matrix.a, matrix.b, 0.0, 0.0],
+        [matrix.c, matrix.d, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [
+            matrix.tx.to_pixels() as f32,
+            matrix.ty.to_pixels() as f32,
+            0.0,
+            1.0,
+        ],
+    ]
 }

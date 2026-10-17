@@ -1,3 +1,4 @@
+use crate::avm2::error::make_error_2189;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::slots::flash_geom_color_transform as ct_slots;
 use crate::avm2::globals::slots::flash_geom_matrix as matrix_slots;
@@ -7,9 +8,8 @@ use crate::avm2::globals::slots::flash_geom_transform as transform_slots;
 use crate::avm2::object::Matrix3DObject;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::{Activation, Error, Object, TObject as _, Value};
-use crate::display_object::{BoundsMode, TDisplayObject};
+use crate::display_object::{BoundsMode, TDisplayObject, any_3d};
 use crate::prelude::{DisplayObject, Matrix, Twips};
-use crate::{avm2_stub_getter, avm2_stub_method, avm2_stub_setter};
 use ruffle_render::matrix3d::Matrix3D;
 use ruffle_render::perspective_projection::PerspectiveProjection;
 use ruffle_render::quality::StageQuality;
@@ -60,7 +60,7 @@ pub fn get_matrix<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    if get_display_object(this).base().has_matrix3d_stub() {
+    if get_display_object(this).base().has_matrix3d() {
         Ok(Value::Null)
     } else {
         let matrix = matrix_from_transform_object(this);
@@ -77,7 +77,8 @@ pub fn set_matrix<'gc>(
 
     let dobj = get_display_object(this);
     let Some(obj) = args.try_get_object(0) else {
-        dobj.base().set_has_matrix3d_stub(true);
+        // `null`: the object becomes 3D (with the position and scale it has)
+        dobj.set_z(dobj.z());
         return Ok(Value::Undefined);
     };
 
@@ -89,7 +90,6 @@ pub fn set_matrix<'gc>(
         // we only want to inform ancestors to avoid unnecessary invalidations for tx/ty
         parent.invalidate_cached_bitmap();
     }
-    dobj.base().set_has_matrix3d_stub(false);
     Ok(Value::Undefined)
 }
 
@@ -101,6 +101,10 @@ pub fn get_concatenated_matrix<'gc>(
     let this = this.as_object().unwrap();
 
     let dobj = get_display_object(this);
+    if dobj.base().has_matrix3d() {
+        // A 3D object has no 2D matrix.
+        return Ok(Value::Null);
+    }
     let mut node = Some(dobj);
     while let Some(obj) = node {
         if obj.as_stage().is_some() {
@@ -111,7 +115,7 @@ pub fn get_concatenated_matrix<'gc>(
 
     // We're a child of the Stage, and not the stage itself
     if node.is_some() && dobj.as_stage().is_none() {
-        let matrix = get_display_object(this).local_to_global_matrix_without_own_scroll_rect();
+        let matrix = concatenated_2d_matrix(dobj);
         matrix_to_object(matrix, activation)
     } else {
         // If this object is the Stage itself, or an object
@@ -133,10 +137,31 @@ pub fn get_concatenated_matrix<'gc>(
     }
 }
 
-pub fn has_matrix3d_from_transform_object(transform_object: Object<'_>) -> bool {
-    get_display_object(transform_object)
-        .base()
-        .has_matrix3d_stub()
+pub fn matrix3d_from_transform_object(transform_object: Object<'_>) -> Option<Matrix3D> {
+    get_display_object(transform_object).base().matrix3d()
+}
+
+/// The product of the 2D matrices from the stage down to the object. Like in Flash Player, 3D objects above it
+/// do not contribute.
+fn concatenated_2d_matrix(dobj: DisplayObject<'_>) -> Matrix {
+    if !any_3d() {
+        return dobj.local_to_global_matrix_without_own_scroll_rect();
+    }
+    let mut matrix = dobj.base().matrix();
+    let mut node = dobj.parent();
+    while let Some(ancestor) = node {
+        if ancestor.as_stage().is_some() {
+            break;
+        }
+        if let Some(rect) = ancestor.scroll_rect() {
+            matrix = Matrix::translate(-rect.x_min, -rect.y_min) * matrix;
+        }
+        if !ancestor.base().has_matrix3d() {
+            matrix = ancestor.base().matrix() * matrix;
+        }
+        node = ancestor.parent();
+    }
+    matrix
 }
 
 pub fn matrix_from_transform_object(transform_object: Object<'_>) -> Matrix {
@@ -256,6 +281,10 @@ pub fn get_pixel_bounds<'gc>(
     let this = this.as_object().unwrap();
 
     let display_object = get_display_object(this);
+    if display_object.base().has_matrix3d() {
+        // Flash Player reports the untransformed bounds for a 3D object.
+        return rectangle_to_object(display_object.bounds(BoundsMode::Script), activation);
+    }
     rectangle_to_object(display_object.pixel_bounds(BoundsMode::Script), activation)
 }
 
@@ -282,19 +311,15 @@ pub fn get_matrix_3d<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    // FIXME: This Matrix3D is generated from the 2D Matrix.
-    // It does not work when the matrix contains any transformation in 3D.
-    // Support native Matrix3D.
-    avm2_stub_getter!(activation, "flash.geom.Transform", "matrix3D");
-
     let display_object = get_display_object(this);
-    if display_object.base().has_matrix3d_stub() {
-        let matrix = get_display_object(this).base().matrix();
-        let mut matrix3d = Matrix3D::from_matrix(matrix);
-        matrix3d.set_tz(display_object.z() as f32);
-        Ok(Matrix3DObject::new(activation.context, matrix3d).into())
-    } else {
-        Ok(Value::Null)
+    match display_object.base().matrix3d() {
+        Some(matrix3d) => {
+            // The matrix is a live view of the object's own.
+            let object = Matrix3DObject::new(activation.context, matrix3d);
+            object.bind_to(activation.context, display_object);
+            Ok(object.into())
+        }
+        None => Ok(Value::Null),
     }
 }
 
@@ -305,27 +330,24 @@ pub fn set_matrix_3d<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    // FIXME: This sets 2D Matrix generated from the given Matrix3D, ignoring 3D parameters.
-    // Support native Matrix3D.
-    avm2_stub_setter!(activation, "flash.geom.Transform", "matrix3D");
-
     let display_object = get_display_object(this);
-
-    let (matrix, has_matrix3d, tz) = {
-        match args.try_get_object(0) {
-            Some(obj) => {
-                let matrix3d = obj.as_matrix3d_object().unwrap().matrix();
-                let matrix = matrix3d.to_matrix();
-                let tz = matrix3d.tz();
-                (matrix, true, tz)
+    match args.try_get_object(0) {
+        Some(obj) => {
+            let matrix3d = obj.as_matrix3d_object().unwrap();
+            if let Some(owner) = matrix3d.owner()
+                && !DisplayObject::ptr_eq(owner, display_object)
+                && owner.base().has_matrix3d()
+            {
+                return Err(make_error_2189(activation));
             }
-            None => (Matrix::IDENTITY, false, 0.0),
+            display_object.base().set_matrix3d(Some(matrix3d.matrix()));
+            matrix3d.bind_to(activation.context, display_object);
         }
-    };
-
-    display_object.set_matrix(matrix);
-    display_object.set_z(tz as f64);
-    display_object.base().set_has_matrix3d_stub(has_matrix3d);
+        None => display_object.base().set_matrix3d(None),
+    }
+    if let Some(parent) = display_object.parent() {
+        parent.invalidate_cached_bitmap();
+    }
 
     Ok(Value::Undefined)
 }
@@ -368,9 +390,6 @@ pub fn set_perspective_projection<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    // FIXME: Render with the given PerspectiveProjection.
-    avm2_stub_setter!(activation, "flash.geom.Transform", "perspectiveProjection");
-
     let perspective_projection = args
         .try_get_object(0)
         .map(|object| object_to_perspective_projection(object, activation))
@@ -388,14 +407,36 @@ pub fn get_relative_matrix_3d<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    let _relative_to = args.get_object(activation, 0, "relativeTo")?;
-
-    avm2_stub_method!(activation, "flash.geom.Transform", "getRelativeMatrix3D");
+    let relative_to = args.get_object(activation, 0, "relativeTo")?;
 
     let display_object = get_display_object(this);
-    if !display_object.base().has_matrix3d_stub() {
+    if !display_object.base().has_matrix3d() {
         return Ok(Value::Null);
     }
+    let Some(target) = relative_to.as_display_object() else {
+        return Ok(Value::Null);
+    };
 
-    Ok(Matrix3DObject::new(activation.context, Matrix3D::IDENTITY).into())
+    // The matrix that takes this object's space to the target's, no projection involved.
+    let to_stage = display_object.matrix3d_to_stage().to_matrix3d();
+    let target_to_stage = target.matrix3d_to_stage().to_matrix3d();
+    let mut relative = match target_to_stage.invert() {
+        Some(inverse) => inverse.multiply(&to_stage),
+        None => to_stage,
+    };
+    if target.as_stage().is_some() {
+        // Relative to the stage, Flash Player scales x and y by what it uses for the stage's own matrix.
+        let scale = match activation.context.stage.quality() {
+            StageQuality::Low => 20.0,
+            StageQuality::Medium => 10.0,
+            StageQuality::High | StageQuality::Best => 5.0,
+            StageQuality::High8x8 | StageQuality::High8x8Linear => 2.5,
+            StageQuality::High16x16 | StageQuality::High16x16Linear => 1.25,
+        };
+        for column in 0..4 {
+            relative.raw_data[column * 4] /= scale;
+            relative.raw_data[column * 4 + 1] /= scale;
+        }
+    }
+    Ok(Matrix3DObject::new(activation.context, relative).into())
 }

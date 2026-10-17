@@ -210,7 +210,11 @@ impl<'gc> TDisplayObject<'gc> for Text<'gc> {
             let Some(text_matrix) = shared.text_transform.inverse() else {
                 return false;
             };
-            point = text_matrix * local_matrix * point;
+            let _ = local_matrix;
+            let Some(local_point) = self.global_to_local(point) else {
+                return false;
+            };
+            point = text_matrix * local_point;
 
             let mut font_id = 0;
             let mut height = Twips::ZERO;

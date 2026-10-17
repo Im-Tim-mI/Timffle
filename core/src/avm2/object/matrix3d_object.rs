@@ -3,11 +3,15 @@ use crate::avm2::activation::Activation;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, Object, TObject};
 use crate::context::UpdateContext;
+use crate::display_object::{DisplayObject, TDisplayObject};
 use core::fmt;
+use gc_arena::barrier::unlock;
+use gc_arena::lock::Lock;
 use gc_arena::{Collect, Gc, GcWeak};
 use ruffle_common::utils::HasPrefixField;
 use ruffle_render::matrix3d::Matrix3D;
 use std::cell::{Ref, RefCell, RefMut};
+use std::ops::{Deref, DerefMut};
 
 /// A class instance allocator that allocates Matrix3D objects.
 pub fn matrix_3d_allocator<'gc>(
@@ -21,6 +25,7 @@ pub fn matrix_3d_allocator<'gc>(
         Matrix3DObjectData {
             base,
             matrix: RefCell::new(Matrix3D::IDENTITY),
+            owner: Lock::new(None),
         },
     ))
     .into())
@@ -50,6 +55,11 @@ pub struct Matrix3DObjectData<'gc> {
     base: ScriptObjectData<'gc>,
 
     matrix: RefCell<Matrix3D>,
+
+    /// The display object whose `transform.matrix3D` this is. Like in Flash Player, such a matrix is a live view
+    /// of the object's own: changing it moves the object, and the object's changes show in it. While the owner
+    /// is not 3D (any more), `matrix` is used on its own.
+    owner: Lock<Option<DisplayObject<'gc>>>,
 }
 
 impl<'gc> Matrix3DObject<'gc> {
@@ -61,16 +71,55 @@ impl<'gc> Matrix3DObject<'gc> {
             Matrix3DObjectData {
                 base,
                 matrix: RefCell::new(matrix),
+                owner: Lock::new(None),
             },
         ))
     }
 
+    /// The display object that this matrix is the live `transform.matrix3D` of, if any.
+    pub fn owner(self) -> Option<DisplayObject<'gc>> {
+        self.0.owner.get()
+    }
+
+    /// Makes this matrix the live `transform.matrix3D` of `owner`.
+    pub fn bind_to(self, context: &UpdateContext<'gc>, owner: DisplayObject<'gc>) {
+        let write = Gc::write(context.gc(), self.0);
+        unlock!(write, Matrix3DObjectData, owner).set(Some(owner));
+    }
+
+    /// Takes the owner's current 3D matrix, if the object is still 3D.
+    fn refresh_from_owner(&self) {
+        if let Some(owner) = self.0.owner.get()
+            && let Some(matrix) = owner.base().matrix3d()
+        {
+            *self.0.matrix.borrow_mut() = matrix;
+        }
+    }
+
+    /// Gives the owner (if it is still 3D) the matrix that this object now holds.
+    fn push_to_owner(&self, matrix: Matrix3D) {
+        if let Some(owner) = self.0.owner.get()
+            && owner.base().has_matrix3d()
+        {
+            owner.base().set_matrix3d(Some(matrix));
+            if let Some(parent) = owner.parent() {
+                parent.invalidate_cached_bitmap();
+            }
+        }
+    }
+
     pub fn matrix_ref(&self) -> Ref<'_, Matrix3D> {
+        self.refresh_from_owner();
         self.0.matrix.borrow()
     }
 
-    pub fn matrix_mut(&self) -> RefMut<'_, Matrix3D> {
-        self.0.matrix.borrow_mut()
+    /// Mutable access to the matrix; what it holds when the guard goes away is passed on to the owner.
+    pub fn matrix_mut(&self) -> Matrix3DGuard<'_, 'gc> {
+        self.refresh_from_owner();
+        Matrix3DGuard {
+            object: self,
+            matrix: Some(self.0.matrix.borrow_mut()),
+        }
     }
 
     pub fn matrix(self) -> Matrix3D {
@@ -78,7 +127,40 @@ impl<'gc> Matrix3DObject<'gc> {
     }
 
     pub fn replace_matrix(self, matrix: Matrix3D) -> Matrix3D {
-        self.0.matrix.replace(matrix)
+        self.refresh_from_owner();
+        let old = self.0.matrix.replace(matrix);
+        self.push_to_owner(matrix);
+        old
+    }
+}
+
+/// A mutable borrow of a [`Matrix3DObject`]'s matrix that updates the display object it belongs to when it ends.
+pub struct Matrix3DGuard<'a, 'gc> {
+    object: &'a Matrix3DObject<'gc>,
+    matrix: Option<RefMut<'a, Matrix3D>>,
+}
+
+impl Deref for Matrix3DGuard<'_, '_> {
+    type Target = Matrix3D;
+
+    fn deref(&self) -> &Matrix3D {
+        self.matrix.as_deref().expect("guard is alive")
+    }
+}
+
+impl DerefMut for Matrix3DGuard<'_, '_> {
+    fn deref_mut(&mut self) -> &mut Matrix3D {
+        self.matrix.as_deref_mut().expect("guard is alive")
+    }
+}
+
+impl Drop for Matrix3DGuard<'_, '_> {
+    fn drop(&mut self) {
+        if let Some(matrix) = self.matrix.take() {
+            let value = *matrix;
+            drop(matrix);
+            self.object.push_to_owner(value);
+        }
     }
 }
 
