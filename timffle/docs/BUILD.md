@@ -52,7 +52,7 @@ go test -tags localtest ./...                                              # 含
 
 | 項目 | 結果 |
 |---|---|
-| 原始碼 | Ruffle 與 rust-flash-lso 的修改由前身 ruffle-mole-chrome 的五份補丁（0.8.0.26295）原封不動地轉成 commit（`git apply` 全部乾淨套用）；之後只改了品牌、小幫手名稱與 `flash-lso` 的路徑。 |
+| 原始碼 | Ruffle 與 rust-flash-lso 的修改由前身專案的五份補丁（0.8.0.26295）原封不動地轉成 commit（`git apply` 全部乾淨套用）；之後只改了品牌、小幫手名稱與 `flash-lso` 的路徑。 |
 | **WebAssembly 核心與擴充功能** | 在本 repo 的樹上用 `timffle/scripts/build-extension.sh` **完整建置成功**（`web-wasm-extensions` profile；`flash-lso` 確實從 `vendor/rust-flash-lso` 編譯），擴充功能型別檢查通過、單元測試 38/38。wasm 內含編譯路徑等資訊，不會與舊版逐位元組相同。 |
 | 連線小幫手 | `go vet`、`go test ./...`、`go test -tags localtest ./...` 通過；7 個平台交叉編譯成功。Windows 版的安裝／移除登錄測試（`installer-tests/test_windows_registry.py`）在 Wine 通過。 |
 | 發行 ZIP | `package-release.sh` 產生 91 個檔案的 ZIP（含 `LICENSES/` 與 `NOTICE.md`）；封裝測試 23/23。 |

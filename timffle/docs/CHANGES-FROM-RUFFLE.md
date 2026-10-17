@@ -1,6 +1,6 @@
 # Timffle 對 Ruffle 的修正
 
-基底：Ruffle `nightly-2026-10-13`（commit `46fec3f`）。Timffle 的修正是在它之後的 git commit；下面的 0001～0005 對應前身 ruffle-mole-chrome 的五份補丁，在 Timffle 的歷史裡是這幾個 commit：
+基底：Ruffle `nightly-2026-10-13`（commit `46fec3f`）。Timffle 的修正是在它之後的 git commit；下面的 0001～0005 對應前身專案的五份補丁，在 Timffle 的歷史裡是這幾個 commit：
 
 | 編號 | Commit 標題 |
 |---|---|

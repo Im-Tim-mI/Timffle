@@ -23,6 +23,7 @@
 | `web/packages/core/src/internal/ui/splash-screen.tsx` | 載入畫面的字標（原本是 RUFFLE 字標） | `timffle/branding/make_branding.py` 產生；有檢查 |
 | 擴充功能與 Demo 的圖示、`logo.svg` | Timffle 自己的圖示與字標 | `timffle/branding/make_branding.py` 產生 |
 | 播放鍵（`web/packages/core/src/internal/ui/container.tsx`） | 遊戲開始前的圓形播放鍵改成 Timffle 藍色漸層（原本是 Ruffle 的橘紅色） | 手改；有檢查 |
+| 擴充功能介面的強調色（`web/packages/extension/assets/css/common.css`） | 標題、開關與按鈕的強調色從 Ruffle 的橘色改成圖示的黃色 `#ffd038`（變數名稱 `--ruffle-orange` 是上游的，沒有改） | 手改 |
 | 桌面版的圖片：`desktop/assets/about_logo.png`、`favicon.ico`、`favicon-32.rgba`、`Assets.xcassets/RuffleMacIcon.iconset/*.png`、`desktop/packages/linux/rs.ruffle.Ruffle.svg`、Windows 安裝程式的 `banner.png`／`dialog.png` | Timffle 的字標與圖示（檔名沿用上游，因為建置檔引用這些名稱） | `timffle/branding/make_branding.py` 產生 |
 | README 開頭的標誌、GitHub 社群預覽圖 `timffle/branding/social-preview.png`（1280×640） | 社群預覽圖要在 GitHub repo 的 Settings → General → Social preview 手動上傳 | `make_branding.py` 產生 |
 | `web/packages/demo/index.html`、`navbar.tsx` | 網頁 Demo 的標題、標誌與連結 | `rebrand.py` 自動＋手改 |
@@ -65,7 +66,12 @@ python3 timffle/branding/make_branding.py --check
 
 ## 標誌與圖示
 
-`timffle/branding/make_branding.py` 用純幾何圖形（矩形與多邊形，不依賴字型）產生 Timffle 的字標與圖示，刻意與 Ruffle 的標誌不同（藍色、直立方塊字、「T」圖示）。這是 Timffle 的原創作品，以本 repo 的授權（MIT 或 Apache-2.0）提供。要換設計：改這支程式後執行它，產生的檔案（`timffle/branding/` 內的檔案、擴充功能與 Demo 的 `logo.svg`／`icon*.png`、桌面版的圖片、載入畫面的 `splash-logo.tsx.txt`）一起 commit，並把 `splash-logo.tsx.txt` 的內容貼回 `splash-screen.tsx`。
+`timffle/branding/make_branding.py` 用純幾何圖形（矩形、多邊形、漸層與一個柔和陰影，不依賴字型）產生 Timffle 的字標與圖示，刻意與 Ruffle 的標誌不同。
+
+- **圖示**：天藍色圓角方塊上的白色「T」，T 右下角的空位放一個黃色的播放三角形（T 是名字，三角形說「播放器」）。主檔是向量的 `timffle/branding/timffle-icon.svg`；各尺寸的 PNG 由同一組數字用 Pillow 繪製，16／32／48 px 的 PNG 會把 T 的邊緣貼齊像素格，工具列上才清楚。色彩：方塊由 `rgb(36, 148, 238)` 漸層到 `rgb(10, 70, 160)`，白色 T，黃色 `rgb(255, 208, 56)`。
+- **字標**：直立方塊字母，淺藍加深色立體陰影。
+
+這是 Timffle 的原創作品，以本 repo 的授權（MIT 或 Apache-2.0）提供。要換設計：改這支程式後執行它，產生的檔案（`timffle/branding/` 內的檔案、擴充功能與 Demo 的 `logo.svg`／`icon*.png`、桌面版的圖片、載入畫面的 `splash-logo.tsx.txt`）一起 commit，並把 `splash-logo.tsx.txt` 的內容貼回 `splash-screen.tsx`。
 
 ## 尚未確認的事
 
