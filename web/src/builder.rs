@@ -110,6 +110,38 @@ impl Default for RuffleInstanceBuilder {
     }
 }
 
+/// `GL_MAX_VERTEX_UNIFORM_VECTORS` of a scratch WebGL 2 context (timffle).
+#[cfg(all(feature = "wgpu-webgl", target_family = "wasm"))]
+fn webgl2_max_vertex_uniform_vectors(document: &web_sys::Document) -> Option<u64> {
+    const MAX_VERTEX_UNIFORM_VECTORS: u32 = 0x8DFB;
+    let call = |target: &JsValue, name: &str, args: &js_sys::Array| -> Option<JsValue> {
+        let method: js_sys::Function = js_sys::Reflect::get(target, &name.into())
+            .ok()?
+            .dyn_into()
+            .ok()?;
+        method.apply(target, args).ok()
+    };
+    let canvas: HtmlCanvasElement = document.create_element("canvas").ok()?.dyn_into().ok()?;
+    let context: JsValue = canvas.get_context("webgl2").ok()??.into();
+    let vectors = call(
+        &context,
+        "getParameter",
+        &js_sys::Array::of1(&MAX_VERTEX_UNIFORM_VECTORS.into()),
+    )?
+    .as_f64();
+    // Free the probe's context instead of waiting for garbage collection.
+    if let Some(lose) = call(
+        &context,
+        "getExtension",
+        &js_sys::Array::of1(&"WEBGL_lose_context".into()),
+    )
+    .filter(JsValue::is_object)
+    {
+        call(&lose, "loseContext", &js_sys::Array::new());
+    }
+    vectors.filter(|&v| v >= 1.0).map(|v| v as u64)
+}
+
 #[wasm_bindgen]
 impl RuffleInstanceBuilder {
     #[wasm_bindgen(constructor)]
@@ -593,6 +625,9 @@ impl RuffleInstanceBuilder {
                 #[cfg(all(feature = "wgpu-webgl", target_family = "wasm"))]
                 "wgpu-webgl" => {
                     tracing::info!("Creating wgpu webgl renderer...");
+                    if let Some(vectors) = webgl2_max_vertex_uniform_vectors(&document) {
+                        ruffle_render_wgpu::set_max_vertex_uniform_vectors(vectors);
+                    }
                     let canvas: HtmlCanvasElement = document
                         .create_element("canvas")
                         .into_js_result()?

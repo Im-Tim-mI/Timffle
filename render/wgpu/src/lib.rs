@@ -44,6 +44,7 @@ mod buffer_pool;
 pub mod clap;
 pub mod descriptors;
 mod dynamic_transforms;
+pub use dynamic_transforms::set_max_vertex_uniform_vectors;
 mod filters;
 mod layouts;
 mod mesh;

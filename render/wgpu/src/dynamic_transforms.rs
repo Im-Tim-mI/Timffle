@@ -1,8 +1,25 @@
 use crate::descriptors::Descriptors;
 use crate::{PosUvVertex, Transforms};
 use std::mem;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 const ESTIMATED_OBJECTS_PER_CHUNK: u64 = 200;
+
+/// Vertex uniform vectors kept for everything but the transforms array
+/// (globals, texture and gradient uniforms).
+const RESERVED_VERTEX_UNIFORM_VECTORS: u64 = 64;
+
+static MAX_VERTEX_UNIFORM_VECTORS: AtomicU64 = AtomicU64::new(u64::MAX);
+
+/// Reports the device's `GL_MAX_VERTEX_UNIFORM_VECTORS` (timffle).
+///
+/// WebGL implementations can count the transforms uniform block against that
+/// limit, and wgpu's limits do not include it: with the WebGL 2 minimum of 256
+/// (the Android emulator, many phone GPUs) the full array fails pipeline
+/// validation. Applies to backends created afterwards.
+pub fn set_max_vertex_uniform_vectors(vectors: u64) {
+    MAX_VERTEX_UNIFORM_VECTORS.store(vectors, Ordering::Relaxed);
+}
 
 pub struct DynamicTransforms {
     pub buffer: wgpu::Buffer,
@@ -12,7 +29,14 @@ pub struct DynamicTransforms {
 
 pub fn transforms_per_draw(limits: &wgpu::Limits) -> u64 {
     let maximum = limits.max_uniform_buffer_binding_size / size_of::<Transforms>() as u64;
-    maximum.min(ESTIMATED_OBJECTS_PER_CHUNK)
+    let vectors_per_transform = size_of::<Transforms>() as u64 / 16;
+    let by_vectors = MAX_VERTEX_UNIFORM_VECTORS
+        .load(Ordering::Relaxed)
+        .saturating_sub(RESERVED_VERTEX_UNIFORM_VECTORS)
+        / vectors_per_transform;
+    maximum
+        .min(by_vectors)
+        .clamp(1, ESTIMATED_OBJECTS_PER_CHUNK)
 }
 
 impl DynamicTransforms {
