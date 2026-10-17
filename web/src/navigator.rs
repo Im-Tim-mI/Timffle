@@ -1,9 +1,10 @@
 //! Navigator backend for web
 use crate::SocketProxy;
 use async_channel::{Receiver, Sender};
+use futures::channel::oneshot;
 use futures_util::future::Either;
-use futures_util::{SinkExt, StreamExt, future};
-use gloo_net::websocket::{Message, futures::WebSocket};
+use futures_util::{SinkExt, Stream, StreamExt, future};
+use gloo_net::websocket::{Message, State, futures::WebSocket};
 use js_sys::{Array, Promise, RegExp, Uint8Array};
 use ruffle_core::Player;
 use ruffle_core::backend::navigator::{
@@ -19,11 +20,13 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, Weak};
+use std::task::Poll;
 use std::time::Duration;
 use tracing_subscriber::Registry;
 use tracing_subscriber::layer::Layered;
 use tracing_wasm::WASMLayer;
 use url::{ParseError, Url};
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 use wasm_streams::readable::ReadableStream;
@@ -59,6 +62,84 @@ pub struct WebNavigatorBackend {
     socket_proxies: Vec<SocketProxy>,
     credential_allow_list: Vec<String>,
     player: Weak<Mutex<Player>>,
+}
+
+/// Exact mappings keep their original priority, even if a wildcard appears first.
+/// Among fallback mappings, configuration order breaks ties. An invalid selected
+/// mapping fails closed instead of falling through to a different destination.
+fn socket_proxy_url(proxies: &[SocketProxy], host: &str, port: u16) -> Option<Url> {
+    let proxy = proxies
+        .iter()
+        .find(|proxy| proxy.host == host && proxy.port == port)
+        .or_else(|| {
+            proxies.iter().find(|proxy| {
+                (proxy.host == host || proxy.host == "*") && (proxy.port == port || proxy.port == 0)
+            })
+        })?;
+
+    if proxy.host == "*"
+        && proxy.port == 0
+        && (!proxy.proxy_url.contains("{host}") || !proxy.proxy_url.contains("{port}"))
+    {
+        return None;
+    }
+
+    // Use URL-component encoding, not a raw replacement or a URL authority.
+    // In particular, IPv6 colons/brackets and query delimiters must remain data.
+    // byte_serialize uses form encoding, so convert its space spelling to %20
+    // to make this safe in both path components and query parameter values.
+    let host = url::form_urlencoded::byte_serialize(host.as_bytes())
+        .collect::<String>()
+        .replace('+', "%20");
+    let url = proxy
+        .proxy_url
+        .replace("{host}", &host)
+        .replace("{port}", &port.to_string());
+    let url = Url::parse(&url).ok()?;
+    matches!(url.scheme(), "ws" | "wss").then_some(url)
+}
+
+/// Cancel the browser timer when a handshake finishes or its future is dropped.
+struct SocketTimeout {
+    window: web_sys::Window,
+    handle: i32,
+    // Keep the callback alive until after clearTimeout in Drop.
+    _callback: Closure<dyn FnMut()>,
+}
+
+impl Drop for SocketTimeout {
+    fn drop(&mut self) {
+        self.window.clear_timeout_with_handle(self.handle);
+    }
+}
+
+async fn socket_timeout(mut remaining: Duration) -> Result<(), ()> {
+    let window = window().ok_or(())?;
+    while !remaining.is_zero() {
+        // setTimeout takes a signed 32-bit delay; larger Flash timeouts must
+        // not overflow into an immediate timeout or be silently shortened.
+        let chunk = remaining.min(Duration::from_millis(i32::MAX as u64));
+        let (sender, receiver) = oneshot::channel();
+        let callback = Closure::once_aborting(move || {
+            let _ = sender.send(());
+        });
+        let handle = window
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                callback.as_ref().unchecked_ref(),
+                chunk.as_millis() as i32,
+            )
+            .map_err(|_| ())?;
+        let _timer = SocketTimeout {
+            window: window.clone(),
+            handle,
+            _callback: callback,
+        };
+        // A cancellable oneshot avoids retaining JsFuture callbacks for a
+        // Promise that would never resolve after its timeout is cleared.
+        receiver.await.map_err(|_| ())?;
+        remaining -= chunk;
+    }
+    Ok(())
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -409,7 +490,7 @@ impl NavigatorBackend for WebNavigatorBackend {
             let url = response.url();
             let status = response.status();
             let redirected = response.redirected();
-            if !response.ok() {
+            if !response.ok() && !request.preserve_error_body {
                 let error = Error::HttpNotOk(
                     format!("Got {}", response.status_text()),
                     status,
@@ -495,76 +576,146 @@ impl NavigatorBackend for WebNavigatorBackend {
         &mut self,
         host: String,
         port: u16,
-        // NOTE: WebSocket does not allow specifying a timeout, so this goes unused.
-        _timeout: Duration,
+        timeout: Duration,
         handle: SocketHandle,
         receiver: Receiver<Vec<u8>>,
         sender: Sender<SocketAction>,
     ) {
-        let Some(proxy) = self
-            .socket_proxies
-            .iter()
-            .find(|x| x.host == host && x.port == port)
-        else {
-            tracing::warn!("Missing WebSocket proxy for host {}, port {}", host, port);
-            sender
-                .try_send(SocketAction::Connect(handle, ConnectionState::Failed))
-                .expect("working channel send");
+        let Some(proxy_url) = socket_proxy_url(&self.socket_proxies, &host, port) else {
+            tracing::warn!("Missing or invalid WebSocket proxy mapping");
+            let _ = sender.try_send(SocketAction::Connect(handle, ConnectionState::Failed));
             return;
         };
 
-        tracing::info!("Connecting to {}", proxy.proxy_url);
-
-        let ws = match WebSocket::open(&proxy.proxy_url) {
-            Ok(x) => x,
-            Err(e) => {
-                tracing::error!("Failed to create WebSocket, reason {:?}", e);
-                sender
-                    .try_send(SocketAction::Connect(handle, ConnectionState::Failed))
-                    .expect("working channel send");
+        // Do not log proxy URLs or browser error details: they can contain tokens.
+        let mut ws = match WebSocket::open(proxy_url.as_str()) {
+            Ok(ws) => ws,
+            Err(_) => {
+                tracing::warn!("Failed to create WebSocket proxy connection");
+                let _ = sender.try_send(SocketAction::Connect(handle, ConnectionState::Failed));
                 return;
             }
         };
 
-        let (mut ws_write, mut ws_read) = ws.split();
-        sender
-            .try_send(SocketAction::Connect(handle, ConnectionState::Connected))
-            .expect("working channel send");
-
         self.spawn_future(Box::pin(async move {
-            loop {
-                match future::select(ws_read.next(), std::pin::pin!(receiver.recv())).await {
-                    // Handle incoming messages.
-                    Either::Left((Some(msg), _)) => match msg {
-                        Ok(Message::Bytes(buf)) => sender
-                            .try_send(SocketAction::Data(handle, buf))
-                            .expect("working channel send"),
-                        Ok(_) => tracing::warn!("Server sent an unexpected text message"),
-                        Err(_) => {
-                            sender
-                                .try_send(SocketAction::Close(handle))
-                                .expect("working channel send");
-                            break;
-                        }
-                    },
-                    // Handle outgoing messages.
-                    Either::Right((Ok(msg), _)) => {
-                        if let Err(e) = ws_write.send(Message::Bytes(msg)).await {
-                            tracing::warn!("Failed to send message to WebSocket {}", e);
-                            sender
-                                .try_send(SocketAction::Close(handle))
-                                .expect("working channel send");
+            // Poll the outgoing channel too, so a local close/reconnect cancels a
+            // pending handshake promptly. Preserve any writes queued before OPEN.
+            let mut receiver = std::pin::pin!(receiver);
+            let mut pending_writes = Vec::new();
+            let mut pending_reads = Vec::new();
+            let state = {
+                let handshake = future::poll_fn(|cx| {
+                    if receiver.is_closed() {
+                        return Poll::Ready(ConnectionState::Failed);
+                    }
+                    while let Poll::Ready(message) = receiver.as_mut().poll_next(cx) {
+                        match message {
+                            Some(message) => pending_writes.push(message),
+                            None => return Poll::Ready(ConnectionState::Failed),
                         }
                     }
-                    // The connection was closed.
-                    _ => break,
-                };
+
+                    // gloo's close callback wakes the stream, not the sink, and
+                    // an early error may arrive while readyState is CONNECTING.
+                    // Register both wakers and preserve any already queued data.
+                    while let Poll::Ready(message) = ws.poll_next_unpin(cx) {
+                        match message {
+                            Some(Ok(message)) => pending_reads.push(message),
+                            Some(Err(_)) | None => return Poll::Ready(ConnectionState::Failed),
+                        }
+                    }
+                    if let Poll::Ready(Err(_)) = ws.poll_ready_unpin(cx) {
+                        return Poll::Ready(ConnectionState::Failed);
+                    }
+                    // gloo's poll_ready is also Ok for CLOSING/CLOSED, so it
+                    // cannot itself establish that the native handshake worked.
+                    match ws.state() {
+                        State::Open => Poll::Ready(ConnectionState::Connected),
+                        State::Connecting => Poll::Pending,
+                        State::Closing | State::Closed => Poll::Ready(ConnectionState::Failed),
+                    }
+                });
+                match future::select(
+                    std::pin::pin!(handshake),
+                    std::pin::pin!(socket_timeout(timeout)),
+                )
+                .await
+                {
+                    Either::Left((state, _)) => state,
+                    Either::Right((Ok(()), _)) => ConnectionState::TimedOut,
+                    Either::Right((Err(()), _)) => ConnectionState::Failed,
+                }
+            };
+
+            if state != ConnectionState::Connected {
+                let _ = ws.close(None, None);
+                let _ = sender.try_send(SocketAction::Connect(handle, state));
+                return Ok(());
             }
+
+            // OPEN proves target TCP readiness only for proxies that defer HTTP
+            // 101 until their target connection succeeds (legacy proxies may not).
+            if sender
+                .try_send(SocketAction::Connect(handle, ConnectionState::Connected))
+                .is_err()
+            {
+                let _ = ws.close(None, None);
+                return Ok(());
+            }
+
+            let (mut ws_write, mut ws_read) = ws.split();
+            let notify_close = 'connected: {
+                for message in pending_reads {
+                    match message {
+                        Message::Bytes(buf) => {
+                            if sender.try_send(SocketAction::Data(handle, buf)).is_err() {
+                                break 'connected false;
+                            }
+                        }
+                        Message::Text(_) => {
+                            tracing::warn!("Server sent an unexpected text message");
+                        }
+                    }
+                }
+                for message in pending_writes {
+                    if ws_write.send(Message::Bytes(message)).await.is_err() {
+                        tracing::warn!("Failed to send message to WebSocket proxy");
+                        break 'connected true;
+                    }
+                }
+
+                loop {
+                    match future::select(ws_read.next(), std::pin::pin!(receiver.recv())).await {
+                        Either::Left((Some(Ok(Message::Bytes(buf))), _)) => {
+                            if sender.try_send(SocketAction::Data(handle, buf)).is_err() {
+                                break 'connected false;
+                            }
+                        }
+                        Either::Left((Some(Ok(Message::Text(_))), _)) => {
+                            tracing::warn!("Server sent an unexpected text message");
+                        }
+                        // EOF, an error, or a close event all produce exactly one
+                        // remote Close action, including clean stream exhaustion.
+                        Either::Left((Some(Err(_)) | None, _)) => break 'connected true,
+                        Either::Right((Ok(message), _)) => {
+                            if ws_write.send(Message::Bytes(message)).await.is_err() {
+                                tracing::warn!("Failed to send message to WebSocket proxy");
+                                break 'connected true;
+                            }
+                        }
+                        // Local close is not a remote Close event.
+                        Either::Right((Err(_), _)) => break 'connected false,
+                    }
+                }
+            };
 
             let ws = ws_write
                 .reunite(ws_read)
                 .expect("both originate from the same websocket");
             let _ = ws.close(None, None);
+            if notify_close {
+                let _ = sender.try_send(SocketAction::Close(handle));
+            }
 
             Ok(())
         }));
@@ -677,6 +828,136 @@ impl SuccessResponse for WebResponseWrapper {
             Ok(Some(length.parse::<u64>()?))
         } else {
             Ok(None)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::socket_proxy_url;
+    use crate::SocketProxy;
+
+    fn proxy(host: &str, port: u16, proxy_url: &str) -> SocketProxy {
+        SocketProxy {
+            host: host.to_string(),
+            port,
+            proxy_url: proxy_url.to_string(),
+        }
+    }
+
+    #[test]
+    fn socket_proxy_exact_mapping_precedes_wildcards_and_duplicates() {
+        let proxies = [
+            proxy(
+                "*",
+                0,
+                "wss://relay.example/dynamic?host={host}&port={port}",
+            ),
+            proxy("game.example", 443, "ws://relay.example/first"),
+            proxy("game.example", 443, "wss://relay.example/second"),
+        ];
+        assert_eq!(
+            socket_proxy_url(&proxies, "game.example", 443)
+                .unwrap()
+                .as_str(),
+            "ws://relay.example/first"
+        );
+        assert_eq!(
+            socket_proxy_url(&proxies, "other.example", 8000)
+                .unwrap()
+                .as_str(),
+            "wss://relay.example/dynamic?host=other.example&port=8000"
+        );
+    }
+
+    #[test]
+    fn socket_proxy_partial_wildcards_use_configuration_order() {
+        let proxies = [
+            proxy("game.example", 0, "wss://relay.example/by-host/{port}"),
+            proxy("*", 443, "wss://relay.example/by-port/{host}"),
+        ];
+        assert_eq!(
+            socket_proxy_url(&proxies, "game.example", 443)
+                .unwrap()
+                .as_str(),
+            "wss://relay.example/by-host/443"
+        );
+        assert_eq!(
+            socket_proxy_url(&proxies, "other.example", 443)
+                .unwrap()
+                .as_str(),
+            "wss://relay.example/by-port/other.example"
+        );
+        assert!(socket_proxy_url(&proxies, "other.example", 8000).is_none());
+        assert!(socket_proxy_url(&[], "game.example", 443).is_none());
+    }
+
+    #[test]
+    fn socket_proxy_static_mapping_is_unchanged() {
+        let proxies = [proxy("game.example", 443, "wss://relay.example/static")];
+        assert_eq!(
+            socket_proxy_url(&proxies, "game.example", 443)
+                .unwrap()
+                .as_str(),
+            "wss://relay.example/static"
+        );
+        assert!(socket_proxy_url(&proxies, "GAME.example", 443).is_none());
+        assert!(socket_proxy_url(&proxies, "game.example", 444).is_none());
+    }
+
+    #[test]
+    fn socket_proxy_catch_all_requires_both_placeholders() {
+        for template in [
+            "wss://relay.example/static",
+            "wss://relay.example/?host={host}",
+            "wss://relay.example/?port={port}",
+        ] {
+            let proxies = [proxy("*", 0, template)];
+            assert!(socket_proxy_url(&proxies, "game.example", 443).is_none());
+        }
+    }
+
+    #[test]
+    fn socket_proxy_substitution_encodes_ipv6_and_delimiters() {
+        let proxies = [proxy(
+            "*",
+            0,
+            "wss://relay.example/{host}/{port}?host={host}&port={port}",
+        )];
+        assert_eq!(
+            socket_proxy_url(&proxies, "[2001:db8::1]", 65535)
+                .unwrap()
+                .as_str(),
+            "wss://relay.example/%5B2001%3Adb8%3A%3A1%5D/65535?host=%5B2001%3Adb8%3A%3A1%5D&port=65535"
+        );
+        let host = "a b&port=1#/%+{port}例";
+        let url = socket_proxy_url(&proxies, host, 8000).unwrap();
+        assert_eq!(
+            url.path(),
+            "/a%20b%26port%3D1%23%2F%25%2B%7Bport%7D%E4%BE%8B/8000"
+        );
+        let pairs = url.query_pairs().collect::<Vec<_>>();
+        assert_eq!(pairs.len(), 2);
+        assert_eq!(pairs[0].0, "host");
+        assert_eq!(pairs[0].1, host);
+        assert_eq!(pairs[1].0, "port");
+        assert_eq!(pairs[1].1, "8000");
+    }
+
+    #[test]
+    fn socket_proxy_invalid_exact_mapping_does_not_fall_back() {
+        for template in [
+            "http://relay.example/tcp",
+            "https://relay.example/tcp",
+            "javascript:void(0)",
+            "/relative-proxy",
+            "ws://",
+        ] {
+            let proxies = [
+                proxy("*", 0, "wss://relay.example/?host={host}&port={port}"),
+                proxy("game.example", 443, template),
+            ];
+            assert!(socket_proxy_url(&proxies, "game.example", 443).is_none());
         }
     }
 }

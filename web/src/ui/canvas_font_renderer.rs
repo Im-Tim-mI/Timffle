@@ -76,12 +76,24 @@ impl CanvasFontRenderer {
         let italic = if italic { "italic " } else { "" };
         let bold = if bold { "bold " } else { "" };
 
-        // Escape font family properly
-        let font_family = JSON::stringify(&JsValue::from_str(font_family))
-            .ok()
-            .and_then(|js_str| js_str.as_string())
-            .unwrap_or_else(|| format!("\"{font_family}\""));
+        // Generic family keywords lose their meaning when quoted: the browser
+        // would look for a font literally named "sans-serif" instead.
+        let font_family = if Self::is_generic_family(font_family) {
+            font_family.to_owned()
+        } else {
+            // Escape font family properly
+            JSON::stringify(&JsValue::from_str(font_family))
+                .ok()
+                .and_then(|js_str| js_str.as_string())
+                .unwrap_or_else(|| format!("\"{font_family}\""))
+        };
         format!("{italic}{bold}{size}px {font_family}")
+    }
+
+    /// Whether the name is one of the CSS generic families that stand in for
+    /// the default device fonts when rendering through canvas.
+    fn is_generic_family(font_family: &str) -> bool {
+        matches!(font_family, "serif" | "sans-serif" | "monospace")
     }
 
     fn apply_style(ctx: &OffscreenCanvasRenderingContext2d, font_str: &str) {

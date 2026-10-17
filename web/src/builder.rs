@@ -378,6 +378,36 @@ impl RuffleInstanceBuilder {
 }
 
 impl RuffleInstanceBuilder {
+    /// Points the default device fonts (`_sans`, `_serif`, ...) at the browser's
+    /// fonts when device fonts are rendered through canvas.
+    ///
+    /// Without this they stay bound to the built-in Noto Sans fallback, which
+    /// only covers Latin: text in any other script (e.g. CJK) in a field using
+    /// one of these fonts would measure as zero-width and not be drawn at all.
+    pub fn setup_canvas_default_fonts(&self, player: &mut Player) {
+        for (default, generic) in [
+            (DefaultFont::Sans, "sans-serif"),
+            (DefaultFont::Serif, "serif"),
+            (DefaultFont::Typewriter, "monospace"),
+            (DefaultFont::JapaneseGothic, "sans-serif"),
+            (DefaultFont::JapaneseGothicMono, "monospace"),
+            (DefaultFont::JapaneseMincho, "serif"),
+        ] {
+            // Names from the `defaultFonts` config go first. The canvas
+            // renderer accepts any name and lets the browser pick the actual
+            // font, so the first name is the one that gets used. The built-in
+            // font is only a last resort, e.g. without OffscreenCanvas support.
+            let mut names = self
+                .default_fonts
+                .get(&default)
+                .cloned()
+                .unwrap_or_default();
+            names.push(generic.to_string());
+            names.push("Noto Sans".to_string());
+            player.set_default_font(default, names);
+        }
+    }
+
     pub fn setup_fonts(&self, player: &mut Player) {
         for (font_name, bytes) in &self.custom_fonts {
             let bytes_slice = &bytes[..];
@@ -731,8 +761,9 @@ impl RuffleInstanceBuilder {
             core.set_allow_fullscreen(self.allow_fullscreen);
             core.set_window_mode(self.wmode.as_deref().unwrap_or("window"));
 
-            if matches!(self.device_font_renderer, DeviceFontRenderer::Embedded) {
-                self.setup_fonts(&mut core);
+            match self.device_font_renderer {
+                DeviceFontRenderer::Embedded => self.setup_fonts(&mut core),
+                DeviceFontRenderer::Canvas => self.setup_canvas_default_fonts(&mut core),
             }
         }
 
