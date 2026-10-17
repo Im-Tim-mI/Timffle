@@ -32,6 +32,7 @@ VERSION4=0.8.0.26296 timffle/scripts/package-release.sh
 - `build-extension.sh` 的順序是：品牌檢查（`timffle/scripts/rebrand.py --check`；有 Pillow 時也檢查圖示）→ `npm ci` → 建置 Ruffle 核心（呼叫 cargo 編出一份 wasm，使用 SIMD 等擴充指令的版本；再跑 wasm-bindgen 與 wasm-opt。Ruffle 另有給舊瀏覽器的 MVP 版本，需設 `BUILD_WASM_MVP=true`，本專案沒有用）→ 擴充功能型別檢查與單元測試 → `build:generic` 產生擴充功能 ZIP（`CFG_RELEASE_CHANNEL=local-native-auto`，並把 `timffle/extension-key/` 的公鑰放進 `manifest.json`）。`SKIP_TESTS=1` 可略過測試。輸出檔名 `ruffle_extension.zip` 是上游建置腳本的內部名稱；發行 ZIP 叫 `timffle-chrome-<版本>.zip`。
 - 型別檢查需要先建好核心（它從核心的建置輸出取型別宣告）。擴充功能的單元測試（`cd web && npm ci && npm test --workspace=ruffle-extension`）不需要 wasm。
 - `package-release.sh` 需要 Go 的授權檔（從 `go env GOROOT` 取得），並把 Ruffle、Timffle、rust-flash-lso 與 Go 的授權檔放進 ZIP 的 `LICENSES/`。
+- **建置路徑不進發行檔**：Rust 的 panic 訊息會把原始碼路徑寫進 wasm，沒處理的話發行 ZIP 會帶著建置機的家目錄與使用者名稱。`build-extension.sh` 預設用 `--remap-path-prefix` 把它們改寫成 `/h`、`/cargo`、`/rustup`、`/src`（`KEEP_BUILD_PATHS=1` 可關閉，只限不會離開這台機器的建置）；`package-release.sh` 在打包前與打包後都用 `timffle/scripts/check-no-build-paths.py` 檢查，發現就拒絕產出，並刪掉剛做好的 ZIP（`SKIP_PATH_CHECK=1` 可略過，同樣只限本機）。要上傳到 GitHub 的發行檔都必須通過這個檢查。
 - 腳本都拒絕覆寫既有輸出；要重來請先刪掉對應的資料夾。
 
 ### 只建置小幫手

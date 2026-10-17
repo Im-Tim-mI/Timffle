@@ -5,6 +5,7 @@
 #   VERSION4        extension version, four dot-separated numbers (default 0.8.0.1; the last one is just a build counter)
 #   CARGO_FEATURES  Ruffle web features (default: jpegxr)
 #   SKIP_TESTS=1    skip the extension type check and unit tests
+#   KEEP_BUILD_PATHS=1  do not rewrite this machine's home directory in the wasm (a build that never leaves this machine)
 # Output: web/packages/extension/dist/ruffle_extension.zip (the upstream build's file name; the release ZIP is named
 #         timffle-chrome-<VERSION4>.zip by timffle/scripts/package-release.sh)
 #
@@ -39,6 +40,14 @@ rustup target list --installed 2>/dev/null | grep -qx wasm32-unknown-unknown \
 
 cd "$R/web"
 [ -d node_modules ] || npm ci
+
+# Rust panic messages embed source paths. Rewrite the build machine's home directory (and with it the user name)
+# so the wasm, and the release ZIP made from it, do not carry them. A later --remap-path-prefix entry wins,
+# so the general one comes first. package-release.sh refuses a ZIP that still has them.
+if [ "${KEEP_BUILD_PATHS:-0}" != 1 ]; then
+  RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }--remap-path-prefix=$HOME=/h --remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=/rustup --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo --remap-path-prefix=$R=/src"
+  export RUSTFLAGS
+fi
 
 echo "== Core (wasm) =="
 CARGO_FEATURES=${CARGO_FEATURES:-jpegxr} npm run build --workspace=ruffle-core
