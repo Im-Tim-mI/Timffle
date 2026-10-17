@@ -10,7 +10,8 @@
         "build:generic": "node build.ts --env generic && node tools/inject_plugin_polyfill.ts && node tools/zip.ts dist/ruffle_extension.zip",
         "build:firefox": "node build.ts --env firefox && node tools/inject_plugin_polyfill.ts && node tools/zip.ts dist/firefox_unsigned.xpi && npm run sign-firefox",
         "sign-firefox": "node tools/submit_xpi.ts dist/firefox_unsigned.xpi ../../../reproducible-source.zip",
-        "checkTypes": "tsc --noemit && tsc --noemit -p tools && tsc --noemit -p tsconfig.build.json"
+        "checkTypes": "tsc --noemit && tsc --noemit -p tools && tsc --noemit -p tsconfig.build.json",
+        "test": "node --import tsx --test \"tests/*.test.mjs\""
     },
     "dependencies": {
         "ruffle-core": "^0.8.0-nightly.2026.10.13"

@@ -1,6 +1,7 @@
 import { enableBrowserOnOutdatedChromium, setPageLanguage } from "./utils";
 import { bindOptions, resetOptions } from "./common";
 import { buildInfo } from "ruffle-core";
+import { bindProxyOptions } from "./proxy-options";
 
 window.addEventListener("DOMContentLoaded", async () => {
     enableBrowserOnOutdatedChromium();
@@ -32,5 +33,5 @@ window.addEventListener("DOMContentLoaded", async () => {
             }
         });
     }
-    bindOptions();
+    await Promise.all([bindOptions(), bindProxyOptions()]);
 });

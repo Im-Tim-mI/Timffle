@@ -80,6 +80,51 @@
                 <input type="number" id="max_execution_duration" min="1" />
                 <label for="max_execution_duration">Maximum allowed ActionScript execution duration (in seconds)</label>
             </div>
+            <form id="socket-proxy-form" class="proxy-settings" autocomplete="off" aria-labelledby="socket-proxy-title" translate="no">
+                <h2 id="socket-proxy-title">Socket 連線（遊戲伺服器） / Socket connections (game servers)</h2>
+                <label class="proxy-toggle" for="socket-proxy-enabled">
+                    <input type="checkbox" id="socket-proxy-enabled" />
+                    讓下方允許的網站使用 Socket 連線 / Allow sockets for the sites below
+                </label>
+                <fieldset class="proxy-mode">
+                    <legend>連線方式 / Connection method</legend>
+                    <label for="socket-proxy-mode-helper">
+                        <input type="radio" name="socket-proxy-mode" id="socket-proxy-mode-helper" value="helper" />
+                        連線小幫手（建議） / Socket helper (recommended)
+                    </label>
+                    <div class="helper-status">
+                        <p id="socket-helper-status" role="status" aria-live="polite">檢查中… / Checking…</p>
+                        <button type="button" id="socket-helper-check">重新檢查 / Check again</button>
+                    </div>
+                    <label for="socket-proxy-mode-websocket">
+                        <input type="radio" name="socket-proxy-mode" id="socket-proxy-mode-websocket" value="websocket" />
+                        自訂 WebSocket 代理（進階） / Custom WebSocket proxy (advanced)
+                    </label>
+                </fieldset>
+                <div id="socket-proxy-websocket-fields">
+                    <label for="socket-proxy-url">WebSocket URL 範本（含 token，隱藏顯示） / URL template (including token, concealed)</label>
+                    <input type="password" id="socket-proxy-url" autocomplete="new-password" spellcheck="false" autocapitalize="off" aria-describedby="socket-proxy-url-help" />
+                    <p id="socket-proxy-url-help">
+                        貼上代理程式提供的完整 URL，必須同時保留 {host} 和 {port}。 / Paste the proxy's full URL; keep both {host} and {port}.<br />
+                        範例 / Example: <code>ws://127.0.0.1:18770/connect?host={host}&amp;port={port}&amp;token=&lt;your-token&gt;</code>
+                    </p>
+                </div>
+                <label for="socket-proxy-origins">允許的網站來源（每行一個） / Allowed website origins (one per line)</label>
+                <textarea id="socket-proxy-origins" rows="8"spellcheck="false" autocapitalize="off" placeholder="https://trusted.example" aria-describedby="socket-proxy-origin-help"></textarea>
+                <p id="socket-proxy-origin-help">
+                    僅接受完整 HTTP/HTTPS 來源（協定、主機、選用連接埠），不接受 * 或路徑。預設允許淘米的摩爾莊園、賽爾號、小花仙、彈彈堂（mole.61.com.tw、seer.61.com.tw、hua.61.com.tw、ddt.61.com.tw，各含 HTTP 與 HTTPS）。內嵌播放器依所在頁框的來源；獨立播放器依 SWF URL 的來源。本機檔案不使用 Socket 連線。 / Exact HTTP/HTTPS origins only (scheme, host, optional port); no * or paths. Taomee's 摩爾莊園, 賽爾號, 小花仙 and 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw and ddt.61.com.tw, each over HTTP and HTTPS) are allowed by default. Embedded players use their frame's origin; the standalone player uses the SWF URL's origin. Local files never get sockets.
+                </p>
+                <ul class="proxy-notes">
+                    <li>Chrome 擴充套件無法直接開 TCP 連線，所以需要連線小幫手。小幫手只需安裝一次（執行下載包 helper 資料夾裡的安裝檔），之後 Chrome 會在遊戲連線時自動啟動、結束時自動關閉，不需開啟任何視窗或服務。 / Chrome extensions cannot open TCP sockets, hence the helper. Install it once (run the installer in the download's helper folder); Chrome then starts and stops it automatically for each game connection.</li>
+                    <li>小幫手只連往公開網路位址，不會連往區域網路或本機，也不記錄連線內容。 / The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic.</li>
+                    <li>自訂 WebSocket 代理需要自行啟動代理程式，Chrome 可能詢問本機網路存取權限；代理 URL（含 token）會提供給允許的網站。 / A custom WebSocket proxy must be started by you, and Chrome may ask for local network access; allowed sites can read the proxy URL, including its token.</li>
+                    <li>儲存或停用後，請重新載入網頁。 / Reload pages after saving or disabling.</li>
+                </ul>
+                <div class="proxy-actions">
+                    <button type="submit" id="socket-proxy-save">儲存代理設定 / Save proxy settings</button>
+                    <p id="socket-proxy-status" role="status" aria-live="polite" aria-atomic="true">讀取中… / Loading…</p>
+                </div>
+            </form>
             <button id="reset-settings">Reset settings</button>
         </div>
         <script src="dist/options.js"></script>

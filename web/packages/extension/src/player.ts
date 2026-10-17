@@ -173,6 +173,7 @@ async function loadFile(file: File | undefined) {
         localFileName.textContent = file.name;
     }
     const data = await new Response(file).arrayBuffer();
+    // Local files have no allowed HTTP(S) origin, so never use the local proxy.
     const options = await getExplicitOptions();
     load({
         ...options,
@@ -302,14 +303,17 @@ window.addEventListener("load", () => {
 });
 
 async function loadSwf(swfUrl: string) {
+    let origin: string | undefined;
     try {
-        const pathname = new URL(swfUrl).pathname;
+        const swf = new URL(swfUrl);
+        origin = swf.origin;
+        const pathname = swf.pathname;
         document.title = pathname.substring(pathname.lastIndexOf("/") + 1);
     } catch (_) {
         // Ignore URL parsing errors.
     }
 
-    const options = await getExplicitOptions();
+    const options = await getExplicitOptions(origin);
     localFileName.textContent = document.title;
     localFileInput.value = "";
     load({

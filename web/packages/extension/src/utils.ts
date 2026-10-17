@@ -1,5 +1,12 @@
 import type { Options } from "./common";
 import { Config } from "ruffle-core";
+import { getProxySettings } from "./proxy-settings";
+import {
+    applyProxySettings,
+    defaultProxySettings,
+    PROXY_STORAGE_KEY,
+    resolveSocketAccess,
+} from "./socket-proxy";
 
 const DEFAULT_OPTIONS: Required<Options> = {
     ...Config.DEFAULT_CONFIG,
@@ -44,11 +51,33 @@ export const openOnboardPage: () => Promise<void> = () =>
         browser.tabs.create({ url: "/onboard.html" }, cb),
     );
 
-export async function getOptions(): Promise<Options> {
-    const options = await browser.storage.sync.get();
+export async function getOptions(origin?: string): Promise<Options> {
+    const [synced, proxySettings] = await Promise.all([
+        browser.storage.sync.get(),
+        // A local storage failure must not enable sockets or break normal playback.
+        getProxySettings().catch(() => ({
+            ...defaultProxySettings(),
+            enabled: false,
+        })),
+    ]);
+    // Never pass private settings through as arbitrary player config, even if
+    // an old/manual storage edit placed this key in the wrong storage area.
+    const { [PROXY_STORAGE_KEY]: _privateSettings, ...options } = synced;
+
+    // Sites allowed to use sockets (the games this is for) need device fonts
+    // to show Chinese text, unless the user picked a renderer explicitly.
+    const fonts =
+        resolveSocketAccess(proxySettings, origin) &&
+        options["deviceFontRenderer"] === undefined
+            ? { deviceFontRenderer: Config.DeviceFontRenderer.Canvas }
+            : {};
 
     // Copy over default options if they don't exist yet.
-    return { ...DEFAULT_OPTIONS, ...options };
+    return applyProxySettings(
+        { ...DEFAULT_OPTIONS, ...fonts, ...options },
+        proxySettings,
+        origin,
+    );
 }
 
 /**
@@ -56,8 +85,8 @@ export async function getOptions(): Promise<Options> {
  *
  * In the future we should just not store options we don't want to set.
  */
-export async function getExplicitOptions(): Promise<Options> {
-    const options = await getOptions();
+export async function getExplicitOptions(origin?: string): Promise<Options> {
+    const options = await getOptions(origin);
     const defaultOptions = DEFAULT_OPTIONS;
     for (const key in defaultOptions) {
         // @ts-expect-error: Element implicitly has an any type

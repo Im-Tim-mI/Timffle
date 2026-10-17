@@ -302,6 +302,10 @@ export enum DeviceFontRenderer {
      *
      * It can access and render device fonts, glyphs are rendered as bitmaps.
      *
+     * The default fonts (`_sans`, `_serif`, `_typewriter`, ...) are rendered with
+     * the browser's generic `sans-serif`, `serif` and `monospace` fonts, unless
+     * `defaultFonts` names other fonts.
+     *
      * This is an experimental method and some features might not work properly.
      */
     Canvas = "canvas",
@@ -324,20 +328,30 @@ export enum BackgroundExecutionMode {
 }
 
 /**
- * Represents a host, port and proxyUrl. Used when a SWF file tries to use a Socket.
+ * Maps a Socket destination to a WebSocket-to-TCP proxy.
+ * Exact host and port mappings take priority over wildcard mappings.
  */
 export interface SocketProxy {
     /**
-     * Host used by the SWF.
+     * Host used by the SWF, or "*" to match any host as a fallback.
      */
     host: string;
     /**
-     * Port used by the SWF.
+     * Port used by the SWF, or 0 to match any port as a fallback.
      */
     port: number;
 
     /**
-     * The proxy URL to use when SWF file tries to connect to the specified host and port.
+     * An absolute ws:// or wss:// proxy URL. Optional {host} and {port}
+     * placeholders are replaced with the requested destination. The host is
+     * percent-encoded as a URL component, including IPv6 colons and brackets;
+     * put it in a path component or query parameter, not the URL authority.
+     * The port is a decimal integer. A catch-all mapping (host "*", port 0)
+     * must contain both placeholders.
+     *
+     * For example: "wss://relay.example/tcp?host={host}&port={port}".
+     * A dynamic proxy must authenticate clients and authorize destinations;
+     * wildcard matching does not bypass browser or proxy security policies.
      */
     proxyUrl: string;
 }
@@ -705,8 +719,18 @@ export interface BaseLoadOptions {
      * a matching SocketProxy object in this array and use it to establish a WebSocket connection,
      * through which all communication is tunneled through.
      *
-     * When none are found, Ruffle will fail the connection gracefully.
-     * When multiple matching SocketProxy objects exist, the first one is used.
+     * The first exact host and port match is used, regardless of wildcard
+     * entries earlier in the array. If there is no exact match, the first
+     * matching wildcard entry is used (host "*" and/or port 0). If no mapping
+     * matches, or the selected mapping is invalid, the connection fails; an
+     * invalid exact mapping does not fall through to a wildcard.
+     *
+     * Ruffle reports Socket connection success only after the browser's
+     * WebSocket OPEN event, and applies the Socket timeout to that handshake.
+     * To make success mean that the target TCP connection is ready, the proxy
+     * must defer its HTTP 101 response until target TCP connection succeeds.
+     * Legacy proxies that upgrade before connecting to TCP cannot provide
+     * this guarantee; Ruffle cannot infer target readiness from them.
      *
      * @default []
      */

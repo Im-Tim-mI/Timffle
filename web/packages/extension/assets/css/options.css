@@ -21,3 +21,102 @@
 #reset-settings {
     margin: 0 auto;
 }
+
+.proxy-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border: 1px solid var(--ruffle-light-blue);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.proxy-settings h2 {
+    margin: 0;
+    color: var(--ruffle-orange);
+    font-size: 24px;
+}
+
+.proxy-settings p {
+    margin: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.proxy-toggle {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.proxy-settings input[type="password"],
+.proxy-settings textarea {
+    box-sizing: border-box;
+    width: 100%;
+    background: var(--ruffle-dark-blue);
+    color: white;
+    border: 1px solid var(--ruffle-light-blue);
+    border-radius: 4px;
+    padding: 8px;
+    font: inherit;
+}
+
+.proxy-settings textarea {
+    resize: vertical;
+}
+
+.proxy-notes {
+    margin: 0;
+    padding-inline-start: 20px;
+    line-height: 1.5;
+}
+
+.proxy-notes li + li {
+    margin-top: 8px;
+}
+
+.proxy-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+#socket-proxy-status[data-state="error"],
+#socket-helper-status[data-state="error"] {
+    color: var(--ruffle-orange);
+}
+
+.proxy-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    border: 1px solid var(--ruffle-light-blue);
+    border-radius: 4px;
+    padding: 8px 12px 12px;
+}
+
+.proxy-mode label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.helper-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding-inline-start: 28px;
+}
+
+#socket-proxy-websocket-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#socket-proxy-websocket-fields[hidden] {
+    display: none;
+}

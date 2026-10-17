@@ -31,6 +31,8 @@ interface Manifest {
         [key: string]: unknown;
     };
     incognito?: string;
+    permissions?: string[];
+    key?: string;
     [key: string]: unknown;
 }
 
@@ -121,6 +123,20 @@ function transformManifest(): void {
         // Chrome runs the extension in a single shared process by default,
         // which prevents extension pages from loading in Incognito tabs
         manifest.incognito = "split";
+
+        // The socket helper is a native messaging host (Chrome extensions
+        // cannot open TCP sockets themselves).
+        manifest.permissions = [
+            ...(manifest.permissions ?? []),
+            "nativeMessaging",
+        ];
+
+        // A fixed public key gives an unpacked install a stable extension ID,
+        // which the helper's native messaging manifest must name.
+        const publicKey = process.env["EXTENSION_PUBLIC_KEY"];
+        if (publicKey) {
+            manifest.key = publicKey;
+        }
     }
 
     fs.writeFileSync(

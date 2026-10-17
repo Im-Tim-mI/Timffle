@@ -12,6 +12,7 @@ import { buildInfo } from "ruffle-core";
 let activeTab: chrome.tabs.Tab;
 let savedOptions: Options;
 let tabOptions: Options;
+let tabOrigin: string | undefined;
 
 let statusIndicator: HTMLDivElement;
 let statusText: HTMLSpanElement;
@@ -99,6 +100,10 @@ async function queryTabStatus(
     }
 
     tabOptions = response.tabOptions;
+    // The content script supplies the actual frame origin, even when Chrome
+    // does not expose activeTab.url without the tabs permission.
+    tabOrigin =
+        typeof response.origin === "string" ? response.origin : undefined;
 
     if (response.loaded) {
         listener("status_result_running");
@@ -144,7 +149,7 @@ function deepEqual(x: unknown, y: unknown): boolean {
 }
 
 function optionsChanged() {
-    if (!tabOptions) {
+    if (!tabOptions || !savedOptions) {
         return;
     }
 
@@ -171,11 +176,6 @@ window.addEventListener("DOMContentLoaded", async () => {
             .getElementById("swf_takeover")!
             .parentElement!.classList.add("hidden");
     }
-    bindOptions((options) => {
-        savedOptions = options;
-        optionsChanged();
-    });
-
     statusIndicator = document.getElementById(
         "status-indicator",
     ) as HTMLDivElement;
@@ -213,6 +213,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 
     await displayTabStatus();
+    await bindOptions((options) => {
+        savedOptions = options;
+        optionsChanged();
+    }, tabOrigin);
     const permissionsButton = document.getElementById(
         "permissions-button",
     ) as HTMLButtonElement;

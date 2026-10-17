@@ -1,5 +1,7 @@
-import { Setup, setCurrentScriptURL } from "ruffle-core";
+import { Setup, setCurrentScriptURL, type Config } from "ruffle-core";
 import { Message } from "./messages";
+import { mergeSocketProxies } from "./socket-proxy";
+import { installSocketBridge } from "./socket-bridge-page";
 
 /**
  *
@@ -28,9 +30,21 @@ function handleMessage(message: Message) {
             if (window.RufflePlayer.config === undefined) {
                 window.RufflePlayer.config = {};
             }
+            const pageConfig = window.RufflePlayer
+                .config as Config.BaseLoadOptions;
             window.RufflePlayer.config = {
                 ...message.config,
-                ...window.RufflePlayer.config,
+                ...pageConfig,
+                // Site-provided exact mappings take priority, but must not
+                // discard an explicitly enabled extension fallback.
+                ...(message.config.socketProxy?.length
+                    ? {
+                          socketProxy: mergeSocketProxies(
+                              pageConfig.socketProxy,
+                              message.config.socketProxy,
+                          ),
+                      }
+                    : {}),
                 openInNewTab,
             };
             setCurrentScriptURL(publicPath);
@@ -67,6 +81,13 @@ window.addEventListener("message", (event) => {
 
     const { to, index, data, id } = event.data;
     if (to === "ruffle_page") {
+        if (data?.type === "socket_bridge") {
+            const port = event.ports[0];
+            if (port) {
+                installSocketBridge(port);
+            }
+            return;
+        }
         currentMessageId = id;
         const response = handleMessage(data);
         if (response) {

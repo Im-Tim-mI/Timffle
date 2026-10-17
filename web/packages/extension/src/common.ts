@@ -1,5 +1,7 @@
 import { getOptions } from "./utils";
 import type { Config } from "ruffle-core";
+import { resetProxySettings } from "./proxy-settings";
+import { PROXY_STORAGE_KEY } from "./socket-proxy";
 
 export interface Options extends Config.BaseLoadOptions {
     ruffleEnable: boolean;
@@ -150,9 +152,10 @@ function findOptionElements() {
 
 export async function bindOptions(
     onChange?: (options: Options) => void,
+    origin?: string,
 ): Promise<void> {
     const elements = findOptionElements();
-    const options = await getOptions();
+    let options = await getOptions(origin);
 
     for (const [key, element] of elements.entries()) {
         // Bind initial value.
@@ -180,18 +183,19 @@ export async function bindOptions(
     }
 
     // Listen for future changes.
-    browser.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace !== "sync") {
+    browser.storage.onChanged.addListener(async (changes, namespace) => {
+        if (
+            namespace !== "sync" &&
+            !(namespace === "local" && PROXY_STORAGE_KEY in changes)
+        ) {
             return;
         }
 
-        for (const [key, option] of Object.entries(changes)) {
-            const element = elements.get(key as keyof Options);
-            if (!element) {
-                continue;
-            }
-            element.value = option.newValue;
-            options[key as keyof Options] = option.newValue as never;
+        // Re-read the whole effective config, including origin-scoped local
+        // proxies and defaults for removed values. Never write it back to sync.
+        options = await getOptions(origin);
+        for (const [key, element] of elements) {
+            element.value = options[key];
         }
 
         if (onChange) {
@@ -209,6 +213,7 @@ export async function resetOptions(): Promise<void> {
     const data = await browser.storage.sync.get({
         responseHeadersUnsupported: false,
     });
+    await resetProxySettings();
     await browser.storage.sync.clear();
     if (data["responseHeadersUnsupported"]) {
         browser.storage.sync.set({ responseHeadersUnsupported: true });

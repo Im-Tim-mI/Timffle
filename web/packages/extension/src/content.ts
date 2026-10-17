@@ -13,6 +13,9 @@ import {
     getExplicitOptions,
 } from "./utils";
 import { isMessage } from "./messages";
+import { getProxySettings } from "./proxy-settings";
+import { resolveSocketAccess } from "./socket-proxy";
+import { startContentSocketBridge } from "./socket-bridge-content";
 
 declare global {
     interface Navigator {
@@ -117,8 +120,10 @@ function isXMLDocument(): boolean {
     await browser.storage.sync.set({
         ["showReloadButton"]: false,
     });
-    const options = await getOptions();
-    const explicitOptions = await getExplicitOptions();
+    // Use this frame's origin, never a requested SWF URL or the top-level site.
+    const origin = window.location.origin;
+    const options = await getOptions(origin);
+    const explicitOptions = await getExplicitOptions(origin);
 
     const pageOptout = checkPageOptout();
     const shouldLoad =
@@ -132,6 +137,7 @@ function isXMLDocument(): boolean {
                 sendResponse({
                     loaded: true,
                     tabOptions: options,
+                    origin,
                     optout: pageOptout,
                     data: response,
                 });
@@ -141,6 +147,7 @@ function isXMLDocument(): boolean {
             sendResponse({
                 loaded: false,
                 tabOptions: options,
+                origin,
                 optout: pageOptout,
             });
             return false;
@@ -192,6 +199,24 @@ function isXMLDocument(): boolean {
             }
         }
     });
+
+    // Sockets of allowed sites go to the native helper. The bridge is posted
+    // before "load", so it is in place before Ruffle can open a socket.
+    const proxySettings = await getProxySettings().catch(() => undefined);
+    if (resolveSocketAccess(proxySettings, origin)?.mode === "helper") {
+        startContentSocketBridge((port) =>
+            window.postMessage(
+                {
+                    to: "ruffle_page",
+                    index: null,
+                    id: ID,
+                    data: { type: "socket_bridge" },
+                },
+                "*",
+                [port],
+            ),
+        );
+    }
 
     await sendMessageToPage({
         type: "load",

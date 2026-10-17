@@ -5,6 +5,7 @@ import {
     openOnboardPage,
 } from "./utils";
 import { isMessage } from "./messages";
+import { registerSocketBridge } from "./socket-bridge-background";
 
 /**
  * Returns whether the plugin polyfill content script is registered and whether
@@ -310,6 +311,7 @@ function onMessage(
 if (browser?.runtime && !browser.runtime.onMessage.hasListener(onMessage)) {
     browser.runtime.onMessage.addListener(onMessage);
 }
+registerSocketBridge();
 
 browser.storage.onChanged.addListener(async (changes, namespace) => {
     if (namespace === "sync" && "ruffleEnable" in changes) {
