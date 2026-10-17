@@ -1,7 +1,7 @@
 import { text, textAsParagraphs } from "../i18n.js";
 import { createRef } from "tsx-dom";
 import { buildInfo } from "../../build-info.js";
-import { RUFFLE_ORIGIN } from "../constants.js";
+import { RUFFLE_ORIGIN, TIMFFLE_REPOSITORY } from "../constants.js";
 import {
     InvalidOptionsError,
     InvalidSwfError,
@@ -81,7 +81,8 @@ function createPanicAction({
         url = url.split(/[?#]/, 1)[0]!;
 
         const issueTitle = `Error on ${url}`;
-        let issueLink = `https://github.com/ruffle-rs/ruffle/issues/new?title=${encodeURIComponent(
+        // Timffle bugs go to Timffle, never to the upstream Ruffle tracker.
+        let issueLink = `${TIMFFLE_REPOSITORY + "/issues/new"}?title=${encodeURIComponent(
             issueTitle,
         )}&template=error_report.md&labels=error-report&body=`;
         let issueBody = encodeURIComponent(errorText);
@@ -138,7 +139,7 @@ export const CommonActions = {
 
     UpdateRuffle: {
         type: "open_link",
-        url: RUFFLE_ORIGIN + "/downloads",
+        url: TIMFFLE_REPOSITORY + "/releases",
         label: text("update-ruffle"),
     } as PanicAction,
 

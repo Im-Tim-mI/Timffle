@@ -4,22 +4,22 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Ruffle Settings</title>
+        <title>Timffle Settings</title>
         <link rel="icon" type="image/png" href="images/icon32.png" />
         <link rel="stylesheet" href="css/common.css" />
         <link rel="stylesheet" href="css/options.css" />
     </head>
     <body>
         <div class="header">
-            <a href="https://ruffle.rs/" target="_blank">
-                <img src="images/logo.svg" alt="Ruffle" data-canonical-src="images/logo.svg" class="logo" />
+            <a href="https://github.com/Im-Tim-mI/Timffle" target="_blank">
+                <img src="images/logo.svg" alt="Timffle" data-canonical-src="images/logo.svg" class="logo" />
             </a>
             <div id="version-text">nightly YYYY-MM-DD</div>
         </div>
         <div class="options container">
             <div class="option checkbox">
                 <input type="checkbox" id="ruffle_enable" />
-                <label for="ruffle_enable">Play Flash content in Ruffle</label>
+                <label for="ruffle_enable">Play Flash content in Timffle</label>
             </div>
             <div class="option checkbox">
                 <input type="checkbox" id="show_swf_download" />
@@ -36,7 +36,7 @@
             <div id="advanced-options">Advanced Options</div>
             <div class="option checkbox">
                 <input type="checkbox" id="ignore_optout" />
-                <label for="ignore_optout">Play Flash content even on sites that disallow Ruffle</label>
+                <label for="ignore_optout">Play Flash content even on sites that disallow Timffle</label>
             </div>
             <div class="option select">
                 <select id="log_level">
@@ -126,6 +126,10 @@
                 </div>
             </form>
             <button id="reset-settings">Reset settings</button>
+            <p class="timffle-attribution" translate="no">
+                Timffle 是 <a href="https://ruffle.rs/" target="_blank" rel="noopener noreferrer">Ruffle</a> 的非官方分支，與 Ruffle 專案沒有隸屬關係；Flash 模擬核心來自 Ruffle 與其貢獻者。問題請回報到 <a href="https://github.com/Im-Tim-mI/Timffle/issues" target="_blank" rel="noopener noreferrer">Timffle</a>，不要回報給 Ruffle。 /
+                Timffle is an unofficial fork of <a href="https://ruffle.rs/" target="_blank" rel="noopener noreferrer">Ruffle</a> and is not affiliated with the Ruffle project; its Flash emulation comes from Ruffle and its contributors. Please report problems to <a href="https://github.com/Im-Tim-mI/Timffle/issues" target="_blank" rel="noopener noreferrer">Timffle</a>, not to Ruffle.
+            </p>
         </div>
         <script src="dist/options.js"></script>
     </body>

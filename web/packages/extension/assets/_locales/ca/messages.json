@@ -1,9 +1,9 @@
 {
     "settings_ruffle_enable": {
-        "message": "Reprodueix contingut Flash amb Ruffle"
+        "message": "Reprodueix contingut Flash amb Timffle"
     },
     "settings_ignore_optout": {
-        "message": "Reprodueix contingut Flash també a llocs web que prohibeixen Ruffle"
+        "message": "Reprodueix contingut Flash també a llocs web que prohibeixen Timffle"
     },
     "settings_show_swf_download": {
         "message": "Permet la baixada de fitxers SWF des del menú contextual"
@@ -42,7 +42,7 @@
         "message": "Restableix la configuració"
     },
     "settings_reset_confirm": {
-        "message": "Esteu segur que voleu restablir Ruffle a la seva configuració per defecte?"
+        "message": "Esteu segur que voleu restablir Timffle a la seva configuració per defecte?"
     },
     "status_init": {
         "message": "Llegint la pestanya actual…"
@@ -54,25 +54,25 @@
         "message": "S'ha produït un error en accedir a la pestanya actual."
     },
     "status_message_init": {
-        "message": "Comprovant l'estat de Ruffle a la pestanya actual…"
+        "message": "Comprovant l'estat de Timffle a la pestanya actual…"
     },
     "status_result_running": {
-        "message": "Ruffle està carregat i llest per a reproduir contingut Flash a la pestanya actual."
+        "message": "Timffle està carregat i llest per a reproduir contingut Flash a la pestanya actual."
     },
     "status_result_running_protected": {
-        "message": "Ruffle està carregat i reproduint el contingut que heu demanat."
+        "message": "Timffle està carregat i reproduint el contingut que heu demanat."
     },
     "status_result_optout": {
-        "message": "Ruffle no s'ha carregat perquè el lloc ha indicat que no hi és compatible."
+        "message": "Timffle no s'ha carregat perquè el lloc ha indicat que no hi és compatible."
     },
     "status_result_disabled": {
-        "message": "Ruffle no s'ha carregat perquè l'heu desactivat."
+        "message": "Timffle no s'ha carregat perquè l'heu desactivat."
     },
     "status_result_error": {
-        "message": "S'ha produït un error en consultar la instància de Ruffle a la pestanya actual."
+        "message": "S'ha produït un error en consultar la instància de Timffle a la pestanya actual."
     },
     "status_result_protected": {
-        "message": "Ruffle no es pot carregar a llocs protegits del navegador."
+        "message": "Timffle no es pot carregar a llocs protegits del navegador."
     },
     "action_reload": {
         "message": "Recarrega la pestanya per a efectuar els canvis"
@@ -99,12 +99,12 @@
         "message": "Pàgina d'incorporació"
     },
     "permissions_grant": {
-        "message": "Permetre a Ruffle l'accés a les meves dades en totes les pàgines web"
+        "message": "Permetre a Timffle l'accés a les meves dades en totes les pàgines web"
     },
     "grant_single_site_permission": {
         "message": "Permetre permanentment en aquest web"
     },
     "permissions_explanation": {
-        "message": "L'extensió de Ruffle treballa millor amb l'habilitat d'accedir a les dades en totes les pàgines web. Això permet executar-lo quan qualsevol web el carrega primer; a més de permetre, per conveniència, que detecti immediatament Flash Player a la resta de pàgines, i permeti executar contingut Flash. Això també dona l'habilitat de carregar fitxers SWF en el reproductor intern des d'altres llocs a la web, i permeti carregar automàticament enllaços SWF directes de la pàgina. Si no doneu aquest permís, necessitareu habilitar Ruffle manualment en cada web on desitgeu utilitzar-lo clicant a la icona de l'extensió, i habilitant-la en aquesta pàgina web."
+        "message": "L'extensió de Timffle treballa millor amb l'habilitat d'accedir a les dades en totes les pàgines web. Això permet executar-lo quan qualsevol web el carrega primer; a més de permetre, per conveniència, que detecti immediatament Flash Player a la resta de pàgines, i permeti executar contingut Flash. Això també dona l'habilitat de carregar fitxers SWF en el reproductor intern des d'altres llocs a la web, i permeti carregar automàticament enllaços SWF directes de la pàgina. Si no doneu aquest permís, necessitareu habilitar Timffle manualment en cada web on desitgeu utilitzar-lo clicant a la icona de l'extensió, i habilitant-la en aquesta pàgina web."
     }
 }

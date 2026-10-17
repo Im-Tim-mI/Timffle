@@ -1,9 +1,9 @@
 {
     "settings_ruffle_enable": {
-        "message": "Flash içeriğini Ruffle'da oynat"
+        "message": "Flash içeriğini Timffle'da oynat"
     },
     "settings_ignore_optout": {
-        "message": "Ruffle'a izin vermeyen sitelerde bile Flash içeriği oynat"
+        "message": "Timffle'a izin vermeyen sitelerde bile Flash içeriği oynat"
     },
     "settings_show_swf_download": {
         "message": "Bağlam menüsünde SWF indirmesini göster"
@@ -66,7 +66,7 @@
         "message": "Ayarları sıfırla"
     },
     "settings_reset_confirm": {
-        "message": "Ruffle seçeneklerini orijinal varsayılanlarına geri yüklemek istediğinize emin misiniz?"
+        "message": "Timffle seçeneklerini orijinal varsayılanlarına geri yüklemek istediğinize emin misiniz?"
     },
     "status_init": {
         "message": "Geçerli sekme okunuyor…"
@@ -78,25 +78,25 @@
         "message": "Geçerli sekme aranırken bir hata oluştu."
     },
     "status_message_init": {
-        "message": "Mevcut sekmede Ruffle'ın durumu kontrol ediliyor…"
+        "message": "Mevcut sekmede Timffle'ın durumu kontrol ediliyor…"
     },
     "status_result_running": {
-        "message": "Ruffle yüklendi ve mevcut sekmede Flash içeriğini çalıştırmaya hazır."
+        "message": "Timffle yüklendi ve mevcut sekmede Flash içeriğini çalıştırmaya hazır."
     },
     "status_result_running_protected": {
-        "message": "Ruffle yüklendi ve istediğiniz Flash içeriğini çalıştırıyor."
+        "message": "Timffle yüklendi ve istediğiniz Flash içeriğini çalıştırıyor."
     },
     "status_result_optout": {
-        "message": "Geçerli sayfa kendisini uyumsuz olarak işaretlediğinden Ruffle yüklenmedi."
+        "message": "Geçerli sayfa kendisini uyumsuz olarak işaretlediğinden Timffle yüklenmedi."
     },
     "status_result_disabled": {
-        "message": "Ruffle devre dışı olduğu için yüklenmedi."
+        "message": "Timffle devre dışı olduğu için yüklenmedi."
     },
     "status_result_error": {
-        "message": "Geçerli sekmenin Ruffle örneği sorgulanırken bir hata oluştu."
+        "message": "Geçerli sekmenin Timffle örneği sorgulanırken bir hata oluştu."
     },
     "status_result_protected": {
-        "message": "Ruffle korumalı tarayıcı sayfalarına yüklenemez."
+        "message": "Timffle korumalı tarayıcı sayfalarına yüklenemez."
     },
     "action_reload": {
         "message": "Değişiklikleri uygulamak için sekmeyi yenile"
@@ -123,16 +123,16 @@
         "message": "Karşılama sayfası"
     },
     "permissions_grant": {
-        "message": "Ruffle'a verilerime tüm sitelerde erişmesine izin ver"
+        "message": "Timffle'a verilerime tüm sitelerde erişmesine izin ver"
     },
     "permissions_not_granted": {
-        "message": "Ruffle'ı kullanmak istediğiniz her site için Ruffle simgesine tıklamanız gerekecek"
+        "message": "Timffle'ı kullanmak istediğiniz her site için Timffle simgesine tıklamanız gerekecek"
     },
     "grant_single_site_permission": {
         "message": "Bu site için kalıcı olarak aktif et"
     },
     "permissions_explanation": {
-        "message": "Ruffle uzantısı, tüm web sitelerinde veri erişimine izin verildiğinde en iyi şekilde çalışır. Bu, herhangi bir web sitesi ilk yüklendiğinde çalışmasına ve Flash Player algılama yapan web sitelerini hemen Flash içeriğinin çalışmasına izin vermelerine olanak tanır. Ayrıca, web üzerindeki diğer konumlardan SWF dosyalarını dahili oynatıcı sayfasına yükleyebilme özelliğine sahiptir. Bu izni vermezseniz, Ruffle'ı kullanmak istediğiniz her web sitesinde manuel olarak etkinleştirmeniz gerekecektir; bunun için uzantı simgesine tıklayarak ilgili web sitesi için etkinleştirmeniz gerekir."
+        "message": "Timffle uzantısı, tüm web sitelerinde veri erişimine izin verildiğinde en iyi şekilde çalışır. Bu, herhangi bir web sitesi ilk yüklendiğinde çalışmasına ve Flash Player algılama yapan web sitelerini hemen Flash içeriğinin çalışmasına izin vermelerine olanak tanır. Ayrıca, web üzerindeki diğer konumlardan SWF dosyalarını dahili oynatıcı sayfasına yükleyebilme özelliğine sahiptir. Bu izni vermezseniz, Timffle'ı kullanmak istediğiniz her web sitesinde manuel olarak etkinleştirmeniz gerekecektir; bunun için uzantı simgesine tıklayarak ilgili web sitesi için etkinleştirmeniz gerekir."
     },
     "swf_player_permissions": {
         "message": "SWF'leri indirmek için bu URL kaynağına izin vermeniz gerekir."

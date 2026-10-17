@@ -17,7 +17,7 @@ import { localizeElements, text, textAsParagraphs } from "../i18n.js";
 import { swfFileName } from "../../swf-utils.js";
 import { isExtension } from "../../current-script.js";
 import { buildInfo } from "../../build-info.js";
-import { RUFFLE_ORIGIN } from "../constants.js";
+import { RUFFLE_ORIGIN, TIMFFLE_REPOSITORY } from "../constants.js";
 import {
     InvalidOptionsError,
     InvalidSwfError,
@@ -1584,7 +1584,7 @@ export class InnerPlayer {
                 version: buildInfo.versionName,
             }),
             async onClick() {
-                window.open(RUFFLE_ORIGIN, "_blank");
+                window.open(TIMFFLE_REPOSITORY, "_blank");
             },
         });
         // Give option to disable context menu when touch support is being used

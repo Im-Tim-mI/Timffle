@@ -64,7 +64,8 @@ function transformManifest(): void {
     let versionChannel: string = process.env["CFG_RELEASE_CHANNEL"] || "local";
     let version4: string | undefined = process.env["VERSION4"];
     let firefoxExtensionId: string =
-        process.env["FIREFOX_EXTENSION_ID"] || "ruffle@ruffle.rs";
+        // Timffle's own add-on id; "ruffle@ruffle.rs" belongs to the official Ruffle add-on.
+        process.env["FIREFOX_EXTENSION_ID"] || "{4244f375-9038-4a8d-bc77-e47e6cc7a426}";
 
     if (process.env["ENABLE_VERSION_SEAL"] === "true") {
         const sealPath = path.resolve(__dirname, "../../version_seal.json");

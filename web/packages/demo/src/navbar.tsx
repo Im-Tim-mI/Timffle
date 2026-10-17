@@ -106,8 +106,8 @@ export function Navbar({
 
     return (
         <div id="nav">
-            <a id="logo-container" href="https://ruffle.rs/" target="_blank">
-                <img className="logo" src={ruffleLogo} alt="Ruffle" />
+            <a id="logo-container" href="https://github.com/Im-Tim-mI/Timffle" target="_blank">
+                <img className="logo" src={ruffleLogo} alt="Timffle" />
             </a>
             <div className="select-container">
                 <form

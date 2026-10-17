@@ -120,3 +120,15 @@
 #socket-proxy-websocket-fields[hidden] {
     display: none;
 }
+
+/* Timffle: unofficial-fork notice and credit to Ruffle (see timffle/docs/BRANDING.md). */
+.timffle-attribution {
+    margin-top: 24px;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.85;
+}
+
+.timffle-attribution a {
+    color: var(--ruffle-orange);
+}

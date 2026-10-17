@@ -1,9 +1,9 @@
 {
     "settings_ruffle_enable": {
-        "message": "Ruffle-да Flash контентын уйнатыгыз"
+        "message": "Timffle-да Flash контентын уйнатыгыз"
     },
     "settings_ignore_optout": {
-        "message": "Flash контентын хәтта Ruffle-ны тыйган сәхифәләрдә дә уйнатыгыз"
+        "message": "Flash контентын хәтта Timffle-ны тыйган сәхифәләрдә дә уйнатыгыз"
     },
     "settings_show_swf_download": {
         "message": "Контекст менюында SWF йөкләүне күрсәтү"
@@ -54,7 +54,7 @@
         "message": "Көйләүләрне ташлау"
     },
     "settings_reset_confirm": {
-        "message": "Ruffle көйләүләрен башлангыч гадәти хәленә кайтарырга телисезме?"
+        "message": "Timffle көйләүләрен башлангыч гадәти хәленә кайтарырга телисезме?"
     },
     "status_init": {
         "message": "Агымдагы табны укыйбыз…"

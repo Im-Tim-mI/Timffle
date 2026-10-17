@@ -1,11 +1,11 @@
 {
     "manifest_version": 3,
-    "name": "Ruffle - Flash Emulator",
-    "short_name": "Ruffle",
+    "name": "Timffle - Flash Emulator",
+    "short_name": "Timffle",
     "version": null, // Filled by build.ts.
     "default_locale": "en",
     "description": "__MSG_description__",
-    "homepage_url": "https://ruffle.rs/",
+    "homepage_url": "https://github.com/Im-Tim-mI/Timffle",
 
     "action": {
         "default_popup": "popup.html"

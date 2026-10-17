@@ -1,9 +1,9 @@
 {
     "settings_ruffle_enable": {
-        "message": "Toista Flash-sisältöä Rufflessa"
+        "message": "Toista Flash-sisältöä Timfflessa"
     },
     "settings_ignore_optout": {
-        "message": "Toista Flash-sisältöä jopa sivuilla, jotka eivät salli Rufflea"
+        "message": "Toista Flash-sisältöä jopa sivuilla, jotka eivät salli Timfflea"
     },
     "settings_show_swf_download": {
         "message": "Näytä SWF:n lataus kontekstivalikossa"
@@ -57,7 +57,7 @@
         "message": "Nollaa asetukset"
     },
     "settings_reset_confirm": {
-        "message": "Haluatko varmasti palauttaa Rufflen oletusasetuksiin?"
+        "message": "Haluatko varmasti palauttaa Timfflen oletusasetuksiin?"
     },
     "status_init": {
         "message": "Luetaan nykyistä välilehteä…"
@@ -66,19 +66,19 @@
         "message": "Ei aktiivista välilehteä."
     },
     "status_message_init": {
-        "message": "Tarkistetaan Rufflen tilaa nykyisellä välilehdellä…"
+        "message": "Tarkistetaan Timfflen tilaa nykyisellä välilehdellä…"
     },
     "status_result_running": {
-        "message": "Ruffle on valmis toistamaan Flash-sisältöä nykyisellä välilehdellä."
+        "message": "Timffle on valmis toistamaan Flash-sisältöä nykyisellä välilehdellä."
     },
     "status_result_running_protected": {
-        "message": "Ruffle on valmis toistamaan pyytämääsi Flash-sisältöä."
+        "message": "Timffle on valmis toistamaan pyytämääsi Flash-sisältöä."
     },
     "status_result_optout": {
-        "message": "Ruffle ei voi latautua, koska nykyinen verkkosivu merkitsi itsensä yhteensopimattomaksi."
+        "message": "Timffle ei voi latautua, koska nykyinen verkkosivu merkitsi itsensä yhteensopimattomaksi."
     },
     "status_result_disabled": {
-        "message": "Ruffle on poistettu käytöstä."
+        "message": "Timffle on poistettu käytöstä."
     },
     "action_reload": {
         "message": "Päivitä välilehti ottaaksesi muutokset käyttöön"
@@ -102,10 +102,10 @@
         "message": "Asetukset tallennettu"
     },
     "permissions_grant": {
-        "message": "Myönnä Rufflelle oikeus käyttää dataa kaikilla sivustoilla"
+        "message": "Myönnä Timfflelle oikeus käyttää dataa kaikilla sivustoilla"
     },
     "permissions_not_granted": {
-        "message": "Sinun täytyy napsauttaa Rufflen kuvaketta jokaisella sivustolla, jolla haluat käyttää Rufflea"
+        "message": "Sinun täytyy napsauttaa Timfflen kuvaketta jokaisella sivustolla, jolla haluat käyttää Timfflea"
     },
     "grant_single_site_permission": {
         "message": "Ota pysyvästi käyttöön tällä sivustolla"

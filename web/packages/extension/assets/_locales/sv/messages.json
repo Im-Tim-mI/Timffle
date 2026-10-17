@@ -1,9 +1,9 @@
 {
     "settings_ruffle_enable": {
-        "message": "Spela upp Flash-innehåll i Ruffle"
+        "message": "Spela upp Flash-innehåll i Timffle"
     },
     "settings_ignore_optout": {
-        "message": "Kör Flashinnehåll även på sidor som inte tillåter Ruffle"
+        "message": "Kör Flashinnehåll även på sidor som inte tillåter Timffle"
     },
     "settings_show_swf_download": {
         "message": "Visa SWF-nedladdning i snabbmenyn"
@@ -66,7 +66,7 @@
         "message": "Återställ inställningar"
     },
     "settings_reset_confirm": {
-        "message": "Är du säker på att du vill återställa Ruffle-inställningarna till sina ursprungliga värden?"
+        "message": "Är du säker på att du vill återställa Timffle-inställningarna till sina ursprungliga värden?"
     },
     "status_init": {
         "message": "Läser den aktuella fliken …"
@@ -78,25 +78,25 @@
         "message": "Ett fel uppstod när den aktuella fliken hämtades."
     },
     "status_message_init": {
-        "message": "Kontrollerar Ruffles status på den aktuella fliken …"
+        "message": "Kontrollerar Timffles status på den aktuella fliken …"
     },
     "status_result_running": {
-        "message": "Ruffle är redo att köra Flash-innehåll på den aktuella fliken."
+        "message": "Timffle är redo att köra Flash-innehåll på den aktuella fliken."
     },
     "status_result_running_protected": {
-        "message": "Ruffle är redo att köra Flash-innehållet som du begär."
+        "message": "Timffle är redo att köra Flash-innehållet som du begär."
     },
     "status_result_optout": {
-        "message": "Ruffle kan inte läsas in eftersom den aktuella webbplatsen har markerat sig som inkompatibel."
+        "message": "Timffle kan inte läsas in eftersom den aktuella webbplatsen har markerat sig som inkompatibel."
     },
     "status_result_disabled": {
-        "message": "Ruffle är inaktiverad."
+        "message": "Timffle är inaktiverad."
     },
     "status_result_error": {
-        "message": "Ett fel uppstod när sidans Ruffle-instans kontrollerades."
+        "message": "Ett fel uppstod när sidans Timffle-instans kontrollerades."
     },
     "status_result_protected": {
-        "message": "Ruffle kan inte läsas in på skyddade webbläsarsidor."
+        "message": "Timffle kan inte läsas in på skyddade webbläsarsidor."
     },
     "action_reload": {
         "message": "Ladda om fliken för att applicera ändringar"
@@ -123,16 +123,16 @@
         "message": "Introduktionssida"
     },
     "permissions_grant": {
-        "message": "Ge Ruffle behörighet att komma åt mina uppgifter på alla webbplatser"
+        "message": "Ge Timffle behörighet att komma åt mina uppgifter på alla webbplatser"
     },
     "permissions_not_granted": {
-        "message": "Du måste klicka på Ruffle-ikonen på varje webbplats där du vill använda Ruffle"
+        "message": "Du måste klicka på Timffle-ikonen på varje webbplats där du vill använda Timffle"
     },
     "grant_single_site_permission": {
         "message": "Aktivera permanent för den här webbplatsen"
     },
     "permissions_explanation": {
-        "message": "Ruffle-tillägget fungerar bäst när det får komma åt uppgifter på alla webbplatser. Då kan det starta när en webbplats läses in och få webbplatser som genast söker efter Flash Player att tillåta Flash-innehållet. Behörigheten gör också att Ruffle kan läsa in SWF-filer från andra platser på webben i sin interna spelarsida och automatiskt öppna direkta SWF-länkar där. Om du inte beviljar behörigheten måste du aktivera Ruffle manuellt på varje webbplats där du vill använda det genom att klicka på tilläggsikonen och aktivera Ruffle för webbplatsen."
+        "message": "Timffle-tillägget fungerar bäst när det får komma åt uppgifter på alla webbplatser. Då kan det starta när en webbplats läses in och få webbplatser som genast söker efter Flash Player att tillåta Flash-innehållet. Behörigheten gör också att Timffle kan läsa in SWF-filer från andra platser på webben i sin interna spelarsida och automatiskt öppna direkta SWF-länkar där. Om du inte beviljar behörigheten måste du aktivera Timffle manuellt på varje webbplats där du vill använda det genom att klicka på tilläggsikonen och aktivera Timffle för webbplatsen."
     },
     "swf_player_permissions": {
         "message": "Du måste ge det här URL-ursprunget behörighet för att läsa in SWF-filer därifrån."
