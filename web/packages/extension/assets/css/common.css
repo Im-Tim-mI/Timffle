@@ -2,8 +2,9 @@
     --ruffle-light-blue: #546da3;
     --ruffle-blue: #37528c;
     --ruffle-dark-blue: #184778;
-    --ruffle-orange: #ffad33;
-    --ruffle-dark-orange: #966214;
+    /* Timffle: the accent is the yellow of the icon's play triangle. The variable names are upstream's. */
+    --ruffle-orange: #ffd038;
+    --ruffle-dark-orange: #8a6a0c;
 }
 
 .notransition,
