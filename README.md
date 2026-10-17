@@ -253,4 +253,4 @@ timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md
 - **Timffle 的修改與原創部分**：Copyright (c) 2026 Im-Tim-mI 與 Timffle 貢獻者，**MIT 或 Apache-2.0，任選其一**：[`timffle/LICENSE-MIT`](timffle/LICENSE-MIT)、[`timffle/LICENSE-APACHE`](timffle/LICENSE-APACHE)。
 - 除非你明確另外聲明，你有意提交到本專案的任何貢獻，依 Apache-2.0 對「貢獻」的定義，都以上述雙授權提供，不附加任何額外條款。
 - **商標**：「Ruffle」名稱與標誌屬於 Ruffle 專案；Timffle 只以描述方式提及（例如「Ruffle 的分支」「基於 Ruffle」）。「摩爾莊園」「賽爾號」「小花仙」「彈彈堂」「淘米」「Flash」「Adobe」「Chrome」等屬於各自的權利人。
-- **本 repo 不包含任何遊戲素材**（遊戲的 SWF、DLL、圖片、遊戲程式碼、伺服器位址、封包格式與加解密），也不修改遊戲檔案。請遵守遊戲的服務條款，只用自己的帳號。完整聲明見 [`NOTICE.md`](NOTICE.md)。
+- **本 repo 不包含任何遊戲素材**（遊戲的 SWF、DLL、圖片、遊戲程式碼、伺服器位址、封包格式與加解密），也不修改遊戲檔案。請遵守遊戲的服務條款，只用自己的帳號。完整聲明見 [`NOTICE.md`](NOTICE.md)。行為的來源與驗證方式記在 [`timffle/docs/PROVENANCE.md`](timffle/docs/PROVENANCE.md)。
