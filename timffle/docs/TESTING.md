@@ -91,7 +91,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
   timffle/tools/native-regress/run-regression.sh
 ```
 
-涵蓋六種情境（最近一次：前五種共 73 項、第六種 60 項，全部通過）：
+涵蓋六種情境（最近一次：前五種共 73 項、第六種 62 項，全部通過）：
 
 | 情境 | 項數 | 內容 |
 |---|---|---|
@@ -100,7 +100,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 | delayed | 13 | 小幫手很慢才回應 |
 | incompatible | 12 | 協定不相容 |
 | manual | 8 | 自訂 WebSocket 代理模式 |
-| ask | 60 | 第一次連線的詢問（見下） |
+| ask | 62 | 第一次連線的詢問（見下） |
 
 ### 第一次連線的詢問（`ask-tests.mjs`）
 
@@ -110,7 +110,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 |---|---|
 | `basics` | 沒有 Flash 的網頁保有原生 `WebSocket`；第一次連線開出詢問視窗、文字與警告、預設選取「拒絕」、問題開著時不連線；「允許」連上並且什麼都不存、重新整理同一頁不再問、另一個分頁再問；「拒絕」與不再重問；「一律允許」連上、存進設定、不再問；「一律拒絕」拒絕、存進設定、之後該網站收不到 `socketProxy` 且 `WebSocket` 仍是原生的 |
 | `popup` | 彈出視窗：一鍵加入「一律允許」且不需輸入、改成一律拒絕／每次造訪時詢問／一律允許、允許後「重新載入」按鈕亮起、頁面照新設定連線；高度 ≤ 600 px（Chrome 彈出視窗的上限）；頁框內另一個網站被詢問後列在彈出視窗並可單獨允許；非網站的分頁、Socket 已停用、自訂代理模式的顯示 |
-| `framing` | 網頁把 `popup.html`、`options.html`、`onboard.html`、`prompt.html` 嵌進頁框：瀏覽器拒絕載入（對照：manifest 開放的 `player.html` 載得進來）；網頁拿得到 Ruffle 與 wasm 但拿不到那四個頁面；萬一被嵌入（改由擴充功能自己的頁面去嵌），設定頁與詢問頁什麼都不顯示、彈出視窗的 Socket 區塊不顯示 |
+| `framing` | 網頁把 `popup.html`、`options.html`、`onboard.html`、`prompt.html` 嵌進頁框：瀏覽器拒絕載入（對照：manifest 開放的 `player.html` 載得進來）；網頁拿得到 Ruffle 與 wasm 但拿不到那四個頁面；SWF 位址（直接輸入、或從網頁上的連結點進去）仍被導向獨立播放器（`player.html` 在開放清單裡的原因）；萬一被嵌入（改由擴充功能自己的頁面去嵌），設定頁與詢問頁什麼都不顯示、彈出視窗的 Socket 區塊不顯示 |
 | `dismissal` | 關掉詢問視窗＝這次造訪拒絕，重新整理不會再問 |
 | `guard` | 詢問視窗的輸入防護：腳本產生的點擊不能回答；Tab 到「允許」再按 Enter／Space 不能回答；沒有先在按鈕上移動指標的按下不能回答；視窗沒有焦點時不算、取得焦點後 0.7 秒內不算；之後真的點擊可以回答；鍵盤可以「拒絕」 |
 | `options` | 設定頁：小幫手與自訂代理各有自己的清單、切換時保留各自輸入、儲存只改目前方式的清單；自訂代理的 token 只給它自己清單裡的網站（真的頁面讀 `RufflePlayer.config.socketProxy`，只在小幫手清單裡的網站讀不到）；沒有編輯的表單跟著別處的變更更新；有編輯的表單收到警告，儲存時被拒絕並顯示最新設定，**舊表單不能把「一律拒絕」改回去** |
