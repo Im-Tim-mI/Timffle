@@ -101,7 +101,7 @@ def allowed_asset(name, directory=False):
         return (name in {"_locales", "css", "dist", "fonts", "images"} or
                 re.fullmatch(r"_locales/[A-Za-z_@-]+", name) is not None)
     if len(parts) == 1:
-        return name in {"manifest.json", "onboard.html", "options.html", "player.html", "popup.html"}
+        return name in {"manifest.json", "onboard.html", "options.html", "player.html", "popup.html", "prompt.html"}
     if re.fullmatch(r"_locales/[A-Za-z_@-]+/messages[.]json", name):
         return True
     if len(parts) != 2:

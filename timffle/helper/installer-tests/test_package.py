@@ -255,6 +255,19 @@ class PackageTests(unittest.TestCase):
                     self.make_package()
                 self.assert_no_artifacts()
 
+    def test_every_page_of_the_extension_is_allowed(self):
+        # A page added to the extension has to be added to the allow-list too,
+        # or no release ZIP can be made (the first-use question's prompt.html
+        # was missing once).
+        assets = Path(__file__).resolve().parents[3] / "web" / "packages" / "extension" / "assets"
+        pages = sorted(path.name for path in assets.glob("*.html"))
+        if not pages:
+            self.skipTest("the extension sources are not next to the packager")
+        self.assertIn("popup.html", pages)
+        for page in pages:
+            with self.subTest(page=page):
+                self.assertTrue(package.allowed_asset(page), page)
+
     def test_duplicate_archive_entry_is_refused(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
