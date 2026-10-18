@@ -23,7 +23,7 @@ git merge nightly-YYYY-MM-DD
 | 衝突 | 處理 |
 |---|---|
 | `.github/workflows/*`、`.github/dependabot.yml`、`.github/FUNDING.yml`、`.github/ISSUE_TEMPLATE/*`（上游有改、我們已刪除或替換） | 保持 Timffle 的版本：`git rm` 上游的 workflow／dependabot／FUNDING；issue 範本用我們的。Ruffle 的 CI 會發布到 Ruffle 的商店帳號、需要 Ruffle 的密鑰，不能在 Timffle 跑 |
-| `README.ruffle.md`（上游改了 `README.md`） | Git 通常會跟著改名合併；若變成衝突，把上游的新 `README.md` 內容放進 `README.ruffle.md`，`README.md` 保持 Timffle 的 |
+| `README.ruffle.md`（上游改了 `README.md`） | Git 通常會跟著改名合併；若變成衝突，把上游的新 `README.md` 內容放進 `README.ruffle.md`，`README.md`（英文）與 `README.zh-TW.md`、`README.zh-CN.md` 保持 Timffle 的 |
 | 語系文字 `*.ftl`、`messages.json`（上游 Crowdin 翻譯更新 vs 我們換過名） | 先接受上游版本（`git checkout --theirs <檔案>`），合併完成後跑 `python3 timffle/scripts/rebrand.py` 一次換回來 |
 | `Cargo.lock`（上游升級相依） | 接受上游版本後跑 `cargo metadata --format-version 1 > /dev/null` 讓 Cargo 補上 flash-lso 的 `[patch]`；確認 `Cargo.lock` 裡 `flash-lso` 沒有 `source`（表示用的是 `vendor/` 的版本） |
 | 上游升級了 rust-flash-lso 的版本 | 用 `git subtree pull --prefix=vendor/rust-flash-lso https://github.com/ruffle-rs/rust-flash-lso.git <新 commit>`（或 `git merge -s subtree`）跟進，再確認我們的 AMF3 修正還在／上游是否已修好，最後更新 `UPSTREAM.env` 的 `FLASH_LSO_BASE` |

@@ -79,7 +79,7 @@ python3 -I timffle/scripts/extension-id.py > timffle/extension-key/extension-id.
 | `timffle/helper/package.py` | `EXPECTED_ID`（封裝時驗證） |
 | `web/packages/extension/tests/socket-background.test.mjs` | 測試的常數 `ID` |
 | `timffle/tools/native-regress/browser-auto-tests.mjs` | 一個 `assert.equal(ID, …)` |
-| 文件 | `README.md`、`timffle/extension-key/extension-id.txt` |
+| 文件 | `README.md`、`README.zh-TW.md`、`README.zh-CN.md`、`timffle/extension-key/extension-id.txt` |
 
 這份清單可以用 `grep -rn eandddnbchclalbjkhfelhjhpijifcog .` 重新確認。只在要簽署 `.crx` 或上架商店時才會用到私鑰；`timffle/helper/package.py` 會拒絕含 PEM 私鑰標記的檔案。
 

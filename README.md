@@ -6,300 +6,323 @@
   <img src="timffle/branding/timffle-logo.svg" alt="Timffle" width="420">
 </h1>
 
-<p align="center"><b>讓淘米台灣的 Flash 遊戲，在 Chrome 裡繼續玩。</b></p>
+<p align="center"><b>Play Flash online games in Chrome again.</b></p>
 
-<p align="center">摩爾莊園 ・ 賽爾號 ・ 小花仙 ・ 彈彈堂</p>
+<p align="center">Ruffle, plus the TCP socket support that Flash online games need.<br>Taomee Taiwan's games work out of the box: 摩爾莊園 ・ 賽爾號 ・ 小花仙 ・ 彈彈堂</p>
 
 <p align="center">
-  <a href="https://github.com/Im-Tim-mI/Timffle/releases/latest"><b>下載最新版</b></a> ・
-  <a href="#安裝方法">安裝方法</a> ・
-  <a href="#疑難排解">疑難排解</a> ・
-  <a href="README.en.md">English</a>
+  <a href="https://github.com/Im-Tim-mI/Timffle/releases/latest"><b>Download the latest release</b></a> ・
+  <a href="#install">Install</a> ・
+  <a href="#troubleshooting">Troubleshooting</a>
 </p>
 
-<p align="center">版本 <code>0.8.0.26300</code>（基於 Ruffle nightly 2026-10-13）｜ 授權 MIT 或 Apache-2.0（任選其一）</p>
+<p align="center"><b>English</b> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">Version <code>0.8.0.26300</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
-> **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，與 Ruffle 專案、Ruffle LLC、淘米網絡（Taomee）沒有隸屬或合作關係，也沒有得到它們的認可。** Flash 模擬核心幾乎全部是 Ruffle 與其[數百位貢獻者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 歷史、作者紀錄與授權檔。
-> **Timffle 的問題請回報到 [Timffle 的 Issues](https://github.com/Im-Tim-mI/Timffle/issues)，不要回報給 Ruffle。** 「Ruffle」名稱與標誌屬於 Ruffle 專案，所以本分支使用 Timffle 這個名字與自己的圖示（見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。Ruffle 原本的說明文件保留在 [`README.ruffle.md`](README.ruffle.md)。
+> **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
+> **Please report Timffle problems to [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues), never to Ruffle.** The name and logo "Ruffle" belong to the Ruffle project, so this fork uses its own name and artwork (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)). Ruffle's original README is kept as [`README.ruffle.md`](README.ruffle.md).
 
 ---
 
-## 簡介
+## About
 
-Adobe 已在 2020 年底終止 Flash，Chrome 也早已移除它。淘米台灣的《摩爾莊園》《賽爾號》《小花仙》《彈彈堂》仍是 Flash（ActionScript 3）網頁遊戲，而且**透過 TCP Socket 連線遊戲伺服器**。要在現在的 Chrome 裡玩，光有一個 Flash 模擬器還不夠：
+Flash reached end of life at the end of 2020 and browsers removed it. [Ruffle](https://ruffle.rs/) brings Flash back by emulating it in WebAssembly, but a Flash **online game** needs one thing more: it **keeps a TCP socket open to its game server** (`flash.net.Socket`), and a browser extension cannot open TCP connections. A plain Ruffle cannot run such a game.
 
-1. 模擬器要完整支援這些遊戲用到的 Flash 功能（`LocalConnection`、`URLStream`、`Loader`／`URLLoader` 的取消、3D 透視、`Matrix3D`…），否則遊戲會卡住、點了沒反應，或畫面位置錯誤。
-2. Chrome 擴充功能不能直接開 TCP 連線，需要一個本機的小程式幫忙轉接。
+Timffle is a Ruffle fork made for these games. It adds:
 
-Timffle 把這兩件事一起做好：**修補過的 Ruffle（WebAssembly）加上只需安裝一次的連線小幫手**，打包成一個 Chrome 插件包。下載、安裝，打開遊戲網址就能登入、玩。
+1. **TCP sockets.** A small connection helper (installed once, started by Chrome on demand) relays the game's socket to the game server, and the extension decides **which sites may use it**: the sites you allow, and the sites you approve the first time they ask.
+2. **The compatibility fixes online games need**, found by running real online games and compared line by line with Adobe Flash Player 32: `LocalConnection`, `URLStream`, `Loader`/`URLLoader` cancellation, 3D perspective and `Matrix3D`, AMF3 reference cycles, …; otherwise a game hangs, ignores clicks or draws things in the wrong place.
+3. **Chinese text that shows up.** Ruffle's built-in font has no Chinese glyphs; Timffle draws device-font text with the browser's fonts, positioned by the metrics of the Windows fonts the games ask for.
+
+Everything ships as **one Chrome extension package**: download it, install it, open the game's address and log in.
+
+**Taomee Taiwan's games** (摩爾莊園, 賽爾號, 小花仙, 彈彈堂) are what Timffle was first made for and tested with, so their sites are allowed to use sockets by default and need no setup. They are the ready-made case, not the limit: another Flash online game can be allowed the same way when it asks (see [Supported games and platforms](#supported-games-and-platforms) for what has actually been tried).
 
 > [!NOTE]
-> Timffle 只是讓瀏覽器能執行這些遊戲，不修改遊戲的內容、規則或資料，也不包含任何遊戲素材。它不是遊戲的官方軟體；使用第三方執行環境是否符合各遊戲的服務條款，請自行確認，風險由使用者自負。請只使用自己的帳號。
+> Timffle only lets the browser run Flash content. It does not change a game's content, rules or data, and it contains no game assets. It is not official software of any game or its operator; whether a third-party runtime is allowed by a game's terms of service is for you to check, at your own risk. Use your own account only.
 
-## 特色
+## Features
 
-- **一個插件包就夠**：[Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) 提供 `timffle-chrome-<版本>.zip`，內含 Chrome 插件、連線小幫手（Windows／macOS／Linux）與安裝程式。
-- **不用設定代理**：預設允許四個遊戲網站使用 Socket 連線，不需要另外開任何服務或視窗；其他網站第一次想用時，Timffle 會先跳出視窗詢問你（建議拒絕，只有線上遊戲可以允許）。
-- **以真 Flash 為標準答案**：對 Ruffle 的相容性修正，都用 Adobe Flash Player 32 的實際輸出逐行比對（30 項黃金答案）。
-- **保守的安全設計**：只有你允許的網站能使用連線（不在清單的網站要先經過你同意）；小幫手只連公開網路位址、不監聽任何連接埠、不常駐、不記錄連線內容。
-- **開源，並保留上游歷史**：完整保留 Ruffle 的 git 歷史、作者紀錄與授權；Timffle 自己的部分以 MIT 或 Apache-2.0（任選其一）授權，與 Ruffle 相同。
+- **Sockets for Flash online games**: the game opens its `flash.net.Socket` as it would in Flash, and Timffle relays it to the game server through the connection helper (Windows, macOS, Linux). No proxy to run, nothing else to start.
+- **You decide which sites get sockets**: a site must be on your always-allow list, or you answer the first-use question when it first tries (we recommend denying; only online games should be allowed). The toolbar popup allows or denies the current site in one click.
+- **Conservative security design**: the helper connects to public internet addresses only, listens on no port, does not stay running and records no traffic; only this extension's ID can call it.
+- **Real Flash as the reference**: every compatibility fix for Ruffle is compared line by line with the output of Adobe Flash Player 32 (30 golden files).
+- **Chinese text shows up**: device-font text uses the browser's fonts, positioned by the metrics of the Windows fonts the games ask for (SimSun, Arial Black, Tahoma, …).
+- **Taomee Taiwan's games out of the box**: the four game sites are allowed to use sockets by default.
+- **One package**: [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) provides `timffle-chrome-<version>.zip` with the Chrome extension, the connection helper and the installers.
+- **Open source, upstream history kept**: Ruffle's complete git history, authorship and licences are preserved; Timffle's own parts are MIT OR Apache-2.0 at your option, like Ruffle.
 
-## 快速開始
+## Quick start
 
-1. 到 [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) 下載最新版的 `timffle-chrome-<版本>.zip`（**Chrome 插件包**），解壓縮到一個固定的位置。
-2. 執行 `helper` 資料夾裡的安裝程式：Windows `install-windows.cmd`、macOS `install-macos.command`、Linux `sh install-linux.sh`。**只要一次。**
-3. 開啟 `chrome://extensions` → 打開「開發人員模式」→「載入未封裝項目」→ 選擇 `extension` 資料夾。
-4. 打開遊戲網站，例如 https://mole.61.com.tw/ ，按播放器的播放鍵，照常登入。
+1. Download `timffle-chrome-<version>.zip` (**the Chrome extension package**) from [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) and unzip it somewhere permanent.
+2. Run the installer in the `helper` folder: Windows `install-windows.cmd`, macOS `install-macos.command`, Linux `sh install-linux.sh`. **Once.**
+3. Open `chrome://extensions` → turn on **Developer mode** → **Load unpacked** → pick the `extension` folder.
+4. Open a game site and log in. For Taomee Taiwan's games, for example https://mole.61.com.tw/ , press the player's play button and log in as usual. For any other Flash online game, open its page: the first time the game opens a socket, Timffle asks you (see [The first-use question](#the-first-use-question)), and you can allow online games you trust.
 
-詳細步驟與注意事項見[安裝方法](#安裝方法)。
+Details are in [Install](#install).
 
-## 支援狀態
+## Supported games and platforms
 
-| 遊戲 | 網址 | 狀態 |
+### Games
+
+Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs. Whether a particular game then works depends on how much of what it uses Ruffle supports, and **only Taomee Taiwan's 摩爾莊園 has been played with a real account so far**. Taomee Taiwan's four games have sockets allowed by default:
+
+| Game | URL | Status |
 |---|---|---|
-| 摩爾莊園 | https://mole.61.com.tw/ | **已用真實帳號驗證**（Linux＋Chrome 155，版本 0.8.0.26294；之後的版本行為相同，只有名稱、美術與結構改變）：登入、本地帳號頁（3D 轉盤）、進入世界、走路、換地圖、賽車座位。 |
-| 賽爾號 | http://seer.61.com.tw/ | 預設放行 Socket 連線，**未實測遊玩**。 |
-| 小花仙 | http://hua.61.com.tw/ | 預設放行 Socket 連線，**未實測遊玩**。 |
-| 彈彈堂 | http://ddt.61.com.tw/main_index.php | 預設放行 Socket 連線，**未實測遊玩**。 |
+| 摩爾莊園 | https://mole.61.com.tw/ | **Verified with a real account** (Linux + Chrome 155, version 0.8.0.26294, the last full run recorded here): login, the 3D saved-account page, entering the world, walking, changing maps, kart seats. |
+| 賽爾號 | http://seer.61.com.tw/ | Sockets allowed by default; **gameplay not tested**. |
+| 小花仙 | http://hua.61.com.tw/ | Sockets allowed by default; **gameplay not tested**. |
+| 彈彈堂 | http://ddt.61.com.tw/main_index.php | Sockets allowed by default; **gameplay not tested**. |
 
-| 平台 | 驗證程度 |
+**Playing another Flash online game**: open the game's page and start it. The first time it tries to connect, Timffle's question window opens: choose **Allow** (this visit) or **Always allow** if you trust the game. By then the game has usually timed out, so try connecting again in the game. Details: [The first-use question](#the-first-use-question).
+
+If another online game does not work, please open an issue with the game's address and the DevTools console output (see [Troubleshooting](#troubleshooting)).
+
+### Platforms
+
+| Platform | How far it is verified |
 |---|---|
-| Linux x64＋Chrome 155 | **實機驗證**：安裝／移除、自動啟停、二進位傳輸、連線失敗處理、摩爾莊園遊戲流程 |
-| Windows 10／11 x64 | 小幫手與安裝／移除程式在 **Wine 模擬環境**測試（Wine 不是 Windows 實機） |
-| Windows 32 位元與 ARM64、macOS（Intel／Apple Silicon）、Linux ARM64 | 只做了交叉編譯，**未實機測試** |
+| Linux x64 + Chrome 155 | **Real hardware**: install/uninstall, automatic start/stop, binary transfer, connection failures, 摩爾莊園 gameplay |
+| Windows 10/11 x64 | Helper and installer tested under **Wine** (Wine is not real Windows) |
+| Windows 32-bit and ARM64, macOS (Intel/Apple Silicon), Linux ARM64 | Cross-compiled only, **not tested on real machines** |
 
-安裝程式替 **Google Chrome** 註冊小幫手（Linux／macOS 上，Beta／Dev／Canary 與 Chromium 只在你用過、使用者資料夾已存在時才註冊）；Edge、Brave 等其他 Chromium 系瀏覽器不會被註冊。小幫手尚未取得 Microsoft 或 Apple 的簽章／公證。
+The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/Dev/Canary and Chromium only if their user data folder already exists); Edge, Brave and other Chromium browsers are not registered. The helper is not signed or notarized by Microsoft or Apple.
 
-## 安裝方法
+## Install
 
-### 需求
+### Requirements
 
-- **Chrome 桌面版**（Windows 10/11、macOS、Linux；實測 Chrome 155），需要 Manifest V3 擴充功能與 Native Messaging。
-- 不需要 Node.js、不需要系統管理員權限、不需要另外開任何服務或視窗。
+- **Desktop Chrome** (Windows 10/11, macOS, Linux; tested with Chrome 155) with Manifest V3 extensions and Native Messaging.
+- No Node.js, no administrator rights, nothing else to start.
 
-### 步驟
+### Steps
 
-1. **下載**：到 [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) 下載 `timffle-chrome-<版本>.zip`，並核對 SHA-256：
+1. **Download** `timffle-chrome-<version>.zip` from [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) and verify it:
 
    ```sh
-   sha256sum -c timffle-<版本>-SHA256SUMS.txt     # Linux
-   shasum -a 256 -c timffle-<版本>-SHA256SUMS.txt # macOS
+   sha256sum -c timffle-<build>-SHA256SUMS.txt     # Linux
+   shasum -a 256 -c timffle-<build>-SHA256SUMS.txt # macOS
    ```
 
-   解壓縮後會得到 `timffle/`，裡面有 `extension/`（Chrome 插件）、`helper/`（連線小幫手與安裝／移除程式）、`LICENSES/`（授權檔）、`NOTICE.md`、`README.txt`。**請把整個資料夾放在固定位置**，之後不要刪除或搬移。
+   Unzipping gives `timffle/` with `extension/` (the Chrome extension), `helper/` (the connection helper and its installers), `LICENSES/`, `NOTICE.md` and `README.txt`. **Keep the whole folder in a fixed place** and do not move or delete it afterwards.
 
-2. **安裝連線小幫手（只要一次）**——它讓 Chrome 插件能連到遊戲伺服器：
+2. **Install the connection helper (once)**; it lets the extension reach the game servers:
 
-   | 系統 | 做法 |
+   | System | How |
    |---|---|
-   | Windows 10/11 | 開啟 `helper` 資料夾，雙擊 `install-windows.cmd`。若出現「Windows 已保護您的電腦」，確認是這個檔案後按「其他資訊」→「仍要執行」。看到「已安裝連線小幫手」即完成。 |
-   | macOS | 雙擊 `helper/install-macos.command`。小幫手沒有 Apple 簽章，若被擋下：「系統設定」→「隱私權與安全性」→ 找到被擋的項目按「仍要打開」，再雙擊一次。 |
-   | Linux | 在 `helper` 資料夾開終端機：`sh install-linux.sh` |
+   | Windows 10/11 | Open the `helper` folder and double-click `install-windows.cmd`. If Windows says it protected your PC, check that this is the file you meant, then "More info" → "Run anyway". "已安裝連線小幫手" means it worked. |
+   | macOS | Double-click `helper/install-macos.command`. The helper has no Apple signature; if it is blocked: System Settings → Privacy & Security → "Open Anyway" for the blocked item, then double-click again. |
+   | Linux | In the `helper` folder: `sh install-linux.sh` |
 
-   安裝程式只做「每個使用者」的安裝：把小幫手放到使用者目錄，並向 Chrome 註冊 Native Messaging（Windows 寫入 `HKCU` 登錄、macOS／Linux 寫入使用者的 `NativeMessagingHosts` 資料夾）。不裝系統服務、不開機自動啟動、不會自動解除下載標記或停用任何安全功能。
+   The installer is per-user: it puts the helper into the user's folder and registers Native Messaging for Chrome (the `HKCU` registry on Windows, the user's `NativeMessagingHosts` folder on macOS/Linux). No service, no autostart, no administrator rights, and it never removes download flags or turns off a security feature.
 
-3. **載入 Chrome 插件**：
-   1. 開啟 `chrome://extensions`，打開右上角的「**開發人員模式**」。
-   2. 按「**載入未封裝項目**」，選擇解壓縮出來的 `extension` 資料夾。
-   3. 如果裝過官方的 Ruffle 擴充功能，請先停用或移除，避免兩個插件搶著接管。
+3. **Load the extension**:
+   1. Open `chrome://extensions` and turn on **Developer mode** (top right).
+   2. Click **Load unpacked** and pick the unzipped `extension` folder.
+   3. If the official Ruffle extension is installed, disable or remove it first so the two do not fight over the same pages.
 
-4. **確認小幫手有裝好**：在插件的「選項」頁找到「Socket 連線」，「連線小幫手」旁應顯示「已安裝（版本 1.2.0）」。若顯示找不到：重新執行安裝程式，**完全關閉 Chrome 再開**。
+4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.2.0)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it.
 
-5. **開始玩**：打開 https://mole.61.com.tw/ ，按播放器的播放鍵後照常登入，不用設定代理。賽爾號、小花仙、彈彈堂同樣直接打開各自的網站。首次載入插件後請重新整理已開啟的遊戲頁；若仍顯示下載 Flash 的提示，等幾秒再重新整理一次。
+5. **Play**: open a game site (for example https://mole.61.com.tw/ ), press the player's play button and log in as usual; no proxy needed. 賽爾號, 小花仙 and 彈彈堂 work the same way from their own sites; any other site is asked about the first time it wants a socket ([The first-use question](#the-first-use-question)). After loading the extension for the first time, reload any game page that was already open; if it still shows the "download Flash" message, wait a few seconds and reload once more.
 
-### 更新
+### Update
 
-用新版 ZIP 的 `extension/` 內容覆蓋原本載入的資料夾 → 到 `chrome://extensions` 對該插件按「重新載入」→ 遊戲頁強制重新整理（Windows／Linux：`Ctrl+Shift+R`，macOS：`Cmd+Shift+R`）。只有在 [CHANGELOG](timffle/CHANGELOG.md) 寫明小幫手有更新時，才需要重跑安裝程式。
+Copy the `extension/` contents of the new ZIP over the folder you loaded → press "Reload" for the extension on `chrome://extensions` → hard-reload the game page (`Ctrl+Shift+R`, `Cmd+Shift+R` on macOS). Run the installer again only if the [CHANGELOG](timffle/CHANGELOG.md) says the helper was updated.
 
-### 移除
+### Uninstall
 
-1. 執行 `helper` 資料夾裡的 `uninstall-windows.cmd`、`uninstall-macos.command` 或 `uninstall-linux.sh`（只會刪除安裝程式自己建立的檔案和設定）。
-2. 到 `chrome://extensions` 移除插件。
+1. Run `uninstall-windows.cmd`, `uninstall-macos.command` or `uninstall-linux.sh` from the `helper` folder (it removes only what the installer created).
+2. Remove the extension on `chrome://extensions`.
 
-小幫手的安裝位置：Windows `%LOCALAPPDATA%\TimffleSocketHelper`、macOS `~/Library/Application Support/TimffleSocketHelper`、Linux `~/.local/share/timffle-socket-helper`。
+The helper lives in `%LOCALAPPDATA%\TimffleSocketHelper` (Windows), `~/Library/Application Support/TimffleSocketHelper` (macOS) or `~/.local/share/timffle-socket-helper` (Linux).
 
-## 設定
+## Settings
 
-插件的「選項」頁有一個「**Socket 連線（遊戲伺服器）**」區塊（中英對照）：
+The extension's options page has a section "**Socket 連線（遊戲伺服器） / Socket connections (game servers)**" (bilingual: Traditional Chinese / English):
 
-<p align="center"><img src="timffle/docs/images/options-socket.png" alt="插件選項頁的「Socket 連線（遊戲伺服器）」區塊：連線小幫手顯示已安裝，下方是允許的網站來源清單" width="560"></p>
+<p align="center"><img src="timffle/docs/images/options-socket.png" alt="The socket section of the extension's options page: the connection helper is shown as installed, followed by the list of allowed website origins" width="560"></p>
 
-- **連線方式**：預設且建議「連線小幫手」；進階使用者可改成「自訂 WebSocket 代理」，自己執行 [`timffle/relay/`](timffle/relay/) 裡的本機 WebSocket↔TCP 代理（需要 Node.js 22+，Chrome 可能詢問本機網路存取權限）。
-- **一律允許的網站來源（每行一個）**：清單內的網站來源（協定＋主機＋選用連接埠，不接受 `*` 或路徑）可以直接使用 Socket 連線，不會詢問。預設是摩爾莊園、賽爾號、小花仙、彈彈堂的 `mole／seer／hua／ddt.61.com.tw`，各含 `http://` 與 `https://`。要加其他網站**不必自己輸入**：用下面的「第一次連線時的詢問」或「在彈出視窗直接設定」。**只允許你信任的線上遊戲**，因為被允許的網站可以透過小幫手連到任何公開網路上的 TCP 位址。
-- **一律拒絕的網站來源（每行一個）**：這些網站不會被詢問，也不能使用 Socket 連線（兩種連線方式都一樣）。同一個網站不能同時在「允許」與「拒絕」清單裡（儲存時會提醒；若真的同時存在，拒絕優先）。
-- **兩種連線方式各有自己的「一律允許」清單**：切到「自訂 WebSocket 代理」時，文字方塊會換成代理自己的清單，只有那份清單裡的網站拿得到代理網址與 token。所以在連線小幫手模式按過「允許」的網站，不會因為你之後改用自訂代理就拿到 token。
-- **設定頁開著的時候**，若你在彈出視窗改了設定（例如把某網站設成「一律拒絕」），沒有編輯過的表單會自動更新；有編輯過的表單在儲存時會被擋下並顯示最新設定，不會把那邊的決定改回去。
-- 儲存或停用後，請重新載入遊戲頁。
+- **Connection method**: "Socket helper" is the default and recommended. Advanced users can switch to "Custom WebSocket proxy" and run the local WebSocket↔TCP proxy in [`timffle/relay/`](timffle/relay/) themselves (needs Node.js 22+; Chrome may ask for local network access).
+- **Always-allowed website origins (one per line)**: the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets directly, without being asked. The default is Taomee Taiwan's four game sites, `mole`, `seer`, `hua` and `ddt` `.61.com.tw`, each with `http://` and `https://`. You do **not have to type** other sites: use "The first-use question" or "Setting a site from the popup" below. **Allow only online games you trust**, because an allowed site can reach any TCP address on the public internet through the helper.
+- **Always-denied website origins (one per line)**: these sites are never asked about and never get sockets (with either connection method). A site cannot be on both the allowed and the denied list (saving warns you; if it is in both anyway, refusing wins).
+- **Each connection method has its own always-allowed list**: switch to "Custom WebSocket proxy" and the box shows the proxy's own list; only the sites on that list are given the proxy URL and its token. So a site you allowed in Socket helper mode never gets the token just because you switched to a custom proxy later.
+- **While the settings page is open**, if you change something in the popup (for example set a site to "Always deny"), a form with no edits updates itself; a form with edits is stopped when you save and shows the latest settings, so it never changes that decision back.
+- Reload the game page after saving or disabling.
 
-### 第一次連線時的詢問
+### The first-use question
 
-連線方式是「連線小幫手」時，**不在上面兩個清單的網站**第一次嘗試使用 Socket 連線，Timffle 會跳出**插件自己的視窗**詢問你。它是獨立視窗，不是網頁裡的東西，所以網頁不能遮住它、也不能替你按：
+With the connection method "Socket helper", a site that is **on neither list** is asked about the first time it tries to open a socket, in a **window of the extension's own**. It is a separate window, not part of the page, so the page can neither cover it nor click it for you:
 
-<p align="center"><img src="timffle/docs/images/socket-question.png" alt="詢問視窗：顯示網站來源 https://game.example，警告「預設建議拒絕。只有線上遊戲可以允許。」，下方四個按鈕：拒絕（建議）、允許、一律拒絕、一律允許" width="420"></p>
+<p align="center"><img src="timffle/docs/images/socket-question.png" alt="The question window: the website origin https://game.example, the warning 'We recommend denying. Only online games should be allowed.', and four buttons: Deny (recommended), Allow, Always deny, Always allow" width="420"></p>
 
-| 按鈕 | 效果 |
+| Button | Effect |
 |---|---|
-| **拒絕（建議）** | 這個分頁這次造訪拒絕。關閉分頁、或這個分頁換到別的網站後，下次再問 |
-| **允許** | 這個分頁這次造訪允許。同上，下次再問（重新整理同一頁不算新的造訪） |
-| **一律拒絕** | 存進「一律拒絕」清單，不再詢問 |
-| **一律允許** | 存進「一律允許」清單，不再詢問 |
+| **Deny (recommended)** | Refused for this visit of this tab. Asked again after the tab is closed or goes to another site |
+| **Allow** | Allowed for this visit of this tab. Asked again later in the same way (reloading the same page is not a new visit) |
+| **Always deny** | Saved to the always-denied list; never asked again |
+| **Always allow** | Saved to the always-allowed list; never asked again |
 
-- **預設建議拒絕，只有線上遊戲可以允許。** 視窗會明確警告，並把「拒絕」放在最顯眼、預設選取的位置。
-- 直接關閉視窗等於「拒絕」（這次造訪）。為了避免你正在遊戲裡點擊或打字時誤按：視窗出現或取得焦點後的 0.7 秒內，所有輸入都被忽略；「允許」**只接受滑鼠（或觸控）點擊，鍵盤永遠不能允許**（Tab、Enter、Space 是遊戲登入常打的鍵），而且滑鼠要在那 0.7 秒之後移到按鈕上才算；「拒絕」任何輸入都可以。需要用鍵盤允許時，請用工具列彈出視窗裡的按鈕。
-- 同一個網站同時要求多條連線只會問一次；一次只會有一個視窗；同一個分頁每次造訪最多跳出 3 次視窗、整個擴充功能每分鐘最多 6 次，超過的網站直接拒絕。等你回答的連線不佔用連線名額，所以沒人理的問題不會影響已允許的遊戲。
-- 你回答之前，遊戲通常已經等到逾時並顯示連線失敗：**允許後請在遊戲裡再試一次**；若文字顯示不正常，請重新載入頁面。
-- 內嵌在別的網站頁面裡的遊戲（`iframe`）以**它自己的來源**詢問，視窗會同時顯示外面那個頁面的來源。
-- 只有「連線小幫手」模式會詢問。「自訂 WebSocket 代理」模式不會詢問，沒列出的網站一律不能使用（代理網址含 token，不會給沒被允許的網站）。
-- 沒有 Flash 內容的網頁不受影響，Timffle 也不會替它們改動瀏覽器的 `WebSocket`（例外：網頁含有同源的 `iframe` 時，Ruffle 自己的頁框偵測會讀設定而提早安裝轉接，行為仍與原生 `WebSocket` 相同）。
-- 擴充功能自己的頁面（彈出視窗、設定頁、歡迎頁、詢問視窗）網頁**無法嵌進頁框**，所以網頁不能偽造它們或蓋住它們。
+- **We recommend denying; only online games should be allowed.** The window says so, and the "Deny" button is the highlighted one with the focus.
+- Closing the window counts as "Deny" (for this visit). So that a click or keystroke meant for the game is not taken as an answer: all input in the first 0.7 s after the window appears or gets focus is ignored; "Allow" accepts **only a mouse (or touch) click, never the keyboard** (Tab, Enter and Space are the keys of a game's login form), and the mouse must move onto the button after that 0.7 s; "Deny" accepts any input. To allow with the keyboard, use the button in the toolbar popup.
+- Several connections from one site at once share one question; only one window is open at a time; one tab causes at most 3 windows per visit and the whole extension at most 6 per minute, and sites beyond that are refused without a question. Connections waiting for your answer do not use up connection slots, so an ignored question cannot affect games that are already allowed.
+- By the time you answer, the game has usually timed out and shown a connection failure: **after allowing, try again in the game**; if text looks wrong, reload the page.
+- A game embedded in another site's page (an `iframe`) is asked about with **its own origin**; the window also shows the origin of the page around it.
+- Only "Socket helper" mode asks. "Custom WebSocket proxy" mode never asks and refuses sites that are not listed (the proxy URL contains a token and is never given to a site nobody approved).
+- Pages without Flash content are unaffected, and Timffle does not touch the browser's `WebSocket` on them (one exception: when a page has a same-origin `iframe`, Ruffle's own frame detection reads the settings and the bridge is installed early; it behaves like the native `WebSocket`).
+- The extension's own pages (popup, settings, welcome page, question window) **cannot be framed by a web page**, so a page can neither fake nor cover them.
 
-### 在彈出視窗直接設定
+### Setting a site from the popup
 
-點瀏覽器工具列上的 Timffle 圖示，彈出視窗的「Socket 連線」區塊會顯示**目前分頁的網站**：
+Click the Timffle icon on the browser toolbar; the "Socket connections" section of the popup shows the **current tab's website**:
 
-<p align="center"><img src="timffle/docs/images/socket-popup.png" alt="彈出視窗的 Socket 連線區塊：顯示 https://game.example 與狀態「每次造訪時詢問」，一顆黃色的「允許此網站使用 Socket 連線」按鈕，下面是設定下拉選單與「預設建議拒絕」的提醒" width="300"></p>
+<p align="center"><img src="timffle/docs/images/socket-popup.png" alt="The popup's Socket connections section: https://game.example with the state 'Ask on every visit', a yellow 'Allow this site to use sockets' button, the setting drop-down and the reminder to deny by default" width="300"></p>
 
-- **允許此網站使用 Socket 連線**：一鍵把這個網站加進「一律允許」清單，不用輸入網址。按下後已開啟的分頁要重新載入才會套用（彈出視窗的「重新載入」按鈕會亮起）。
-- 下拉選單可改成「**每次造訪時詢問**」（從兩個清單移除，下次再問）、「**一律允許**」或「**一律拒絕**」。要取消一律允許或一律拒絕，就改回「每次造訪時詢問」。
-- 這個分頁裡**其他網站的頁框**如果已經被詢問過，也會列在下面，各有自己的按鈕與選單。
-- 狀態列也會顯示這個分頁「本次造訪」的允許或拒絕。
-- 同一頁的其他選項是 Ruffle 原有的播放設定（裝置字型、模擬的 Flash 版本、ActionScript 執行時間上限等）。
+- **Allow this site to use sockets**: adds the site to the always-allowed list in one click, no typing. A tab that is already open must be reloaded to pick it up (the popup's "Reload Tab" button lights up).
+- The drop-down switches the site to "**Ask on every visit**" (removed from both lists; asked again next time), "**Always allow**" or "**Always deny**". To cancel an always-allow or always-deny, switch it back to "Ask on every visit".
+- **Frames of other websites** in this tab that were asked about are listed below, each with its own button and drop-down.
+- The status line also shows this tab's allow or deny for "this visit".
+- The other options on that page are Ruffle's usual playback settings (device fonts, emulated Flash version, ActionScript time limit, …). **Device font renderer** defaults to Canvas (the browser's fonts), which is what makes Chinese text show up; choose Embedded there to go back to Ruffle's built-in font.
 
-## 疑難排解
+## Troubleshooting
 
-| 症狀 | 可能原因／處理 |
+| Symptom | What to do |
 |---|---|
-| 選項頁顯示找不到小幫手 | 重新執行 `helper` 裡的安裝程式，然後**完全關閉 Chrome**（含背景程序）再開。Chrome 只在啟動時讀取 Native Messaging 註冊。 |
-| 打開遊戲仍顯示「下載 Flash」 | 確認插件已啟用且沒有官方 Ruffle 擴充功能同時啟用；重新整理，等幾秒再重新整理一次。 |
-| 第一次點擊（播放鍵或遊戲裡的「開始」）沒反應 | 再點一次。自動化測試中觀察到第一次點擊偶爾不起作用，原因沒有查明。 |
-| 畫面上的中文變成方框或消失 | Linux 缺少中日韓字型：安裝 `fonts-noto-cjk` 之類的字型套件後重開 Chrome。本插件對這些遊戲預設使用瀏覽器字型繪製裝置文字。 |
-| Windows／macOS 擋下安裝程式或小幫手 | 未簽章的預期行為，請確認檔案來源後依提示執行；不要為此停用系統的安全保護。 |
-| 登入後主控台出現 `Error #2030`（來自遊戲的登入禮包模組） | 已知：遊戲自己的競態條件；重現實驗中真 Flash 32 也丟同一個錯誤。 |
-| 想回報問題 | 到 [Timffle Issues](https://github.com/Im-Tim-mI/Timffle/issues)，附上 Chrome 版本、作業系統與開發人員工具 Console 的輸出（先遮蔽帳號、密碼與 token）。**請不要把 Timffle 的問題回報給 Ruffle。** 懷疑是安全問題時，請不要公開貼出細節，先開一個只說明「有安全問題想私下回報」的 Issue。 |
+| The options page cannot find the helper | Run the installer in `helper` again, then **fully quit Chrome** (including background processes) and start it. Chrome reads Native Messaging registrations only at start-up. |
+| The game still shows "download Flash" | Make sure the extension is enabled and the official Ruffle extension is not; reload, wait a few seconds and reload once more. |
+| A game cannot connect | Check that its site is allowed (the toolbar popup shows the current state); if the game already timed out before you answered the question, try again in the game. Reload the page after changing a setting. |
+| The first click (play button or the game's "start") does nothing | Click again. In automated tests the first click occasionally had no effect; the cause was not found. |
+| Chinese text turns into boxes or disappears | Linux lacks CJK fonts: install a package such as `fonts-noto-cjk` and restart Chrome. Timffle draws device text with browser fonts by default. |
+| Windows/macOS blocks the installer or helper | Expected for unsigned programs; check where the file came from and follow the prompts. Do not turn off system protections for this. |
+| `Error #2030` in the console after login (from a Taomee game's login-gift module) | Known: a race inside the game; real Flash 32 throws the same error in a reproduction. |
+| Reporting a problem | Open an issue in [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues) with the game's address, your Chrome version, operating system and the DevTools console output (blank out account names, passwords and tokens first). **Never report Timffle problems to Ruffle.** If you suspect a security problem, do not post details; open an issue that only says you have a security problem to report privately. |
 
-## 運作原理與安全設計
+## How it works, and the security design
 
 ```
-遊戲頁面  https://mole.61.com.tw/
-   │   Timffle（WebAssembly，Ruffle 核心＋修正）接管 Flash 元件；遊戲呼叫 flash.net.Socket
+game page  (for example https://mole.61.com.tw/)
+   │   Timffle (WebAssembly: Ruffle core + fixes) takes over the Flash element; the game calls flash.net.Socket
    ▼
-Chrome 擴充功能（Manifest V3）
+Chrome extension (Manifest V3)
    │   page bridge → content script → service worker
-   │   只放行「允許的網站來源」，其他網站先詢問使用者；每個 Socket 對應一條 Native Messaging 連線
+   │   allow-listed origins only, other sites are asked first; one Native Messaging connection per socket
    ▼
-連線小幫手 timffle-socket-helper（Go；由 Chrome 按需啟動，用完退出）
-   │   只連公開網路位址：擋私網、本機、連結本地、多播與保留位址（含 IPv4 對映 IPv6）
+connection helper timffle-socket-helper (Go; started by Chrome on demand, exits afterwards)
+   │   public addresses only: private, loopback, link-local, multicast and reserved addresses are refused (including IPv4-mapped IPv6)
    ▼
-遊戲伺服器（TCP）
+game server (TCP)
 ```
 
-- **Chrome 不允許擴充功能開 TCP**，所以需要原生程式；Native Messaging 是 Chrome 官方支援的做法。小幫手**不監聽任何連接埠、不裝服務、不常駐**，每個 Socket 一個程序，連線結束就退出。
-- **只有一個擴充功能 ID 能叫用小幫手**：`eandddnbchclalbjkhfelhjhpijifcog`（由 [`timffle/extension-key/`](timffle/extension-key/) 的公鑰決定）。
-- 小幫手**不記錄連線內容**，有流量控制與上限（單次送出 ≤ 64 KiB、單次接收 ≤ 32 KiB、緩衝 ≤ 1 MiB、停滯 30 秒逾時、全域最多 16 個 Socket）。
-- 安裝與移除只動安裝程式自己建立的檔案；遇到內容已變更的原生元件、外來的同名檔案，或受操作目錄中的符號連結時，會拒絕處理、不會覆寫。
+- **Chrome does not let extensions open TCP connections**, hence a native program; Native Messaging is Chrome's supported way. The helper **listens on no port, installs no service and does not stay running**: one process per socket, gone when the connection ends.
+- **Only one extension ID may call the helper**: `eandddnbchclalbjkhfelhjhpijifcog` (determined by the public key in [`timffle/extension-key/`](timffle/extension-key/)).
+- The helper **does not record traffic** and enforces limits (≤ 64 KiB per send, ≤ 32 KiB per receive, ≤ 1 MiB buffered, 30 s stall timeout, at most 16 sockets overall).
+- Install and uninstall touch only files the installer created; they refuse to overwrite a changed native component, a foreign file of the same name, or a symbolic link in a directory they operate on.
 
-完整說明：[`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md)、[`timffle/docs/PROTOCOL.md`](timffle/docs/PROTOCOL.md)。
+Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timffle/docs/PROTOCOL.md`](timffle/docs/PROTOCOL.md).
 
-## 已知限制
+## Known limitations
 
-- **平台**：Windows 只在 Wine 測過、macOS 未實測；小幫手**未簽章**。詢問視窗與彈出視窗只在 Chrome 155 桌面版（無頭模式）驗證過；沒有在有畫面的 Chrome、Windows、macOS、Firefox 與 Safari 上試過。
-- **其他遊戲**：賽爾號、小花仙、彈彈堂只是預設放行 Socket，沒有實測遊玩。
-- **品牌**：只有網頁版（擴充功能、網頁 Demo、播放器畫面）改成 Timffle；桌面版、Safari 擴充功能、npm 套件的文字與識別碼仍是上游 Ruffle 的，**不要以 Timffle 名義散布它們的建置**（見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。
-- **3D**：巢狀的「投影擁有者」與 Flash 不同；Flash 對 3D 圖做約 1 像素的雙線性濾波，Timffle 邊緣較俐落；透視只在 wgpu 渲染器實作。`Matrix3D.determinant`／`invert` 與 Flash 差在最後一位有效數字。
-- **命中測試**：Flash 的 `hitTestPoint(x, y, true)` 以整數像素判斷，Timffle 用精確座標；邊緣偶有 1～2 格差異。
-- **網頁版遞迴深度**：WebAssembly 呼叫堆疊比 Flash 淺，保護上限 900 層；賽車地圖少數遠距離尋路會被截斷。
-- 其他已知差異：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) 末尾與 [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md)。
+- **Other Flash online games**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; only 摩爾莊園 has been played with a real account, and the other three Taomee Taiwan games merely have sockets allowed by default.
+- **No socket policy files**: real Flash asked the destination server for a socket policy file before every socket connection. Timffle (like Ruffle) does not, so **the game server has no veto**: the allow list and your answer to the first-use question are the only gate. That is why you should allow only online games you trust.
+- **ActionScript 2 `XMLSocket`** goes through the same socket path as `flash.net.Socket`, but only `flash.net.Socket` has been tested.
+- **Platforms**: Windows was tested under Wine only, macOS not at all; the helper is **not signed**. The question window and the popup were verified only in desktop Chrome 155 (headless); not in headed Chrome, on Windows, macOS, Firefox or Safari.
+- **Branding**: only the web UI (extension, web demo, player screens) is renamed Timffle; the texts and identifiers of the desktop app, the Safari extension and the npm packages are still upstream Ruffle's, so **do not distribute builds of those under the Timffle name** (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)).
+- **3D**: nested "projection owners" differ from Flash; Flash bilinear-filters 3D pictures by about 1 px, Timffle's edges are crisper; perspective is implemented in the wgpu renderer only. `Matrix3D.determinant`/`invert` differ from Flash in the last significant digit.
+- **Hit testing**: Flash's `hitTestPoint(x, y, true)` works on whole pixels, Timffle on exact coordinates; edges occasionally differ by 1–2 cells.
+- **Recursion depth on the web**: the WebAssembly call stack is shallower than Flash's; the guard limit is 900 levels, and a few long kart-map paths are cut short.
+- **Text position**: Flash lays text out with the Windows font the game asks for. For the common ones (SimSun, Arial Black, Tahoma, …) Timffle uses Windows' line metrics even when the browser has to substitute another font, so text sits within about a pixel or two of Flash; other fonts use the browser's own metrics and can sit further off.
+- More known differences: the end of [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) and [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md).
 
-## 與 Ruffle 的關係
+## Relationship with Ruffle
 
-Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/ruffle-rs/ruffle/commit/46fec3f1b2e625fae7035bb3b00d6d5c0ec0d413)）為基底，之後的每一項改動都是獨立的 commit：
+Timffle is based on Ruffle `nightly-2026-10-13` (commit [`46fec3f`](https://github.com/ruffle-rs/ruffle/commit/46fec3f1b2e625fae7035bb3b00d6d5c0ec0d413)). Every change after it is a separate commit:
 
-| Commit 標題 | 內容 |
+| Commit subject | What it contains |
 |---|---|
-| `extension: Native socket helper bridge and socket settings` | Chrome 擴充功能的 Socket 橋接、與小幫手通訊、「Socket 連線」設定頁、四站預設允許清單、單元測試 |
-| `web: WebSocket socket backend fixes and canvas generic fonts` | 網頁版 Socket 後端、canvas 裝置字型的通用名稱修正（否則中文會消失） |
-| `avm2: Network, LocalConnection, URLStream and loader fixes` | `LocalConnection`、`URLStream`、`Loader`／`URLLoader` 取消、AMF3 循環參照、網域名稱「先父網域」解析、網頁版遞迴深度保護 |
-| `render: 3D transforms, Matrix3D semantics and perspective projection` | `z`／`rotationX/Y/Z`／`scaleZ`／`matrix3D`、`perspectiveProjection`、`Matrix3D`、`Utils3D`、投影後的 `getBounds`／命中測試／`BitmapData.draw` |
-| `vendor: Add rust-flash-lso …` ＋ `flash-lso: Fix AMF3 encoder reference indices` | 以 subtree 收錄 [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso)（含其完整歷史）並修正 AMF3 編碼器 |
-| `web: Rebrand the web extension and player UI as Timffle` | 使用者看得到的名稱、圖示與連結改成 Timffle（見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)） |
+| `extension: Native socket helper bridge and socket settings` | The Chrome extension's socket bridge, talking to the helper, the "Socket 連線" settings page, the default allow list of the four Taomee Taiwan sites, unit tests |
+| `web: WebSocket socket backend fixes and canvas generic fonts` | The web socket backend; generic device-font names (`_sans`, …) in canvas mode (Chinese text vanished without it) |
+| `avm2: Network, LocalConnection, URLStream and loader fixes` | `LocalConnection`, `URLStream`, `Loader`/`URLLoader` cancellation, AMF3 reference cycles, "parent first" application-domain lookup, a recursion-depth guard on the web |
+| `render: 3D transforms, Matrix3D semantics and perspective projection` | `z`, `rotationX/Y/Z`, `scaleZ`, `matrix3D`, `perspectiveProjection`, `Matrix3D`, `Utils3D`, and `getBounds`, hit testing and `BitmapData.draw` after projection |
+| `vendor: Add rust-flash-lso …` + `flash-lso: Fix AMF3 encoder reference indices` | [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso) as a subtree (with its history) and a fix in its AMF3 encoder |
+| `web: Rebrand the web extension and player UI as Timffle` | User-visible names, icons and links changed to Timffle (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)) |
 
-每項修正的細節與原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改過的 Ruffle 檔案清單（Apache-2.0 第 4(b) 條的「修改聲明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差異：`git diff 46fec3f -- . ':!timffle'`。
+Later commits add the first-use question, the popup and the settings lists, the Windows font metrics for canvas text, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
 
-## 開發
+## Development
 
-### 從原始碼建置
+### Build from source
 
-需要：git、Rust 1.99（含 `wasm32-unknown-unknown`）、wasm-bindgen CLI 0.2.127（要與 `Cargo.lock` 一致）、binaryen（`wasm-opt`）、Node.js 24＋npm、Go 1.27、Python 3。本 repo 已包含所有原始碼（含修補過的 flash-lso），**不需要另外下載 Ruffle**：
+Needs git, Rust 1.99 with `wasm32-unknown-unknown`, wasm-bindgen CLI 0.2.127 (must equal `Cargo.lock`), binaryen (`wasm-opt`), Node.js 24 + npm, Go 1.27 and Python 3. Everything is in this repository (including the patched flash-lso); nothing else has to be fetched:
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26300 timffle/scripts/build-extension.sh   # 建置 wasm 與 Chrome 擴充功能 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26300 timffle/scripts/package-release.sh   # 交叉編譯小幫手（7 個平台）並封裝發行 ZIP（含授權檔）→ timffle/build/out/
+VERSION4=0.8.0.26300 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26300 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
 ```
 
-建置腳本預設會把建置機的家目錄與使用者名稱從 wasm 裡改寫掉，打包腳本打包前後都會檢查，發現就拒絕產出發行 ZIP。步驟、工具版本、擴充功能金鑰與常見問題：[`timffle/docs/BUILD.md`](timffle/docs/BUILD.md)。Ruffle 原有的桌面版等其他部分，建置方式與上游相同（見 [`README.ruffle.md`](README.ruffle.md)），但請先讀 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)。
+The build script rewrites the build machine's home directory and user name out of the wasm by default, and the packaging script checks before and after packaging and refuses to produce a release ZIP that still carries them. See [`timffle/docs/BUILD.md`](timffle/docs/BUILD.md). The other parts of Ruffle (desktop app etc.) build as upstream does ([`README.ruffle.md`](README.ruffle.md)), but read [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md) first.
 
-### 測試
+### Tests
 
-| 測試 | 內容 | 位置 |
+| Test | What it covers | Where |
 |---|---|---|
-| 差異測試（對真 Flash） | 用 Haxe 寫小 SWF，在 Adobe Flash Player 32（Wine）與 Timffle 各跑一次，逐行比對；30 項黃金答案。 | [`timffle/difftest/`](timffle/difftest/) |
-| 小幫手單元測試 | Go：協定、連線政策、流量控制、安裝／移除 | `timffle/helper/*_test.go` |
-| 封裝測試 | 發行 ZIP 的內容、權限與私鑰檢查 | `timffle/helper/installer-tests/` |
-| 擴充功能單元測試 | 設定、頁面橋接、背景權限 | `web/packages/extension/tests/` |
-| 品牌檢查 | 使用者看得到的文字不得再出現「Ruffle」產品名 | `python3 timffle/scripts/rebrand.py --check` |
-| 瀏覽器＋小幫手整合測試 | 無頭 Chrome＋真小幫手，只連 localhost | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
-| Ruffle 自身回歸測試 | 上游測試套件加上我們新增的測試 | `cargo test -p tests --test tests` |
+| Differential tests (against real Flash) | Small SWFs written in Haxe run once in Adobe Flash Player 32 (under Wine) and once in Timffle, compared line by line; 30 golden files | [`timffle/difftest/`](timffle/difftest/) |
+| Helper unit tests | Go: protocol, connection policy, flow control, install/uninstall | `timffle/helper/*_test.go` |
+| Package tests | The release ZIP's contents, permissions and private-key check | `timffle/helper/installer-tests/` |
+| Extension unit tests | Settings, page bridge, background permissions, the first-use question | `web/packages/extension/tests/` |
+| Rebrand check | The user-visible text must not contain the product name "Ruffle" any more | `python3 timffle/scripts/rebrand.py --check` |
+| Browser + helper integration tests | Headless Chrome + the real helper, connecting to localhost only | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
+| Ruffle's own regression suite | Upstream's tests plus the ones we added | `cargo test -p tests --test tests` |
 
-方法與重現步驟：[`timffle/docs/TESTING.md`](timffle/docs/TESTING.md)。每個版本實際跑過哪些測試、結果如何，記在 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)。
+How to run them: [`timffle/docs/TESTING.md`](timffle/docs/TESTING.md). What was actually run for each version, and the results: [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md).
 
-### Repo 結構
+### Repository layout
 
-本 repo 就是 Ruffle 的完整原始碼樹（`core/`、`web/`、`desktop/`、`render/`、`swf/`… 與上游相同的位置），再加上：
+This repository is Ruffle's complete source tree (`core/`, `web/`, `desktop/`, `render/`, `swf/`, … in the same places as upstream), plus:
 
 ```
-README.md / README.en.md   Timffle 的說明（本檔與英文版）
-README.ruffle.md           Ruffle 原本的 README（原樣保留）
-LICENSE.md                 Ruffle 的授權檔（原樣保留；含第三方相依的授權清單）
-NOTICE.md                  Timffle 的聲明、著作權、第三方元件與商標說明
-vendor/rust-flash-lso/     rust-flash-lso（git subtree，含歷史；MIT，見其 LICENSE）
-timffle/                   Timffle 自己的部分：
-  LICENSE-MIT / LICENSE-APACHE   Timffle 原創部分的授權
-  CHANGELOG.md                   版本歷史
-  MODIFIED-FILES.md              修改過的 Ruffle 檔案清單（腳本產生）
-  docs/                          架構、通訊協定、建置、測試、品牌、跟進上游、對 Ruffle 的修正、Flash 行為紀錄
-  helper/                        連線小幫手（Go）、安裝／移除程式、封裝腳本
-  relay/                         進階：本機 WebSocket↔TCP 代理（內含 MIT 授權的 ws 函式庫）
-  extension-key/                 擴充功能公鑰與 ID（私鑰不在 repo 內）
-  difftest/                      差異測試：Haxe 測試、真 Flash 的黃金答案、執行／比對腳本
-  tools/                         Chrome 冒煙測試、整合測試、真實帳號測試、截圖工具
-  branding/                      Timffle 圖示與標誌的產生程式
-  scripts/                       建置、封裝、路徑檢查、品牌替換與檢查、修改清單
+README.md / README.zh-TW.md / README.zh-CN.md   Timffle's readme: English (default), Traditional Chinese, Simplified Chinese
+README.ruffle.md           Ruffle's original README (kept as is)
+LICENSE.md                 Ruffle's licence file (kept as is; includes the third-party dependency licences)
+NOTICE.md                  Timffle's notices: copyright, third-party components, trademarks
+vendor/rust-flash-lso/     rust-flash-lso (git subtree, with history; MIT, see its LICENSE)
+timffle/                   Timffle's own parts:
+  LICENSE-MIT / LICENSE-APACHE   Licences of Timffle's original parts
+  CHANGELOG.md                   Version history
+  MODIFIED-FILES.md              Modified Ruffle files (generated by a script)
+  docs/                          Architecture, protocol, build, tests, branding, following upstream, changes from Ruffle, Flash behaviour notes
+  helper/                        The connection helper (Go), installers/uninstallers, packaging script
+  relay/                         Advanced: a local WebSocket↔TCP proxy (bundles the MIT-licensed ws library)
+  extension-key/                 The extension's public key and ID (the private key is not in the repository)
+  difftest/                      Differential tests: Haxe tests, goldens from real Flash, run/compare scripts
+  tools/                         Chrome smoke tests, integration tests, real-account test, screenshot tools
+  branding/                      Generators for Timffle's icon and logo
+  scripts/                       Build, packaging, path check, rebrand and its check, list of modified files
 ```
 
-### 跟進上游 Ruffle
+### Following upstream Ruffle
 
-Timffle 會持續跟進 Ruffle。做法（細節見 [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md)）：
+Timffle keeps following Ruffle. How (details in [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md)):
 
 ```sh
-git remote add upstream https://github.com/ruffle-rs/ruffle.git   # 只需一次
+git remote add upstream https://github.com/ruffle-rs/ruffle.git   # once
 git fetch upstream tag nightly-YYYY-MM-DD --no-tags
-git merge nightly-YYYY-MM-DD           # 用 merge 保留雙方歷史，不要 rebase 已公開的分支
-python3 timffle/scripts/rebrand.py     # 上游新增或翻譯的文字重新換成 Timffle
+git merge nightly-YYYY-MM-DD                 # merge, never rebase published history
+python3 timffle/scripts/rebrand.py           # re-apply the name to new/translated upstream strings
 python3 timffle/scripts/rebrand.py --check
 timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md
 ```
 
-### 貢獻
+### Contributing
 
-歡迎在 [Issues](https://github.com/Im-Tim-mI/Timffle/issues) 回報問題或提出建議，也歡迎送 Pull Request。請先讀 [`CONTRIBUTING.md`](CONTRIBUTING.md)（上游 Ruffle 的貢獻指南，原樣保留）與 [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md) 的「貢獻規則」。Flash 行為的修正請附能在真 Flash Player 上產生標準答案的差異測試，或 Ruffle 風格的 SWF 回歸測試。
+Bug reports, ideas and pull requests are welcome in [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues). Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) (upstream Ruffle's guide, kept as is) and the contribution rules in [`timffle/docs/UPSTREAM.md`](timffle/docs/UPSTREAM.md) first. Fixes to Flash behaviour should come with a differential test that has a real-Flash golden, or a Ruffle-style SWF regression test.
 
-## 授權、致謝與聲明
+## Licence, credits and notices
 
-- **Ruffle**：Copyright (c) 2018-2022 Ruffle LLC 與 Ruffle 貢獻者，MIT 或 Apache-2.0 雙授權，授權全文與第三方相依清單在 [`LICENSE.md`](LICENSE.md)（原樣保留）。Ruffle 的貢獻者紀錄完整保留在本 repo 的 git 歷史中（`git shortlog -sn 46fec3f`）。
-- **rust-flash-lso**：Copyright (c) 2020 Callum Thomson，MIT，見 [`vendor/rust-flash-lso/LICENSE`](vendor/rust-flash-lso/LICENSE)。
-- **Timffle 的修改與原創部分**：Copyright (c) 2026 Im-Tim-mI 與 Timffle 貢獻者，**MIT 或 Apache-2.0，任選其一**：[`timffle/LICENSE-MIT`](timffle/LICENSE-MIT)、[`timffle/LICENSE-APACHE`](timffle/LICENSE-APACHE)。Timffle 的圖示與標誌是原創作品，同樣適用上述授權。
-- 除非你明確另外聲明，你有意提交到本專案的任何貢獻，依 Apache-2.0 對「貢獻」的定義，都以上述雙授權提供，不附加任何額外條款。
-- **商標**：「Ruffle」名稱與標誌屬於 Ruffle 專案；Timffle 只以描述方式提及（例如「Ruffle 的分支」「基於 Ruffle」）。「摩爾莊園」「賽爾號」「小花仙」「彈彈堂」「淘米」「Flash」「Adobe」「Chrome」等屬於各自的權利人。
-- **本 repo 不包含任何遊戲素材**（遊戲的 SWF、DLL、圖片、遊戲程式碼、伺服器位址、封包格式與加解密），也不修改遊戲檔案。請遵守遊戲的服務條款，只用自己的帳號。完整聲明見 [`NOTICE.md`](NOTICE.md)。行為的來源與驗證方式記在 [`timffle/docs/PROVENANCE.md`](timffle/docs/PROVENANCE.md)。
+- **Ruffle**: Copyright (c) 2018-2022 Ruffle LLC and Ruffle contributors, MIT OR Apache-2.0; full texts and the third-party dependency list in [`LICENSE.md`](LICENSE.md), kept verbatim. Ruffle's contributors are preserved in this repository's git history (`git shortlog -sn 46fec3f`).
+- **rust-flash-lso**: Copyright (c) 2020 Callum Thomson, MIT ([`vendor/rust-flash-lso/LICENSE`](vendor/rust-flash-lso/LICENSE)).
+- **Timffle's modifications and original parts**: Copyright (c) 2026 Im-Tim-mI and Timffle contributors, **MIT OR Apache-2.0 at your option** ([`timffle/LICENSE-MIT`](timffle/LICENSE-MIT), [`timffle/LICENSE-APACHE`](timffle/LICENSE-APACHE)). Timffle's icon and logo are original works under the same licences.
+- Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in Timffle by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+- **Trademarks**: "Ruffle" and its logo belong to the Ruffle project and are used here only descriptively ("a fork of Ruffle", "based on Ruffle"). The game names, "Taomee", "Flash", "Adobe", "Chrome" etc. belong to their owners.
+- **No game assets** are included (no game SWF/DLL/images, game code, server addresses, packet formats or cryptography), and game files are not modified. Use your own account and respect the games' terms of service. Full notice: [`NOTICE.md`](NOTICE.md). Where each behaviour comes from and how it was verified: [`timffle/docs/PROVENANCE.md`](timffle/docs/PROVENANCE.md) (Traditional Chinese with an English summary).
