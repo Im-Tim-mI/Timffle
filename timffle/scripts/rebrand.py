@@ -73,10 +73,17 @@ def rebrand_ftl(src):
     return "\n".join(lines)
 
 
+# Timffle's own texts (sync_locales.py copies them into the catalogs) name Ruffle on purpose, e.g. the
+# attribution; they are never rebranded.
+OWN_MESSAGE_PREFIX = "timffle_"
+
+
 def rebrand_messages_json(src):
     data = json.loads(src)
     changed = False
-    for entry in data.values():
+    for key, entry in data.items():
+        if key.startswith(OWN_MESSAGE_PREFIX):
+            continue
         if isinstance(entry, dict) and isinstance(entry.get("message"), str):
             new = rebrand_text(entry["message"])
             if new != entry["message"]:
@@ -86,10 +93,12 @@ def rebrand_messages_json(src):
         return src
     # Rewrite only the "message" strings in place so the file keeps its own formatting.
     def repl(m):
-        old = json.loads(m.group(2))
+        if m.group(2).startswith(OWN_MESSAGE_PREFIX):
+            return m.group(0)
+        old = json.loads(m.group(3))
         new = rebrand_text(old)
         return m.group(0) if new == old else m.group(1) + json.dumps(new, ensure_ascii=False)
-    return re.sub(r'("message"\s*:\s*)("(?:[^"\\]|\\.)*")', repl, src)
+    return re.sub(r'("([^"\\]+)"\s*:\s*\{\s*"message"\s*:\s*)("(?:[^"\\]|\\.)*")', repl, src)
 
 
 HTML_REPLACEMENTS = [

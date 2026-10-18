@@ -2,6 +2,7 @@ import { enableBrowserOnOutdatedChromium, setPageLanguage } from "./utils";
 import { bindOptions, resetOptions } from "./common";
 import { buildInfo } from "ruffle-core";
 import { bindProxyOptions } from "./proxy-options";
+import { localizePage } from "./i18n";
 
 window.addEventListener("DOMContentLoaded", async () => {
     // A web page can frame any extension page the browser lets it; inside a
@@ -20,6 +21,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             .parentElement!.classList.add("hidden");
     }
     setPageLanguage();
+    localizePage();
     document.title = browser.i18n.getMessage("settings_page");
     {
         const vt = document.getElementById("version-text")!;

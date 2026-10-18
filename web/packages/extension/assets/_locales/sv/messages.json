@@ -136,5 +136,236 @@
     },
     "swf_player_permissions": {
         "message": "Du måste ge det här URL-ursprunget behörighet för att läsa in SWF-filer därifrån."
+    },
+    "timffle_choice_ask": {
+        "message": "Fråga vid varje besök"
+    },
+    "timffle_choice_allow": {
+        "message": "Tillåt alltid"
+    },
+    "timffle_choice_deny": {
+        "message": "Neka alltid"
+    },
+    "timffle_allow": {
+        "message": "Tillåt"
+    },
+    "timffle_close": {
+        "message": "Stäng"
+    },
+    "timffle_popup_title": {
+        "message": "Socketanslutningar"
+    },
+    "timffle_popup_warning": {
+        "message": "Vi rekommenderar att du nekar: bara onlinespel bör tillåtas."
+    },
+    "timffle_popup_off": {
+        "message": "Sockets är avstängda i inställningarna."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Tillåts alltid"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Nekas alltid"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Inte tillåtet (en egen proxy frågar aldrig)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Tillåtet för det här besöket; frågar igen när du stänger fliken"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Nekat för det här besöket; frågar igen när du stänger fliken"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Tillåt att den här webbplatsen använder sockets"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Tillåt att den här webbplatsen använder din egen proxy (den får token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Den här webbplatsen"
+    },
+    "timffle_popup_origins_required": {
+        "message": "En egen proxy behöver minst en tillåten webbplats, så ingenting ändrades. Lägg till en annan webbplats på inställningssidan eller byt till sockethjälparen."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Inställningarna kunde inte sparas; försök igen."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Socketförfrågan"
+    },
+    "timffle_prompt_title": {
+        "message": "En webbplats vill använda socketanslutningar"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Inbäddad i en sida från:"
+    },
+    "timffle_prompt_what": {
+        "message": "Flash-innehållet på den här webbplatsen vill öppna TCP-anslutningar (sockets) till servrar på internet. Bara onlinespel behöver det. Om du tillåter det kan webbplatsen nå vilken server som helst på internet (aldrig ditt lokala nätverk eller den här datorn)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Vi rekommenderar att du nekar. Bara onlinespel bör tillåtas.</1> Om du är osäker, välj ”Neka”."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Neka (rekommenderas)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Bara det här besöket i den här fliken"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Fråga aldrig mer om den här webbplatsen"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Fråga inte igen"
+    },
+    "timffle_prompt_detail": {
+        "message": "Du kan ändra det här senare i Timffles popup eller på inställningssidan. Om spelet redan har rapporterat ett anslutningsfel, försök igen i spelet efter att du tillåtit; om texten ser fel ut, ladda om sidan."
+    },
+    "timffle_prompt_expired": {
+        "message": "Den här förfrågan är inte längre aktiv. Du kan stänga det här fönstret."
+    },
+    "timffle_options_title": {
+        "message": "Socketanslutningar (spelservrar)"
+    },
+    "timffle_options_enable": {
+        "message": "Aktivera sockets (webbplatser i listan använder dem direkt; för andra webbplatser frågar vi först)"
+    },
+    "timffle_options_method": {
+        "message": "Anslutningsmetod"
+    },
+    "timffle_options_helper": {
+        "message": "Sockethjälpare (rekommenderas)"
+    },
+    "timffle_options_websocket": {
+        "message": "Egen WebSocket-proxy (avancerat)"
+    },
+    "timffle_helper_checking": {
+        "message": "Kontrollerar…"
+    },
+    "timffle_helper_check": {
+        "message": "Kontrollera igen"
+    },
+    "timffle_helper_installed": {
+        "message": "Installerad (version $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Inkompatibel version: installera den hjälpare som hör till det här tillägget."
+    },
+    "timffle_helper_missing": {
+        "message": "Inte installerad: kör installationsprogrammet för ditt system i mappen helper i nedladdningen och kontrollera sedan igen."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Hjälparen är inte tillgänglig: kontrollera installationen och operativsystemets säkerhetsmeddelanden och försök sedan igen."
+    },
+    "timffle_options_url": {
+        "message": "URL-mall (med token, dold)"
+    },
+    "timffle_options_url_help": {
+        "message": "Klistra in proxyns fullständiga URL; behåll både {host} och {port}."
+    },
+    "timffle_options_example": {
+        "message": "Exempel:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Alltid tillåtna webbplatsursprung (ett per rad)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Webbplatsursprung som får använda den egna proxyn (ett per rad; de får proxyns URL och token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Bara exakta HTTP/HTTPS-ursprung (schema, värd, valfri port); inga * eller sökvägar. Taomees spel 摩爾莊園, 賽爾號, 小花仙 och 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw och ddt.61.com.tw, vart och ett via HTTP och HTTPS) är tillåtna som standard. Inbäddade spelare använder ursprunget för sin ram; den fristående spelaren använder ursprunget för SWF-URL:en. Lokala filer får aldrig sockets."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "Den egna proxyn har en egen lista, skild från hjälparens: att låta en webbplats använda hjälparen ger den aldrig proxyns token. När du byter anslutningsmetod visar den här rutan listan för den metod du valde."
+    },
+    "timffle_options_denied": {
+        "message": "Alltid nekade webbplatsursprung (ett per rad)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Dessa webbplatser tillfrågas aldrig och får aldrig sockets, oavsett anslutningsmetod. En webbplats kan inte finnas i båda listorna."
+    },
+    "timffle_note_ask": {
+        "message": "En webbplats som inte finns i någon av listorna tillfrågas första gången den försöker öppna en socket: ”Tillåt”, ”Tillåt alltid”, ”Neka” eller ”Neka alltid”. Vi rekommenderar att du nekar – bara onlinespel bör tillåtas. Du kan också ställa in webbplatsen i den aktuella fliken från Timffles popup utan att skriva dess adress, och när som helst sätta tillbaka den till ”Fråga vid varje besök”. (Gäller bara i läget sockethjälpare; en egen WebSocket-proxy frågar aldrig och nekar webbplatser som inte finns i listan.)"
+    },
+    "timffle_note_helper": {
+        "message": "Chrome-tillägg kan inte öppna TCP-sockets, därför hjälparen. Installera den en gång (kör installationsprogrammet i mappen helper i nedladdningen); därefter startar och stoppar Chrome den automatiskt för varje spelanslutning."
+    },
+    "timffle_note_public": {
+        "message": "Hjälparen ansluter bara till offentliga internetadresser, aldrig till ditt lokala nätverk eller den här datorn, och loggar ingen trafik."
+    },
+    "timffle_note_proxy": {
+        "message": "En egen WebSocket-proxy måste du starta själv, och Chrome kan be om åtkomst till det lokala nätverket; bara webbplatserna i den här metodens egen lista kan läsa proxyns URL, inklusive token."
+    },
+    "timffle_note_reload": {
+        "message": "Ladda om sidorna efter att du sparat eller stängt av."
+    },
+    "timffle_options_save": {
+        "message": "Spara proxyinställningar"
+    },
+    "timffle_loading": {
+        "message": "Läser in…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Ogiltigt inställningsformat."
+    },
+    "timffle_error_url_required": {
+        "message": "Ange en URL-mall för att använda en egen WebSocket-proxy."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Använd en giltig ws://- eller wss://-URL utan blanksteg, omvända snedstreck eller okända platshållare."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "URL:en måste innehålla både {host} och {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "Fält för användarnamn och lösenord i URL:en är inte tillåtna; använd proxyns frågeparameter token."
+    },
+    "timffle_error_fragment": {
+        "message": "WebSocket-URL:er får inte innehålla ett #-fragment."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Håll proxyns slutpunkt fast; {host} och {port} hör bara hemma i sökvägen eller frågan."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Ange exakt ett HTTP/HTTPS-ursprung per rad, utan sökvägar, inloggningsuppgifter, frågor eller jokertecken."
+    },
+    "timffle_error_origins_required": {
+        "message": "Tillåt minst ett webbplatsursprung när du använder en egen WebSocket-proxy."
+    },
+    "timffle_conflict": {
+        "message": "En webbplats kan inte finnas både i listan ”Tillåt alltid” och i listan ”Neka alltid”."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "Inställningarna ändrades på annat håll (till exempel i popupen eller i ett frågefönster), så din ändring sparades inte. De senaste inställningarna visas; ändra igen."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "Inställningarna ändrades på annat håll (till exempel i popupen); de senaste inställningarna visas."
+    },
+    "timffle_stale": {
+        "message": "Inställningarna ändrades på annat håll (till exempel i popupen). Din ändring är inte sparad än; när du sparar visas de senaste inställningarna i stället för att den ändringen skrivs över."
+    },
+    "timffle_saved_enabled": {
+        "message": "Sparat och aktiverat: webbplatser i listan använder sockets direkt, för andra webbplatser frågar vi först. Ladda om sidan; det här är inget anslutningstest."
+    },
+    "timffle_saved_disabled": {
+        "message": "Sockets avstängda. Ladda om sidan efter ändringar."
+    },
+    "timffle_unsaved": {
+        "message": "Osparade ändringar."
+    },
+    "timffle_read_failed": {
+        "message": "De lokala inställningarna kunde inte läsas."
+    },
+    "timffle_save_failed": {
+        "message": "Det gick inte att spara; ändringarna bekräftades inte. Försök igen."
+    },
+    "timffle_attribution": {
+        "message": "Timffle är en inofficiell fork av <1>Ruffle</1> och är inte knutet till Ruffle-projektet; Flash-emuleringen kommer från Ruffle och dess bidragsgivare. Rapportera problem till <2>Timffle</2>, inte till Ruffle."
     }
 }

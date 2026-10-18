@@ -106,5 +106,236 @@
     },
     "permissions_explanation": {
         "message": "L'extensió de Timffle treballa millor amb l'habilitat d'accedir a les dades en totes les pàgines web. Això permet executar-lo quan qualsevol web el carrega primer; a més de permetre, per conveniència, que detecti immediatament Flash Player a la resta de pàgines, i permeti executar contingut Flash. Això també dona l'habilitat de carregar fitxers SWF en el reproductor intern des d'altres llocs a la web, i permeti carregar automàticament enllaços SWF directes de la pàgina. Si no doneu aquest permís, necessitareu habilitar Timffle manualment en cada web on desitgeu utilitzar-lo clicant a la icona de l'extensió, i habilitant-la en aquesta pàgina web."
+    },
+    "timffle_choice_ask": {
+        "message": "Pregunta a cada visita"
+    },
+    "timffle_choice_allow": {
+        "message": "Permet sempre"
+    },
+    "timffle_choice_deny": {
+        "message": "Denega sempre"
+    },
+    "timffle_allow": {
+        "message": "Permet"
+    },
+    "timffle_close": {
+        "message": "Tanca"
+    },
+    "timffle_popup_title": {
+        "message": "Connexions de socket"
+    },
+    "timffle_popup_warning": {
+        "message": "Recomanem denegar: només s'haurien de permetre els jocs en línia."
+    },
+    "timffle_popup_off": {
+        "message": "Els sockets estan desactivats a la configuració."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Permès sempre"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Denegat sempre"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "No permès (un proxy personalitzat mai no pregunta)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Permès en aquesta visita; tornarà a preguntar quan tanquis la pestanya"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Denegat en aquesta visita; tornarà a preguntar quan tanquis la pestanya"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Permet que aquest lloc utilitzi sockets"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Permet que aquest lloc utilitzi el teu proxy personalitzat (rep el token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Aquest lloc"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Un proxy personalitzat necessita com a mínim un lloc permès, així que no s'ha canviat res. Afegeix un altre lloc a la pàgina de configuració o canvia a l'assistent de sockets."
+    },
+    "timffle_popup_save_failed": {
+        "message": "No s'ha pogut desar la configuració; torna-ho a provar."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Sol·licitud de socket"
+    },
+    "timffle_prompt_title": {
+        "message": "Un lloc web vol utilitzar connexions de socket"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Incrustat en una pàgina de:"
+    },
+    "timffle_prompt_what": {
+        "message": "El contingut Flash d'aquest lloc web vol obrir connexions TCP (sockets) amb servidors d'internet. Només els jocs en línia ho necessiten. Si ho permets, podrà arribar a qualsevol servidor d'internet (mai a la teva xarxa local ni a aquest ordinador)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Recomanem denegar. Només s'haurien de permetre els jocs en línia.</1> Si no n'estàs segur, tria «Denega»."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Denega (recomanat)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Només aquesta visita d'aquesta pestanya"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "No tornis a preguntar mai sobre aquest lloc"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "No tornis a preguntar"
+    },
+    "timffle_prompt_detail": {
+        "message": "Ho pots canviar més tard a la finestra emergent o a la pàgina de configuració de Timffle. Si el joc ja ha informat d'un error de connexió, torna-ho a provar al joc després de permetre-ho; si el text es veu malament, recarrega la pàgina."
+    },
+    "timffle_prompt_expired": {
+        "message": "Aquesta sol·licitud ja no és activa. Pots tancar aquesta finestra."
+    },
+    "timffle_options_title": {
+        "message": "Connexions de socket (servidors de jocs)"
+    },
+    "timffle_options_enable": {
+        "message": "Activa els sockets (els llocs de la llista els utilitzen directament; als altres llocs es pregunta primer)"
+    },
+    "timffle_options_method": {
+        "message": "Mètode de connexió"
+    },
+    "timffle_options_helper": {
+        "message": "Assistent de sockets (recomanat)"
+    },
+    "timffle_options_websocket": {
+        "message": "Proxy WebSocket personalitzat (avançat)"
+    },
+    "timffle_helper_checking": {
+        "message": "S'està comprovant…"
+    },
+    "timffle_helper_check": {
+        "message": "Torna a comprovar"
+    },
+    "timffle_helper_installed": {
+        "message": "Instal·lat (versió $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Versió incompatible: instal·la l'assistent que correspongui a aquesta extensió."
+    },
+    "timffle_helper_missing": {
+        "message": "No instal·lat: executa l'instal·lador del teu sistema a la carpeta helper de la baixada i torna a comprovar."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Assistent no disponible: comprova la instal·lació i els avisos de seguretat del sistema operatiu i torna-ho a provar."
+    },
+    "timffle_options_url": {
+        "message": "Plantilla d'URL (amb token, amagada)"
+    },
+    "timffle_options_url_help": {
+        "message": "Enganxa l'URL complet del proxy; conserva tant {host} com {port}."
+    },
+    "timffle_options_example": {
+        "message": "Exemple:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Orígens de llocs sempre permesos (un per línia)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Orígens de llocs que poden utilitzar el proxy personalitzat (un per línia; reben l'URL del proxy i el token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Només orígens HTTP/HTTPS exactes (esquema, amfitrió, port opcional); sense * ni camins. Els jocs de Taomee 摩爾莊園, 賽爾號, 小花仙 i 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw i ddt.61.com.tw, cadascun per HTTP i HTTPS) estan permesos de manera predeterminada. Els reproductors incrustats utilitzen l'origen del seu marc; el reproductor independent utilitza l'origen de l'URL del SWF. Els fitxers locals mai no reben sockets."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "El proxy personalitzat té una llista pròpia, separada de la de l'assistent: permetre que un lloc utilitzi l'assistent mai no li dona el token del proxy. Quan canvies el mètode de connexió, aquest quadre mostra la llista del mètode triat."
+    },
+    "timffle_options_denied": {
+        "message": "Orígens de llocs sempre denegats (un per línia)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Aquests llocs mai no es consulten ni reben sockets, amb cap dels dos mètodes de connexió. Un lloc no pot ser a les dues llistes."
+    },
+    "timffle_note_ask": {
+        "message": "Un lloc que no és a cap de les dues llistes es consulta la primera vegada que intenta obrir un socket: «Permet», «Permet sempre», «Denega» o «Denega sempre». Recomanem denegar: només s'haurien de permetre els jocs en línia. També pots definir el lloc de la pestanya actual des de la finestra emergent de Timffle sense escriure'n l'adreça, i tornar-lo a «Pregunta a cada visita» en qualsevol moment. (Només en el mode d'assistent de sockets; un proxy WebSocket personalitzat mai no pregunta i rebutja els llocs que no són a la llista.)"
+    },
+    "timffle_note_helper": {
+        "message": "Les extensions de Chrome no poden obrir sockets TCP, d'aquí l'assistent. Instal·la'l una sola vegada (executa l'instal·lador de la carpeta helper de la baixada); després Chrome l'inicia i l'atura automàticament a cada connexió de joc."
+    },
+    "timffle_note_public": {
+        "message": "L'assistent només es connecta a adreces públiques d'internet, mai a la teva xarxa local ni a aquest ordinador, i no registra el trànsit."
+    },
+    "timffle_note_proxy": {
+        "message": "Un proxy WebSocket personalitzat l'has d'iniciar tu, i Chrome pot demanar accés a la xarxa local; només els llocs de la llista pròpia d'aquest mètode poden llegir l'URL del proxy, inclòs el token."
+    },
+    "timffle_note_reload": {
+        "message": "Recarrega les pàgines després de desar o desactivar."
+    },
+    "timffle_options_save": {
+        "message": "Desa la configuració del proxy"
+    },
+    "timffle_loading": {
+        "message": "S'està carregant…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Format de configuració no vàlid."
+    },
+    "timffle_error_url_required": {
+        "message": "Introdueix una plantilla d'URL per utilitzar un proxy WebSocket personalitzat."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Utilitza un URL ws:// o wss:// vàlid, sense espais, barres invertides ni marcadors de posició desconeguts."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "L'URL ha d'incloure tant {host} com {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "No es permeten camps d'usuari ni de contrasenya a l'URL; utilitza el paràmetre de consulta token del proxy."
+    },
+    "timffle_error_fragment": {
+        "message": "Els URL de WebSocket no poden contenir un fragment #."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Mantén fix el punt final del proxy; {host} i {port} només van al camí o a la consulta."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Introdueix un únic origen HTTP/HTTPS exacte per línia, sense camins, credencials, consultes ni comodins."
+    },
+    "timffle_error_origins_required": {
+        "message": "Amb un proxy WebSocket personalitzat, permet com a mínim un origen de lloc."
+    },
+    "timffle_conflict": {
+        "message": "Un lloc no pot ser alhora a la llista «Permet sempre» i a la llista «Denega sempre»."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "La configuració s'ha canviat en un altre lloc (per exemple, a la finestra emergent o en una finestra de pregunta), de manera que el teu canvi no s'ha desat. Es mostra la configuració més recent; torna a editar."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "La configuració s'ha canviat en un altre lloc (per exemple, a la finestra emergent); es mostra la configuració més recent."
+    },
+    "timffle_stale": {
+        "message": "La configuració s'ha canviat en un altre lloc (per exemple, a la finestra emergent). El teu canvi encara no s'ha desat; en desar, es mostrarà la configuració més recent en lloc de sobreescriure aquell canvi."
+    },
+    "timffle_saved_enabled": {
+        "message": "Desat i activat: els llocs de la llista utilitzen els sockets directament, als altres llocs es pregunta primer. Recarrega la pàgina; això no és una prova de connexió."
+    },
+    "timffle_saved_disabled": {
+        "message": "Sockets desactivats. Recarrega la pàgina després dels canvis."
+    },
+    "timffle_unsaved": {
+        "message": "Canvis sense desar."
+    },
+    "timffle_read_failed": {
+        "message": "No s'ha pogut llegir la configuració local."
+    },
+    "timffle_save_failed": {
+        "message": "No s'ha pogut desar; els canvis no s'han confirmat. Torna-ho a provar."
+    },
+    "timffle_attribution": {
+        "message": "Timffle és un fork no oficial de <1>Ruffle</1> i no està afiliat al projecte Ruffle; l'emulació de Flash prové de Ruffle i dels seus col·laboradors. Informa dels problemes a <2>Timffle</2>, no a Ruffle."
     }
 }

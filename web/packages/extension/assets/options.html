@@ -80,67 +80,61 @@
                 <input type="number" id="max_execution_duration" min="1" />
                 <label for="max_execution_duration">Maximum allowed ActionScript execution duration (in seconds)</label>
             </div>
-            <form id="socket-proxy-form" class="proxy-settings" autocomplete="off" aria-labelledby="socket-proxy-title" translate="no">
-                <h2 id="socket-proxy-title">Socket 連線（遊戲伺服器） / Socket connections (game servers)</h2>
+            <form id="socket-proxy-form" class="proxy-settings" autocomplete="off" aria-labelledby="socket-proxy-title">
+                <h2 id="socket-proxy-title" data-i18n="timffle_options_title"></h2>
                 <label class="proxy-toggle" for="socket-proxy-enabled">
                     <input type="checkbox" id="socket-proxy-enabled" />
-                    啟用 Socket 連線（清單內的網站直接使用，其他網站會先詢問你） / Enable sockets (listed websites use them directly; other websites are asked about first)
+                    <span data-i18n="timffle_options_enable"></span>
                 </label>
                 <fieldset class="proxy-mode">
-                    <legend>連線方式 / Connection method</legend>
+                    <legend data-i18n="timffle_options_method"></legend>
                     <label for="socket-proxy-mode-helper">
                         <input type="radio" name="socket-proxy-mode" id="socket-proxy-mode-helper" value="helper" />
-                        連線小幫手（建議） / Socket helper (recommended)
+                        <span data-i18n="timffle_options_helper"></span>
                     </label>
                     <div class="helper-status">
-                        <p id="socket-helper-status" role="status" aria-live="polite">檢查中… / Checking…</p>
-                        <button type="button" id="socket-helper-check">重新檢查 / Check again</button>
+                        <p id="socket-helper-status" role="status" aria-live="polite" data-i18n="timffle_helper_checking"></p>
+                        <button type="button" id="socket-helper-check" data-i18n="timffle_helper_check"></button>
                     </div>
                     <label for="socket-proxy-mode-websocket">
                         <input type="radio" name="socket-proxy-mode" id="socket-proxy-mode-websocket" value="websocket" />
-                        自訂 WebSocket 代理（進階） / Custom WebSocket proxy (advanced)
+                        <span data-i18n="timffle_options_websocket"></span>
                     </label>
                 </fieldset>
                 <div id="socket-proxy-websocket-fields">
-                    <label for="socket-proxy-url">WebSocket URL 範本（含 token，隱藏顯示） / URL template (including token, concealed)</label>
-                    <input type="password" id="socket-proxy-url" autocomplete="new-password" spellcheck="false" autocapitalize="off" aria-describedby="socket-proxy-url-help" />
+                    <label for="socket-proxy-url" data-i18n="timffle_options_url"></label>
+                    <input type="password" id="socket-proxy-url" dir="ltr" autocomplete="new-password" spellcheck="false" autocapitalize="off" aria-describedby="socket-proxy-url-help" />
                     <p id="socket-proxy-url-help">
-                        貼上代理程式提供的完整 URL，必須同時保留 {host} 和 {port}。 / Paste the proxy's full URL; keep both {host} and {port}.<br />
-                        範例 / Example: <code>ws://127.0.0.1:18770/connect?host={host}&amp;port={port}&amp;token=&lt;your-token&gt;</code>
+                        <span data-i18n="timffle_options_url_help"></span><br />
+                        <span data-i18n="timffle_options_example"></span> <code translate="no" dir="ltr">ws://127.0.0.1:18770/connect?host={host}&amp;port={port}&amp;token=&lt;your-token&gt;</code>
                     </p>
                 </div>
                 <label for="socket-proxy-origins">
-                    <span data-mode-text="helper">一律允許的網站來源（每行一個） / Always-allowed website origins (one per line)</span>
-                    <span data-mode-text="websocket" hidden>可使用自訂代理的網站來源（每行一個；這些網站會取得代理網址與 token） / Website origins that may use the custom proxy (one per line; they are given the proxy URL and token)</span>
+                    <span data-mode-text="helper" data-i18n="timffle_options_allowed_helper"></span>
+                    <span data-mode-text="websocket" data-i18n="timffle_options_allowed_proxy" hidden></span>
                 </label>
-                <textarea id="socket-proxy-origins" rows="8" spellcheck="false" autocapitalize="off" placeholder="https://trusted.example" aria-describedby="socket-proxy-origin-help"></textarea>
-                <p id="socket-proxy-origin-help">
-                    僅接受完整 HTTP/HTTPS 來源（協定、主機、選用連接埠），不接受 * 或路徑。預設允許淘米的摩爾莊園、賽爾號、小花仙、彈彈堂（mole.61.com.tw、seer.61.com.tw、hua.61.com.tw、ddt.61.com.tw，各含 HTTP 與 HTTPS）。內嵌播放器依所在頁框的來源；獨立播放器依 SWF URL 的來源。本機檔案不使用 Socket 連線。 / Exact HTTP/HTTPS origins only (scheme, host, optional port); no * or paths. Taomee's 摩爾莊園, 賽爾號, 小花仙 and 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw and ddt.61.com.tw, each over HTTP and HTTPS) are allowed by default. Embedded players use their frame's origin; the standalone player uses the SWF URL's origin. Local files never get sockets.
-                </p>
-                <p id="socket-proxy-origin-mode-help" data-mode-text="websocket" hidden>
-                    自訂代理有自己的清單，和連線小幫手的清單分開：讓網站使用連線小幫手，不會讓它拿到代理的 token；切換連線方式時，這裡顯示的是目前方式的清單。 / The custom proxy has a list of its own, apart from the helper's: letting a website use the helper never gives it the proxy's token. When you switch the connection method, this box shows the list of the method you chose.
-                </p>
-                <label for="socket-proxy-denied">一律拒絕的網站來源（每行一個） / Always-denied website origins (one per line)</label>
-                <textarea id="socket-proxy-denied" rows="4" spellcheck="false" autocapitalize="off" placeholder="https://untrusted.example" aria-describedby="socket-proxy-denied-help"></textarea>
-                <p id="socket-proxy-denied-help">
-                    這些網站不會被詢問，也不能使用 Socket 連線（兩種連線方式都一樣）。同一個網站不能同時出現在「允許」與「拒絕」清單。 / These websites are never asked about and never get sockets, in either connection method. A website cannot be on both lists.
-                </p>
+                <textarea id="socket-proxy-origins" dir="ltr" rows="8" spellcheck="false" autocapitalize="off" placeholder="https://trusted.example" aria-describedby="socket-proxy-origin-help"></textarea>
+                <p id="socket-proxy-origin-help" data-i18n="timffle_options_allowed_help"></p>
+                <p id="socket-proxy-origin-mode-help" data-mode-text="websocket" data-i18n="timffle_options_proxy_list_help" hidden></p>
+                <label for="socket-proxy-denied" data-i18n="timffle_options_denied"></label>
+                <textarea id="socket-proxy-denied" dir="ltr" rows="4" spellcheck="false" autocapitalize="off" placeholder="https://untrusted.example" aria-describedby="socket-proxy-denied-help"></textarea>
+                <p id="socket-proxy-denied-help" data-i18n="timffle_options_denied_help"></p>
                 <ul class="proxy-notes">
-                    <li>不在上面兩個清單的網站，第一次嘗試使用 Socket 連線時，Timffle 會跳出視窗詢問你：「允許」「一律允許」「拒絕」「一律拒絕」。預設建議拒絕——只有線上遊戲可以允許。你也可以在 Timffle 圖示的彈出視窗直接設定目前分頁的網站，不必輸入網址，並可隨時改回「每次造訪時詢問」。（僅限連線小幫手模式；自訂 WebSocket 代理不會詢問，未列出的網站一律不能使用。） / A website on neither list is asked about the first time it tries to open a socket: Allow, Always allow, Deny or Always deny. We recommend denying—only online games should be allowed. You can also set the current tab's website from Timffle's popup without typing its address, and switch it back to “Ask on every visit” at any time. (Socket helper mode only; a custom WebSocket proxy never asks and refuses unlisted websites.)</li>
-                    <li>Chrome 擴充套件無法直接開 TCP 連線，所以需要連線小幫手。小幫手只需安裝一次（執行下載包 helper 資料夾裡的安裝檔），之後 Chrome 會在遊戲連線時自動啟動、結束時自動關閉，不需開啟任何視窗或服務。 / Chrome extensions cannot open TCP sockets, hence the helper. Install it once (run the installer in the download's helper folder); Chrome then starts and stops it automatically for each game connection.</li>
-                    <li>小幫手只連往公開網路位址，不會連往區域網路或本機，也不記錄連線內容。 / The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic.</li>
-                    <li>自訂 WebSocket 代理需要自行啟動代理程式，Chrome 可能詢問本機網路存取權限；代理 URL（含 token）只會提供給這個方式自己清單裡的網站。 / A custom WebSocket proxy must be started by you, and Chrome may ask for local network access; only the websites on this method's own list can read the proxy URL, including its token.</li>
-                    <li>儲存或停用後，請重新載入網頁。 / Reload pages after saving or disabling.</li>
+                    <li data-i18n="timffle_note_ask"></li>
+                    <li data-i18n="timffle_note_helper"></li>
+                    <li data-i18n="timffle_note_public"></li>
+                    <li data-i18n="timffle_note_proxy"></li>
+                    <li data-i18n="timffle_note_reload"></li>
                 </ul>
                 <div class="proxy-actions">
-                    <button type="submit" id="socket-proxy-save">儲存代理設定 / Save proxy settings</button>
-                    <p id="socket-proxy-status" role="status" aria-live="polite" aria-atomic="true">讀取中… / Loading…</p>
+                    <button type="submit" id="socket-proxy-save" data-i18n="timffle_options_save"></button>
+                    <p id="socket-proxy-status" role="status" aria-live="polite" aria-atomic="true" data-i18n="timffle_loading"></p>
                 </div>
             </form>
             <button id="reset-settings">Reset settings</button>
-            <p class="timffle-attribution" translate="no">
-                Timffle 是 <a href="https://ruffle.rs/" target="_blank" rel="noopener noreferrer">Ruffle</a> 的非官方分支，與 Ruffle 專案沒有隸屬關係；Flash 模擬核心來自 Ruffle 與其貢獻者。問題請回報到 <a href="https://github.com/Im-Tim-mI/Timffle/issues" target="_blank" rel="noopener noreferrer">Timffle</a>，不要回報給 Ruffle。 /
-                Timffle is an unofficial fork of <a href="https://ruffle.rs/" target="_blank" rel="noopener noreferrer">Ruffle</a> and is not affiliated with the Ruffle project; its Flash emulation comes from Ruffle and its contributors. Please report problems to <a href="https://github.com/Im-Tim-mI/Timffle/issues" target="_blank" rel="noopener noreferrer">Timffle</a>, not to Ruffle.
+            <p class="timffle-attribution" data-i18n-rich="timffle_attribution">
+                <a href="https://ruffle.rs/" target="_blank" rel="noopener noreferrer"></a>
+                <a href="https://github.com/Im-Tim-mI/Timffle/issues" target="_blank" rel="noopener noreferrer"></a>
             </p>
         </div>
         <script src="dist/options.js"></script>

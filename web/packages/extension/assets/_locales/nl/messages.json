@@ -136,5 +136,236 @@
     },
     "swf_player_permissions": {
         "message": "Je moet toestemming aan deze URL bron geven om er SWF-bestanden vanuit te kunnen laden."
+    },
+    "timffle_choice_ask": {
+        "message": "Bij elk bezoek vragen"
+    },
+    "timffle_choice_allow": {
+        "message": "Altijd toestaan"
+    },
+    "timffle_choice_deny": {
+        "message": "Altijd weigeren"
+    },
+    "timffle_allow": {
+        "message": "Toestaan"
+    },
+    "timffle_close": {
+        "message": "Sluiten"
+    },
+    "timffle_popup_title": {
+        "message": "Socketverbindingen"
+    },
+    "timffle_popup_warning": {
+        "message": "Wij raden aan te weigeren: alleen onlinegames zouden toegestaan moeten worden."
+    },
+    "timffle_popup_off": {
+        "message": "Sockets staan uit in de instellingen."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Altijd toegestaan"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Altijd geweigerd"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Niet toegestaan (een eigen proxy vraagt nooit)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Toegestaan voor dit bezoek; vraagt opnieuw nadat je het tabblad sluit"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Geweigerd voor dit bezoek; vraagt opnieuw nadat je het tabblad sluit"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Deze site sockets laten gebruiken"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Deze site je eigen proxy laten gebruiken (de site krijgt het token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Deze site"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Een eigen proxy heeft minstens één toegestane website nodig, dus er is niets gewijzigd. Voeg op de instellingenpagina een andere website toe of schakel over naar de sockethelper."
+    },
+    "timffle_popup_save_failed": {
+        "message": "De instellingen konden niet worden opgeslagen; probeer het opnieuw."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Socketverzoek"
+    },
+    "timffle_prompt_title": {
+        "message": "Een website wil socketverbindingen gebruiken"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Ingebed in een pagina van:"
+    },
+    "timffle_prompt_what": {
+        "message": "Flash-inhoud op deze website wil TCP-verbindingen (sockets) openen naar servers op internet. Alleen onlinegames hebben dit nodig. Als je het toestaat, kan de website elke server op internet bereiken (nooit je lokale netwerk of deze computer)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Wij raden aan te weigeren. Alleen onlinegames zouden toegestaan moeten worden.</1> Als je het niet zeker weet, kies dan “Weigeren”."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Weigeren (aanbevolen)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Alleen dit bezoek van dit tabblad"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Nooit meer vragen over deze website"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Niet meer vragen"
+    },
+    "timffle_prompt_detail": {
+        "message": "Je kunt dit later wijzigen in de pop-up of op de instellingenpagina van Timffle. Als de game al een verbindingsfout meldde, probeer het dan na het toestaan opnieuw in de game; als tekst er verkeerd uitziet, laad de pagina dan opnieuw."
+    },
+    "timffle_prompt_expired": {
+        "message": "Dit verzoek is niet meer actief. Je kunt dit venster sluiten."
+    },
+    "timffle_options_title": {
+        "message": "Socketverbindingen (gameservers)"
+    },
+    "timffle_options_enable": {
+        "message": "Sockets inschakelen (websites op de lijst gebruiken ze direct; bij andere websites wordt eerst gevraagd)"
+    },
+    "timffle_options_method": {
+        "message": "Verbindingsmethode"
+    },
+    "timffle_options_helper": {
+        "message": "Sockethelper (aanbevolen)"
+    },
+    "timffle_options_websocket": {
+        "message": "Eigen WebSocket-proxy (geavanceerd)"
+    },
+    "timffle_helper_checking": {
+        "message": "Controleren…"
+    },
+    "timffle_helper_check": {
+        "message": "Opnieuw controleren"
+    },
+    "timffle_helper_installed": {
+        "message": "Geïnstalleerd (versie $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Incompatibele versie: installeer de helper die bij deze extensie hoort."
+    },
+    "timffle_helper_missing": {
+        "message": "Niet geïnstalleerd: voer het installatieprogramma voor je systeem uit in de map helper van de download en controleer daarna opnieuw."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Helper niet beschikbaar: controleer de installatie en de beveiligingsmeldingen van het besturingssysteem en probeer het daarna opnieuw."
+    },
+    "timffle_options_url": {
+        "message": "URL-sjabloon (inclusief token, verborgen)"
+    },
+    "timffle_options_url_help": {
+        "message": "Plak de volledige URL van de proxy; laat zowel {host} als {port} staan."
+    },
+    "timffle_options_example": {
+        "message": "Voorbeeld:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Altijd toegestane website-origins (één per regel)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Website-origins die de eigen proxy mogen gebruiken (één per regel; ze krijgen de proxy-URL en het token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Alleen exacte HTTP/HTTPS-origins (schema, host, optionele poort); geen * of paden. De games van Taomee 摩爾莊園, 賽爾號, 小花仙 en 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw en ddt.61.com.tw, elk via HTTP en HTTPS) zijn standaard toegestaan. Ingebedde spelers gebruiken de origin van hun frame; de zelfstandige speler gebruikt de origin van de SWF-URL. Lokale bestanden krijgen nooit sockets."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "De eigen proxy heeft een eigen lijst, los van die van de helper: een website de helper laten gebruiken geeft hem nooit het token van de proxy. Als je de verbindingsmethode wisselt, toont dit vak de lijst van de gekozen methode."
+    },
+    "timffle_options_denied": {
+        "message": "Altijd geweigerde website-origins (één per regel)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Bij deze websites wordt nooit gevraagd en ze krijgen nooit sockets, met beide verbindingsmethoden. Een website kan niet op beide lijsten staan."
+    },
+    "timffle_note_ask": {
+        "message": "Een website die op geen van beide lijsten staat, krijgt de eerste keer dat hij een socket probeert te openen een vraag: “Toestaan”, “Altijd toestaan”, “Weigeren” of “Altijd weigeren”. Wij raden aan te weigeren: alleen onlinegames zouden toegestaan moeten worden. Je kunt de website van het huidige tabblad ook instellen via de pop-up van Timffle zonder het adres te typen, en op elk moment terugzetten naar “Bij elk bezoek vragen”. (Alleen in de modus sockethelper; een eigen WebSocket-proxy vraagt nooit en weigert websites die niet op de lijst staan.)"
+    },
+    "timffle_note_helper": {
+        "message": "Chrome-extensies kunnen geen TCP-sockets openen, vandaar de helper. Installeer hem één keer (voer het installatieprogramma in de map helper van de download uit); daarna start en stopt Chrome hem automatisch bij elke gameverbinding."
+    },
+    "timffle_note_public": {
+        "message": "De helper maakt alleen verbinding met openbare internetadressen, nooit met je lokale netwerk of deze computer, en legt geen verkeer vast."
+    },
+    "timffle_note_proxy": {
+        "message": "Een eigen WebSocket-proxy moet je zelf starten, en Chrome kan om toegang tot het lokale netwerk vragen; alleen de websites op de eigen lijst van deze methode kunnen de proxy-URL lezen, inclusief het token."
+    },
+    "timffle_note_reload": {
+        "message": "Laad pagina's opnieuw na het opslaan of uitschakelen."
+    },
+    "timffle_options_save": {
+        "message": "Proxy-instellingen opslaan"
+    },
+    "timffle_loading": {
+        "message": "Laden…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Ongeldig instellingenformaat."
+    },
+    "timffle_error_url_required": {
+        "message": "Voer een URL-sjabloon in om een eigen WebSocket-proxy te gebruiken."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Gebruik een geldige ws://- of wss://-URL zonder spaties, backslashes of onbekende tijdelijke aanduidingen."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "De URL moet zowel {host} als {port} bevatten."
+    },
+    "timffle_error_credentials": {
+        "message": "Velden voor gebruikersnaam en wachtwoord in de URL zijn niet toegestaan; gebruik de queryparameter token van de proxy."
+    },
+    "timffle_error_fragment": {
+        "message": "WebSocket-URL's mogen geen #-fragment bevatten."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Houd het eindpunt van de proxy vast; {host} en {port} horen alleen in het pad of de query."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Voer per regel één exacte HTTP/HTTPS-origin in, zonder paden, inloggegevens, queries of jokertekens."
+    },
+    "timffle_error_origins_required": {
+        "message": "Sta bij een eigen WebSocket-proxy minstens één website-origin toe."
+    },
+    "timffle_conflict": {
+        "message": "Een website kan niet tegelijk op de lijst “Altijd toestaan” en op de lijst “Altijd weigeren” staan."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "De instellingen zijn elders gewijzigd (bijvoorbeeld in de pop-up of in een vraagvenster), dus je wijziging is niet opgeslagen. De nieuwste instellingen worden getoond; wijzig opnieuw."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "De instellingen zijn elders gewijzigd (bijvoorbeeld in de pop-up); de nieuwste instellingen worden getoond."
+    },
+    "timffle_stale": {
+        "message": "De instellingen zijn elders gewijzigd (bijvoorbeeld in de pop-up). Je wijziging is nog niet opgeslagen; bij het opslaan worden de nieuwste instellingen getoond in plaats van die wijziging te overschrijven."
+    },
+    "timffle_saved_enabled": {
+        "message": "Opgeslagen en ingeschakeld: websites op de lijst gebruiken sockets direct, bij andere websites wordt eerst gevraagd. Laad de pagina opnieuw; dit is geen verbindingstest."
+    },
+    "timffle_saved_disabled": {
+        "message": "Sockets uitgeschakeld. Laad de pagina opnieuw na wijzigingen."
+    },
+    "timffle_unsaved": {
+        "message": "Niet-opgeslagen wijzigingen."
+    },
+    "timffle_read_failed": {
+        "message": "De lokale instellingen konden niet worden gelezen."
+    },
+    "timffle_save_failed": {
+        "message": "Opslaan mislukt; de wijzigingen zijn niet bevestigd. Probeer het opnieuw."
+    },
+    "timffle_attribution": {
+        "message": "Timffle is een onofficiële fork van <1>Ruffle</1> en is niet gelieerd aan het Ruffle-project; de Flash-emulatie komt van Ruffle en zijn bijdragers. Meld problemen bij <2>Timffle</2>, niet bij Ruffle."
     }
 }

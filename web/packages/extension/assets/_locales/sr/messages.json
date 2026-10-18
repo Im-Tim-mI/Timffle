@@ -124,5 +124,236 @@
     },
     "swf_player_permissions": {
         "message": "Morate dati dozvolu ovom izvoru URL-a da biste učitali SWF datoteke sa njega."
+    },
+    "timffle_choice_ask": {
+        "message": "Pitaj pri svakoj poseti"
+    },
+    "timffle_choice_allow": {
+        "message": "Uvek dozvoli"
+    },
+    "timffle_choice_deny": {
+        "message": "Uvek odbij"
+    },
+    "timffle_allow": {
+        "message": "Dozvoli"
+    },
+    "timffle_close": {
+        "message": "Zatvori"
+    },
+    "timffle_popup_title": {
+        "message": "Socket veze"
+    },
+    "timffle_popup_warning": {
+        "message": "Preporučujemo odbijanje: dozvoliti treba samo onlajn igre."
+    },
+    "timffle_popup_off": {
+        "message": "Socketi su isključeni u podešavanjima."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Uvek dozvoljeno"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Uvek odbijeno"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Nije dozvoljeno (sopstveni proxy nikad ne pita)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Dozvoljeno za ovu posetu; ponovo će pitati nakon zatvaranja kartice"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Odbijeno za ovu posetu; ponovo će pitati nakon zatvaranja kartice"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Dozvoli ovom veb-sajtu korišćenje socketa"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Dozvoli ovom veb-sajtu korišćenje vašeg sopstvenog proxyja (dobija token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Ovaj veb-sajt"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Sopstveni proxy zahteva barem jedan dozvoljeni veb-sajt, pa ništa nije promenjeno. Dodajte drugi veb-sajt na stranici podešavanja ili pređite na socket pomoćnik."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Podešavanja nije moguće sačuvati; pokušajte ponovo."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Zahtev za socket"
+    },
+    "timffle_prompt_title": {
+        "message": "Veb-sajt želi da koristi socket veze"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Ugrađeno u stranicu veb-sajta:"
+    },
+    "timffle_prompt_what": {
+        "message": "Flash sadržaj na ovom veb-sajtu želi da otvori TCP veze (socketove) ka serverima na internetu. To su potrebne samo onlajn igrama. Ako dozvolite, može da dosegne bilo koji server na internetu (nikad vašu lokalnu mrežu ni ovaj računar)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Preporučujemo odbijanje. Dozvoliti treba samo onlajn igre.</1> Ako niste sigurni, izaberite „Odbij“."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Odbij (preporučeno)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Samo ova poseta u ovoj kartici"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Nikad više ne pitaj za ovaj veb-sajt"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Ne pitaj ponovo"
+    },
+    "timffle_prompt_detail": {
+        "message": "Ovo možete kasnije promeniti u iskačućem prozoru ili na stranici podešavanja Timffle. Ako je igra već prijavila grešku veze, nakon dozvoljavanja pokušajte ponovo u igri; ako tekst izgleda pogrešno, ponovo učitajte stranicu."
+    },
+    "timffle_prompt_expired": {
+        "message": "Ovaj zahtev više nije aktivan. Možete zatvoriti ovaj prozor."
+    },
+    "timffle_options_title": {
+        "message": "Socket veze (serveri igara)"
+    },
+    "timffle_options_enable": {
+        "message": "Omogući socketove (veb-sajtovi sa liste koriste ih direktno; za ostale se prvo pita)"
+    },
+    "timffle_options_method": {
+        "message": "Način povezivanja"
+    },
+    "timffle_options_helper": {
+        "message": "Socket pomoćnik (preporučeno)"
+    },
+    "timffle_options_websocket": {
+        "message": "Sopstveni WebSocket proxy (napredno)"
+    },
+    "timffle_helper_checking": {
+        "message": "Provera…"
+    },
+    "timffle_helper_check": {
+        "message": "Proveri ponovo"
+    },
+    "timffle_helper_installed": {
+        "message": "Instalirano (verzija $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Nekompatibilna verzija: instalirajte pomoćnik koji odgovara ovom proširenju."
+    },
+    "timffle_helper_missing": {
+        "message": "Nije instalirano: pokrenite instalacioni program za svoj sistem u fascikli helper preuzetog paketa, a zatim ponovo proverite."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Pomoćnik nije dostupan: proverite instalaciju i bezbednosna upozorenja operativnog sistema, a zatim pokušajte ponovo."
+    },
+    "timffle_options_url": {
+        "message": "Šablon URL-a (uključujući token, skriven)"
+    },
+    "timffle_options_url_help": {
+        "message": "Nalepite ceo URL proxyja; zadržite i {host} i {port}."
+    },
+    "timffle_options_example": {
+        "message": "Primer:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Uvek dozvoljena porekla veb-sajtova (jedno po redu)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Porekla veb-sajtova koja smeju da koriste sopstveni proxy (jedno po redu; dobijaju URL proxyja i token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Samo tačna HTTP/HTTPS porekla (šema, host, opcioni port); bez * i putanja. Taomeeove igre 摩爾莊園, 賽爾號, 小花仙 i 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw i ddt.61.com.tw, svaka preko HTTP-a i HTTPS-a) podrazumevano su dozvoljene. Ugrađeni plejeri koriste poreklo svog okvira; samostalni plejer koristi poreklo URL-a SWF datoteke. Lokalne datoteke nikad ne dobijaju socketove."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "Sopstveni proxy ima svoju listu, odvojenu od liste pomoćnika: dozvoljavanje veb-sajtu da koristi pomoćnik nikad mu ne daje token proxyja. Kad promenite način povezivanja, ovo polje prikazuje listu izabranog načina."
+    },
+    "timffle_options_denied": {
+        "message": "Uvek odbijena porekla veb-sajtova (jedno po redu)"
+    },
+    "timffle_options_denied_help": {
+        "message": "O ovim veb-sajtovima se nikad ne pita i oni nikad ne dobijaju socketove, ni u jednom načinu povezivanja. Veb-sajt ne može biti na obe liste."
+    },
+    "timffle_note_ask": {
+        "message": "Za veb-sajt koji nije ni na jednoj od dve liste pita se pri prvom pokušaju otvaranja socketa: „Dozvoli“, „Uvek dozvoli“, „Odbij“ ili „Uvek odbij“. Preporučujemo odbijanje – dozvoliti treba samo onlajn igre. Veb-sajt trenutne kartice možete podesiti i u iskačućem prozoru Timffle bez kucanja njegove adrese i u svakom trenutku ga vratiti na „Pitaj pri svakoj poseti“. (Samo u režimu socket pomoćnika; sopstveni WebSocket proxy nikad ne pita i odbija veb-sajtove koji nisu na listi.)"
+    },
+    "timffle_note_helper": {
+        "message": "Chrome proširenja ne mogu da otvaraju TCP socketove, otuda pomoćnik. Instalirajte ga jednom (pokrenite instalacioni program u fascikli helper preuzetog paketa); Chrome ga zatim automatski pokreće i zaustavlja pri svakoj vezi sa igrom."
+    },
+    "timffle_note_public": {
+        "message": "Pomoćnik se povezuje samo na javne internet adrese, nikad na vašu lokalnu mrežu ni na ovaj računar, i ne beleži saobraćaj."
+    },
+    "timffle_note_proxy": {
+        "message": "Sopstveni WebSocket proxy morate pokrenuti sami, a Chrome može da zatraži pristup lokalnoj mreži; URL proxyja zajedno sa tokenom mogu da čitaju samo veb-sajtovi sa liste ovog načina."
+    },
+    "timffle_note_reload": {
+        "message": "Nakon čuvanja ili isključivanja ponovo učitajte stranice."
+    },
+    "timffle_options_save": {
+        "message": "Sačuvaj podešavanja proxyja"
+    },
+    "timffle_loading": {
+        "message": "Učitavanje…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Neispravan format podešavanja."
+    },
+    "timffle_error_url_required": {
+        "message": "Da biste koristili sopstveni WebSocket proxy, unesite šablon URL-a."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Koristite ispravan URL ws:// ili wss:// bez razmaka, obrnutih kosih crta i nepoznatih rezervisanih mesta."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "URL mora da sadrži i {host} i {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "Polja korisničkog imena i lozinke u URL-u nisu dozvoljena; koristite parametar upita token proxyja."
+    },
+    "timffle_error_fragment": {
+        "message": "WebSocket URL-ovi ne smeju da sadrže fragment #."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Krajnja tačka proxyja mora biti stalna; {host} i {port} idu samo u putanju ili upit."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "U svaki red unesite jedno tačno HTTP/HTTPS poreklo, bez putanja, akreditiva, upita i zamenskih znakova."
+    },
+    "timffle_error_origins_required": {
+        "message": "Uz sopstveni WebSocket proxy dozvolite barem jedno poreklo veb-sajta."
+    },
+    "timffle_conflict": {
+        "message": "Veb-sajt ne može istovremeno biti na listi „Uvek dozvoli“ i na listi „Uvek odbij“."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "Podešavanja su promenjena na drugom mestu (na primer u iskačućem prozoru ili prozoru sa pitanjem), pa vaša izmena nije sačuvana. Prikazana su najnovija podešavanja; izmenite ponovo."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "Podešavanja su promenjena na drugom mestu (na primer u iskačućem prozoru); prikazana su najnovija podešavanja."
+    },
+    "timffle_stale": {
+        "message": "Podešavanja su promenjena na drugom mestu (na primer u iskačućem prozoru). Vaša izmena još nije sačuvana; pri čuvanju će se prikazati najnovija podešavanja umesto da se ta promena prebriše."
+    },
+    "timffle_saved_enabled": {
+        "message": "Sačuvano i omogućeno: veb-sajtovi sa liste koriste socketove direktno, za ostale se prvo pita. Ponovo učitajte stranicu; ovo nije test veze."
+    },
+    "timffle_saved_disabled": {
+        "message": "Socketi su onemogućeni. Nakon promena ponovo učitajte stranicu."
+    },
+    "timffle_unsaved": {
+        "message": "Nesačuvane promene."
+    },
+    "timffle_read_failed": {
+        "message": "Lokalna podešavanja nije moguće pročitati."
+    },
+    "timffle_save_failed": {
+        "message": "Čuvanje nije uspelo; promene nisu potvrđene. Pokušajte ponovo."
+    },
+    "timffle_attribution": {
+        "message": "Timffle je nezvanični fork projekta <1>Ruffle</1> i nije povezan sa projektom Ruffle; Flash emulacija potiče iz Ruffle i njegovih saradnika. Probleme prijavite projektu <2>Timffle</2>, a ne projektu Ruffle."
     }
 }

@@ -136,5 +136,236 @@
     },
     "swf_player_permissions": {
         "message": "Você deve conceder permissão a esta origem de URL para carregar SWFs dela."
+    },
+    "timffle_choice_ask": {
+        "message": "Perguntar a cada visita"
+    },
+    "timffle_choice_allow": {
+        "message": "Permitir sempre"
+    },
+    "timffle_choice_deny": {
+        "message": "Negar sempre"
+    },
+    "timffle_allow": {
+        "message": "Permitir"
+    },
+    "timffle_close": {
+        "message": "Fechar"
+    },
+    "timffle_popup_title": {
+        "message": "Conexões de socket"
+    },
+    "timffle_popup_warning": {
+        "message": "Recomendamos negar: somente jogos online devem ser permitidos."
+    },
+    "timffle_popup_off": {
+        "message": "Os sockets estão desativados nas configurações."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Sempre permitido"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Sempre negado"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Não permitido (um proxy personalizado nunca pergunta)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Permitido nesta visita; perguntará de novo depois que você fechar a guia"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Negado nesta visita; perguntará de novo depois que você fechar a guia"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Permitir que este site use sockets"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Permitir que este site use seu proxy personalizado (ele recebe o token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Este site"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Um proxy personalizado precisa de pelo menos um site permitido, então nada foi alterado. Adicione outro site na página de configurações ou mude para o assistente de sockets."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Não foi possível salvar as configurações; tente novamente."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Solicitação de socket"
+    },
+    "timffle_prompt_title": {
+        "message": "Um site quer usar conexões de socket"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Incorporado em uma página de:"
+    },
+    "timffle_prompt_what": {
+        "message": "O conteúdo Flash deste site quer abrir conexões TCP (sockets) com servidores na internet. Somente jogos online precisam disso. Se você permitir, ele poderá acessar qualquer servidor na internet (nunca a sua rede local nem este computador)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Recomendamos negar. Somente jogos online devem ser permitidos.</1> Se você não tiver certeza, escolha “Negar”."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Negar (recomendado)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Somente esta visita desta guia"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Nunca mais perguntar sobre este site"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Não perguntar novamente"
+    },
+    "timffle_prompt_detail": {
+        "message": "Você pode mudar isso depois no popup ou na página de configurações do Timffle. Se o jogo já informou uma falha de conexão, tente novamente no jogo depois de permitir; se o texto parecer errado, recarregue a página."
+    },
+    "timffle_prompt_expired": {
+        "message": "Esta solicitação não está mais ativa. Você pode fechar esta janela."
+    },
+    "timffle_options_title": {
+        "message": "Conexões de socket (servidores de jogos)"
+    },
+    "timffle_options_enable": {
+        "message": "Ativar sockets (os sites da lista os usam diretamente; para os outros sites, a pergunta vem primeiro)"
+    },
+    "timffle_options_method": {
+        "message": "Método de conexão"
+    },
+    "timffle_options_helper": {
+        "message": "Assistente de sockets (recomendado)"
+    },
+    "timffle_options_websocket": {
+        "message": "Proxy WebSocket personalizado (avançado)"
+    },
+    "timffle_helper_checking": {
+        "message": "Verificando…"
+    },
+    "timffle_helper_check": {
+        "message": "Verificar novamente"
+    },
+    "timffle_helper_installed": {
+        "message": "Instalado (versão $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Versão incompatível: instale o assistente correspondente a esta extensão."
+    },
+    "timffle_helper_missing": {
+        "message": "Não instalado: execute o instalador do seu sistema na pasta helper do download e verifique novamente."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Assistente indisponível: verifique a instalação e os avisos de segurança do sistema operacional e tente novamente."
+    },
+    "timffle_options_url": {
+        "message": "Modelo de URL (com token, oculto)"
+    },
+    "timffle_options_url_help": {
+        "message": "Cole a URL completa do proxy; mantenha {host} e {port}."
+    },
+    "timffle_options_example": {
+        "message": "Exemplo:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Origens de sites sempre permitidas (uma por linha)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Origens de sites que podem usar o proxy personalizado (uma por linha; elas recebem a URL do proxy e o token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Somente origens HTTP/HTTPS exatas (esquema, host e porta opcional); sem * nem caminhos. Os jogos da Taomee 摩爾莊園, 賽爾號, 小花仙 e 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw e ddt.61.com.tw, cada um por HTTP e HTTPS) são permitidos por padrão. Os players incorporados usam a origem do seu frame; o player independente usa a origem da URL do SWF. Arquivos locais nunca recebem sockets."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "O proxy personalizado tem uma lista própria, separada da do assistente: permitir que um site use o assistente nunca lhe dá o token do proxy. Ao trocar o método de conexão, esta caixa mostra a lista do método escolhido."
+    },
+    "timffle_options_denied": {
+        "message": "Origens de sites sempre negadas (uma por linha)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Estes sites nunca são consultados e nunca recebem sockets, em nenhum dos métodos de conexão. Um site não pode estar nas duas listas."
+    },
+    "timffle_note_ask": {
+        "message": "Um site que não está em nenhuma das duas listas é consultado na primeira vez que tenta abrir um socket: “Permitir”, “Permitir sempre”, “Negar” ou “Negar sempre”. Recomendamos negar: somente jogos online devem ser permitidos. Você também pode definir o site da guia atual pelo popup do Timffle, sem digitar o endereço, e voltar a “Perguntar a cada visita” quando quiser. (Somente no modo assistente de sockets; um proxy WebSocket personalizado nunca pergunta e recusa sites que não estão na lista.)"
+    },
+    "timffle_note_helper": {
+        "message": "As extensões do Chrome não conseguem abrir sockets TCP, daí o assistente. Instale-o uma única vez (execute o instalador na pasta helper do download); depois, o Chrome o inicia e o encerra automaticamente a cada conexão de jogo."
+    },
+    "timffle_note_public": {
+        "message": "O assistente só se conecta a endereços públicos da internet, nunca à sua rede local nem a este computador, e não registra o tráfego."
+    },
+    "timffle_note_proxy": {
+        "message": "Um proxy WebSocket personalizado precisa ser iniciado por você, e o Chrome pode pedir acesso à rede local; somente os sites da lista própria deste método podem ler a URL do proxy, incluindo o token."
+    },
+    "timffle_note_reload": {
+        "message": "Recarregue as páginas depois de salvar ou desativar."
+    },
+    "timffle_options_save": {
+        "message": "Salvar configurações do proxy"
+    },
+    "timffle_loading": {
+        "message": "Carregando…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Formato de configurações inválido."
+    },
+    "timffle_error_url_required": {
+        "message": "Informe um modelo de URL para usar um proxy WebSocket personalizado."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Use uma URL ws:// ou wss:// válida, sem espaços, barras invertidas nem marcadores desconhecidos."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "A URL deve incluir {host} e {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "Campos de usuário e senha na URL não são permitidos; use o parâmetro de consulta token do proxy."
+    },
+    "timffle_error_fragment": {
+        "message": "URLs de WebSocket não podem conter um fragmento #."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Mantenha fixo o endpoint do proxy; {host} e {port} só podem ficar no caminho ou na consulta."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Informe uma única origem HTTP/HTTPS exata por linha, sem caminhos, credenciais, consultas nem curingas."
+    },
+    "timffle_error_origins_required": {
+        "message": "Com um proxy WebSocket personalizado, permita pelo menos uma origem de site."
+    },
+    "timffle_conflict": {
+        "message": "Um site não pode estar ao mesmo tempo na lista “Permitir sempre” e na lista “Negar sempre”."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "As configurações foram alteradas em outro lugar (por exemplo, no popup ou em uma janela de pergunta), então sua alteração não foi salva. As configurações mais recentes estão sendo exibidas; edite novamente."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "As configurações foram alteradas em outro lugar (por exemplo, no popup); as configurações mais recentes estão sendo exibidas."
+    },
+    "timffle_stale": {
+        "message": "As configurações foram alteradas em outro lugar (por exemplo, no popup). Sua alteração ainda não foi salva; ao salvar, as configurações mais recentes serão exibidas em vez de sobrescrever aquela mudança."
+    },
+    "timffle_saved_enabled": {
+        "message": "Salvo e ativado: os sites da lista usam sockets diretamente; para os outros sites, a pergunta vem primeiro. Recarregue a página; isto não é um teste de conexão."
+    },
+    "timffle_saved_disabled": {
+        "message": "Sockets desativados. Recarregue a página depois das alterações."
+    },
+    "timffle_unsaved": {
+        "message": "Alterações não salvas."
+    },
+    "timffle_read_failed": {
+        "message": "Não foi possível ler as configurações locais."
+    },
+    "timffle_save_failed": {
+        "message": "Falha ao salvar; as alterações não foram confirmadas. Tente novamente."
+    },
+    "timffle_attribution": {
+        "message": "O Timffle é um fork não oficial do <1>Ruffle</1> e não é afiliado ao projeto Ruffle; sua emulação de Flash vem do Ruffle e de seus colaboradores. Informe os problemas ao <2>Timffle</2>, não ao Ruffle."
     }
 }

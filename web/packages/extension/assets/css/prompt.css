@@ -33,14 +33,6 @@ h1 {
     color: var(--ruffle-orange);
 }
 
-h1 span {
-    display: block;
-    font-size: 13px;
-    font-weight: normal;
-    color: white;
-    opacity: 0.85;
-}
-
 p {
     margin: 0;
     line-height: 1.5;

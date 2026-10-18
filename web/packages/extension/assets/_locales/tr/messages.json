@@ -136,5 +136,236 @@
     },
     "swf_player_permissions": {
         "message": "SWF'leri indirmek için bu URL kaynağına izin vermeniz gerekir."
+    },
+    "timffle_choice_ask": {
+        "message": "Her ziyarette sor"
+    },
+    "timffle_choice_allow": {
+        "message": "Her zaman izin ver"
+    },
+    "timffle_choice_deny": {
+        "message": "Her zaman reddet"
+    },
+    "timffle_allow": {
+        "message": "İzin ver"
+    },
+    "timffle_close": {
+        "message": "Kapat"
+    },
+    "timffle_popup_title": {
+        "message": "Soket bağlantıları"
+    },
+    "timffle_popup_warning": {
+        "message": "Reddetmenizi öneririz: yalnızca çevrimiçi oyunlara izin verilmelidir."
+    },
+    "timffle_popup_off": {
+        "message": "Soketler ayarlarda kapalı."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Her zaman izin verildi"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Her zaman reddedildi"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "İzin verilmedi (özel bir proxy asla sormaz)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Bu ziyaret için izin verildi; sekmeyi kapattıktan sonra yeniden soracak"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Bu ziyaret için reddedildi; sekmeyi kapattıktan sonra yeniden soracak"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Bu sitenin soketleri kullanmasına izin ver"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Bu sitenin özel proxy'nizi kullanmasına izin ver (token'ı alır)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Bu site"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Özel bir proxy için en az bir izinli site gerekir, bu yüzden hiçbir şey değiştirilmedi. Ayarlar sayfasında başka bir site ekleyin veya soket yardımcısına geçin."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Ayarlar kaydedilemedi; lütfen yeniden deneyin."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Soket isteği"
+    },
+    "timffle_prompt_title": {
+        "message": "Bir web sitesi soket bağlantıları kullanmak istiyor"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Şu sitenin bir sayfasına gömülü:"
+    },
+    "timffle_prompt_what": {
+        "message": "Bu web sitesindeki Flash içeriği, internetteki sunuculara TCP (soket) bağlantıları açmak istiyor. Buna yalnızca çevrimiçi oyunların ihtiyacı vardır. İzin verirseniz internetteki herhangi bir sunucuya ulaşabilir (yerel ağınıza veya bu bilgisayara asla)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Reddetmenizi öneririz. Yalnızca çevrimiçi oyunlara izin verilmelidir.</1> Emin değilseniz “Reddet” seçeneğini seçin."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Reddet (önerilir)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Yalnızca bu sekmenin bu ziyareti"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Bu site hakkında bir daha sorma"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Bir daha sorma"
+    },
+    "timffle_prompt_detail": {
+        "message": "Bunu daha sonra Timffle'ın açılır penceresinden veya ayarlar sayfasından değiştirebilirsiniz. Oyun zaten bağlantı hatası bildirdiyse izin verdikten sonra oyunda yeniden deneyin; metin yanlış görünüyorsa sayfayı yeniden yükleyin."
+    },
+    "timffle_prompt_expired": {
+        "message": "Bu istek artık etkin değil. Bu pencereyi kapatabilirsiniz."
+    },
+    "timffle_options_title": {
+        "message": "Soket bağlantıları (oyun sunucuları)"
+    },
+    "timffle_options_enable": {
+        "message": "Soketleri etkinleştir (listedeki siteler bunları doğrudan kullanır; diğer sitelere önce sorulur)"
+    },
+    "timffle_options_method": {
+        "message": "Bağlantı yöntemi"
+    },
+    "timffle_options_helper": {
+        "message": "Soket yardımcısı (önerilir)"
+    },
+    "timffle_options_websocket": {
+        "message": "Özel WebSocket proxy (gelişmiş)"
+    },
+    "timffle_helper_checking": {
+        "message": "Denetleniyor…"
+    },
+    "timffle_helper_check": {
+        "message": "Yeniden denetle"
+    },
+    "timffle_helper_installed": {
+        "message": "Yüklü (sürüm $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Uyumsuz sürüm: bu uzantıyla eşleşen yardımcıyı yükleyin."
+    },
+    "timffle_helper_missing": {
+        "message": "Yüklü değil: indirmedeki helper klasöründe sisteminize uygun yükleyiciyi çalıştırın, sonra yeniden denetleyin."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Yardımcı kullanılamıyor: kurulumu ve işletim sisteminin güvenlik uyarılarını denetleyin, sonra yeniden deneyin."
+    },
+    "timffle_options_url": {
+        "message": "URL şablonu (token dahil, gizli)"
+    },
+    "timffle_options_url_help": {
+        "message": "Proxy'nin tam URL'sini yapıştırın; hem {host} hem de {port} kalmalı."
+    },
+    "timffle_options_example": {
+        "message": "Örnek:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Her zaman izinli site kaynakları (her satıra bir tane)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Özel proxy'yi kullanabilecek site kaynakları (her satıra bir tane; proxy URL'sini ve token'ı alırlar)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Yalnızca tam HTTP/HTTPS kaynakları (şema, ana makine, isteğe bağlı bağlantı noktası); * veya yol olmaz. Taomee'nin 摩爾莊園, 賽爾號, 小花仙 ve 彈彈堂 oyunları (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw ve ddt.61.com.tw, her biri HTTP ve HTTPS üzerinden) varsayılan olarak izinlidir. Gömülü oynatıcılar çerçevelerinin kaynağını kullanır; bağımsız oynatıcı SWF URL'sinin kaynağını kullanır. Yerel dosyalar asla soket almaz."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "Özel proxy'nin yardımcıdan ayrı, kendine ait bir listesi vardır: bir sitenin yardımcıyı kullanmasına izin vermek ona proxy'nin token'ını asla vermez. Bağlantı yöntemini değiştirdiğinizde bu kutu seçtiğiniz yöntemin listesini gösterir."
+    },
+    "timffle_options_denied": {
+        "message": "Her zaman reddedilen site kaynakları (her satıra bir tane)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Bu sitelere asla sorulmaz ve hiçbir bağlantı yönteminde soket verilmez. Bir site iki listede birden olamaz."
+    },
+    "timffle_note_ask": {
+        "message": "İki listede de olmayan bir siteye, ilk kez soket açmayı denediğinde sorulur: “İzin ver”, “Her zaman izin ver”, “Reddet” veya “Her zaman reddet”. Reddetmenizi öneririz – yalnızca çevrimiçi oyunlara izin verilmelidir. Geçerli sekmenin sitesini adresini yazmadan Timffle'ın açılır penceresinden de ayarlayabilir ve istediğiniz zaman “Her ziyarette sor” seçeneğine geri döndürebilirsiniz. (Yalnızca soket yardımcısı modunda; özel bir WebSocket proxy asla sormaz ve listede olmayan siteleri reddeder.)"
+    },
+    "timffle_note_helper": {
+        "message": "Chrome uzantıları TCP soketi açamaz, yardımcı bu yüzden var. Bir kez yükleyin (indirmedeki helper klasöründeki yükleyiciyi çalıştırın); sonrasında Chrome onu her oyun bağlantısı için otomatik olarak başlatır ve durdurur."
+    },
+    "timffle_note_public": {
+        "message": "Yardımcı yalnızca genel internet adreslerine bağlanır, yerel ağınıza veya bu bilgisayara asla bağlanmaz ve trafiği kaydetmez."
+    },
+    "timffle_note_proxy": {
+        "message": "Özel bir WebSocket proxy'yi kendiniz başlatmalısınız ve Chrome yerel ağa erişim isteyebilir; proxy URL'sini token dahil yalnızca bu yöntemin kendi listesindeki siteler okuyabilir."
+    },
+    "timffle_note_reload": {
+        "message": "Kaydettikten veya devre dışı bıraktıktan sonra sayfaları yeniden yükleyin."
+    },
+    "timffle_options_save": {
+        "message": "Proxy ayarlarını kaydet"
+    },
+    "timffle_loading": {
+        "message": "Yükleniyor…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Geçersiz ayar biçimi."
+    },
+    "timffle_error_url_required": {
+        "message": "Özel bir WebSocket proxy kullanmak için bir URL şablonu girin."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Boşluk, ters eğik çizgi veya bilinmeyen yer tutucu içermeyen geçerli bir ws:// veya wss:// URL'si kullanın."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "URL hem {host} hem de {port} içermelidir."
+    },
+    "timffle_error_credentials": {
+        "message": "URL içinde kullanıcı adı ve parola alanlarına izin verilmez; proxy'nin token sorgu parametresini kullanın."
+    },
+    "timffle_error_fragment": {
+        "message": "WebSocket URL'leri # parçası içeremez."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Proxy uç noktasını sabit tutun; {host} ve {port} yalnızca yolda veya sorguda bulunmalıdır."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Her satıra yol, kimlik bilgisi, sorgu veya joker karakter içermeyen tam bir HTTP/HTTPS kaynağı girin."
+    },
+    "timffle_error_origins_required": {
+        "message": "Özel bir WebSocket proxy ile en az bir site kaynağına izin verin."
+    },
+    "timffle_conflict": {
+        "message": "Bir site aynı anda hem “Her zaman izin ver” hem de “Her zaman reddet” listesinde olamaz."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "Ayarlar başka bir yerde değiştirildi (örneğin açılır pencerede veya bir soru penceresinde), bu yüzden değişikliğiniz kaydedilmedi. En son ayarlar gösteriliyor; lütfen yeniden düzenleyin."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "Ayarlar başka bir yerde değiştirildi (örneğin açılır pencerede); en son ayarlar gösteriliyor."
+    },
+    "timffle_stale": {
+        "message": "Ayarlar başka bir yerde değiştirildi (örneğin açılır pencerede). Değişikliğiniz henüz kaydedilmedi; kaydettiğinizde o değişikliğin üzerine yazmak yerine en son ayarlar gösterilecek."
+    },
+    "timffle_saved_enabled": {
+        "message": "Kaydedildi ve etkinleştirildi: listedeki siteler soketleri doğrudan kullanır, diğer sitelere önce sorulur. Sayfayı yeniden yükleyin; bu bir bağlantı testi değildir."
+    },
+    "timffle_saved_disabled": {
+        "message": "Soketler devre dışı. Değişikliklerden sonra sayfayı yeniden yükleyin."
+    },
+    "timffle_unsaved": {
+        "message": "Kaydedilmemiş değişiklikler."
+    },
+    "timffle_read_failed": {
+        "message": "Yerel ayarlar okunamadı."
+    },
+    "timffle_save_failed": {
+        "message": "Kaydetme başarısız oldu; değişiklikler onaylanmadı. Lütfen yeniden deneyin."
+    },
+    "timffle_attribution": {
+        "message": "Timffle, <1>Ruffle</1> projesinin resmî olmayan bir fork'udur ve Ruffle projesiyle bağlantılı değildir; Flash öykünmesi Ruffle'dan ve katkıda bulunanlarından gelir. Sorunları Ruffle'a değil, <2>Timffle</2> projesine bildirin."
     }
 }

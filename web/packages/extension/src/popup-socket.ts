@@ -2,6 +2,7 @@
  * The popup's "Socket connections" section: what this tab's website may do,
  * and a button to allow it without typing its address anywhere.
  */
+import { text } from "./i18n";
 import { getProxySettings, updateProxySettings } from "./proxy-settings";
 import {
     normalizeWebsiteOrigin,
@@ -41,27 +42,27 @@ export function describeSite(
     };
 }
 
-/** Bilingual, because the Socket section of every page is (see translate="no" in the markup). */
+/** What the section says about a website, in the language of the browser. */
 export function stateText(state: SiteState): string {
     if (state.kind === "off") {
-        return "Socket 連線已在設定頁停用。 / Sockets are switched off in the settings.";
+        return text("timffle_popup_off");
     }
     switch (state.permission) {
         case "allow":
-            return "一律允許 / Always allowed";
+            return text("timffle_popup_always_allowed");
         case "deny":
-            return "一律拒絕 / Always denied";
+            return text("timffle_popup_always_denied");
         case "ask":
             if (!state.asks) {
-                return "尚未允許（自訂代理模式不會詢問） / Not allowed (a custom proxy never asks)";
+                return text("timffle_popup_proxy_not_allowed");
             }
             if (state.visit === "allow") {
-                return "本次造訪已允許，關閉分頁後會再詢問 / Allowed for this visit; asks again after you close the tab";
+                return text("timffle_popup_visit_allowed");
             }
             if (state.visit === "deny") {
-                return "本次造訪已拒絕，關閉分頁後會再詢問 / Denied for this visit; asks again after you close the tab";
+                return text("timffle_popup_visit_denied");
             }
-            return "每次造訪時詢問 / Ask on every visit";
+            return text("timffle_choice_ask");
     }
 }
 
@@ -135,15 +136,10 @@ function element<K extends keyof HTMLElementTagNameMap>(
     return node;
 }
 
-const ORIGINS_REQUIRED_MESSAGE =
-    "自訂代理模式至少要有一個允許的網站，所以沒有變更。請先在設定頁加入其他網站，或改用連線小幫手。 / A custom proxy needs at least one allowed website, so nothing was changed. Add another website in the settings page, or switch to the socket helper.";
-const SAVE_FAILED_MESSAGE =
-    "無法儲存設定，請再試一次。 / Could not save the settings; please try again.";
-
-const CHOICE_LABELS: Record<SocketChoice, string> = {
-    ask: "每次造訪時詢問 / Ask on every visit",
-    allow: "一律允許 / Always allow",
-    deny: "一律拒絕 / Always deny",
+const CHOICE_KEYS: Record<SocketChoice, string> = {
+    ask: "timffle_choice_ask",
+    allow: "timffle_choice_allow",
+    deny: "timffle_choice_deny",
 };
 
 export interface SocketSectionOptions {
@@ -187,10 +183,11 @@ export async function bindSocketSection({
             );
         } catch (error) {
             // The list shows what is really stored again, with the reason.
-            problem =
+            problem = text(
                 error instanceof Error && error.message === "origins_required"
-                    ? ORIGINS_REQUIRED_MESSAGE
-                    : SAVE_FAILED_MESSAGE;
+                    ? "timffle_popup_origins_required"
+                    : "timffle_popup_save_failed",
+            );
             await render();
             return;
         }
@@ -208,7 +205,10 @@ export async function bindSocketSection({
     ): HTMLElement => {
         const state = describeSite(settings, origin, visit);
         const site = element("section", "socket-site");
-        site.append(element("p", "socket-origin", origin));
+        const name = element("p", "socket-origin", origin);
+        // An address reads left to right in every language.
+        name.dir = "ltr";
+        site.append(name);
         const status = element("p", "socket-state", stateText(state));
         status.setAttribute("role", "status");
         site.append(status);
@@ -220,11 +220,11 @@ export async function bindSocketSection({
                 "button",
                 "socket-allow",
                 !primary
-                    ? "允許 / Allow"
+                    ? text("timffle_allow")
                     : state.asks
-                      ? "允許此網站使用 Socket 連線 / Allow this site to use sockets"
+                      ? text("timffle_popup_allow_site")
                       : // A custom proxy hands its token to every website it allows.
-                        "允許此網站使用自訂代理（會取得 token） / Allow this site to use your custom proxy (it is given the token)",
+                        text("timffle_popup_allow_site_proxy"),
             );
             allow.type = "button";
             allow.addEventListener("click", (event) => {
@@ -236,11 +236,15 @@ export async function bindSocketSection({
         }
         const label = element("label", "socket-choice");
         label.append(
-            element("span", "socket-choice-label", "此網站 / This site"),
+            element(
+                "span",
+                "socket-choice-label",
+                text("timffle_popup_this_site"),
+            ),
         );
         const select = element("select", "socket-select");
         for (const value of ["ask", "allow", "deny"] as const) {
-            const option = element("option", "", CHOICE_LABELS[value]);
+            const option = element("option", "", text(CHOICE_KEYS[value]));
             option.value = value;
             option.selected = value === state.permission;
             select.append(option);

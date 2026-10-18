@@ -109,5 +109,236 @@
     },
     "grant_single_site_permission": {
         "message": "Ota pysyvästi käyttöön tällä sivustolla"
+    },
+    "timffle_choice_ask": {
+        "message": "Kysy joka käynnillä"
+    },
+    "timffle_choice_allow": {
+        "message": "Salli aina"
+    },
+    "timffle_choice_deny": {
+        "message": "Estä aina"
+    },
+    "timffle_allow": {
+        "message": "Salli"
+    },
+    "timffle_close": {
+        "message": "Sulje"
+    },
+    "timffle_popup_title": {
+        "message": "Socket-yhteydet"
+    },
+    "timffle_popup_warning": {
+        "message": "Suosittelemme estämistä: vain verkkopelit tulisi sallia."
+    },
+    "timffle_popup_off": {
+        "message": "Socketit on poistettu käytöstä asetuksissa."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Sallittu aina"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Estetty aina"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Ei sallittu (oma välityspalvelin ei kysy koskaan)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Sallittu tälle käynnille; kysyy uudelleen, kun suljet välilehden"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Estetty tälle käynnille; kysyy uudelleen, kun suljet välilehden"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Salli tämän sivuston käyttää socketeja"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Salli tämän sivuston käyttää omaa välityspalvelintasi (se saa tokenin)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Tämä sivusto"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Oma välityspalvelin tarvitsee vähintään yhden sallitun sivuston, joten mitään ei muutettu. Lisää toinen sivusto asetussivulla tai vaihda socket-apuohjelmaan."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Asetuksia ei voitu tallentaa; yritä uudelleen."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Socket-pyyntö"
+    },
+    "timffle_prompt_title": {
+        "message": "Sivusto haluaa käyttää socket-yhteyksiä"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Upotettu sivuston sivulle:"
+    },
+    "timffle_prompt_what": {
+        "message": "Tämän sivuston Flash-sisältö haluaa avata TCP-yhteyksiä (socketeja) internetin palvelimiin. Vain verkkopelit tarvitsevat tätä. Jos sallit sen, se voi ottaa yhteyden mihin tahansa internetin palvelimeen (ei koskaan lähiverkkoosi tai tähän tietokoneeseen)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Suosittelemme estämistä. Vain verkkopelit tulisi sallia.</1> Jos et ole varma, valitse ”Estä”."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Estä (suositeltu)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Vain tämän välilehden tämä käynti"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Älä koskaan kysy tästä sivustosta uudelleen"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Älä kysy uudelleen"
+    },
+    "timffle_prompt_detail": {
+        "message": "Voit muuttaa tätä myöhemmin Timfflen ponnahdusikkunassa tai asetussivulla. Jos peli ilmoitti jo yhteysvirheestä, yritä uudelleen pelissä sallimisen jälkeen; jos teksti näyttää väärältä, lataa sivu uudelleen."
+    },
+    "timffle_prompt_expired": {
+        "message": "Tämä pyyntö ei ole enää voimassa. Voit sulkea tämän ikkunan."
+    },
+    "timffle_options_title": {
+        "message": "Socket-yhteydet (pelipalvelimet)"
+    },
+    "timffle_options_enable": {
+        "message": "Ota socketit käyttöön (luettelon sivustot käyttävät niitä suoraan; muilta sivustoilta kysytään ensin)"
+    },
+    "timffle_options_method": {
+        "message": "Yhteystapa"
+    },
+    "timffle_options_helper": {
+        "message": "Socket-apuohjelma (suositeltu)"
+    },
+    "timffle_options_websocket": {
+        "message": "Oma WebSocket-välityspalvelin (edistynyt)"
+    },
+    "timffle_helper_checking": {
+        "message": "Tarkistetaan…"
+    },
+    "timffle_helper_check": {
+        "message": "Tarkista uudelleen"
+    },
+    "timffle_helper_installed": {
+        "message": "Asennettu (versio $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Yhteensopimaton versio: asenna tähän laajennukseen sopiva apuohjelma."
+    },
+    "timffle_helper_missing": {
+        "message": "Ei asennettu: suorita järjestelmällesi tarkoitettu asennusohjelma latauksen helper-kansiossa ja tarkista sitten uudelleen."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Apuohjelma ei ole käytettävissä: tarkista asennus ja käyttöjärjestelmän tietoturvailmoitukset ja yritä sitten uudelleen."
+    },
+    "timffle_options_url": {
+        "message": "URL-malli (sisältää tokenin, piilotettu)"
+    },
+    "timffle_options_url_help": {
+        "message": "Liitä välityspalvelimen koko URL; säilytä sekä {host} että {port}."
+    },
+    "timffle_options_example": {
+        "message": "Esimerkki:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Aina sallitut sivustojen lähteet (yksi per rivi)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Sivustojen lähteet, jotka saavat käyttää omaa välityspalvelinta (yksi per rivi; ne saavat välityspalvelimen URL:n ja tokenin)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Vain täsmälliset HTTP/HTTPS-lähteet (skeema, isäntä, valinnainen portti); ei * -merkkiä eikä polkuja. Taomeen pelit 摩爾莊園, 賽爾號, 小花仙 ja 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw ja ddt.61.com.tw, kukin sekä HTTP:n että HTTPS:n kautta) on oletuksena sallittu. Upotetut soittimet käyttävät kehyksensä lähdettä; erillinen soitin käyttää SWF-URL:n lähdettä. Paikalliset tiedostot eivät koskaan saa socketeja."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "Omalla välityspalvelimella on oma luettelonsa, erillään apuohjelman luettelosta: kun sallit sivustolle apuohjelman käytön, se ei koskaan saa välityspalvelimen tokenia. Kun vaihdat yhteystapaa, tämä kenttä näyttää valitun tavan luettelon."
+    },
+    "timffle_options_denied": {
+        "message": "Aina estetyt sivustojen lähteet (yksi per rivi)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Näiltä sivustoilta ei koskaan kysytä, eivätkä ne koskaan saa socketeja kummallakaan yhteystavalla. Sivusto ei voi olla molemmissa luetteloissa."
+    },
+    "timffle_note_ask": {
+        "message": "Sivustolta, joka ei ole kummassakaan luettelossa, kysytään ensimmäisellä socketin avausyrityksellä: ”Salli”, ”Salli aina”, ”Estä” tai ”Estä aina”. Suosittelemme estämistä – vain verkkopelit tulisi sallia. Voit myös määrittää nykyisen välilehden sivuston Timfflen ponnahdusikkunassa kirjoittamatta sen osoitetta ja palauttaa sen milloin tahansa asetukseen ”Kysy joka käynnillä”. (Vain socket-apuohjelmatilassa; oma WebSocket-välityspalvelin ei kysy koskaan ja hylkää luettelossa olemattomat sivustot.)"
+    },
+    "timffle_note_helper": {
+        "message": "Chrome-laajennukset eivät voi avata TCP-socketeja, siksi tarvitaan apuohjelma. Asenna se kerran (suorita asennusohjelma latauksen helper-kansiossa); sen jälkeen Chrome käynnistää ja sulkee sen automaattisesti jokaisen pelin yhteyden ajaksi."
+    },
+    "timffle_note_public": {
+        "message": "Apuohjelma ottaa yhteyden vain julkisiin internet-osoitteisiin, ei koskaan lähiverkkoosi tai tähän tietokoneeseen, eikä tallenna liikennettä."
+    },
+    "timffle_note_proxy": {
+        "message": "Oma WebSocket-välityspalvelin on käynnistettävä itse, ja Chrome voi pyytää lähiverkkoon pääsyä; välityspalvelimen URL:n tokenin kanssa voivat lukea vain tämän tavan oman luettelon sivustot."
+    },
+    "timffle_note_reload": {
+        "message": "Lataa sivut uudelleen tallennuksen tai käytöstä poiston jälkeen."
+    },
+    "timffle_options_save": {
+        "message": "Tallenna välityspalvelimen asetukset"
+    },
+    "timffle_loading": {
+        "message": "Ladataan…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Virheellinen asetusmuoto."
+    },
+    "timffle_error_url_required": {
+        "message": "Anna URL-malli käyttääksesi omaa WebSocket-välityspalvelinta."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Käytä kelvollista ws://- tai wss://-URL:ia ilman välilyöntejä, kenoviivoja tai tuntemattomia paikanvaraajia."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "URL:n on sisällettävä sekä {host} että {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "URL:n käyttäjätunnus- ja salasanakentät eivät ole sallittuja; käytä välityspalvelimen token-kyselyparametria."
+    },
+    "timffle_error_fragment": {
+        "message": "WebSocket-URL:t eivät saa sisältää #-fragmenttia."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Pidä välityspalvelimen päätepiste kiinteänä; {host} ja {port} kuuluvat vain polkuun tai kyselyyn."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Anna jokaiselle riville yksi täsmällinen HTTP/HTTPS-lähde ilman polkuja, tunnistetietoja, kyselyjä tai jokerimerkkejä."
+    },
+    "timffle_error_origins_required": {
+        "message": "Salli oman WebSocket-välityspalvelimen kanssa vähintään yksi sivuston lähde."
+    },
+    "timffle_conflict": {
+        "message": "Sivusto ei voi olla samaan aikaan luettelossa ”Salli aina” ja luettelossa ”Estä aina”."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "Asetuksia muutettiin muualla (esimerkiksi ponnahdusikkunassa tai kysymysikkunassa), joten muutostasi ei tallennettu. Uusimmat asetukset näytetään; muokkaa uudelleen."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "Asetuksia muutettiin muualla (esimerkiksi ponnahdusikkunassa); uusimmat asetukset näytetään."
+    },
+    "timffle_stale": {
+        "message": "Asetuksia muutettiin muualla (esimerkiksi ponnahdusikkunassa). Muutostasi ei ole vielä tallennettu; tallennus näyttää uusimmat asetukset sen sijaan, että kirjoittaisi sen muutoksen yli."
+    },
+    "timffle_saved_enabled": {
+        "message": "Tallennettu ja otettu käyttöön: luettelon sivustot käyttävät socketeja suoraan, muilta sivustoilta kysytään ensin. Lataa sivu uudelleen; tämä ei ole yhteystesti."
+    },
+    "timffle_saved_disabled": {
+        "message": "Socketit on poistettu käytöstä. Lataa sivu uudelleen muutosten jälkeen."
+    },
+    "timffle_unsaved": {
+        "message": "Tallentamattomia muutoksia."
+    },
+    "timffle_read_failed": {
+        "message": "Paikallisia asetuksia ei voitu lukea."
+    },
+    "timffle_save_failed": {
+        "message": "Tallennus epäonnistui; muutoksia ei vahvistettu. Yritä uudelleen."
+    },
+    "timffle_attribution": {
+        "message": "Timffle on epävirallinen fork projektista <1>Ruffle</1>, eikä se ole sidoksissa Ruffle-projektiin; Flash-emulointi tulee Rufflesta ja sen kehittäjiltä. Ilmoita ongelmista projektille <2>Timffle</2>, älä Rufflelle."
     }
 }

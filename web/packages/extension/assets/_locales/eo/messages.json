@@ -1,1 +1,233 @@
-{}
+{
+    "timffle_choice_ask": {
+        "message": "Demandi je ĉiu vizito"
+    },
+    "timffle_choice_allow": {
+        "message": "Ĉiam permesi"
+    },
+    "timffle_choice_deny": {
+        "message": "Ĉiam malpermesi"
+    },
+    "timffle_allow": {
+        "message": "Permesi"
+    },
+    "timffle_close": {
+        "message": "Fermi"
+    },
+    "timffle_popup_title": {
+        "message": "Socket-konektoj"
+    },
+    "timffle_popup_warning": {
+        "message": "Ni rekomendas malpermesi: nur interretaj ludoj estu permesataj."
+    },
+    "timffle_popup_off": {
+        "message": "Sockets estas malŝaltitaj en la agordoj."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Ĉiam permesata"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Ĉiam malpermesata"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Ne permesata (propra proxy neniam demandas)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Permesata por ĉi tiu vizito; demandos denove post kiam vi fermos la langeton"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Malpermesata por ĉi tiu vizito; demandos denove post kiam vi fermos la langeton"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Permesi al ĉi tiu retejo uzi sockets"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Permesi al ĉi tiu retejo uzi vian propran proxy (ĝi ricevas la token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Ĉi tiu retejo"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Propra proxy bezonas almenaŭ unu permesatan retejon, do nenio ŝanĝiĝis. Aldonu alian retejon en la agorda paĝo aŭ ŝanĝu al la socket-helpilo."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Ne eblis konservi la agordojn; reprovu."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Socket-peto"
+    },
+    "timffle_prompt_title": {
+        "message": "Retejo volas uzi socket-konektojn"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Enkorpigita en paĝo de:"
+    },
+    "timffle_prompt_what": {
+        "message": "Flash-enhavo en ĉi tiu retejo volas malfermi TCP-konektojn (sockets) al serviloj en la interreto. Nur interretaj ludoj bezonas tion. Se vi permesas, ĝi povas atingi ajnan servilon en la interreto (neniam vian lokan reton aŭ ĉi tiun komputilon)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Ni rekomendas malpermesi. Nur interretaj ludoj estu permesataj.</1> Se vi ne certas, elektu „Malpermesi“."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Malpermesi (rekomendita)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Nur ĉi tiu vizito de ĉi tiu langeto"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "Neniam plu demandi pri ĉi tiu retejo"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Ne demandi denove"
+    },
+    "timffle_prompt_detail": {
+        "message": "Vi povas ŝanĝi tion poste en la ŝprucfenestro aŭ la agorda paĝo de Timffle. Se la ludo jam raportis konektan malsukceson, reprovu en la ludo post la permeso; se teksto aspektas malĝuste, reŝargu la paĝon."
+    },
+    "timffle_prompt_expired": {
+        "message": "Ĉi tiu peto ne plu estas aktiva. Vi povas fermi ĉi tiun fenestron."
+    },
+    "timffle_options_title": {
+        "message": "Socket-konektoj (ludaj serviloj)"
+    },
+    "timffle_options_enable": {
+        "message": "Ŝalti sockets (la retejoj en la listo uzas ilin rekte; pri aliaj retejoj oni demandas unue)"
+    },
+    "timffle_options_method": {
+        "message": "Konekta metodo"
+    },
+    "timffle_options_helper": {
+        "message": "Socket-helpilo (rekomendita)"
+    },
+    "timffle_options_websocket": {
+        "message": "Propra WebSocket-proxy (altnivela)"
+    },
+    "timffle_helper_checking": {
+        "message": "Kontrolado…"
+    },
+    "timffle_helper_check": {
+        "message": "Kontroli denove"
+    },
+    "timffle_helper_installed": {
+        "message": "Instalita (versio $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Nekongrua versio: instalu la helpilon, kiu kongruas kun ĉi tiu etendaĵo."
+    },
+    "timffle_helper_missing": {
+        "message": "Ne instalita: rulu la instalilon por via sistemo en la dosierujo helper de la elŝuto, poste kontrolu denove."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Helpilo ne disponeblas: kontrolu la instaladon kaj la sekurecajn avertojn de la operaciumo, poste reprovu."
+    },
+    "timffle_options_url": {
+        "message": "URL-ŝablono (inkluzive de token, kaŝita)"
+    },
+    "timffle_options_url_help": {
+        "message": "Algluu la plenan URL de la proxy; konservu kaj {host} kaj {port}."
+    },
+    "timffle_options_example": {
+        "message": "Ekzemplo:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Ĉiam permesataj retejaj originoj (unu po linio)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Retejaj originoj, kiuj rajtas uzi la propran proxy (unu po linio; ili ricevas la URL de la proxy kaj la token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Nur precizaj HTTP/HTTPS-originoj (skemo, gastiganto, laŭvola pordo); neniu * nek vojoj. La ludoj de Taomee 摩爾莊園, 賽爾號, 小花仙 kaj 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw kaj ddt.61.com.tw, ĉiu per HTTP kaj HTTPS) estas permesataj implicite. Enkorpigitaj ludiloj uzas la originon de sia kadro; la memstara ludilo uzas la originon de la SWF-URL. Lokaj dosieroj neniam ricevas sockets."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "La propra proxy havas propran liston, aparte de tiu de la helpilo: permesi al retejo uzi la helpilon neniam donas al ĝi la token de la proxy. Kiam vi ŝanĝas la konektan metodon, ĉi tiu skatolo montras la liston de la elektita metodo."
+    },
+    "timffle_options_denied": {
+        "message": "Ĉiam malpermesataj retejaj originoj (unu po linio)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Pri ĉi tiuj retejoj oni neniam demandas kaj ili neniam ricevas sockets, en ambaŭ konektaj metodoj. Retejo ne povas esti en ambaŭ listoj."
+    },
+    "timffle_note_ask": {
+        "message": "Retejo, kiu ne estas en iu el la du listoj, estas demandata la unuan fojon kiam ĝi provas malfermi socket: „Permesi“, „Ĉiam permesi“, „Malpermesi“ aŭ „Ĉiam malpermesi“. Ni rekomendas malpermesi – nur interretaj ludoj estu permesataj. Vi ankaŭ povas agordi la retejon de la nuna langeto en la ŝprucfenestro de Timffle sen tajpi ĝian adreson, kaj ĉiam reŝanĝi ĝin al „Demandi je ĉiu vizito“. (Nur en la reĝimo de socket-helpilo; propra WebSocket-proxy neniam demandas kaj rifuzas retejojn ne en la listo.)"
+    },
+    "timffle_note_helper": {
+        "message": "Etendaĵoj de Chrome ne povas malfermi TCP-sockets, tial la helpilo. Instalu ĝin unufoje (rulu la instalilon en la dosierujo helper de la elŝuto); poste Chrome aŭtomate startigas kaj haltigas ĝin por ĉiu luda konekto."
+    },
+    "timffle_note_public": {
+        "message": "La helpilo konektiĝas nur al publikaj interretaj adresoj, neniam al via loka reto aŭ ĉi tiu komputilo, kaj ne registras trafikon."
+    },
+    "timffle_note_proxy": {
+        "message": "Propran WebSocket-proxy vi mem startigu, kaj Chrome povas peti aliron al la loka reto; nur la retejoj en la propra listo de ĉi tiu metodo povas legi la URL de la proxy, inkluzive de la token."
+    },
+    "timffle_note_reload": {
+        "message": "Reŝargu la paĝojn post konservo aŭ malŝalto."
+    },
+    "timffle_options_save": {
+        "message": "Konservi proxy-agordojn"
+    },
+    "timffle_loading": {
+        "message": "Ŝargado…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Nevalida formato de agordoj."
+    },
+    "timffle_error_url_required": {
+        "message": "Enigu URL-ŝablonon por uzi propran WebSocket-proxy."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Uzu validan ws:// aŭ wss:// URL sen spacoj, retroklinoj aŭ nekonataj lokokupiloj."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "La URL devas enhavi kaj {host} kaj {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "Uzantnomaj kaj pasvortaj kampoj en la URL ne estas permesataj; uzu la demandan parametron token de la proxy."
+    },
+    "timffle_error_fragment": {
+        "message": "WebSocket-URL ne rajtas enhavi # fragmenton."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Tenu la finpunkton de la proxy fiksa; {host} kaj {port} apartenas nur en la vojon aŭ la demandon."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Enigu po unu precizan HTTP/HTTPS-originon en ĉiu linio, sen vojoj, akreditaĵoj, demandoj aŭ ĵokeroj."
+    },
+    "timffle_error_origins_required": {
+        "message": "Kun propra WebSocket-proxy, permesu almenaŭ unu retejan originon."
+    },
+    "timffle_conflict": {
+        "message": "Retejo ne povas esti samtempe en la listo „Ĉiam permesi“ kaj en la listo „Ĉiam malpermesi“."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "La agordoj estis ŝanĝitaj aliloke (ekzemple en la ŝprucfenestro aŭ en demanda fenestro), do via ŝanĝo ne estis konservita. La plej novaj agordoj estas montrataj; redaktu denove."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "La agordoj estis ŝanĝitaj aliloke (ekzemple en la ŝprucfenestro); la plej novaj agordoj estas montrataj."
+    },
+    "timffle_stale": {
+        "message": "La agordoj estis ŝanĝitaj aliloke (ekzemple en la ŝprucfenestro). Via ŝanĝo ankoraŭ ne estas konservita; konservado montros la plej novajn agordojn anstataŭ superskribi tiun ŝanĝon."
+    },
+    "timffle_saved_enabled": {
+        "message": "Konservita kaj ŝaltita: la retejoj en la listo uzas sockets rekte, pri aliaj retejoj oni demandas unue. Reŝargu la paĝon; tio ne estas konekta testo."
+    },
+    "timffle_saved_disabled": {
+        "message": "Sockets malŝaltitaj. Reŝargu la paĝon post ŝanĝoj."
+    },
+    "timffle_unsaved": {
+        "message": "Nekonservitaj ŝanĝoj."
+    },
+    "timffle_read_failed": {
+        "message": "Ne eblis legi la lokajn agordojn."
+    },
+    "timffle_save_failed": {
+        "message": "Konservo malsukcesis; la ŝanĝoj ne estis konfirmitaj. Reprovu."
+    },
+    "timffle_attribution": {
+        "message": "Timffle estas neoficiala disbranĉo de <1>Ruffle</1> kaj ne estas ligita al la projekto Ruffle; ĝia Flash-emulado devenas de Ruffle kaj ĝiaj kontribuantoj. Raportu problemojn al <2>Timffle</2>, ne al Ruffle."
+    }
+}

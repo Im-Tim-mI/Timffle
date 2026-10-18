@@ -24,6 +24,7 @@ need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required but not on PATH"
 
 [ -d "$R/web/packages/extension" ] || die "$R does not look like the Timffle repository"
 python3 -I "$ROOT/scripts/rebrand.py" --check || die "user-visible texts still say Ruffle; run timffle/scripts/rebrand.py"
+python3 -I "$ROOT/scripts/sync_locales.py" --check || die "Timffle's interface texts are not in the message catalogs; run timffle/scripts/sync_locales.py"
 if python3 -I -c "import PIL" 2>/dev/null; then
   python3 -I "$ROOT/branding/make_branding.py" --check || die "branding files are stale; run timffle/branding/make_branding.py"
 fi

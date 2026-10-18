@@ -8,6 +8,7 @@ import {
 import type { Options } from "./common";
 import { bindOptions } from "./common";
 import { bindSocketSection } from "./popup-socket";
+import { localizePage } from "./i18n";
 import { buildInfo } from "ruffle-core";
 
 let activeTab: chrome.tabs.Tab;
@@ -186,6 +187,7 @@ async function displayTabStatus() {
 window.addEventListener("DOMContentLoaded", async () => {
     enableBrowserOnOutdatedChromium();
     setPageLanguage();
+    localizePage();
     const data = await browser.storage.sync.get({
         responseHeadersUnsupported: false,
     });

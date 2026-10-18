@@ -138,4 +138,6 @@ export function setPageLanguage() {
     document.documentElement.lang = browser.i18n
         .getMessage("@@ui_locale")
         .replace("_", "-");
+    // "rtl" for Arabic and Hebrew, "ltr" for the others.
+    document.documentElement.dir = browser.i18n.getMessage("@@bidi_dir");
 }

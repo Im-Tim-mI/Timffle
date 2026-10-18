@@ -3,6 +3,7 @@
  * window of its own, so a web page can neither cover it nor click it.
  */
 import { enableBrowserOnOutdatedChromium, setPageLanguage } from "./utils";
+import { localizePage, text } from "./i18n";
 import {
     PROMPT_ANSWER_REQUEST,
     PROMPT_GET_REQUEST,
@@ -58,6 +59,8 @@ function show(id: string) {
 window.addEventListener("DOMContentLoaded", async () => {
     enableBrowserOnOutdatedChromium();
     setPageLanguage();
+    localizePage();
+    document.title = text("timffle_prompt_page_title");
     document
         .getElementById("close-window")!
         .addEventListener("click", () => window.close());
@@ -75,9 +78,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     document.getElementById("prompt-origin")!.textContent = view.origin;
     if (view.embeddedIn !== undefined) {
-        const embedded = document.getElementById("prompt-embedded")!;
-        embedded.textContent = `出現在這個頁面中 / Embedded in a page of: ${view.embeddedIn}`;
-        embedded.hidden = false;
+        document.getElementById("prompt-embedded-origin")!.textContent =
+            view.embeddedIn;
+        document.getElementById("prompt-embedded")!.hidden = false;
     }
     show("prompt");
 

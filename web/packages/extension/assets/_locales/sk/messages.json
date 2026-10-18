@@ -121,5 +121,236 @@
     },
     "swf_player_permissions": {
         "message": "Ak chcete z tejto URL adresy načítať súbory SWF, musíte udeliť oprávnenie."
+    },
+    "timffle_choice_ask": {
+        "message": "Opýtať sa pri každej návšteve"
+    },
+    "timffle_choice_allow": {
+        "message": "Vždy povoliť"
+    },
+    "timffle_choice_deny": {
+        "message": "Vždy zamietnuť"
+    },
+    "timffle_allow": {
+        "message": "Povoliť"
+    },
+    "timffle_close": {
+        "message": "Zavrieť"
+    },
+    "timffle_popup_title": {
+        "message": "Pripojenia cez sokety"
+    },
+    "timffle_popup_warning": {
+        "message": "Odporúčame zamietnuť: povoliť by sa mali iba online hry."
+    },
+    "timffle_popup_off": {
+        "message": "Sokety sú v nastaveniach vypnuté."
+    },
+    "timffle_popup_always_allowed": {
+        "message": "Vždy povolené"
+    },
+    "timffle_popup_always_denied": {
+        "message": "Vždy zamietnuté"
+    },
+    "timffle_popup_proxy_not_allowed": {
+        "message": "Nepovolené (vlastné proxy sa nikdy nepýta)"
+    },
+    "timffle_popup_visit_allowed": {
+        "message": "Povolené pre túto návštevu; po zatvorení karty sa opýta znova"
+    },
+    "timffle_popup_visit_denied": {
+        "message": "Zamietnuté pre túto návštevu; po zatvorení karty sa opýta znova"
+    },
+    "timffle_popup_allow_site": {
+        "message": "Povoliť tejto lokalite používať sokety"
+    },
+    "timffle_popup_allow_site_proxy": {
+        "message": "Povoliť tejto lokalite používať vaše vlastné proxy (lokalita získa token)"
+    },
+    "timffle_popup_this_site": {
+        "message": "Táto lokalita"
+    },
+    "timffle_popup_origins_required": {
+        "message": "Vlastné proxy potrebuje aspoň jednu povolenú lokalitu, takže sa nič nezmenilo. Pridajte inú lokalitu na stránke nastavení alebo prepnite na pomocníka pre sokety."
+    },
+    "timffle_popup_save_failed": {
+        "message": "Nastavenia sa nepodarilo uložiť; skúste to znova."
+    },
+    "timffle_prompt_page_title": {
+        "message": "Timffle — Žiadosť o soket"
+    },
+    "timffle_prompt_title": {
+        "message": "Lokalita chce používať pripojenia cez sokety"
+    },
+    "timffle_prompt_embedded": {
+        "message": "Vložené na stránke lokality:"
+    },
+    "timffle_prompt_what": {
+        "message": "Obsah Flash na tejto lokalite chce otvárať pripojenia TCP (sokety) k serverom na internete. Potrebujú to iba online hry. Ak to povolíte, môže sa pripojiť k ľubovoľnému serveru na internete (nikdy nie k vašej lokálnej sieti ani k tomuto počítaču)."
+    },
+    "timffle_prompt_warning": {
+        "message": "<1>Odporúčame zamietnuť. Povoliť by sa mali iba online hry.</1> Ak si nie ste istí, vyberte „Zamietnuť“."
+    },
+    "timffle_prompt_deny_once": {
+        "message": "Zamietnuť (odporúča sa)"
+    },
+    "timffle_prompt_visit_hint": {
+        "message": "Iba táto návšteva v tejto karte"
+    },
+    "timffle_prompt_deny_always_hint": {
+        "message": "O tejto lokalite sa už nikdy nepýtať"
+    },
+    "timffle_prompt_allow_always_hint": {
+        "message": "Už sa nepýtať"
+    },
+    "timffle_prompt_detail": {
+        "message": "Neskôr to môžete zmeniť vo vyskakovacom okne alebo na stránke nastavení Timffle. Ak hra už ohlásila zlyhanie pripojenia, po povolení to v hre skúste znova; ak text vyzerá nesprávne, znova načítajte stránku."
+    },
+    "timffle_prompt_expired": {
+        "message": "Táto žiadosť už nie je aktívna. Toto okno môžete zavrieť."
+    },
+    "timffle_options_title": {
+        "message": "Pripojenia cez sokety (herné servery)"
+    },
+    "timffle_options_enable": {
+        "message": "Povoliť sokety (lokality v zozname ich používajú priamo; pri ostatných lokalitách sa najprv opýtame)"
+    },
+    "timffle_options_method": {
+        "message": "Spôsob pripojenia"
+    },
+    "timffle_options_helper": {
+        "message": "Pomocník pre sokety (odporúča sa)"
+    },
+    "timffle_options_websocket": {
+        "message": "Vlastné proxy WebSocket (pokročilé)"
+    },
+    "timffle_helper_checking": {
+        "message": "Kontroluje sa…"
+    },
+    "timffle_helper_check": {
+        "message": "Skontrolovať znova"
+    },
+    "timffle_helper_installed": {
+        "message": "Nainštalované (verzia $VERSION$)",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.0"
+            }
+        }
+    },
+    "timffle_helper_incompatible": {
+        "message": "Nekompatibilná verzia: nainštalujte pomocníka, ktorý zodpovedá tomuto rozšíreniu."
+    },
+    "timffle_helper_missing": {
+        "message": "Nie je nainštalované: spustite inštalačný program pre svoj systém v priečinku helper stiahnutého balíka a potom skontrolujte znova."
+    },
+    "timffle_helper_unavailable": {
+        "message": "Pomocník nie je dostupný: skontrolujte inštaláciu a bezpečnostné upozornenia operačného systému a skúste to znova."
+    },
+    "timffle_options_url": {
+        "message": "Šablóna URL (vrátane tokenu, skrytá)"
+    },
+    "timffle_options_url_help": {
+        "message": "Vložte úplnú adresu URL proxy; ponechajte {host} aj {port}."
+    },
+    "timffle_options_example": {
+        "message": "Príklad:"
+    },
+    "timffle_options_allowed_helper": {
+        "message": "Vždy povolené pôvody lokalít (jeden na riadok)"
+    },
+    "timffle_options_allowed_proxy": {
+        "message": "Pôvody lokalít, ktoré smú používať vlastné proxy (jeden na riadok; dostanú adresu URL proxy a token)"
+    },
+    "timffle_options_allowed_help": {
+        "message": "Iba presné pôvody HTTP/HTTPS (schéma, hostiteľ, voliteľný port); žiadne * ani cesty. Hry Taomee 摩爾莊園, 賽爾號, 小花仙 a 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw a ddt.61.com.tw, každá cez HTTP aj HTTPS) sú predvolene povolené. Vložené prehrávače používajú pôvod svojho rámca; samostatný prehrávač používa pôvod adresy URL súboru SWF. Lokálne súbory nikdy nedostanú sokety."
+    },
+    "timffle_options_proxy_list_help": {
+        "message": "Vlastné proxy má vlastný zoznam, oddelený od zoznamu pomocníka: keď lokalite povolíte používať pomocníka, nikdy tým nezíska token proxy. Keď prepnete spôsob pripojenia, toto pole zobrazí zoznam zvoleného spôsobu."
+    },
+    "timffle_options_denied": {
+        "message": "Vždy zamietnuté pôvody lokalít (jeden na riadok)"
+    },
+    "timffle_options_denied_help": {
+        "message": "Na tieto lokality sa nikdy nepýtame a nikdy nedostanú sokety, pri žiadnom spôsobe pripojenia. Lokalita nemôže byť v oboch zoznamoch."
+    },
+    "timffle_note_ask": {
+        "message": "Lokalita, ktorá nie je v žiadnom z dvoch zoznamov, sa pri prvom pokuse o otvorenie soketu opýta: „Povoliť“, „Vždy povoliť“, „Zamietnuť“ alebo „Vždy zamietnuť“. Odporúčame zamietnuť – povoliť by sa mali iba online hry. Lokalitu aktuálnej karty môžete nastaviť aj vo vyskakovacom okne Timffle bez písania jej adresy a kedykoľvek ju vrátiť na „Opýtať sa pri každej návšteve“. (Iba v režime pomocníka pre sokety; vlastné proxy WebSocket sa nikdy nepýta a lokality mimo zoznamu odmieta.)"
+    },
+    "timffle_note_helper": {
+        "message": "Rozšírenia Chrome nemôžu otvárať sokety TCP, preto je tu pomocník. Nainštalujte ho raz (spustite inštalačný program v priečinku helper stiahnutého balíka); Chrome ho potom automaticky spúšťa a ukončuje pri každom pripojení k hre."
+    },
+    "timffle_note_public": {
+        "message": "Pomocník sa pripája iba k verejným internetovým adresám, nikdy k vašej lokálnej sieti ani k tomuto počítaču, a nezaznamenáva žiadnu prevádzku."
+    },
+    "timffle_note_proxy": {
+        "message": "Vlastné proxy WebSocket musíte spustiť sami a Chrome môže požiadať o prístup k lokálnej sieti; adresu URL proxy vrátane tokenu môžu čítať iba lokality zo zoznamu tohto spôsobu."
+    },
+    "timffle_note_reload": {
+        "message": "Po uložení alebo vypnutí znova načítajte stránky."
+    },
+    "timffle_options_save": {
+        "message": "Uložiť nastavenia proxy"
+    },
+    "timffle_loading": {
+        "message": "Načítava sa…"
+    },
+    "timffle_error_invalid_settings": {
+        "message": "Neplatný formát nastavení."
+    },
+    "timffle_error_url_required": {
+        "message": "Ak chcete použiť vlastné proxy WebSocket, zadajte šablónu URL."
+    },
+    "timffle_error_invalid_url": {
+        "message": "Použite platnú adresu URL ws:// alebo wss:// bez medzier, spätných lomiek a neznámych zástupných symbolov."
+    },
+    "timffle_error_missing_placeholders": {
+        "message": "Adresa URL musí obsahovať {host} aj {port}."
+    },
+    "timffle_error_credentials": {
+        "message": "Polia používateľského mena a hesla v adrese URL nie sú povolené; použite parameter dotazu token proxy."
+    },
+    "timffle_error_fragment": {
+        "message": "Adresy URL WebSocket nesmú obsahovať fragment #."
+    },
+    "timffle_error_dynamic_endpoint": {
+        "message": "Koncový bod proxy musí zostať pevný; {host} a {port} patria iba do cesty alebo dotazu."
+    },
+    "timffle_error_invalid_origin": {
+        "message": "Zadajte na každý riadok jeden presný pôvod HTTP/HTTPS, bez ciest, prihlasovacích údajov, dotazov a zástupných znakov."
+    },
+    "timffle_error_origins_required": {
+        "message": "Pri vlastnom proxy WebSocket povoľte aspoň jeden pôvod lokality."
+    },
+    "timffle_conflict": {
+        "message": "Lokalita nemôže byť súčasne v zozname „Vždy povoliť“ aj v zozname „Vždy zamietnuť“."
+    },
+    "timffle_changed_elsewhere": {
+        "message": "Nastavenia boli zmenené inde (napríklad vo vyskakovacom okne alebo v okne s otázkou), takže vaša úprava nebola uložená. Zobrazujú sa najnovšie nastavenia; upravte ich znova."
+    },
+    "timffle_updated_elsewhere": {
+        "message": "Nastavenia boli zmenené inde (napríklad vo vyskakovacom okne); zobrazujú sa najnovšie nastavenia."
+    },
+    "timffle_stale": {
+        "message": "Nastavenia boli zmenené inde (napríklad vo vyskakovacom okne). Vaša úprava ešte nie je uložená; pri uložení sa zobrazia najnovšie nastavenia namiesto prepísania tejto zmeny."
+    },
+    "timffle_saved_enabled": {
+        "message": "Uložené a zapnuté: lokality v zozname používajú sokety priamo, pri ostatných lokalitách sa najprv opýtame. Znova načítajte stránku; toto nie je test pripojenia."
+    },
+    "timffle_saved_disabled": {
+        "message": "Sokety sú vypnuté. Po zmenách znova načítajte stránku."
+    },
+    "timffle_unsaved": {
+        "message": "Neuložené zmeny."
+    },
+    "timffle_read_failed": {
+        "message": "Lokálne nastavenia sa nepodarilo prečítať."
+    },
+    "timffle_save_failed": {
+        "message": "Uloženie zlyhalo; zmeny neboli potvrdené. Skúste to znova."
+    },
+    "timffle_attribution": {
+        "message": "Timffle je neoficiálny fork projektu <1>Ruffle</1> a nie je s projektom Ruffle nijako spojený; emulácia Flash pochádza z Ruffle a jeho prispievateľov. Problémy hláste na <2>Timffle</2>, nie projektu Ruffle."
     }
 }
