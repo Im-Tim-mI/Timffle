@@ -1,0 +1,146 @@
+// Every language of the extension, in a real (headless) Chrome running in that language: the pages show the texts of
+// that language's catalog, in the right script and direction, and nothing sticks out of its box. It does not need
+// the socket helper or a network; the flows themselves are covered by ask-tests.mjs (run with TEST_LOCALE=<language>).
+//   node locale-tests.mjs <unpacked extension dir> [language ...]     (default: all languages of the extension)
+// SHOTS=<dir> also writes a picture of the question window and of the settings page for each language.
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import {Chrome,delay} from './chrome-cdp-native.mjs';
+import {languages,loadTexts,norm,resolveLanguage} from './catalog.mjs';
+
+const root=path.dirname(new URL(import.meta.url).pathname);
+const [extensionDir,...wanted]=process.argv.slice(2);
+assert.ok(extensionDir,'Usage: node locale-tests.mjs extension-dir [language ...]');
+const manifest=JSON.parse(await fs.readFile(path.join(extensionDir,'manifest.json'),'utf8'));
+const digest=crypto.createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32);
+const ID=[...digest].map(c=>'abcdefghijklmnop'[parseInt(c,16)]).join('');
+const output=path.join(root,'locales-'+Date.now());
+await fs.mkdir(output,{recursive:true,mode:0o700});
+const shots=process.env.SHOTS?path.resolve(process.env.SHOTS):undefined;
+if(shots)await fs.mkdir(shots,{recursive:true});
+const results=[];
+const add=(name,pass,detail={})=>{const r={name,pass,...detail};results.push(r);console.log(JSON.stringify(r));};
+const RTL=new Set(['ar','he']);
+// Chrome has no interface language for these, so it runs in English whatever the system asks for (Firefox has them). Their
+// catalogs are checked by the unit tests; here the browser is only expected to fall back to English.
+const NO_CHROME_UI=new Set(['bs','eo','gl','tt']);
+const all=languages(extensionDir);
+const todo=wanted.length?wanted:all;
+for(const language of todo)assert.ok(all.includes(language),'the extension has no language '+language);
+
+// What a page shows for every marked element, read in the page.
+const READ=`(()=>{
+ const text=(n)=>n.textContent;
+ return {
+  lang:document.documentElement.lang,dir:document.documentElement.dir,title:document.title,
+  marked:[...document.querySelectorAll('[data-i18n]')].map(n=>({key:n.dataset.i18n,text:text(n)})),
+  rich:[...document.querySelectorAll('[data-i18n-rich]')].map(n=>({key:n.dataset.i18nRich,text:text(n),links:[...n.querySelectorAll('a')].map(a=>({text:a.textContent,href:a.href})),bold:[...n.querySelectorAll('strong')].map(b=>b.textContent)})),
+  overflowX:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+  bodyWidth:document.body.getBoundingClientRect().width
+ };
+})()`;
+
+for(const language of todo){
+ const t0=Date.now();
+ const T=loadTexts(extensionDir,language);
+ let chrome;
+ try{
+  chrome=new Chrome(path.join(output,language),{recordEvents:false,fontConfig:process.env.TEST_FONTCONFIG||undefined,locale:language});
+  const attach=async(targetId)=>{const {sessionId}=await chrome.send('Target.attachToTarget',{targetId,flatten:true});for(const m of ['Page.enable','Runtime.enable'])await chrome.send(m,{},sessionId);return sessionId;};
+  const open=async(url,width,height)=>{
+   const {targetId}=await chrome.send('Target.createTarget',{url:'about:blank'});
+   const sessionId=await attach(targetId);
+   await chrome.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false},sessionId);
+   await chrome.send('Page.navigate',{url},sessionId);
+   return {targetId,sessionId};
+  };
+  // The page is sized to its content for the picture: a capture beyond the viewport puts a right-to-left page in the wrong place.
+  const picture=async(page,name)=>{if(!shots)return;
+   const size=await chrome.eval(page.sessionId,'({w:innerWidth,h:Math.ceil(document.documentElement.scrollHeight)})');
+   await chrome.send('Emulation.setDeviceMetricsOverride',{width:size.w,height:size.h,deviceScaleFactor:1,mobile:false},page.sessionId);
+   await delay(150);
+   const s=await chrome.send('Page.captureScreenshot',{format:'png'},page.sessionId);await fs.writeFile(path.join(shots,language+'-'+name+'.png'),Buffer.from(s.data,'base64'));};
+  const loaded=await chrome.send('Extensions.loadUnpacked',{path:path.resolve(extensionDir)});
+  assert.equal(loaded.id,ID);
+
+  // The language Chrome really runs the extension in (it must be the one asked for).
+  const probe=await open('chrome-extension://'+ID+'/options.html',860,1700);
+  await chrome.wait(probe.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()',20000);
+  const ui=await chrome.eval(probe.sessionId,'chrome.i18n.getMessage("@@ui_locale")');
+  if(NO_CHROME_UI.has(language)){
+   add(language+':chrome-has-no-interface-language-for-this-one-and-falls-back-to-english',ui==='en_US'||ui==='en',{ui});
+   const fallback=await chrome.eval(probe.sessionId,READ);
+   const en=loadTexts(extensionDir,'en');
+   add(language+':the-fallback-pages-show-english-not-keys',fallback.marked.every(m=>m.text===en(m.key)||['timffle_loading','timffle_helper_checking'].includes(m.key)),{wrong:fallback.marked.filter(m=>m.text!==en(m.key)).slice(0,3)});
+   await chrome.send('Target.closeTarget',{targetId:probe.targetId});
+   continue;
+  }
+  add(language+':browser-runs-in-this-language',resolveLanguage(extensionDir,ui)===language,{ui});
+
+  // ---- settings page
+  const o=await chrome.eval(probe.sessionId,READ);
+  const expectLang=ui.replace('_','-');
+  add(language+':settings-page-language-and-direction',o.lang===expectLang&&o.dir===(RTL.has(language)?'rtl':'ltr'),{lang:o.lang,dir:o.dir,expectLang});
+  const wrong=o.marked.filter(m=>m.text!==T(m.key));
+  // The status line and the helper line are rewritten by the page itself once it has read its settings.
+  const own=wrong.filter(m=>!['timffle_loading','timffle_helper_checking'].includes(m.key));
+  add(language+':settings-page-shows-its-catalog',o.marked.length>=20&&own.length===0,{count:o.marked.length,wrong:own.slice(0,3)});
+  const att=o.rich.find(r=>r.key==='timffle_attribution');
+  add(language+':attribution-keeps-both-links',!!att&&norm(att.text)===T.plain('timffle_attribution'),{att});
+  add(language+':attribution-links-point-to-ruffle-and-timffle',!!att&&att.links.length===2&&att.links[0].text==='Ruffle'&&/^https:\/\/ruffle\.rs\/?$/.test(att.links[0].href)&&att.links[1].text==='Timffle'&&att.links[1].href==='https://github.com/Im-Tim-mI/Timffle/issues',{links:att?.links});
+  add(language+':settings-page-fits-its-width',o.overflowX<=0,{overflowX:o.overflowX,bodyWidth:o.bodyWidth});
+  add(language+':settings-page-title-is-the-ruffle-translation-or-english',o.title===(loadTexts(extensionDir,language)('settings_page')),{title:o.title});
+  await chrome.wait(probe.sessionId,`(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.textContent!==${JSON.stringify(T('timffle_helper_checking'))}})()`,15000);
+  const helperText=await chrome.eval(probe.sessionId,'document.querySelector("#socket-helper-status").textContent');
+  // No helper is installed in this run: the status is the "not installed" one (or the "unavailable" one), never blank or the key.
+  add(language+':helper-status-is-a-catalog-text',[T('timffle_helper_missing'),T('timffle_helper_unavailable'),T('timffle_helper_incompatible')].includes(helperText),{helperText});
+  await picture(probe,'settings');
+  await chrome.send('Target.closeTarget',{targetId:probe.targetId});
+
+  // ---- question window (opened without a pending question: the "expired" page is shown; the question itself is
+  // shown by hand here, because it needs a real website to ask)
+  const q=await open('chrome-extension://'+ID+'/prompt.html?id=00000000-0000-4000-8000-000000000000',540,680);
+  await chrome.wait(q.sessionId,'!document.getElementById("expired").hidden',20000);
+  const p=await chrome.eval(q.sessionId,READ);
+  add(language+':question-window-language-and-direction',p.lang===expectLang&&p.dir===(RTL.has(language)?'rtl':'ltr'),{lang:p.lang,dir:p.dir});
+  add(language+':question-window-title-is-translated',p.title===T('timffle_prompt_page_title'),{title:p.title});
+  add(language+':question-window-shows-its-catalog',p.marked.length>=10&&p.marked.every(m=>m.text===T(m.key)),{count:p.marked.length,wrong:p.marked.filter(m=>m.text!==T(m.key)).slice(0,3)});
+  const warn=p.rich.find(r=>r.key==='timffle_prompt_warning');
+  add(language+':question-warning-is-bold-in-the-right-place',!!warn&&warn.bold.length===1&&norm(warn.text)===T.plain('timffle_prompt_warning')&&T('timffle_prompt_warning').includes('<1>'+warn.bold[0]+'</1>'),{warn});
+  // Show the question itself, with a long made-up website and the page it is embedded in, as the real one would be.
+  await chrome.eval(q.sessionId,`(()=>{document.getElementById('prompt-origin').textContent='https://a-long-example-website.example:8443';document.getElementById('prompt-embedded-origin').textContent='https://another-long-example-website.example';document.getElementById('prompt-embedded').hidden=false;document.getElementById('expired').hidden=true;document.getElementById('prompt').hidden=false;})()`);
+  await delay(150);
+  const m=await chrome.eval(q.sessionId,`(()=>{
+   const box=(e)=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
+   const main=document.getElementById('prompt');
+   const buttons=[...document.querySelectorAll('button[data-choice]')].map(b=>({id:b.id,...box(b),clipped:b.scrollWidth>b.clientWidth+1||[...b.children].some(c=>c.scrollWidth>c.clientWidth+1)}));
+   return {overflowX:document.documentElement.scrollWidth-document.documentElement.clientWidth,mainWidth:box(main).w,buttons,embedded:document.getElementById('prompt-embedded').textContent.replace(/\\s+/g,' ').trim(),order:buttons.map(b=>b.id+':'+Math.round(b.x))};
+  })()`);
+  add(language+':question-window-fits-its-width',m.overflowX<=0&&m.buttons.every(b=>!b.clipped&&b.right<=541),{overflowX:m.overflowX,buttons:m.buttons.filter(b=>b.clipped||b.right>541)});
+  // In a left-to-right language "Deny" is the first button on the left; in a right-to-left one it is on the right.
+  const deny=m.buttons.find(b=>b.id==='deny-once'),allowOnce=m.buttons.find(b=>b.id==='allow-once');
+  add(language+':question-buttons-follow-the-reading-direction',RTL.has(language)?deny.x>allowOnce.x:deny.x<allowOnce.x,{deny:deny.x,allow:allowOnce.x});
+  add(language+':question-says-where-it-is-embedded',m.embedded===norm(T('timffle_prompt_embedded')+' https://another-long-example-website.example'),{embedded:m.embedded});
+  await picture(q,'question');
+  await chrome.send('Target.closeTarget',{targetId:q.targetId});
+
+  // ---- popup page (as a tab: the socket section stays hidden without a website tab, but its texts are in place)
+  const pop=await open('chrome-extension://'+ID+'/popup.html',320,600);
+  await chrome.wait(pop.sessionId,'document.documentElement.lang!==""&&!!document.querySelector(".socket-title")?.textContent',20000);
+  const pp=await chrome.eval(pop.sessionId,READ);
+  add(language+':popup-shows-its-catalog',pp.marked.length>=2&&pp.marked.every(x=>x.text===T(x.key)),{marked:pp.marked.map(x=>x.key)});
+  add(language+':popup-language-and-direction',pp.lang===expectLang&&pp.dir===(RTL.has(language)?'rtl':'ltr'),{lang:pp.lang,dir:pp.dir});
+  await chrome.send('Target.closeTarget',{targetId:pop.targetId});
+ }catch(error){
+  add(language+':run',false,{error:String(error?.message??error)});
+ }finally{
+  await chrome?.close();
+ }
+ console.error(language+' done in '+Math.round((Date.now()-t0)/1000)+'s');
+}
+const failed=results.filter(r=>!r.pass);
+await fs.writeFile(path.join(output,'results.json'),JSON.stringify(results,null,1));
+console.log(JSON.stringify({summary:{languages:todo.length,checks:results.length,failed:failed.length,failures:failed.map(r=>r.name)}}));
+process.exit(failed.length?1:0);

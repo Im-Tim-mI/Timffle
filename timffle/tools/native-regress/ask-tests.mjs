@@ -2,6 +2,7 @@
 // opens its own question window, the answer is kept (or not), and the popup can change it later.
 // Headless Chrome + the test-only helper (connects to localhost only); never touches a real game server.
 //   node ask-tests.mjs <unpacked extension dir> <localtest helper binary>
+// The browser runs in the language TEST_LOCALE (default en, e.g. TEST_LOCALE=zh_TW); texts are expected from the extension's catalog for it.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -10,11 +11,13 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {Chrome,delay} from './chrome-cdp-native.mjs';
+import {loadTexts,norm} from './catalog.mjs';
 
 const root=path.dirname(new URL(import.meta.url).pathname);
 const [extensionDir,helper]=process.argv.slice(2);
 assert.ok(extensionDir&&helper,'Usage: node ask-tests.mjs extension-dir localtest-helper-binary');
 const manifest=JSON.parse(await fs.readFile(path.join(extensionDir,'manifest.json'),'utf8'));
+const locale=process.env.TEST_LOCALE||'en',T=loadTexts(extensionDir,locale);
 const digest=crypto.createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32);
 const ID=[...digest].map(c=>'abcdefghijklmnop'[parseInt(c,16)]).join('');
 assert.equal(ID,'eandddnbchclalbjkhfelhjhpijifcog');
@@ -60,12 +63,16 @@ const click=async(sessionId,selector)=>{
 };
 const settingsNow=()=>chrome.eval(opts.sessionId,'chrome.storage.local.get("socketProxySettings").then(x=>x.socketProxySettings??null)');
 const setSettings=(value)=>chrome.eval(opts.sessionId,value===null?'chrome.storage.local.remove("socketProxySettings")':'chrome.storage.local.set({socketProxySettings:'+JSON.stringify(value)+'})');
-const fixtureTab=async(site=origin,query='')=>{const p=await chrome.tab(site+'/?'+query);return p;};
+// The extension opens at most 6 question windows a minute (MAX_PROMPTS_PER_MINUTE); a quick run, such as one in a
+// language whose popup needs no waiting, must not trip that, so a new page waits while 5 windows are still that young.
+const askedAt=[];
+const spacing=async()=>{while(askedAt.filter(t=>Date.now()-t<62000).length>=5)await delay(500);};
+const fixtureTab=async(site=origin,query='')=>{await spacing();const p=await chrome.tab(site+'/?'+query);return p;};
 const probe=(p,ms=20000)=>chrome.wait(p.sessionId,'window.__probe',ms);
 const good=r=>r.status==='ok'&&r.badBytes===0&&r.events.filter(x=>x==='connect').length===1&&r.events.filter(x=>x==='close').length===1;
 const noConnect=r=>r.status==='ioError'&&r.connectMs===-1&&!r.events.includes('connect')&&!r.connected;
 // Waits for the question window of the website, and for its input guard to pass.
-const question=async(ms=15000)=>{const t=await until(async()=>(await promptTargets())[0],ms);assert.ok(t,'no question window');const sessionId=await attach(t.targetId);
+const question=async(ms=15000)=>{const t=await until(async()=>(await promptTargets())[0],ms);assert.ok(t,'no question window');askedAt.push(Date.now());const sessionId=await attach(t.targetId);
  await chrome.wait(sessionId,'!document.getElementById("prompt").hidden',8000);await delay(900);return {...t,sessionId};};
 const answerWith=async(q,choice)=>{await click(q.sessionId,'#'+choice);};
 // The service worker is stopped when idle; talk to it only briefly (an attached debugger keeps it alive).
@@ -116,7 +123,7 @@ try{
  await fs.mkdir(installEnv.HOME,{recursive:true,mode:0o700});
  const out=execFileSync(path.resolve(helper),['--install'],{env:installEnv,encoding:'utf8'});
  add('helper-installed',out.includes('installed'));
- chrome=new Chrome(work,{recordEvents:false,fontConfig:process.env.TEST_FONTCONFIG||undefined,userDataDir});
+ chrome=new Chrome(work,{recordEvents:false,fontConfig:process.env.TEST_FONTCONFIG||undefined,userDataDir,locale});
  chrome.tab=async(url)=>{const {targetId}=await chrome.send('Target.createTarget',{url:'about:blank'});const sessionId=await attach(targetId);await chrome.send('Network.enable',{},sessionId);await chrome.send('Page.navigate',{url},sessionId);return {targetId,sessionId};};
  const loaded=await chrome.send('Extensions.loadUnpacked',{path:path.resolve(extensionDir)});add('stable-extension-id',loaded.id===ID,{id:loaded.id});
  opts=await chrome.tab('chrome-extension://'+ID+'/options.html');
@@ -145,7 +152,7 @@ try{
  const q1=await question();
  const view=await chrome.eval(q1.sessionId,'({origin:document.getElementById("prompt-origin").textContent,title:document.getElementById("prompt-title").textContent.replace(/\\s+/g," ").trim(),warning:document.getElementById("prompt-warning").textContent.replace(/\\s+/g," ").trim(),buttons:[...document.querySelectorAll("button[data-choice]")].map(b=>b.dataset.choice),focus:document.activeElement?.id})');
  add('first-attempt-opens-the-question',view.origin===origin&&view.buttons.join()==='deny-once,allow-once,deny-always,allow-always',{view});
- add('question-recommends-denying-and-names-online-games',view.warning.includes('預設建議拒絕')&&view.warning.includes('只有線上遊戲可以允許')&&view.warning.includes('recommend denying')&&view.focus==='deny-once',{warning:view.warning,focus:view.focus});
+ add('question-recommends-denying-and-names-online-games',norm(view.warning)===T.plain('timffle_prompt_warning')&&norm(view.title)===norm(T('timffle_prompt_title'))&&view.focus==='deny-once',{warning:view.warning,title:view.title,focus:view.focus});
  add('nothing-connects-while-the-question-is-open',stat.connections===before&&countHelpers()===0);
  const shot=await chrome.send('Page.captureScreenshot',{format:'png'},q1.sessionId);await fs.writeFile(path.join(output,'question.png'),Buffer.from(shot.data,'base64'));
  // With a real window (CHROME_HEADED=1 CHROME_WINDOW_SIZE=none, e.g. under xvfb-run; --window-size would override the size the
@@ -220,7 +227,7 @@ try{
  await chrome.wait(web1.sessionId,'document.readyState==="complete"');await delay(600);
  let pop=await openPopup(web1);
  let ps=await popupState(pop);
- add('popup-offers-to-allow-this-site',ps.visible&&ps.sites.length===1&&ps.sites[0].origin===origin&&ps.sites[0].state.includes('每次造訪時詢問')&&ps.sites[0].allow==='允許此網站使用 Socket 連線 / Allow this site to use sockets'&&ps.sites[0].select==='ask'&&ps.warning.includes('預設建議拒絕')&&ps.warning.includes('只有線上遊戲可以允許'),{ps});
+ add('popup-offers-to-allow-this-site',ps.visible&&ps.sites.length===1&&ps.sites[0].origin===origin&&ps.sites[0].state===T('timffle_choice_ask')&&ps.sites[0].allow===T('timffle_popup_allow_site')&&ps.sites[0].select==='ask'&&norm(ps.warning)===norm(T('timffle_popup_warning')),{ps});
  {const shot=await chrome.send('Page.captureScreenshot',{format:'png'},pop.sessionId);await fs.writeFile(path.join(output,'popup-ask.png'),Buffer.from(shot.data,'base64'));}
  const popupHeight=await chrome.eval(pop.sessionId,'document.documentElement.scrollHeight');
  add('popup-fits-the-600px-chrome-allows',popupHeight<=600,{popupHeight});
@@ -229,7 +236,7 @@ try{
  const sa=await settingsNow();
  add('popup-allow-adds-the-origin-without-typing',sa.allowedOrigins.includes(origin)&&!sa.deniedOrigins.includes(origin),{sa});
  await delay(500);ps=await popupState(pop);
- add('popup-shows-always-allowed-and-no-allow-button',ps.sites[0].state.includes('一律允許')&&ps.sites[0].allow===null&&ps.sites[0].select==='allow',{ps});
+ add('popup-shows-always-allowed-and-no-allow-button',ps.sites[0].state===T('timffle_popup_always_allowed')&&ps.sites[0].allow===null&&ps.sites[0].select==='allow',{ps});
  add('popup-asks-for-a-reload-after-allowing',ps.reload===true,{ps});
  {const shot=await chrome.send('Page.captureScreenshot',{format:'png'},pop.sessionId);await fs.writeFile(path.join(output,'popup-allowed.png'),Buffer.from(shot.data,'base64'));}
  await choose(pop,'deny');
@@ -237,11 +244,11 @@ try{
  const sd=await settingsNow();
  add('popup-select-always-deny',sd.deniedOrigins.includes(origin)&&!sd.allowedOrigins.includes(origin),{sd});
  await delay(500);ps=await popupState(pop);
- add('popup-shows-always-denied-with-allow-button',ps.sites[0].state.includes('一律拒絕')&&ps.sites[0].allow!==null&&ps.sites[0].select==='deny',{ps});
+ add('popup-shows-always-denied-with-allow-button',ps.sites[0].state===T('timffle_popup_always_denied')&&ps.sites[0].allow!==null&&ps.sites[0].select==='deny',{ps});
  await choose(pop,'ask');
  await until(async()=>{const x=await settingsNow();return x&&!x.deniedOrigins.includes(origin)&&!x.allowedOrigins.includes(origin);});
  await delay(500);ps=await popupState(pop);
- add('popup-select-ask-removes-both',ps.sites[0].state.includes('每次造訪時詢問')&&ps.sites[0].select==='ask',{ps});
+ add('popup-select-ask-removes-both',ps.sites[0].state===T('timffle_choice_ask')&&ps.sites[0].select==='ask',{ps});
  await choose(pop,'allow');
  await until(async()=>(await settingsNow())?.allowedOrigins.includes(origin));
  add('popup-select-always-allow',(await settingsNow()).allowedOrigins.includes(origin));
@@ -266,7 +273,7 @@ try{
  pop=await openPopup(portal);
  ps=await popupState(pop);
  const frameRow=ps.sites.find(x=>x.origin===altOrigin);
- add('popup-lists-the-frame-that-was-asked-about',ps.sites.length===2&&ps.sites[0].origin===origin&&!!frameRow&&frameRow.state.includes('本次造訪已拒絕')&&frameRow.allow==='允許 / Allow',{ps});
+ add('popup-lists-the-frame-that-was-asked-about',ps.sites.length===2&&ps.sites[0].origin===origin&&!!frameRow&&frameRow.state===T('timffle_popup_visit_denied')&&frameRow.allow===T('timffle_allow'),{ps});
  {const shot=await chrome.send('Page.captureScreenshot',{format:'png'},pop.sessionId);await fs.writeFile(path.join(output,'popup-frame.png'),Buffer.from(shot.data,'base64'));}
  await click(pop.sessionId,'.socket-site:nth-of-type(2) .socket-allow');
  await until(async()=>(await settingsNow())?.allowedOrigins.includes(altOrigin));
@@ -286,12 +293,12 @@ try{
  await setSettings({enabled:false,mode:'helper',proxyUrl:'',allowedOrigins:['https://mole.61.com.tw'],deniedOrigins:[]});
  const off=await fixtureTab(origin,'bare=1');await chrome.wait(off.sessionId,'document.readyState==="complete"');await delay(600);
  pop=await openPopup(off);ps=await popupState(pop);
- add('popup-says-sockets-are-off-and-offers-nothing',ps.visible&&ps.sites.length===1&&ps.sites[0].state.includes('停用')&&ps.sites[0].allow===null&&ps.sites[0].select===null,{ps});
+ add('popup-says-sockets-are-off-and-offers-nothing',ps.visible&&ps.sites.length===1&&ps.sites[0].state===T('timffle_popup_off')&&ps.sites[0].allow===null&&ps.sites[0].select===null,{ps});
  await closePopup(pop);
  await setSettings({enabled:true,mode:'websocket',proxyUrl:'ws://127.0.0.1:1/connect?host={host}&port={port}',allowedOrigins:['https://mole.61.com.tw'],deniedOrigins:[]});
  await delay(500);
  pop=await openPopup(off);ps=await popupState(pop);
- add('popup-with-a-custom-proxy-says-it-never-asks',ps.visible&&ps.sites[0].state.includes('不會詢問')&&ps.sites[0].allow!==null,{ps});
+ add('popup-with-a-custom-proxy-says-it-never-asks',ps.visible&&ps.sites[0].state===T('timffle_popup_proxy_not_allowed')&&ps.sites[0].allow!==null,{ps});
  await closePopup(pop);await close(off.targetId);
  await setSettings(null);
 
@@ -379,7 +386,7 @@ try{
  const X='https://x.example',Y='https://y.example',Z='https://z.example';
  await setSettings({enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:[origin,X],proxyOrigins:[Y],deniedOrigins:[]});
  const form=await chrome.tab('chrome-extension://'+ID+'/options.html');
- await chrome.wait(form.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state&&!s.textContent.includes("讀取中")})()');
+ await chrome.wait(form.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()');
  const read=()=>chrome.eval(form.sessionId,'({mode:document.getElementById("socket-proxy-mode-websocket").checked?"websocket":"helper",origins:document.getElementById("socket-proxy-origins").value,denied:document.getElementById("socket-proxy-denied").value,status:document.getElementById("socket-proxy-status").textContent,state:document.getElementById("socket-proxy-status").dataset.state,texts:[...new Set([...document.querySelectorAll("[data-mode-text]")].filter(n=>!n.hidden).map(n=>n.dataset.modeText))].join(),save:document.getElementById("socket-proxy-save").disabled})');
  const type=(selector,value)=>chrome.eval(form.sessionId,'(()=>{const e=document.querySelector('+JSON.stringify(selector)+');e.value='+JSON.stringify(value)+';e.dispatchEvent(new Event("input",{bubbles:true}));return true})()');
  let f=await read();
@@ -412,15 +419,15 @@ try{
  await setSettings({...st,mode:'helper',proxyUrl:'',allowedOrigins:[origin],deniedOrigins:[X]});
  await until(async()=>(await read()).denied===X);
  f=await read();
- add('a-form-without-edits-follows-changes-made-elsewhere',f.denied===X&&f.mode==='helper'&&f.origins===origin&&f.status.includes('已在別處變更'),{f});
+ add('a-form-without-edits-follows-changes-made-elsewhere',f.denied===X&&f.mode==='helper'&&f.origins===origin&&f.status===T('timffle_updated_elsewhere'),{f});
  // A form with edits is never saved over them: the old view of the lists would undo "always deny".
  await type('#socket-proxy-origins',[origin,Z].join('\n'));
  await setSettings({...(await settingsNow()),deniedOrigins:[X,Z]});
- await until(async()=>(await read()).status.includes('尚未儲存；儲存時會改為顯示最新設定')||(await read()).status.includes('Your edit is not saved yet'));
+ await until(async()=>(await read()).status===T('timffle_stale'));
  f=await read();
- add('a-form-with-edits-is-told-that-the-settings-changed',f.state==='error'&&f.status.includes('Your edit is not saved yet'),{f});
+ add('a-form-with-edits-is-told-that-the-settings-changed',f.state==='error'&&f.status===T('timffle_stale'),{f});
  await click(form.sessionId,'#socket-proxy-save');
- await until(async()=>(await read()).status.includes('沒有儲存'));
+ await until(async()=>(await read()).status===T('timffle_changed_elsewhere'));
  st=await settingsNow();f=await read();
  add('a-stale-form-cannot-undo-always-deny',st.deniedOrigins.includes(Z)&&!st.allowedOrigins.includes(Z)&&!st.proxyOrigins.includes(Z)&&f.denied.split('\n').includes(Z)&&!f.origins.split('\n').includes(Z),{st,f});
  await close(form.targetId);

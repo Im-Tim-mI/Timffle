@@ -6,12 +6,14 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {Chrome,delay} from './chrome-cdp-native.mjs';
+import {loadTexts} from './catalog.mjs';
 import {WebSocketServer} from '../../relay/vendor/ws/wrapper.mjs';
 
 const root=path.dirname(new URL(import.meta.url).pathname);
 const [extensionDir,helper,mode='localtest']=process.argv.slice(2);
 assert.ok(extensionDir&&helper,'Usage: node browser-auto-tests.mjs extension-dir helper-binary mode');
 const manifest=JSON.parse(await fs.readFile(path.join(extensionDir,'manifest.json'),'utf8'));
+const locale=process.env.TEST_LOCALE||'en',T=loadTexts(extensionDir,locale);
 const digest=crypto.createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32);
 const ID=[...digest].map(c=>'abcdefghijklmnop'[parseInt(c,16)]).join('');
 assert.equal(ID,'eandddnbchclalbjkhfelhjhpijifcog');
@@ -52,7 +54,7 @@ try{
   const hosts=path.join(userDataDir,'NativeMessagingHosts');await fs.mkdir(hosts,{recursive:true});
   await fs.writeFile(path.join(hosts,'timffle_socket_helper.json'),JSON.stringify({name:'timffle_socket_helper',description:'Isolated test host',path:path.resolve(helper),type:'stdio',allowed_origins:['chrome-extension://'+ID+'/']}));
  }
- chrome=new Chrome(work,{recordEvents:true,fontConfig:process.env.TEST_FONTCONFIG||undefined,userDataDir});
+ chrome=new Chrome(work,{recordEvents:true,fontConfig:process.env.TEST_FONTCONFIG||undefined,userDataDir,locale});
  chrome.tab=async(url)=>{const {targetId}=await chrome.send('Target.createTarget',{url:'about:blank'});const {sessionId}=await chrome.send('Target.attachToTarget',{targetId,flatten:true});for(const method of ['Page.enable','Runtime.enable','Network.enable'])await chrome.send(method,{},sessionId);await chrome.send('Page.navigate',{url},sessionId);return {targetId,sessionId};};
  const version=(await chrome.send('Browser.getVersion')).product;
  const loaded=await chrome.send('Extensions.loadUnpacked',{path:path.resolve(extensionDir)});add('stable-extension-id',loaded.id===ID,{id:loaded.id});
@@ -77,8 +79,8 @@ try{
  add('customized-list-is-kept',custom==='https://mole.61.com.tw\nhttp://mole.61.com.tw\nhttps://x.example',{custom});
  await chrome.eval(opts.sessionId,'chrome.storage.local.remove("socketProxySettings")');
 
- const status=await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&!s.textContent.startsWith("檢查中")?{text:s.textContent,state:s.dataset.state}:false})()',12000);
- const expectedGood=!['missing','incompatible'].includes(mode);add('helper-detection',expectedGood?status.state==='info'&&status.text.includes('1.2.0'):status.state==='error'&&status.text.includes(mode==='incompatible'?'版本不相容':'尚未安裝'),{status});
+ const status=await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&s.textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'?{text:s.textContent,state:s.dataset.state}:false})()',12000);
+ const expectedGood=!['missing','incompatible'].includes(mode);add('helper-detection',expectedGood?status.state==='info'&&status.text===T('timffle_helper_installed',['1.2.0']):status.state==='error'&&status.text===T(mode==='incompatible'?'timffle_helper_incompatible':'timffle_helper_missing'),{status});
  await until(()=>countHelpers()===0);add('status-check-exits-helper',countHelpers()===0);
  const shot=await chrome.send('Page.captureScreenshot',{format:'png'},opts.sessionId);await fs.writeFile(path.join(output,'options.png'),Buffer.from(shot.data,'base64'));
  const setOrigins=async(origins)=>{await chrome.eval(opts.sessionId,'(()=>{document.querySelector("#socket-proxy-origins").value='+JSON.stringify(origins.join('\n'))+';document.querySelector("#socket-proxy-form").requestSubmit();})()');await chrome.wait(opts.sessionId,'(async()=>{const x=(await chrome.storage.local.get("socketProxySettings")).socketProxySettings;return x&&JSON.stringify(x.allowedOrigins)==='+JSON.stringify(JSON.stringify(origins))+'})()');};
@@ -130,7 +132,7 @@ try{
  if(realHelper){
   const out=execFileSync(path.resolve(helper),['--uninstall'],{env:installEnv,encoding:'utf8'});
   await chrome.send('Page.reload',{},opts.sessionId);
-  const after=await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&!s.textContent.startsWith("檢查中")?{text:s.textContent,state:s.dataset.state}:false})()',12000);
+  const after=await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&s.textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'?{text:s.textContent,state:s.dataset.state}:false})()',12000);
   let left=[];try{left=await fs.readdir(path.join(work,'data','timffle-socket-helper'));}catch{}
   add('uninstall-unregisters-from-chrome',out.includes('removed')&&after.state==='error'&&left.length===0,{after,left});
  }

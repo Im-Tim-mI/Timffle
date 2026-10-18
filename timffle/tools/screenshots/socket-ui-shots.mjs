@@ -4,6 +4,7 @@
 // website https://game.example (the page asks the background for its text, which is answered here), and the
 // popup is told that the tab's address is the same example name (the real one is a local test address).
 //   node socket-ui-shots.mjs <unpacked extension dir> <helper binary> <work dir> <output dir>
+// SHOT_LOCALE=ja (or zh_TW, ar, ...) runs the browser in that language; the default is English.
 // writes options-socket.png, socket-popup.png and socket-question.png into <output dir>.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -11,6 +12,7 @@ import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {Chrome, delay} from '../native-regress/chrome-cdp-native.mjs';
+import {loadTexts} from '../native-regress/catalog.mjs';
 
 const [extensionDir, helper, work, outDir] = process.argv.slice(2);
 if (!extensionDir || !helper || !work || !outDir) throw new Error('usage: node socket-ui-shots.mjs <extension dir> <helper binary> <work dir> <output dir>');
@@ -25,7 +27,9 @@ execFileSync(path.resolve(helper), ['--install'], {env, encoding: 'utf8'});
 const web = http.createServer((req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><meta charset="utf-8"><title>game</title><p>no flash</p>'); });
 await new Promise(r => web.listen(0, '127.0.0.1', r));
 const origin = 'http://127.0.0.1:' + web.address().port;
-const chrome = new Chrome(work, {recordEvents: false, userDataDir: path.join(work, 'config', 'google-chrome')});
+const locale = process.env.SHOT_LOCALE || 'en';
+const T = loadTexts(extensionDir, locale);
+const chrome = new Chrome(work, {recordEvents: false, userDataDir: path.join(work, 'config', 'google-chrome'), locale});
 const attach = async (targetId) => { const {sessionId} = await chrome.send('Target.attachToTarget', {targetId, flatten: true}); for (const m of ['Page.enable', 'Runtime.enable']) await chrome.send(m, {}, sessionId); return sessionId; };
 const save = async (sessionId, name, params = {}) => { const shot = await chrome.send('Page.captureScreenshot', {format: 'png', ...params}, sessionId); await fs.writeFile(path.join(outDir, name), Buffer.from(shot.data, 'base64')); console.log('wrote', name); };
 const light = (sessionId) => chrome.send('Emulation.setEmulatedMedia', {features: [{name: 'prefers-color-scheme', value: 'light'}]}, sessionId);
@@ -40,7 +44,7 @@ try {
     await chrome.send('Emulation.setDeviceMetricsOverride', {width: 860, height: 1600, deviceScaleFactor: 2, mobile: false}, sessionId);
     await chrome.send('Page.navigate', {url: `chrome-extension://${ID}/options.html`}, sessionId);
     await chrome.wait(sessionId, '(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()');
-    await chrome.wait(sessionId, '(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state==="info"&&!s.textContent.startsWith("檢查中")})()', 12000);
+    await chrome.wait(sessionId, `(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state==="info"&&s.textContent!==${JSON.stringify(T('timffle_helper_checking'))}})()`, 12000);
     await delay(600);
     const box = await chrome.eval(sessionId, `(()=>{const f=document.querySelector('#socket-proxy-form').getBoundingClientRect();const d=document.querySelector('#socket-proxy-denied').getBoundingClientRect();const help=document.querySelector('#socket-proxy-denied-help').getBoundingClientRect();return {x:f.x,y:f.y+scrollY,w:f.width,h:(help.bottom+scrollY)-(f.y+scrollY)}})()`);
     const pad = 14;
