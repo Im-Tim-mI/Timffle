@@ -18,7 +18,7 @@
 
 <p align="center"><b>English</b> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">Version <code>0.8.0.26300</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
+<p align="center">Version <code>0.8.0.26301</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
 > **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
@@ -50,6 +50,7 @@ Everything ships as **one Chrome extension package**: download it, install it, o
 - **Conservative security design**: the helper connects to public internet addresses only, listens on no port, does not stay running and records no traffic; only this extension's ID can call it.
 - **Real Flash as the reference**: every compatibility fix for Ruffle is compared line by line with the output of Adobe Flash Player 32 (30 golden files).
 - **Chinese text shows up**: device-font text uses the browser's fonts, positioned by the metrics of the Windows fonts the games ask for (SimSun, Arial Black, Tahoma, …).
+- **36 interface languages, like Ruffle**: the pages follow the browser's language (English and Traditional Chinese are written by the author, the other 34 are machine translations; see [Languages](#languages)).
 - **Taomee Taiwan's games out of the box**: the four game sites are allowed to use sockets by default.
 - **One package**: [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) provides `timffle-chrome-<version>.zip` with the Chrome extension, the connection helper and the installers.
 - **Open source, upstream history kept**: Ruffle's complete git history, authorship and licences are preserved; Timffle's own parts are MIT OR Apache-2.0 at your option, like Ruffle.
@@ -140,7 +141,7 @@ The helper lives in `%LOCALAPPDATA%\TimffleSocketHelper` (Windows), `~/Library/A
 
 ## Settings
 
-The extension's options page has a section "**Socket 連線（遊戲伺服器） / Socket connections (game servers)**" (bilingual: Traditional Chinese / English):
+The extension's options page has a section "**Socket connections (game servers)**" (the pictures show an English browser; the text follows the browser's language, see [Languages](#languages)):
 
 <p align="center"><img src="timffle/docs/images/options-socket.png" alt="The socket section of the extension's options page: the connection helper is shown as installed, followed by the list of allowed website origins" width="560"></p>
 
@@ -184,6 +185,15 @@ Click the Timffle icon on the browser toolbar; the "Socket connections" section 
 - **Frames of other websites** in this tab that were asked about are listed below, each with its own button and drop-down.
 - The status line also shows this tab's allow or deny for "this visit".
 - The other options on that page are Ruffle's usual playback settings (device fonts, emulated Flash version, ActionScript time limit, …). **Device font renderer** defaults to Canvas (the browser's fonts), which is what makes Chinese text show up; choose Embedded there to go back to Ruffle's built-in font.
+
+## Languages
+
+Timffle's pages (settings, popup, question window) follow the browser's interface language. The languages are the same 36 as in the Ruffle extension: Arabic, Bosnian, Catalan, Chinese (Simplified and Traditional), Croatian, Czech, Dutch, English, Esperanto, Finnish, French, Galician, German, Hebrew, Hungarian, Indonesian, Italian, Japanese, Korean, Norwegian Bokmål, Polish, Portuguese (Brazil and Portugal), Romanian, Russian, Serbian, Slovak, Slovenian, Spanish, Swedish, Tatar, Thai, Turkish, Ukrainian and Vietnamese. Arabic and Hebrew are laid out right to left.
+
+- **Who translated what**: the texts Timffle added (the socket settings, the popup section and the question window) are in [`timffle/locales/`](timffle/locales/), one file per language. English and Traditional Chinese are written by the author; **the other 34 languages are machine translations** (Simplified Chinese is converted from the Traditional text) that no native speaker has reviewed, so some wording may be off, Tatar most of all. Corrections are welcome in [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues).
+- **Ruffle's own texts** (the standard options and the player's messages) come from Ruffle's translations and are as complete as Ruffle's: a few languages (for example Esperanto, Galician, Norwegian and Thai) still show English there until Ruffle's translators have finished them.
+- **Chrome has no interface language** for Bosnian, Esperanto, Galician and Tatar, so Chrome shows these pages in English; the translations are included anyway, as in Ruffle.
+- **Not translated**: the helper installer's messages (Traditional Chinese and English) and this README (English, Traditional Chinese and Simplified Chinese).
 
 ## Troubleshooting
 
@@ -232,6 +242,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 - **Hit testing**: Flash's `hitTestPoint(x, y, true)` works on whole pixels, Timffle on exact coordinates; edges occasionally differ by 1–2 cells.
 - **Recursion depth on the web**: the WebAssembly call stack is shallower than Flash's; the guard limit is 900 levels, and a few long kart-map paths are cut short.
 - **Text position**: Flash lays text out with the Windows font the game asks for. For the common ones (SimSun, Arial Black, Tahoma, …) Timffle uses Windows' line metrics even when the browser has to substitute another font, so text sits within about a pixel or two of Flash; other fonts use the browser's own metrics and can sit further off.
+- **Languages**: apart from English and Traditional Chinese, the texts Timffle added are machine translations that no native speaker has reviewed; the helper installer's messages are in Traditional Chinese and English only; Ruffle's own texts are as complete as Ruffle's translations are.
 - More known differences: the end of [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) and [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md).
 
 ## Relationship with Ruffle
@@ -257,8 +268,8 @@ Needs git, Rust 1.99 with `wasm32-unknown-unknown`, wasm-bindgen CLI 0.2.127 (mu
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26300 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26300 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
+VERSION4=0.8.0.26301 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26301 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
 ```
 
 The build script rewrites the build machine's home directory and user name out of the wasm by default, and the packaging script checks before and after packaging and refuses to produce a release ZIP that still carries them. See [`timffle/docs/BUILD.md`](timffle/docs/BUILD.md). The other parts of Ruffle (desktop app etc.) build as upstream does ([`README.ruffle.md`](README.ruffle.md)), but read [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md) first.
@@ -270,9 +281,10 @@ The build script rewrites the build machine's home directory and user name out o
 | Differential tests (against real Flash) | Small SWFs written in Haxe run once in Adobe Flash Player 32 (under Wine) and once in Timffle, compared line by line; 30 golden files | [`timffle/difftest/`](timffle/difftest/) |
 | Helper unit tests | Go: protocol, connection policy, flow control, install/uninstall | `timffle/helper/*_test.go` |
 | Package tests | The release ZIP's contents, permissions and private-key check | `timffle/helper/installer-tests/` |
-| Extension unit tests | Settings, page bridge, background permissions, the first-use question | `web/packages/extension/tests/` |
+| Extension unit tests | Settings, page bridge, background permissions, the first-use question, the message catalogs of all 36 languages | `web/packages/extension/tests/` |
 | Rebrand check | The user-visible text must not contain the product name "Ruffle" any more | `python3 timffle/scripts/rebrand.py --check` |
-| Browser + helper integration tests | Headless Chrome + the real helper, connecting to localhost only | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
+| Language check | Every interface text exists in all 36 languages, with placeholders and technical words intact | `python3 timffle/scripts/sync_locales.py --check` |
+| Browser + helper integration tests | Headless Chrome + the real helper, connecting to localhost only; also every interface language in a real Chrome | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
 | Ruffle's own regression suite | Upstream's tests plus the ones we added | `cargo test -p tests --test tests` |
 
 How to run them: [`timffle/docs/TESTING.md`](timffle/docs/TESTING.md). What was actually run for each version, and the results: [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md).
@@ -295,10 +307,11 @@ timffle/                   Timffle's own parts:
   helper/                        The connection helper (Go), installers/uninstallers, packaging script
   relay/                         Advanced: a local WebSocket↔TCP proxy (bundles the MIT-licensed ws library)
   extension-key/                 The extension's public key and ID (the private key is not in the repository)
+  locales/                       Timffle's own interface texts, one file per language (copied into the extension's message catalogs by scripts/sync_locales.py)
   difftest/                      Differential tests: Haxe tests, goldens from real Flash, run/compare scripts
   tools/                         Chrome smoke tests, integration tests, real-account test, screenshot tools
   branding/                      Generators for Timffle's icon and logo
-  scripts/                       Build, packaging, path check, rebrand and its check, list of modified files
+  scripts/                       Build, packaging, path check, rebrand and its check, sync of the interface texts, list of modified files
 ```
 
 ### Following upstream Ruffle
@@ -311,6 +324,8 @@ git fetch upstream tag nightly-YYYY-MM-DD --no-tags
 git merge nightly-YYYY-MM-DD                 # merge, never rebase published history
 python3 timffle/scripts/rebrand.py           # re-apply the name to new/translated upstream strings
 python3 timffle/scripts/rebrand.py --check
+python3 timffle/scripts/sync_locales.py      # Timffle's own interface texts go back into the (upstream-replaced) message catalogs
+python3 timffle/scripts/sync_locales.py --check
 timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md
 ```
 

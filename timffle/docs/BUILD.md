@@ -22,14 +22,14 @@
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
 
 # 1. 建置擴充功能 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26300 timffle/scripts/build-extension.sh
+VERSION4=0.8.0.26301 timffle/scripts/build-extension.sh
 
 # 2+3. 交叉編譯小幫手（7 個平台），並封裝成發行 ZIP（含 LICENSES/ 與 NOTICE.md）→ timffle/build/out/
-VERSION4=0.8.0.26300 timffle/scripts/package-release.sh
+VERSION4=0.8.0.26301 timffle/scripts/package-release.sh
 ```
 
 - `VERSION4` 是擴充功能版本，四段數字；最後一段只是流水號。
-- `build-extension.sh` 的順序是：品牌檢查（`timffle/scripts/rebrand.py --check`；有 Pillow 時也檢查圖示）→ `npm ci` → 建置 Ruffle 核心（呼叫 cargo 編出一份 wasm，使用 SIMD 等擴充指令的版本；再跑 wasm-bindgen 與 wasm-opt。Ruffle 另有給舊瀏覽器的 MVP 版本，需設 `BUILD_WASM_MVP=true`，本專案沒有用）→ 擴充功能型別檢查與單元測試 → `build:generic` 產生擴充功能 ZIP（`CFG_RELEASE_CHANNEL=local-native-auto`，並把 `timffle/extension-key/` 的公鑰放進 `manifest.json`）。`SKIP_TESTS=1` 可略過測試。輸出檔名 `ruffle_extension.zip` 是上游建置腳本的內部名稱；發行 ZIP 叫 `timffle-chrome-<版本>.zip`。
+- `build-extension.sh` 的順序是：品牌檢查（`timffle/scripts/rebrand.py --check`；有 Pillow 時也檢查圖示）→ 介面文字檢查（`timffle/scripts/sync_locales.py --check`）→ `npm ci` → 建置 Ruffle 核心（呼叫 cargo 編出一份 wasm，使用 SIMD 等擴充指令的版本；再跑 wasm-bindgen 與 wasm-opt。Ruffle 另有給舊瀏覽器的 MVP 版本，需設 `BUILD_WASM_MVP=true`，本專案沒有用）→ 擴充功能型別檢查與單元測試 → `build:generic` 產生擴充功能 ZIP（`CFG_RELEASE_CHANNEL=local-native-auto`，並把 `timffle/extension-key/` 的公鑰放進 `manifest.json`）。`SKIP_TESTS=1` 可略過測試。輸出檔名 `ruffle_extension.zip` 是上游建置腳本的內部名稱；發行 ZIP 叫 `timffle-chrome-<版本>.zip`。
 - 型別檢查需要先建好核心（它從核心的建置輸出取型別宣告）。擴充功能的單元測試（`cd web && npm ci && npm test --workspace=ruffle-extension`）不需要 wasm。
 - `package-release.sh` 需要 Go 的授權檔（從 `go env GOROOT` 取得），並把 Ruffle、Timffle、rust-flash-lso 與 Go 的授權檔放進 ZIP 的 `LICENSES/`。
 - **建置路徑不進發行檔**：Rust 的 panic 訊息會把原始碼路徑寫進 wasm，沒處理的話發行 ZIP 會帶著建置機的家目錄與使用者名稱。`build-extension.sh` 預設用 `--remap-path-prefix` 把它們改寫成 `/h`、`/cargo`、`/rustup`、`/src`（`KEEP_BUILD_PATHS=1` 可關閉，只限不會離開這台機器的建置）；`package-release.sh` 在打包前與打包後都用 `timffle/scripts/check-no-build-paths.py` 檢查，發現就拒絕產出，並刪掉剛做好的 ZIP（`SKIP_PATH_CHECK=1` 可略過，同樣只限本機）。要上傳到 GitHub 的發行檔都必須通過這個檢查。
@@ -88,5 +88,6 @@ python3 -I timffle/scripts/extension-id.py > timffle/extension-key/extension-id.
 - **`wasm-bindgen CLI is X but Cargo.lock needs Y`**：安裝指定版本，例如 `cargo install wasm-bindgen-cli --version 0.2.127 --locked`，或下載對應版本的預編譯檔。
 - **`npm ci` 提示有套件的安裝指令碼沒被核准**：這是 npm 11 的提示，建置不受影響。
 - **編譯 wasm 很慢、占很多磁碟**：第一次建置要編譯上千個 crate；`target/` 可能長到數 GB。之後增量建置會快很多。
+- **`build-extension: Timffle's interface texts are not in the message catalogs`**：`timffle/locales/` 改過、或跟進上游後 `messages.json` 被換成上游版本；執行 `python3 timffle/scripts/sync_locales.py`（見 [`../locales/README.md`](../locales/README.md)）。
 - **`build-extension: user-visible texts still say Ruffle`**：跟進上游後有新的文字，執行 `python3 timffle/scripts/rebrand.py`（見 [`BRANDING.md`](BRANDING.md)）。
 - **只想建置 Ruffle 原有的其他部分（桌面版等）**：與上游相同（見根目錄 `README.ruffle.md`），但它們還沒改名，不能以 Timffle 名義散布。

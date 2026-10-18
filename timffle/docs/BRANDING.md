@@ -14,8 +14,8 @@
 | `web/packages/extension/manifest.json5` | `name`「Timffle - Flash Emulator」、`short_name`、`homepage_url` → Timffle repo | 手改；`rebrand.py --check` 會檢查 |
 | `web/packages/extension/build.ts` | Firefox 附加元件 ID 改成 Timffle 自己的 `{4244f375-9038-4a8d-bc77-e47e6cc7a426}`（`ruffle@ruffle.rs` 屬於官方 Ruffle 附加元件） | 手改；有檢查 |
 | `web/packages/extension/assets/*.html` | 頁面標題、文字、`alt`、標誌連結 | `rebrand.py` 自動 |
-| `web/packages/extension/assets/options.html` | 頁尾的非官方分支聲明與致謝（`class="timffle-attribution"`，雙語、`translate="no"`，刻意提到 Ruffle 並連到 ruffle.rs） | 手改；`rebrand.py` 跳過這一段；有檢查 |
-| `web/packages/extension/assets/_locales/*/messages.json` | 擴充功能的所有語系文字 | `rebrand.py` 自動 |
+| `web/packages/extension/assets/options.html` | 頁尾的非官方分支聲明與致謝（`class="timffle-attribution"`；文字在訊息目錄的 `timffle_attribution`，每種語言都有，兩個連結的位址留在 HTML 裡；刻意提到 Ruffle 並連到 ruffle.rs） | 手改；`rebrand.py` 跳過這一段，也跳過所有 `timffle_` 開頭的訊息（它們刻意提到 Ruffle）；有檢查 |
+| `web/packages/extension/assets/_locales/*/messages.json` | 擴充功能的所有語系文字（Timffle 自己的 `timffle_*` 訊息除外：它們由 `sync_locales.py` 從 `timffle/locales/` 放進來，見 [`../locales/README.md`](../locales/README.md)） | `rebrand.py` 自動 |
 | `web/packages/core/texts/*/*.ftl` | 播放器的右鍵選單（「關於 Timffle」）、錯誤畫面、提示等所有語系文字 | `rebrand.py` 自動 |
 | `web/packages/core/src/internal/constants.tsx` | 新增 `TIMFFLE_REPOSITORY` | 手改 |
 | `web/packages/core/src/internal/ui/panic.tsx` | 錯誤畫面的「回報錯誤」開 **Timffle** 的 issue（`.github/ISSUE_TEMPLATE/error_report.md`）；「更新」連到 Timffle Releases | 手改；有檢查 |

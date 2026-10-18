@@ -42,7 +42,7 @@
 | 元件 | 位置 | 說明 |
 |---|---|---|
 | 核心（WASM） | `core/`、`render/`、`web/src/` 等（Ruffle＋Timffle 的修正） | 模擬 Flash；相容性修正見 [`CHANGES-FROM-RUFFLE.md`](CHANGES-FROM-RUFFLE.md) |
-| 擴充功能 | `web/packages/extension/` | Manifest V3；`socket-bridge-{page,content,background,protocol,arm}.ts`、設定頁、`socket-proxy.ts`（設定、允許／拒絕清單與三態判斷）、`socket-prompt.ts`（詢問管理）、`socket-visit.ts`（單次造訪的回答）、`prompt.html`／`prompt.ts`（詢問視窗）、`popup-socket.ts`（彈出視窗的 Socket 區塊） |
+| 擴充功能 | `web/packages/extension/` | Manifest V3；`socket-bridge-{page,content,background,protocol,arm}.ts`、設定頁、`socket-proxy.ts`（設定、允許／拒絕清單與三態判斷）、`socket-prompt.ts`（詢問管理）、`socket-visit.ts`（單次造訪的回答）、`prompt.html`／`prompt.ts`（詢問視窗）、`popup-socket.ts`（彈出視窗的 Socket 區塊）、`i18n.ts`（把訊息目錄的文字填進頁面，見第 7 節） |
 | 連線小幫手 | [`helper/`](../helper/) | Go；沒有第三方相依套件；內建安裝／移除程式 |
 | 安裝啟動檔 | `helper/installers/` | 只是薄薄的啟動器，真正的安裝程式在小幫手執行檔裡（`--install`／`--uninstall`） |
 | 封裝工具 | `helper/package.py` | 驗證輸入（拒絕符號連結、私鑰標記、過大檔案）並產生發行 ZIP |
@@ -135,3 +135,14 @@
 - 簡單：沒有多工、沒有程序間狀態，小幫手一個程序只管一條 TCP；Chrome 關掉 Port 或擴充功能 service worker 被回收，stdin EOF 就讓小幫手關閉 TCP 並退出，不會留下常駐程序。
 - 安全：沒有可供他人連入的連接埠；也沒有一個長期存在的程序累積狀態。
 - 代價：每條連線啟動一個程序；Windows 上啟動程序的成本比 Linux 高。我們沒有量測這個開銷，也沒有在 Windows 實機上確認過。
+
+## 7. 介面語言
+
+擴充功能的頁面（設定頁、彈出視窗、詢問視窗）用 Chrome 的訊息目錄（`_locales/<語言>/messages.json`），語言跟著瀏覽器的介面語言，做法和 Ruffle 相同，支援同樣的 36 種語言。
+
+- **文字放哪裡**：Timffle 自己新增的文字，鍵都以 `timffle_` 開頭，來源在 [`../locales/`](../locales/)（每種語言一個檔案；英文是完整來源，帶給翻譯者的說明與佔位符）。`scripts/sync_locales.py` 把它們複製進 `web/packages/extension/assets/_locales/*/messages.json`；`--check` 確認複製結果是最新的，並檢查每種語言都有每一句，佔位符（`$VERSION$`）、使用者要照打的 `{host}`／`{port}` 與 `<1>…</1>` 標記沒有被翻譯弄丟。為什麼不直接改那些檔案：跟進上游時 `messages.json` 一律取上游版本（Crowdin 會更新它們），分開存放才不會被蓋掉。`rebrand.py` 不碰 `timffle_` 開頭的訊息（它們刻意提到 Ruffle）。
+- **頁面怎麼取字**：HTML 裡不放這些文字，只標 `data-i18n="鍵"`，`i18n.ts` 的 `localizePage()` 在頁面載入時填入。含連結或粗體的句子用 `data-i18n-rich`，句子裡的 `<1>…</1>` 對應到該元素的第 1 個子元素（連結的位址留在 HTML 裡，不進翻譯）；用程式組出來的文字（狀態、錯誤、按鈕）用 `text("鍵")`。找不到的鍵會直接顯示鍵名，不會留白，單元測試確認程式與頁面用到的鍵都存在、目錄裡沒有沒人用的鍵。
+- **方向與語言屬性**：`setPageLanguage()` 設定 `<html lang>` 與 `dir`（阿拉伯文、希伯來文是 `rtl`，取自 Chrome 的 `@@bidi_dir`）。網址、來源清單這類資料固定由左到右（`dir="ltr"`）；阿拉伯文與希伯來文裡的 `ws://`、`wss://` 後面放了一個由左到右標記（U+200E），否則 `://` 會被排成反的。
+- **機器翻譯**：英文與繁體中文由作者撰寫，其他 34 種是機器翻譯，沒有母語人士審閱；README 的「語言」段落與 [`../locales/README.md`](../locales/README.md) 照實說明。
+- **Chrome 的限制**：Chrome 沒有波士尼亞文、世界語、加利西亞文與韃靼文的介面語言，這四種在 Chrome 上顯示英文（翻譯仍附上，和 Ruffle 一樣）。
+- **沒涵蓋**：連線小幫手安裝程式的訊息（繁體中文＋英文雙語）、獨立播放器頁（`player.html`，Ruffle 原本就沒有翻譯）。

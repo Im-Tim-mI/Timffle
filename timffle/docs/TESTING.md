@@ -5,14 +5,16 @@
 | 測試 | 驗證什麼 | 怎麼跑 | 需要 |
 |---|---|---|---|
 | 小幫手單元測試 | 協定、位址政策、流量控制、安裝／移除（含符號連結與外來檔案保護） | `cd timffle/helper && go test ./... && go test -tags localtest ./...` | Go 1.27 |
-| 擴充功能單元測試 | 設定與允許／拒絕清單（兩種連線方式各一份）、頁面橋接、背景權限、第一次連線的詢問（詢問管理、單次造訪的回答、各種回答與清理路徑、等待中的 Socket 不佔名額）、輸入防護規則、設定寫入的鎖與比對、舊設定的升級共 152 項 | `cd web && npm ci && npm test --workspace=ruffle-extension` | 不需要 wasm |
+| 擴充功能單元測試 | 設定與允許／拒絕清單（兩種連線方式各一份）、頁面橋接、背景權限、第一次連線的詢問（詢問管理、單次造訪的回答、各種回答與清理路徑、等待中的 Socket 不佔名額）、輸入防護規則、設定寫入的鎖與比對、舊設定的升級、介面語言（36 種語言每一句都有、佔位符與技術用詞沒被翻掉、按鈕與說明用詞一致、各語言用自己的文字）、`i18n.ts` 與彈出視窗的狀態文字，共 172 項 | `cd web && npm ci && npm test --workspace=ruffle-extension` | 不需要 wasm |
 | 封裝測試 | 發行 ZIP 的內容、權限、授權檔與私鑰檢查 | `cd timffle/helper/installer-tests && python3 -I test_package.py` | Python 3 |
 | 品牌檢查 | 使用者看得到的文字沒有「Ruffle」產品名、手改的連結都還在 | `python3 timffle/scripts/rebrand.py --check` | Python 3 |
+| 語言檢查 | `timffle/locales/` 與擴充功能的訊息目錄一致，每種語言都有每一句，佔位符與標記沒被翻掉 | `python3 timffle/scripts/sync_locales.py --check` | Python 3 |
 | 本機代理測試 | `relay/` 的來源、token、私網位址拒絕等（10 項） | `node --test timffle/relay/relay.test.mjs` | Node 22+ |
 | 比對工具測試 | 差異測試的比對規則（11 項） | `cd timffle/difftest && python3 test_compare.py` | Python 3 |
 | **差異測試** | Ruffle 與真 Flash 逐行相同 | 見第 2 節 | Haxe、Xvfb、Ruffle 桌面版；產生答案另需 Flash 32＋Wine |
 | 網頁版冒煙測試 | 在 Chrome 裡用擴充功能跑差異測試 SWF | 見第 3 節 | Chrome、建好的擴充功能 |
 | 瀏覽器＋小幫手整合測試 | 無頭 Chrome＋真小幫手，只連 localhost | 見第 4 節 | 解壓後的發行包、測試版小幫手 |
+| 介面語言測試 | 每種語言各開一個真 Chrome：頁面顯示該語言的文字、語言與方向屬性正確、沒有東西超出框 | `node timffle/tools/native-regress/locale-tests.mjs <解壓後的擴充功能資料夾> [語言…]` | Chrome、建好的擴充功能 |
 | 真實帳號冒煙測試 | 登入並走一段遊戲流程 | 見第 5 節 | 你自己的帳號；手動、不屬於自動化測試 |
 | Ruffle 自身回歸 | 上游測試套件加上本專案新增的測試 | 在 repo 根目錄 `cargo test -p tests --test tests` | 完整 Rust 工具鏈 |
 
@@ -119,7 +121,15 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 
 `ASK_ONLY=popup,framing` 只跑指定的區段。輸入防護用真的 CDP 輸入事件測（`Input.dispatchMouseEvent`／`dispatchKeyEvent`，鍵盤要送帶字元的 `keyDown` 才會啟動按鈕）；沒有移動指標的按下是只送 `mousePressed`／`mouseReleased`。「按下發生在 0.7 秒之前」這類時間規則由 `tests/prompt-guard.test.mjs` 單元測試涵蓋（端對端測試做不到精確的時間控制）。
 
-另外 `timffle/tools/screenshots/socket-ui-shots.mjs` 用同樣的環境產生 README 用的設定頁、彈出視窗、詢問視窗截圖（詢問視窗與彈出視窗顯示的網站名稱換成範例的 `https://game.example`，其餘是真的頁面）。
+### 介面語言
+
+整合測試的 Chrome 預設用英文；`TEST_LOCALE=zh_TW`（或 `ar`、`ja`…）讓整套 `ask-tests.mjs`、`browser-auto-tests.mjs` 改用那種語言跑（Chrome 以環境變數 `LANGUAGE` 決定介面語言）。預期的文字一律從擴充功能的訊息目錄讀（`catalog.mjs`），測試裡沒有寫死任何語言。擴充功能每分鐘最多開 6 個詢問視窗（`MAX_PROMPTS_PER_MINUTE`），所以 `ask-tests.mjs` 自己控制節奏（`spacing()`），跑得再快也不會被這個上限擋掉。
+
+`locale-tests.mjs` 逐一用每種語言開真 Chrome（不需要小幫手或網路），檢查設定頁、詢問視窗與彈出視窗：Chrome 真的在那種語言下執行、頁面每個標記的元素都是該語言目錄裡的文字、`lang` 與 `dir`（阿拉伯文、希伯來文為 `rtl`，按鈕順序跟著反過來）、聲明裡的兩個連結、粗體警告的位置、沒有水平溢出或被截斷的按鈕。Chrome 沒有波士尼亞文、世界語、加利西亞文與韃靼文的介面語言，這四種只確認 Chrome 退回英文且頁面顯示英文而不是鍵名（它們的目錄內容由單元測試涵蓋）。`SHOTS=<資料夾>` 另外存每種語言的詢問視窗與設定頁截圖，用來肉眼檢查版面。最近一次（0.8.0.26301）：36 種語言、552 項檢查，全部通過。
+
+**已知會偶爾失敗的一項**：`browser-auto-tests.mjs` 的 localtest 情境裡的 `local-close-no-remote-close-event`（頁面在連線完成前就關掉 Socket，測試 SWF 的 `connect` 事件偶爾晚到）。用舊版（0.8.0.26300）與舊腳本跑 8 次失敗 4 次，所以與介面語言的改動無關；重跑通常就過，原因還沒查清。
+
+另外 `timffle/tools/screenshots/socket-ui-shots.mjs` 用同樣的環境產生 README 用的設定頁、彈出視窗、詢問視窗截圖（`SHOT_LOCALE=zh_TW` 等指定語言，預設英文）（詢問視窗與彈出視窗顯示的網站名稱換成範例的 `https://game.example`，其餘是真的頁面）。
 
 ## 5. 真實帳號冒煙測試（`timffle/tools/real-login/`，手動）
 

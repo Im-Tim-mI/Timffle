@@ -24,7 +24,8 @@ git merge nightly-YYYY-MM-DD
 |---|---|
 | `.github/workflows/*`、`.github/dependabot.yml`、`.github/FUNDING.yml`、`.github/ISSUE_TEMPLATE/*`（上游有改、我們已刪除或替換） | 保持 Timffle 的版本：`git rm` 上游的 workflow／dependabot／FUNDING；issue 範本用我們的。Ruffle 的 CI 會發布到 Ruffle 的商店帳號、需要 Ruffle 的密鑰，不能在 Timffle 跑 |
 | `README.ruffle.md`（上游改了 `README.md`） | Git 通常會跟著改名合併；若變成衝突，把上游的新 `README.md` 內容放進 `README.ruffle.md`，`README.md`（英文）與 `README.zh-TW.md`、`README.zh-CN.md` 保持 Timffle 的 |
-| 語系文字 `*.ftl`、`messages.json`（上游 Crowdin 翻譯更新 vs 我們換過名） | 先接受上游版本（`git checkout --theirs <檔案>`），合併完成後跑 `python3 timffle/scripts/rebrand.py` 一次換回來 |
+| 語系文字 `*.ftl`、`messages.json`（上游 Crowdin 翻譯更新 vs 我們換過名） | 先接受上游版本（`git checkout --theirs <檔案>`），合併完成後跑 `python3 timffle/scripts/rebrand.py` 一次換回來，再跑 `python3 timffle/scripts/sync_locales.py`：Timffle 自己的介面文字（`timffle_` 開頭的鍵，來源在 [`../locales/`](../locales/)）會放回各語言的 `messages.json`。**不要把 Timffle 的文字只寫在 `messages.json` 裡**，下次取上游版本時會消失 |
+| 上游新增了語言（`_locales/` 多一個資料夾） | `sync_locales.py` 會報錯，要求補上 `timffle/locales/<語言>.json`；照 [`../locales/README.md`](../locales/README.md) 補翻譯，機器翻譯要在 README 的「語言」段落照實說明。反過來，上游拿掉的語言要刪掉對應的檔案 |
 | `Cargo.lock`（上游升級相依） | 接受上游版本後跑 `cargo metadata --format-version 1 > /dev/null` 讓 Cargo 補上 flash-lso 的 `[patch]`；確認 `Cargo.lock` 裡 `flash-lso` 沒有 `source`（表示用的是 `vendor/` 的版本） |
 | 上游升級了 rust-flash-lso 的版本 | 用 `git subtree pull --prefix=vendor/rust-flash-lso https://github.com/ruffle-rs/rust-flash-lso.git <新 commit>`（或 `git merge -s subtree`）跟進，再確認我們的 AMF3 修正還在／上游是否已修好，最後更新 `UPSTREAM.env` 的 `FLASH_LSO_BASE` |
 | 我們修改過的程式碼（AVM2、3D、網頁 Socket） | 一般的程式衝突；以真 Flash 的差異測試為準（[`TESTING.md`](TESTING.md)） |
@@ -33,6 +34,7 @@ git merge nightly-YYYY-MM-DD
 
 ```sh
 python3 timffle/scripts/rebrand.py && python3 timffle/scripts/rebrand.py --check   # 品牌
+python3 timffle/scripts/sync_locales.py && python3 timffle/scripts/sync_locales.py --check   # Timffle 自己的介面文字
 python3 timffle/branding/make_branding.py --check
 cargo test -p tests --test tests                                                  # Ruffle 回歸測試（含我們新增的）
 (cd web && npm ci && npm test --workspace=ruffle-extension)                        # 擴充功能單元測試

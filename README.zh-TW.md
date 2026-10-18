@@ -18,7 +18,7 @@
 
 <p align="center"><a href="README.md">English</a> ・ <b>繁體中文</b> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">版本 <code>0.8.0.26300</code>（基於 Ruffle nightly 2026-10-13）｜ 授權 MIT 或 Apache-2.0（任選其一）</p>
+<p align="center">版本 <code>0.8.0.26301</code>（基於 Ruffle nightly 2026-10-13）｜ 授權 MIT 或 Apache-2.0（任選其一）</p>
 
 > [!IMPORTANT]
 > **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，與 Ruffle 專案、Ruffle LLC、淘米網絡（Taomee）沒有隸屬或合作關係，也沒有得到它們的認可。** Flash 模擬核心幾乎全部是 Ruffle 與其[數百位貢獻者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 歷史、作者紀錄與授權檔。
@@ -50,6 +50,7 @@ Timffle 是專為這類遊戲做的 Ruffle 分支，加上了：
 - **保守的安全設計**：小幫手只連公開網路位址、不監聽任何連接埠、不常駐、不記錄連線內容；只有這個擴充功能的 ID 能叫用它。
 - **以真 Flash 為標準答案**：對 Ruffle 的相容性修正，都用 Adobe Flash Player 32 的實際輸出逐行比對（30 項黃金答案）。
 - **看得到中文**：裝置字型文字使用瀏覽器的字型，並依遊戲指定的 Windows 字型（SimSun、Arial Black、Tahoma…）的度量定位。
+- **36 種介面語言，和 Ruffle 一樣**：頁面跟著瀏覽器的語言（英文與繁體中文由作者撰寫，其餘 34 種是機器翻譯；見[語言](#語言)）。
 - **淘米台灣的遊戲開箱即用**：預設允許四個遊戲網站使用 Socket 連線。
 - **一個插件包**：[Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) 提供 `timffle-chrome-<版本>.zip`，內含 Chrome 插件、連線小幫手與安裝程式。
 - **開源，並保留上游歷史**：完整保留 Ruffle 的 git 歷史、作者紀錄與授權；Timffle 自己的部分以 MIT 或 Apache-2.0（任選其一）授權，與 Ruffle 相同。
@@ -140,9 +141,9 @@ Timffle 為**一般的 Flash 線上遊戲**而做：你允許的網站就能使�
 
 ## 設定
 
-插件的「選項」頁有一個「**Socket 連線（遊戲伺服器）**」區塊（中英對照）：
+插件的「選項」頁有一個「**Socket 連線（遊戲伺服器）**」區塊（圖中是英文版瀏覽器；文字跟著瀏覽器的語言，見[語言](#語言)）：
 
-<p align="center"><img src="timffle/docs/images/options-socket.png" alt="插件選項頁的「Socket 連線（遊戲伺服器）」區塊：連線小幫手顯示已安裝，下方是允許的網站來源清單" width="560"></p>
+<p align="center"><img src="timffle/docs/images/zh-TW/options-socket.png" alt="插件選項頁的「Socket 連線（遊戲伺服器）」區塊：連線小幫手顯示已安裝，下方是允許的網站來源清單" width="560"></p>
 
 - **連線方式**：預設且建議「連線小幫手」；進階使用者可改成「自訂 WebSocket 代理」，自己執行 [`timffle/relay/`](timffle/relay/) 裡的本機 WebSocket↔TCP 代理（需要 Node.js 22+，Chrome 可能詢問本機網路存取權限）。
 - **一律允許的網站來源（每行一個）**：清單內的網站來源（協定＋主機＋選用連接埠，不接受 `*` 或路徑）可以直接使用 Socket 連線，不會詢問。預設是淘米台灣四個遊戲網站（摩爾莊園、賽爾號、小花仙、彈彈堂）的 `mole／seer／hua／ddt.61.com.tw`，各含 `http://` 與 `https://`。要加其他網站**不必自己輸入**：用下面的「第一次連線時的詢問」或「在彈出視窗直接設定」。**只允許你信任的線上遊戲**，因為被允許的網站可以透過小幫手連到任何公開網路上的 TCP 位址。
@@ -155,7 +156,7 @@ Timffle 為**一般的 Flash 線上遊戲**而做：你允許的網站就能使�
 
 連線方式是「連線小幫手」時，**不在上面兩個清單的網站**第一次嘗試使用 Socket 連線，Timffle 會跳出**插件自己的視窗**詢問你。它是獨立視窗，不是網頁裡的東西，所以網頁不能遮住它、也不能替你按：
 
-<p align="center"><img src="timffle/docs/images/socket-question.png" alt="詢問視窗：顯示網站來源 https://game.example，警告「預設建議拒絕。只有線上遊戲可以允許。」，下方四個按鈕：拒絕（建議）、允許、一律拒絕、一律允許" width="420"></p>
+<p align="center"><img src="timffle/docs/images/zh-TW/socket-question.png" alt="詢問視窗：顯示網站來源 https://game.example，警告「預設建議拒絕。只有線上遊戲可以允許。」，下方四個按鈕：拒絕（建議）、允許、一律拒絕、一律允許" width="420"></p>
 
 | 按鈕 | 效果 |
 |---|---|
@@ -177,13 +178,22 @@ Timffle 為**一般的 Flash 線上遊戲**而做：你允許的網站就能使�
 
 點瀏覽器工具列上的 Timffle 圖示，彈出視窗的「Socket 連線」區塊會顯示**目前分頁的網站**：
 
-<p align="center"><img src="timffle/docs/images/socket-popup.png" alt="彈出視窗的 Socket 連線區塊：顯示 https://game.example 與狀態「每次造訪時詢問」，一顆黃色的「允許此網站使用 Socket 連線」按鈕，下面是設定下拉選單與「預設建議拒絕」的提醒" width="300"></p>
+<p align="center"><img src="timffle/docs/images/zh-TW/socket-popup.png" alt="彈出視窗的 Socket 連線區塊：顯示 https://game.example 與狀態「每次造訪時詢問」，一顆黃色的「允許此網站使用 Socket 連線」按鈕，下面是設定下拉選單與「預設建議拒絕」的提醒" width="300"></p>
 
 - **允許此網站使用 Socket 連線**：一鍵把這個網站加進「一律允許」清單，不用輸入網址。按下後已開啟的分頁要重新載入才會套用（彈出視窗的「重新載入」按鈕會亮起）。
 - 下拉選單可改成「**每次造訪時詢問**」（從兩個清單移除，下次再問）、「**一律允許**」或「**一律拒絕**」。要取消一律允許或一律拒絕，就改回「每次造訪時詢問」。
 - 這個分頁裡**其他網站的頁框**如果已經被詢問過，也會列在下面，各有自己的按鈕與選單。
 - 狀態列也會顯示這個分頁「本次造訪」的允許或拒絕。
 - 同一頁的其他選項是 Ruffle 原有的播放設定（裝置字型、模擬的 Flash 版本、ActionScript 執行時間上限等）。「**Device font renderer**」預設是 Canvas（用瀏覽器的字型），中文才顯示得出來；在那裡選 Embedded 可以改回 Ruffle 內建的字型。
+
+## 語言
+
+Timffle 的頁面（設定頁、彈出視窗、詢問視窗）會跟著瀏覽器的介面語言。支援的語言和 Ruffle 擴充功能相同，共 36 種：阿拉伯文、波士尼亞文、加泰隆尼亞文、簡體中文與繁體中文、克羅埃西亞文、捷克文、荷蘭文、英文、世界語、芬蘭文、法文、加利西亞文、德文、希伯來文、匈牙利文、印尼文、義大利文、日文、韓文、書面挪威文、波蘭文、葡萄牙文（巴西與葡萄牙）、羅馬尼亞文、俄文、塞爾維亞文、斯洛伐克文、斯洛維尼亞文、西班牙文、瑞典文、韃靼文、泰文、土耳其文、烏克蘭文與越南文。阿拉伯文與希伯來文由右至左排版。
+
+- **誰翻譯的**：Timffle 新增的文字（Socket 設定、彈出視窗區塊、詢問視窗）放在 [`timffle/locales/`](timffle/locales/)，每種語言一個檔案。英文與繁體中文由作者撰寫；**其餘 34 種語言是機器翻譯**（簡體中文由繁體文字轉換而來），沒有請母語人士審閱，措辭可能不自然，韃靼文尤其如此。歡迎到 [Timffle 的 issues](https://github.com/Im-Tim-mI/Timffle/issues) 指正。
+- **Ruffle 原有的文字**（一般選項與播放器訊息）來自 Ruffle 的翻譯，完整程度和 Ruffle 一樣：有些語言（例如世界語、加利西亞文、挪威文、泰文）在 Ruffle 的翻譯者補完之前，這些地方仍顯示英文。
+- **Chrome 沒有**波士尼亞文、世界語、加利西亞文與韃靼文的**介面語言**，所以 Chrome 上這四種會顯示英文；翻譯仍然附上，和 Ruffle 一樣。
+- **沒有翻譯的部分**：連線小幫手安裝程式的訊息（繁體中文與英文）、本 README（英文、繁體中文、簡體中文）。
 
 ## 疑難排解
 
@@ -232,6 +242,7 @@ Chrome 擴充功能（Manifest V3）
 - **命中測試**：Flash 的 `hitTestPoint(x, y, true)` 以整數像素判斷，Timffle 用精確座標；邊緣偶有 1～2 格差異。
 - **網頁版遞迴深度**：WebAssembly 呼叫堆疊比 Flash 淺，保護上限 900 層；賽車地圖少數遠距離尋路會被截斷。
 - **文字位置**：Flash 用遊戲指定的 Windows 字型排版。對常見的字型（SimSun、Arial Black、Tahoma…），即使瀏覽器必須用別的字型頂替，Timffle 也採用 Windows 的行度量，所以文字與 Flash 相差約一兩個像素以內；其他字型使用瀏覽器自己的度量，可能偏得更多。
+- **語言**：除了英文與繁體中文，Timffle 新增的文字都是機器翻譯，沒有請母語人士審閱；連線小幫手安裝程式的訊息只有繁體中文與英文；Ruffle 原有的文字與 Ruffle 的翻譯一樣完整。
 - 其他已知差異：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) 末尾與 [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md)。
 
 ## 與 Ruffle 的關係
@@ -257,8 +268,8 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26300 timffle/scripts/build-extension.sh   # 建置 wasm 與 Chrome 擴充功能 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26300 timffle/scripts/package-release.sh   # 交叉編譯小幫手（7 個平台）並封裝發行 ZIP（含授權檔）→ timffle/build/out/
+VERSION4=0.8.0.26301 timffle/scripts/build-extension.sh   # 建置 wasm 與 Chrome 擴充功能 → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26301 timffle/scripts/package-release.sh   # 交叉編譯小幫手（7 個平台）並封裝發行 ZIP（含授權檔）→ timffle/build/out/
 ```
 
 建置腳本預設會把建置機的家目錄與使用者名稱從 wasm 裡改寫掉，打包腳本打包前後都會檢查，發現就拒絕產出發行 ZIP。步驟、工具版本、擴充功能金鑰與常見問題：[`timffle/docs/BUILD.md`](timffle/docs/BUILD.md)。Ruffle 原有的桌面版等其他部分，建置方式與上游相同（見 [`README.ruffle.md`](README.ruffle.md)），但請先讀 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)。
@@ -270,9 +281,10 @@ VERSION4=0.8.0.26300 timffle/scripts/package-release.sh   # 交叉編譯小幫�
 | 差異測試（對真 Flash） | 用 Haxe 寫小 SWF，在 Adobe Flash Player 32（Wine）與 Timffle 各跑一次，逐行比對；30 項黃金答案。 | [`timffle/difftest/`](timffle/difftest/) |
 | 小幫手單元測試 | Go：協定、連線政策、流量控制、安裝／移除 | `timffle/helper/*_test.go` |
 | 封裝測試 | 發行 ZIP 的內容、權限與私鑰檢查 | `timffle/helper/installer-tests/` |
-| 擴充功能單元測試 | 設定、頁面橋接、背景權限、第一次連線的詢問 | `web/packages/extension/tests/` |
+| 擴充功能單元測試 | 設定、頁面橋接、背景權限、第一次連線的詢問、36 種語言的文字目錄 | `web/packages/extension/tests/` |
 | 品牌檢查 | 使用者看得到的文字不得再出現「Ruffle」產品名 | `python3 timffle/scripts/rebrand.py --check` |
-| 瀏覽器＋小幫手整合測試 | 無頭 Chrome＋真小幫手，只連 localhost | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
+| 語言檢查 | 每一句介面文字在 36 種語言都有，佔位符與技術用詞沒有被翻掉 | `python3 timffle/scripts/sync_locales.py --check` |
+| 瀏覽器＋小幫手整合測試 | 無頭 Chrome＋真小幫手，只連 localhost；並逐一用每種介面語言開真 Chrome 檢查 | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
 | Ruffle 自身回歸測試 | 上游測試套件加上我們新增的測試 | `cargo test -p tests --test tests` |
 
 方法與重現步驟：[`timffle/docs/TESTING.md`](timffle/docs/TESTING.md)。每個版本實際跑過哪些測試、結果如何，記在 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)。
@@ -295,10 +307,11 @@ timffle/                   Timffle 自己的部分：
   helper/                        連線小幫手（Go）、安裝／移除程式、封裝腳本
   relay/                         進階：本機 WebSocket↔TCP 代理（內含 MIT 授權的 ws 函式庫）
   extension-key/                 擴充功能公鑰與 ID（私鑰不在 repo 內）
+  locales/                       Timffle 自己的介面文字，每種語言一個檔案（由 scripts/sync_locales.py 複製進擴充功能的訊息目錄）
   difftest/                      差異測試：Haxe 測試、真 Flash 的黃金答案、執行／比對腳本
   tools/                         Chrome 冒煙測試、整合測試、真實帳號測試、截圖工具
   branding/                      Timffle 圖示與標誌的產生程式
-  scripts/                       建置、封裝、路徑檢查、品牌替換與檢查、修改清單
+  scripts/                       建置、封裝、路徑檢查、品牌替換與檢查、介面文字同步、修改清單
 ```
 
 ### 跟進上游 Ruffle
@@ -311,6 +324,8 @@ git fetch upstream tag nightly-YYYY-MM-DD --no-tags
 git merge nightly-YYYY-MM-DD           # 用 merge 保留雙方歷史，不要 rebase 已公開的分支
 python3 timffle/scripts/rebrand.py     # 上游新增或翻譯的文字重新換成 Timffle
 python3 timffle/scripts/rebrand.py --check
+python3 timffle/scripts/sync_locales.py   # Timffle 自己的介面文字放回（被上游版本取代的）訊息目錄
+python3 timffle/scripts/sync_locales.py --check
 timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md
 ```
 
