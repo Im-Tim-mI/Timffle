@@ -33,7 +33,7 @@ const pageHtml=(u)=>{
   +(u.searchParams.has('bare')?'<p>no flash here</p>':('<embed src="/NativeProbe.swf" type="application/x-shockwave-flash" width="400" height="300" allowScriptAccess="always" flashvars="'+vars.replaceAll('&','&amp;')+'">'));};
 const web=http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost');
  if(u.pathname==='/NativeProbe.swf'){res.setHeader('Content-Type','application/x-shockwave-flash');res.end(swf);return;}
- if(u.pathname==='/framed'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8"><iframe id="popup" src="chrome-extension://'+ID+'/popup.html"></iframe><iframe id="prompt" src="chrome-extension://'+ID+'/prompt.html?id=00000000-0000-4000-8000-000000000000"></iframe>');return;}
+ if(u.pathname==='/framed'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8">'+['popup.html','options.html','onboard.html','prompt.html?id=00000000-0000-4000-8000-000000000000','player.html'].map(p=>'<iframe src="chrome-extension://'+ID+'/'+p+'"></iframe>').join(''));return;}
  res.setHeader('Content-Type','text/html');res.end(pageHtml(u));});
 const pagePort=await listen(web),origin='http://127.0.0.1:'+pagePort;
 const alt=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.startsWith('/NativeProbe.swf')?'application/x-shockwave-flash':'text/html');res.end(req.url.startsWith('/NativeProbe.swf')?swf:pageHtml(new URL(req.url,'http://x')));});
@@ -94,6 +94,13 @@ const openPopup=async(tab)=>{
 const closePopup=async(p)=>{await close(p.targetId);await until(async()=>!(await targets()).some(x=>x.url===popupUrl));};
 const popupState=(p)=>chrome.eval(p.sessionId,`(()=>({visible:!document.getElementById('socket-container').classList.contains('hidden'),warning:document.querySelector('.socket-warning').textContent.replace(/\\s+/g,' ').trim(),sites:[...document.querySelectorAll('.socket-site')].map(s=>({origin:s.querySelector('.socket-origin').textContent,state:s.querySelector('.socket-state').textContent,allow:s.querySelector('.socket-allow')?.textContent??null,select:s.querySelector('.socket-select')?.value??null})),reload:!document.getElementById('reload-button').disabled}))()`);
 const keyPress=async(sessionId,key,vk)=>{for(const type of ['rawKeyDown','keyUp'])await chrome.send('Input.dispatchKeyEvent',{type,key,code:key,windowsVirtualKeyCode:vk},sessionId);};
+// Typing a character key the way a keyboard does (key down with its text, then up): this is what activates a focused button.
+const typeKey=async(sessionId,key,code,vk,text)=>{await chrome.send('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode:vk,text},sessionId);await chrome.send('Input.dispatchKeyEvent',{type:'keyUp',key,code,windowsVirtualKeyCode:vk},sessionId);};
+// A button press with no pointer movement before it (a click where the pointer just rests).
+const blindClick=async(sessionId,selector)=>{
+ const r=await chrome.eval(sessionId,'(()=>{const b=document.querySelector('+JSON.stringify(selector)+').getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2}})()');
+ for(const type of ['mousePressed','mouseReleased'])await chrome.send('Input.dispatchMouseEvent',{type,x:r.x,y:r.y,button:'left',buttons:type==='mousePressed'?1:0,clickCount:1},sessionId);
+};
 // The popup only accepts real input, so change the <select> with the keyboard.
 const choose=async(p,value,index=0)=>{
  const cur=await chrome.eval(p.sessionId,`(()=>{const s=document.querySelectorAll('.socket-select')[${index}];s.focus();return s.value})()`);
@@ -127,7 +134,9 @@ try{
  const bareNative=await chrome.eval(bare.sessionId,'Function.prototype.toString.call(WebSocket)');
  const bareProxy=await chrome.eval(bare.sessionId,'window.RufflePlayer?.config?.socketProxy??null');
  const afterRead=await chrome.eval(bare.sessionId,'Function.prototype.toString.call(WebSocket)');
- add('page-without-flash-keeps-native-websocket',/function WebSocket\(\) \{ \[native code\] \}/u.test(bareNative)&&Array.isArray(bareProxy)&&bareProxy.length===1,{bareNative,bareProxy,afterRead});
+ add('page-without-flash-keeps-native-websocket',/function WebSocket\(\) \{ \[native code\] \}/u.test(bareNative)&&Array.isArray(bareProxy)&&bareProxy.length===1,{bareNative,bareProxy});
+ // Positive control: the same test sees the shim once Ruffle has read the list, so the check above can fail.
+ add('reading-the-socket-list-installs-the-bridge',!/function WebSocket\(\) \{ \[native code\] \}/u.test(afterRead),{afterRead});
  await close(bare.targetId);
 
  const before=stat.connections;
@@ -138,8 +147,10 @@ try{
  add('question-recommends-denying-and-names-online-games',view.warning.includes('預設建議拒絕')&&view.warning.includes('只有線上遊戲可以允許')&&view.warning.includes('recommend denying')&&view.focus==='deny-once',{warning:view.warning,focus:view.focus});
  add('nothing-connects-while-the-question-is-open',stat.connections===before&&countHelpers()===0);
  const shot=await chrome.send('Page.captureScreenshot',{format:'png'},q1.sessionId);await fs.writeFile(path.join(output,'question.png'),Buffer.from(shot.data,'base64'));
- // Clicks that arrive right after the window appears are not answers.
- const earlyWindow=await chrome.eval(q1.sessionId,'document.body.dataset.wait!==undefined||true');
+ // With a real window (CHROME_HEADED=1 CHROME_WINDOW_SIZE=none, e.g. under xvfb-run; --window-size would override the size the
+ // extension asks for) the question must fit in the window it is opened in.
+ const fit=await chrome.eval(q1.sessionId,'({innerWidth,innerHeight,scrollHeight:document.documentElement.scrollHeight,outerWidth,outerHeight})');
+ if(process.env.CHROME_HEADED&&process.env.CHROME_WINDOW_SIZE==='none')add('question-fits-its-window-without-scrolling',fit.scrollHeight<=fit.innerHeight,{fit});else console.log(JSON.stringify({info:'question-window',fit}));
  await answerWith(q1,'allow-once');
  const r1=await probe(first,25000);
  add('allow-this-time-connects',good(r1),{r1});
@@ -155,7 +166,7 @@ try{
  // Another tab is another visit.
  const second=await fixtureTab(origin,'');
  const q2=await question();
- add('another-tab-asks-again',true);
+ add('another-tab-asks-again',(await promptTargets()).length===1&&await chrome.eval(q2.sessionId,'document.getElementById("prompt-origin").textContent')===origin);
  await answerWith(q2,'deny-once');
  const r3=await probe(second,25000);
  add('deny-this-time-refuses',noConnect(r3),{r3});
@@ -260,7 +271,10 @@ try{
  await until(async()=>(await settingsNow())?.allowedOrigins.includes(altOrigin));
  add('popup-allows-the-frame-origin-not-the-page',(await settingsNow()).allowedOrigins.includes(altOrigin)&&!(await settingsNow()).allowedOrigins.includes(origin));
  await delay(500);ps=await popupState(pop);
- add('popup-forgets-the-visit-answer-after-a-lasting-choice',ps.sites.length===1||!ps.sites.find(x=>x.origin===altOrigin)||ps.sites.find(x=>x.origin===altOrigin).state.includes('一律允許'),{ps});
+ const portalTabId=await chrome.eval(opts.sessionId,'chrome.tabs.query({}).then(ts=>ts.find(t=>t.url&&t.url.startsWith('+JSON.stringify(origin+'/')+'))?.id)');
+ const visitNow=await chrome.eval(opts.sessionId,'chrome.runtime.sendMessage({type:"socket_visit_get",tabId:'+portalTabId+'})');
+ // The frame is listed only while it has an answer for this visit; a lasting choice replaces that answer, so its row goes.
+ add('popup-forgets-the-visit-answer-after-a-lasting-choice',!ps.sites.some(x=>x.origin===altOrigin)&&!(altOrigin in (visitNow?.decisions??{altOrigin:1}))&&(await settingsNow()).allowedOrigins.includes(altOrigin),{ps,visitNow});
  await closePopup(pop);await close(portal.targetId);
 
  // Pages that are not websites get no Socket section; switched-off sockets show no controls.
@@ -282,17 +296,121 @@ try{
 
  }
  if(runs('framing')){
- // ---- 4. a website cannot frame the popup or the question and get them clicked
+ // ---- 4. a website cannot frame the extension's own pages (popup, settings, question, welcome) and get them clicked
  const framedTab=await chrome.tab(origin+'/framed');
  await chrome.wait(framedTab.sessionId,'document.readyState==="complete"');await delay(1500);
- const frameTargets=(await targets()).filter(t=>t.type==='iframe'&&t.url.startsWith('chrome-extension://'+ID+'/'));
- const framedResults={};
- for(const t of frameTargets){
-  const sessionId=await attach(t.targetId,['Runtime.enable']);
-  framedResults[new URL(t.url).pathname]=await chrome.eval(sessionId,'({sites:document.querySelectorAll(".socket-site").length,socketHidden:document.getElementById("socket-container")?.classList.contains("hidden")??null,buttons:document.querySelectorAll("button[data-choice]").length,bodyChildren:document.body.children.length,promptVisible:document.getElementById("prompt")?!document.getElementById("prompt").hidden:null})');
- }
- add('framed-popup-and-question-offer-nothing','/popup.html' in framedResults&&'/prompt.html' in framedResults&&framedResults['/popup.html'].sites===0&&framedResults['/popup.html'].socketHidden===true&&framedResults['/prompt.html'].buttons===0&&framedResults['/prompt.html'].bodyChildren===0,{framedResults});
+ const tree=(await chrome.send('Page.getFrameTree',{},framedTab.sessionId)).frameTree;
+ const childFrames=tree.childFrames??[];
+ // Chrome shows an error page, with the extension's address hidden, in a frame it refuses to load.
+ const errorFrames=childFrames.filter(f=>f.frame.url==='chrome-error://chromewebdata/').length;
+ // A frame that does load is a process of its own (an extension page in a website's frame), so it is a target.
+ const loadedFrames=(await targets()).filter(t=>t.type==='iframe'&&t.url.startsWith('chrome-extension://'+ID+'/')).map(t=>new URL(t.url).pathname);
+ // Positive control: the page that is exposed (player.html) does load in a frame, so a refusal is the manifest's doing.
+ add('extension-pages-cannot-be-framed-by-a-website',errorFrames===4&&loadedFrames.join()==='/player.html',{errorFrames,loadedFrames});
+ // What a website does need stays reachable: Ruffle itself and the standalone player (SWF links are redirected to it).
+ const reach=await chrome.eval(framedTab.sessionId,'(async()=>{const get=async p=>{try{return (await fetch("chrome-extension://'+ID+'/"+p)).status}catch{return "blocked"}};return {ruffle:await get("dist/ruffle.js"),wasm:await get("dist/ruffle_web_bg.wasm"),player:await get("player.html"),options:await get("options.html"),popup:await get("popup.html"),prompt:await get("prompt.html"),background:await get("dist/background.js")}})()');
+ add('a-website-reaches-only-ruffle-and-the-player',reach.ruffle===200&&reach.wasm===200&&reach.player===200&&reach.options==='blocked'&&reach.popup==='blocked'&&reach.prompt==='blocked'&&reach.background===200,{reach});
  await close(framedTab.targetId);
+ // Defence in depth: should a browser ever let a page frame them, they offer nothing. Frame them from an extension page, which can.
+ const inner=await chrome.eval(opts.sessionId,'(async()=>{const out={};for(const p of ["options.html","popup.html","prompt.html?id=00000000-0000-4000-8000-000000000000"]){const f=document.createElement("iframe");f.src=chrome.runtime.getURL(p);document.body.append(f);await new Promise(r=>f.addEventListener("load",r));await new Promise(r=>setTimeout(r,1200));const d=f.contentDocument;out[p.split("?")[0]]={bodyChildren:d.body.children.length,sites:d.querySelectorAll(".socket-site").length,socketHidden:d.getElementById("socket-container")?.classList.contains("hidden")??null,buttons:d.querySelectorAll("button[data-choice]").length,inputs:d.querySelectorAll("input,textarea,select").length};f.remove();}return out})()');
+ add('framed-pages-offer-nothing',inner['options.html'].bodyChildren===0&&inner['options.html'].inputs===0&&inner['prompt.html'].bodyChildren===0&&inner['prompt.html'].buttons===0&&inner['popup.html'].sites===0&&inner['popup.html'].socketHidden===true,{inner});
+
+ }
+ if(runs('guard')){
+ // ---- 7. what counts as an answer in the question window
+ await setSettings(null);
+ const tg=await fixtureTab(origin,'');
+ const qg=await question();
+ const before=stat.connections;
+ const open=async()=>(await promptTargets()).length===1&&await chrome.eval(qg.sessionId,'!document.getElementById("prompt").hidden');
+ await chrome.eval(qg.sessionId,'document.getElementById("allow-once").click();document.getElementById("allow-always").click();true');
+ await delay(500);
+ add('script-made-clicks-do-not-answer',await open()&&stat.connections===before);
+ // Tab moves from the safe button to "allow"; Enter and Space are the keys of a game's login form.
+ await keyPress(qg.sessionId,'Tab',9);
+ const focused=await chrome.eval(qg.sessionId,'document.activeElement?.id');
+ await typeKey(qg.sessionId,'Enter','Enter',13,'\r');
+ await typeKey(qg.sessionId,' ','Space',32,' ');
+ await delay(500);
+ add('keyboard-cannot-allow',focused==='allow-once'&&await open()&&stat.connections===before,{focused});
+ await blindClick(qg.sessionId,'#allow-always');
+ await delay(500);
+ add('a-click-without-the-pointer-having-moved-over-the-button-does-not-allow',await open()&&stat.connections===before);
+ // The window loses the focus: nothing counts until it has it again and the first moment has passed.
+ await chrome.eval(qg.sessionId,'window.dispatchEvent(new Event("blur"));true');
+ await click(qg.sessionId,'#deny-once');
+ await delay(500);
+ add('nothing-counts-while-the-window-has-no-focus',await open());
+ await chrome.eval(qg.sessionId,'window.dispatchEvent(new Event("focus"));true');
+ await click(qg.sessionId,'#deny-once');
+ await delay(300);
+ add('a-click-right-after-getting-the-focus-is-ignored',await open());
+ await delay(900);
+ await click(qg.sessionId,'#deny-once');
+ const rg=await probe(tg,25000);
+ add('a-deliberate-click-answers-after-all-that',noConnect(rg)&&await until(async()=>(await promptTargets()).length===0),{rg});
+ await close(tg.targetId);
+ // The keyboard can always refuse: the safe button has the focus when the question opens.
+ const tk=await fixtureTab(origin,'');
+ const qk=await question();
+ const focusedAtStart=await chrome.eval(qk.sessionId,'document.activeElement?.id');
+ await typeKey(qk.sessionId,'Enter','Enter',13,'\r');
+ const rk=await probe(tk,25000);
+ add('the-keyboard-can-refuse',focusedAtStart==='deny-once'&&noConnect(rk),{focusedAtStart,rk});
+ await close(tk.targetId);
+
+ }
+ if(runs('options')){
+ // ---- 8. the settings page: one list per connection method, and a form that does not undo what was decided elsewhere
+ const X='https://x.example',Y='https://y.example',Z='https://z.example';
+ await setSettings({enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:[origin,X],proxyOrigins:[Y],deniedOrigins:[]});
+ const form=await chrome.tab('chrome-extension://'+ID+'/options.html');
+ await chrome.wait(form.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state&&!s.textContent.includes("讀取中")})()');
+ const read=()=>chrome.eval(form.sessionId,'({mode:document.getElementById("socket-proxy-mode-websocket").checked?"websocket":"helper",origins:document.getElementById("socket-proxy-origins").value,denied:document.getElementById("socket-proxy-denied").value,status:document.getElementById("socket-proxy-status").textContent,state:document.getElementById("socket-proxy-status").dataset.state,texts:[...new Set([...document.querySelectorAll("[data-mode-text]")].filter(n=>!n.hidden).map(n=>n.dataset.modeText))].join(),save:document.getElementById("socket-proxy-save").disabled})');
+ const type=(selector,value)=>chrome.eval(form.sessionId,'(()=>{const e=document.querySelector('+JSON.stringify(selector)+');e.value='+JSON.stringify(value)+';e.dispatchEvent(new Event("input",{bubbles:true}));return true})()');
+ let f=await read();
+ add('settings-page-shows-the-helper-list',f.mode==='helper'&&f.origins===[origin,X].join('\n')&&f.texts==='helper',{f});
+ await type('#socket-proxy-origins',[origin,X,Z].join('\n'));
+ await click(form.sessionId,'#socket-proxy-mode-websocket');
+ f=await read();
+ add('settings-page-shows-the-proxy-list-in-custom-proxy-mode',f.mode==='websocket'&&f.origins===Y&&f.texts==='websocket',{f});
+ await click(form.sessionId,'#socket-proxy-mode-helper');
+ f=await read();
+ add('switching-back-keeps-what-was-typed-for-the-helper-list',f.mode==='helper'&&f.origins===[origin,X,Z].join('\n'),{f});
+ await click(form.sessionId,'#socket-proxy-mode-websocket');
+ await type('#socket-proxy-url','ws://127.0.0.1:1/connect?host={host}&port={port}&token=SECRET-TOKEN');
+ await type('#socket-proxy-origins',[Y,altOrigin].join('\n'));
+ await click(form.sessionId,'#socket-proxy-save');
+ await until(async()=>(await settingsNow())?.mode==='websocket');
+ let st=await settingsNow();
+ add('saving-in-custom-proxy-mode-changes-only-its-own-list',st.mode==='websocket'&&st.proxyOrigins.join()===[Y,altOrigin].join()&&st.allowedOrigins.join()===[origin,X,Z].join(),{st});
+ // The token goes to the sites of the custom proxy's list only; a site that is allowed for the helper does not get it.
+ const pa=await fixtureTab(origin,'bare=1');
+ await chrome.wait(pa.sessionId,'typeof window.RufflePlayer?.config?.openInNewTab==="function"',20000);
+ const cfgHelperOnly=await chrome.eval(pa.sessionId,'JSON.stringify(window.RufflePlayer?.config?.socketProxy??null)');
+ const pb=await fixtureTab(altOrigin,'bare=1');
+ await chrome.wait(pb.sessionId,'typeof window.RufflePlayer?.config?.openInNewTab==="function"',20000);
+ const cfgProxySite=await chrome.eval(pb.sessionId,'JSON.stringify(window.RufflePlayer?.config?.socketProxy??null)');
+ add('custom-proxy-token-goes-to-its-own-list-only',cfgProxySite.includes('SECRET-TOKEN')&&!cfgHelperOnly.includes('SECRET-TOKEN'),{cfgHelperOnly:cfgHelperOnly.replace(/SECRET-TOKEN/gu,'<token>'),cfgProxySite:cfgProxySite.replace(/SECRET-TOKEN/gu,'<token>')});
+ await close(pa.targetId);await close(pb.targetId);
+
+ // A form without edits follows changes made elsewhere (the popup, a question).
+ await setSettings({...st,mode:'helper',proxyUrl:'',allowedOrigins:[origin],deniedOrigins:[X]});
+ await until(async()=>(await read()).denied===X);
+ f=await read();
+ add('a-form-without-edits-follows-changes-made-elsewhere',f.denied===X&&f.mode==='helper'&&f.origins===origin&&f.status.includes('已在別處變更'),{f});
+ // A form with edits is never saved over them: the old view of the lists would undo "always deny".
+ await type('#socket-proxy-origins',[origin,Z].join('\n'));
+ await setSettings({...(await settingsNow()),deniedOrigins:[X,Z]});
+ await until(async()=>(await read()).status.includes('尚未儲存；儲存時會改為顯示最新設定')||(await read()).status.includes('Your edit is not saved yet'));
+ f=await read();
+ add('a-form-with-edits-is-told-that-the-settings-changed',f.state==='error'&&f.status.includes('Your edit is not saved yet'),{f});
+ await click(form.sessionId,'#socket-proxy-save');
+ await until(async()=>(await read()).status.includes('沒有儲存'));
+ st=await settingsNow();f=await read();
+ add('a-stale-form-cannot-undo-always-deny',st.deniedOrigins.includes(Z)&&!st.allowedOrigins.includes(Z)&&!st.proxyOrigins.includes(Z)&&f.denied.split('\n').includes(Z)&&!f.origins.split('\n').includes(Z),{st,f});
+ await close(form.targetId);
+ await setSettings(null);
 
  }
  if(runs('dismissal')){

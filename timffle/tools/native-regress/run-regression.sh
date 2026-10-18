@@ -16,5 +16,6 @@ run delayed      browser-auto-tests.mjs "$P/extension" "$L/mock-delayed.sh" dela
 run incompatible browser-auto-tests.mjs "$P/extension" "$L/mock-incompatible.sh" incompatible
 OUT_NAME=browser-manual node manual-mode-tests.mjs "$P/extension" > "$L/regress-manual.log" 2>&1; echo $? > "$L/regress-manual.exit"
 echo "manual exit=$(cat "$L/regress-manual.exit") pass=$(grep -c '"pass":true' "$L/regress-manual.log") fail=$(grep -c '"pass":false' "$L/regress-manual.log")" >> "$L/regress-summary.txt"
+run ask          ask-tests.mjs "$P/extension" "$H"
 echo DONE >> "$L/regress-summary.txt"
 cat "$L/regress-summary.txt"

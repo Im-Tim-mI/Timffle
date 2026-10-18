@@ -31,11 +31,13 @@ try{
  const setStorage=(area,values)=>chrome.eval(options.sessionId,'chrome.storage.'+area+'.set('+JSON.stringify(values)+')');
  const base={autostart:true,autoplay:'on',unmuteOverlay:'hidden',allowScriptAccess:true,preferredRenderer:'canvas',deviceFontRenderer:'canvas'};
  await setStorage('sync',base);
- const settings={enabled:true,mode:'websocket',proxyUrl:template,allowedOrigins:[origin],deniedOrigins:[],defaultsVersion:2};
+ // Each connection method has its own list: the helper keeps the default sites, the custom proxy gets the typed origin.
+ const defaultOrigins=['mole','seer','hua','ddt'].flatMap(h=>['https://'+h+'.61.com.tw','http://'+h+'.61.com.tw']);
+ const settings={enabled:true,mode:'websocket',proxyUrl:template,allowedOrigins:defaultOrigins,proxyOrigins:[origin],deniedOrigins:[],defaultsVersion:2};
  if(!legacy){
   // data-state is set only after the options script loaded settings and bound its submit handler.
   await chrome.wait(options.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status"),b=document.querySelector("#socket-proxy-save");return !!s&&!!s.dataset.state&&!!b&&!b.disabled})()');
-  await chrome.eval(options.sessionId,'(()=>{document.querySelector("#socket-proxy-mode-websocket").checked=true;document.querySelector("#socket-proxy-enabled").checked=true;document.querySelector("#socket-proxy-url").value='+JSON.stringify(template)+';document.querySelector("#socket-proxy-origins").value='+JSON.stringify(origin)+';document.querySelector("#socket-proxy-form").requestSubmit();return true})()');
+  await chrome.eval(options.sessionId,'(()=>{document.querySelector("#socket-proxy-mode-websocket").checked=true;document.querySelector("#socket-proxy-mode-websocket").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#socket-proxy-enabled").checked=true;document.querySelector("#socket-proxy-url").value='+JSON.stringify(template)+';document.querySelector("#socket-proxy-origins").value='+JSON.stringify(origin)+';document.querySelector("#socket-proxy-form").requestSubmit();return true})()');
   await chrome.wait(options.sessionId,'(async()=>{const s=(await chrome.storage.local.get("socketProxySettings")).socketProxySettings;return !!s?.enabled})()');
   assert.deepEqual(await chrome.eval(options.sessionId,'(async()=> (await chrome.storage.local.get("socketProxySettings")).socketProxySettings)()'),settings);
   assert.equal(await chrome.eval(options.sessionId,'(async()=>"socketProxySettings" in (await chrome.storage.sync.get()))()'),false);
