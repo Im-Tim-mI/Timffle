@@ -22,7 +22,7 @@
 
 - **橋接**：`socket-bridge-page.ts`（頁面端，只攔截保留網址 `ws://timffle-socket.invalid/connect?host=…&port=…` 的 `WebSocket`）、`socket-bridge-content.ts`、`socket-bridge-background.ts`（來源重新驗證、全域／每頁框上限、頁面導覽與設定撤銷時關閉）、`socket-bridge-protocol.ts`（常數與訊息格式驗證）。
 - **設定**：`socket-proxy.ts`（模式、允許的網站來源、預設清單與升級規則、代理網址樣板驗證）、`proxy-settings.ts`（只存 `storage.local`，不同步）、`proxy-options.ts` 與選項頁的「Socket 連線」區塊（中英對照，整個區塊 `translate="no"`，避免 Chrome 自動翻譯弄錯遊戲名稱）。
-- **整合**：`utils.ts` 的 `getOptions(origin)` 只對「允許使用 Socket 的網站」注入 `socketProxy` 設定；對這些網站、且使用者沒有自己指定渲染器時，預設把裝置字型改成 `canvas`（用瀏覽器字型畫中文）。不在清單內的網站與本機檔案收不到任何 Socket 設定。`build.ts` 加上 `nativeMessaging` 權限，並把環境變數 `EXTENSION_PUBLIC_KEY` 寫成 `manifest.key`（固定 ID）。
+- **整合**：`utils.ts` 的 `getOptions(origin)` 只對「允許使用 Socket 的網站」注入 `socketProxy` 設定；使用者沒有自己指定渲染器時，所有網頁（以及選項頁的顯示）預設把裝置字型改成 `canvas`（用瀏覽器字型畫中文），與 Socket 的任何決定無關——以前只有「一律允許」的網站才有，被詢問或拒絕的遊戲中文會消失（見 CHANGELOG 0.8.0.26299）。不在清單內的網站與本機檔案收不到任何 Socket 設定。`build.ts` 加上 `nativeMessaging` 權限，並把環境變數 `EXTENSION_PUBLIC_KEY` 寫成 `manifest.key`（固定 ID）。
 - **`web/packages/core/.../load-options.ts`**：`socketProxy` 設定的型別與文件，說明萬用字元對應（`host:"*"`、`port:0`）、`{host}`／`{port}` 樣板、精確對應優先，以及「成功＝WebSocket OPEN」的語意（見 0002）。
 - **測試**：3 個測試檔共 38 項（設定與允許清單、頁面橋接、背景權限）。
 - **之後新增（發行前）**：第一次連線時的詢問、「一律拒絕」清單、彈出視窗的「允許此網站使用 Socket 連線」按鈕。這些在原本的補丁之後以獨立 commit 加入，說明見 [`ARCHITECTURE.md`](ARCHITECTURE.md) 第 3a 節與 [`../CHANGELOG.md`](../CHANGELOG.md)。同一批改動還把 `manifest.json5` 的 `web_accessible_resources` 從 `*` 縮到 `dist/*` 與 `player.html`（上游是整個資料夾對所有網頁開放，網頁可以把擴充功能自己的頁面嵌進頁框）。

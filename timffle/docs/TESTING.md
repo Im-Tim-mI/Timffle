@@ -91,7 +91,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
   timffle/tools/native-regress/run-regression.sh
 ```
 
-涵蓋六種情境（最近一次：前五種共 73 項、第六種 62 項，全部通過）：
+涵蓋六種情境（最近一次：前五種共 73 項、第六種 64 項，全部通過）：
 
 | 情境 | 項數 | 內容 |
 |---|---|---|
@@ -100,7 +100,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 | delayed | 13 | 小幫手很慢才回應 |
 | incompatible | 12 | 協定不相容 |
 | manual | 8 | 自訂 WebSocket 代理模式 |
-| ask | 62 | 第一次連線的詢問（見下） |
+| ask | 64 | 第一次連線的詢問與字型設定（見下） |
 
 ### 第一次連線的詢問（`ask-tests.mjs`）
 
@@ -115,6 +115,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 | `guard` | 詢問視窗的輸入防護：腳本產生的點擊不能回答；Tab 到「允許」再按 Enter／Space 不能回答；沒有先在按鈕上移動指標的按下不能回答；視窗沒有焦點時不算、取得焦點後 0.7 秒內不算；之後真的點擊可以回答；鍵盤可以「拒絕」 |
 | `options` | 設定頁：小幫手與自訂代理各有自己的清單、切換時保留各自輸入、儲存只改目前方式的清單；自訂代理的 token 只給它自己清單裡的網站（真的頁面讀 `RufflePlayer.config.socketProxy`，只在小幫手清單裡的網站讀不到）；沒有編輯的表單跟著別處的變更更新；有編輯的表單收到警告，儲存時被拒絕並顯示最新設定，**舊表單不能把「一律拒絕」改回去** |
 | `keepalive` | 詢問視窗開著、什麼都不做，等 75 秒（超過 MV3 service worker 30 秒閒置回收）後仍能回答。**對照實驗**：把詢問頁的保活 Port 拿掉，同一個測試會失敗（視窗還在，但回答不被接受，因為 service worker 已被回收、問題丟了）；所以這個測試確實量到保活機制，等待時間可用 `ASK_IDLE_MS` 調整 |
+| `fonts` | 網站的 Socket 決定不影響文字怎麼畫：「一律允許」「每次造訪時詢問」「一律拒絕」「停用 Socket」四種狀態下，頁面收到的 `deviceFontRenderer` 都是 `canvas`（Ruffle 內建的字型沒有中文字，只有瀏覽器字型畫得出中文；曾經只有「一律允許」是 `canvas`，被詢問或拒絕的遊戲中文會消失）；使用者在選項頁明確選的渲染器仍然優先 |
 
 `ASK_ONLY=popup,framing` 只跑指定的區段。輸入防護用真的 CDP 輸入事件測（`Input.dispatchMouseEvent`／`dispatchKeyEvent`，鍵盤要送帶字元的 `keyDown` 才會啟動按鈕）；沒有移動指標的按下是只送 `mousePressed`／`mouseReleased`。「按下發生在 0.7 秒之前」這類時間規則由 `tests/prompt-guard.test.mjs` 單元測試涵蓋（端對端測試做不到精確的時間控制）。
 

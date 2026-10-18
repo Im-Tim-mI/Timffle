@@ -19,7 +19,7 @@ node relay.mjs --origin https://mole.61.com.tw --origin http://mole.61.com.tw
 1. 載入這次修正版擴充功能後，開啟它的設定頁。
 2. 在「Socket 代理」區啟用代理。將 `connection.json` 的 `proxyUrl` 值貼入 WebSocket 網址模板（保留 `{host}` 與 `{port}`）。
 3. 允許的網站來源一行一個，必須和啟動參數一致，例如 `https://mole.61.com.tw`、`http://mole.61.com.tw`。
-4. 進階選項的「Device font renderer」建議改成 `Canvas`，伺服器名稱等中文才會顯示。
+4. 進階選項的「Device font renderer」預設就是 `Canvas`（伺服器名稱等中文才會顯示），不用改；除非你自己選過 `Embedded`，那樣中文會消失。
 5. 儲存並重新整理遊戲頁。從官網 `https://mole.61.com.tw/` 進入，不直接開 Client.swf（會被遊戲判定為非法客戶端）。輸入 http 網址時 Chrome 會自動升級成 https。
 6. 第一次按登入時，Chrome 會詢問是否允許 mole.61.com.tw 存取這台裝置上的其他應用程式／本機網路，請按「允許」。沒有允許時 Chrome 會擋下連線（主控台顯示 `ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`），遊戲連不上伺服器。若曾按過封鎖，到網址列左側的網站設定改回允許後重新整理。不要停用瀏覽器安全檢查。
 
