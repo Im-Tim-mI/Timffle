@@ -9,8 +9,10 @@ import {
     updateProxySettings,
 } from "../src/proxy-settings.ts";
 import {
+    DEFAULT_ALLOWED_ORIGINS,
     DEFAULTS_VERSION,
     defaultProxySettings,
+    resolveSocketAccess,
     setSocketChoice,
     socketPermission,
 } from "../src/socket-proxy.ts";
@@ -87,6 +89,34 @@ test("saving returns the settings as they are stored", async () => {
         saveProxySettings({ ...saved, allowedOrigins: ["*"] }),
         /invalid_origin/u,
     );
+});
+
+test("settings stored by a release before the default list grew follow the new defaults in both modes", async () => {
+    const proxyUrl =
+        "ws://127.0.0.1:18770/connect?host={host}&port={port}&token=T";
+    for (const mode of ["helper", "websocket"]) {
+        const state = install();
+        // One Mole-only list, no defaultsVersion, no separate proxy list.
+        state.stored = {
+            enabled: true,
+            mode,
+            proxyUrl: mode === "websocket" ? proxyUrl : "",
+            allowedOrigins: ["https://mole.61.com.tw", "http://mole.61.com.tw"],
+        };
+        const settings = await getProxySettings();
+        assert.deepEqual(settings.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
+        assert.deepEqual(settings.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
+        assert.equal(settings.defaultsVersion, DEFAULTS_VERSION);
+        // Whichever way sockets are reached, every default site gets it.
+        for (const origin of DEFAULT_ALLOWED_ORIGINS) {
+            assert.equal(resolveSocketAccess(settings, origin)?.mode, mode);
+        }
+        // Reading writes nothing; the next save keeps what was read.
+        assert.equal(state.writes, 0);
+        const saved = await saveProxySettings(settings);
+        assert.deepEqual(saved, settings);
+        assert.deepEqual(await getProxySettings(), saved);
+    }
 });
 
 test("comparing settings looks at every field and the order of the lists", () => {

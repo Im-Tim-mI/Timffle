@@ -71,24 +71,41 @@ const LEGACY_DEFAULT_ORIGINS: readonly (readonly string[])[] = [
  * default site list. Anything the user chose (a different list, or any
  * settings saved by this release or later) is returned unchanged, so an
  * explicit Mole-only list stays Mole-only once it is saved again.
+ *
+ * Each of the two allow-lists is judged on its own, and a list that is not an
+ * earlier default is never replaced. Settings saved before the lists were
+ * separated have one list's sites in both, so a never-edited list is upgraded
+ * in both modes.
  */
 export function upgradeLegacyDefaults(settings: ProxySettings): ProxySettings {
     if ((settings.defaultsVersion ?? 0) >= DEFAULTS_VERSION) {
         return settings;
     }
-    const saved = new Set(settings.allowedOrigins);
+    const allowedOrigins = upgradeLegacyList(settings.allowedOrigins);
+    const proxyOrigins = upgradeLegacyList(settings.proxyOrigins);
+    return allowedOrigins === settings.allowedOrigins &&
+        proxyOrigins === settings.proxyOrigins
+        ? settings
+        : {
+              ...settings,
+              allowedOrigins,
+              proxyOrigins,
+              defaultsVersion: DEFAULTS_VERSION,
+          };
+}
+
+/**
+ * The current defaults if `list` is exactly an earlier release's, else `list`
+ * itself.
+ */
+function upgradeLegacyList(list: string[]): string[] {
+    const saved = new Set(list);
     const untouched = LEGACY_DEFAULT_ORIGINS.some(
         (legacy) =>
             legacy.length === saved.size &&
             legacy.every((origin) => saved.has(origin)),
     );
-    return untouched
-        ? {
-              ...settings,
-              allowedOrigins: [...DEFAULT_ALLOWED_ORIGINS],
-              defaultsVersion: DEFAULTS_VERSION,
-          }
-        : settings;
+    return untouched ? [...DEFAULT_ALLOWED_ORIGINS] : list;
 }
 
 /**

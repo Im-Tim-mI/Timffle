@@ -105,25 +105,90 @@ test("never-edited settings of the Mole-only release follow the new defaults", (
             mode: "helper",
             proxyUrl: "",
             allowedOrigins: legacy,
+            proxyOrigins: legacy,
+            deniedOrigins: [],
         });
         assert.deepEqual(upgraded.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
+        assert.deepEqual(upgraded.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
         assert.equal(upgraded.defaultsVersion, DEFAULTS_VERSION);
         assert.equal(upgraded.mode, "helper");
     }
     // The connection method and the proxy URL belong to the user.
+    const legacy = ["https://mole.61.com.tw", "http://mole.61.com.tw"];
     const manual = upgradeLegacyDefaults({
         enabled: false,
         mode: "websocket",
         proxyUrl: url,
-        allowedOrigins: ["https://mole.61.com.tw", "http://mole.61.com.tw"],
+        allowedOrigins: legacy,
+        proxyOrigins: legacy,
+        deniedOrigins: [],
     });
     assert.deepEqual(manual.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
+    assert.deepEqual(manual.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
     assert.equal(manual.enabled, false);
     assert.equal(manual.mode, "websocket");
     assert.equal(manual.proxyUrl, url);
 });
+test("legacy settings with a custom proxy give its URL to the new default sites, as the release before the split did", () => {
+    // Saved before the default list grew and before there were two lists:
+    // one Mole-only list, no defaultsVersion.
+    const stored = {
+        enabled: true,
+        mode: "websocket",
+        proxyUrl: url,
+        allowedOrigins: ["https://mole.61.com.tw", "http://mole.61.com.tw"],
+    };
+    const validated = validateProxySettings(stored);
+    assert.equal(validated.valid, true);
+    const upgraded = upgradeLegacyDefaults(validated.settings);
+    assert.deepEqual(upgraded.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
+    assert.deepEqual(upgraded.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
+    for (const origin of DEFAULT_ALLOWED_ORIGINS) {
+        assert.deepEqual(
+            applyProxySettings({}, upgraded, origin).socketProxy,
+            [{ host: "*", port: 0, proxyUrl: url }],
+            origin,
+        );
+    }
+    // Nobody else gets it.
+    assert.equal(
+        applyProxySettings({}, upgraded, "https://x.example").socketProxy,
+        undefined,
+    );
+});
+test("an upgrade judges each list on its own and never replaces one the user changed", () => {
+    const legacy = ["https://mole.61.com.tw", "http://mole.61.com.tw"];
+    const mine = ["https://x.example"];
+    const base = {
+        enabled: true,
+        mode: "websocket",
+        proxyUrl: url,
+        deniedOrigins: [],
+    };
+    // Only the list that receives the proxy's URL was changed: it keeps
+    // exactly its sites, however the other one is treated.
+    const proxy = upgradeLegacyDefaults({
+        ...base,
+        allowedOrigins: legacy,
+        proxyOrigins: mine,
+    });
+    assert.deepEqual(proxy.proxyOrigins, mine);
+    assert.deepEqual(proxy.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
+    const helper = upgradeLegacyDefaults({
+        ...base,
+        allowedOrigins: mine,
+        proxyOrigins: legacy,
+    });
+    assert.deepEqual(helper.allowedOrigins, mine);
+    assert.deepEqual(helper.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
+});
 test("lists the user chose or saved with this release are left alone", () => {
-    const base = { enabled: true, mode: "helper", proxyUrl: "" };
+    const base = {
+        enabled: true,
+        mode: "helper",
+        proxyUrl: "",
+        deniedOrigins: [],
+    };
     for (const allowedOrigins of [
         ["https://mole.61.com.tw"],
         ["http://mole.61.com.tw"],
@@ -135,18 +200,31 @@ test("lists the user chose or saved with this release are left alone", () => {
         ],
         [],
     ]) {
-        const saved = { ...base, allowedOrigins };
+        const saved = { ...base, allowedOrigins, proxyOrigins: allowedOrigins };
         assert.deepEqual(upgradeLegacyDefaults(saved), saved);
     }
-    // Saved again on purpose after the upgrade: Mole-only stays Mole-only.
+    // Saved again on purpose after the upgrade: Mole-only stays Mole-only,
+    // in both lists.
     const deliberate = {
         ...base,
         allowedOrigins: ["https://mole.61.com.tw", "http://mole.61.com.tw"],
+        proxyOrigins: ["https://mole.61.com.tw", "http://mole.61.com.tw"],
         defaultsVersion: DEFAULTS_VERSION,
     };
     assert.deepEqual(upgradeLegacyDefaults(deliberate), deliberate);
     assert.deepEqual(
         resolveSocketAccess(deliberate, "https://seer.61.com.tw"),
+        undefined,
+    );
+    const deliberateProxy = {
+        ...deliberate,
+        mode: "websocket",
+        proxyUrl: url,
+    };
+    assert.deepEqual(upgradeLegacyDefaults(deliberateProxy), deliberateProxy);
+    assert.equal(
+        applyProxySettings({}, deliberateProxy, "https://seer.61.com.tw")
+            .socketProxy,
         undefined,
     );
 });
