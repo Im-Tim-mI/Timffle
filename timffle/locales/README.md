@@ -34,7 +34,7 @@ python3 timffle/scripts/sync_locales.py --check   # 確認複製結果是最新�
 羅技（Logitech）的折扣碼是台灣商店的優惠，擴充功能只在瀏覽器的介面語言是英文或中文時顯示那個區塊，所以六句 `timffle_promo_*` **只有 `en`、`zh_TW`、`zh_CN` 三個檔案有**；其他語言的檔案不得有這些鍵（`sync_locales.py --check` 與單元測試會擋下），也不用翻譯。頁面怎麼決定顯示與否：區塊標 `data-i18n-languages="en zh"`，見 [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)。想讓別的語言也顯示，要同時改 `sync_locales.py` 的 `REGIONAL_LANGUAGES`、兩個 HTML 的 `data-i18n-languages`、單元測試與 `locale-tests.mjs` 裡的語言清單，並替那個語言補上六句。
 
 - `timffle_promo_image` 的內容是**檔名**（`web/packages/extension/assets/images/` 裡的橫幅圖），不是句子：中文（`zh_TW`、`zh_CN`）用 `promo-logitech-zh.png`，英文用 `promo-logitech-en.png`；測試會確認檔案存在、檔名格式正確。
-- `timffle_promo_summary` 是彈出視窗裡收合著的那一行，**要放得進一行**（瀏覽器測試會檢查沒被截斷）；完整標題在 `timffle_promo_title`。聲明（`timffle_promo_disclaimer`：這是羅技官方線上商城的折扣碼、Timffle 與羅技毫無關係）意思不能改。
+- `timffle_promo_summary` 是彈出視窗裡那個區塊的標題列（使用者按它可以折疊），**要放得進一行**（瀏覽器測試會檢查沒被截斷）；完整標題在 `timffle_promo_title`。聲明（`timffle_promo_disclaimer`：這是羅技官方線上商城的折扣碼、Timffle 與羅技毫無關係）意思不能改。
 
 ## 翻譯時要守的規則（測試會檢查大部分）
 
