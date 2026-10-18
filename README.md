@@ -18,7 +18,7 @@
 
 <p align="center"><b>English</b> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">Version <code>0.8.0.26301</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
+<p align="center">Version <code>0.8.0.26302</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
 > **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
@@ -260,6 +260,14 @@ Timffle is based on Ruffle `nightly-2026-10-13` (commit [`46fec3f`](https://gith
 
 Later commits add the first-use question, the popup and the settings lists, the Windows font metrics for canvas text, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
 
+## Logitech discount code
+
+<p align="center"><a href="https://store.logitech.tw/discount/LOGITIM"><img src="web/packages/extension/assets/images/promo-logitech-en.png" alt="Banner: Logitech Taiwan online store, 10% off gaming products with the code LOGITIM, valid until 2026-12-31" width="560"></a></p>
+
+**Code `LOGITIM`: 10% off gaming products at [Logitech's official online store in Taiwan](https://store.logitech.tw/discount/LOGITIM)**, valid until 2026-12-31. The link applies the code for you; you can also enter it at checkout.
+
+**This is a discount code for Logitech's official online store. Timffle has no connection with Logitech whatsoever:** it is not affiliated with, endorsed by or sponsored by Logitech. "Logitech", "Logi" and the product names and photos in the banner belong to Logitech, and the prices in the banner are those of the day it was made. The same box is in the extension's settings page and, closed by default, in its popup (it opens a link in your browser only when you click it; nothing is loaded from the web). It is a Taiwanese shop's code, so the extension shows it only when the browser's language is English or Chinese; in every other language there is no such box.
+
 ## Development
 
 ### Build from source
@@ -268,8 +276,8 @@ Needs git, Rust 1.99 with `wasm32-unknown-unknown`, wasm-bindgen CLI 0.2.127 (mu
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26301 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26301 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
+VERSION4=0.8.0.26302 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26302 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
 ```
 
 The build script rewrites the build machine's home directory and user name out of the wasm by default, and the packaging script checks before and after packaging and refuses to produce a release ZIP that still carries them. See [`timffle/docs/BUILD.md`](timffle/docs/BUILD.md). The other parts of Ruffle (desktop app etc.) build as upstream does ([`README.ruffle.md`](README.ruffle.md)), but read [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md) first.
@@ -283,7 +291,7 @@ The build script rewrites the build machine's home directory and user name out o
 | Package tests | The release ZIP's contents, permissions and private-key check | `timffle/helper/installer-tests/` |
 | Extension unit tests | Settings, page bridge, background permissions, the first-use question, the message catalogs of all 36 languages | `web/packages/extension/tests/` |
 | Rebrand check | The user-visible text must not contain the product name "Ruffle" any more | `python3 timffle/scripts/rebrand.py --check` |
-| Language check | Every interface text exists in all 36 languages, with placeholders and technical words intact | `python3 timffle/scripts/sync_locales.py --check` |
+| Language check | Every interface text exists in all 36 languages (except the discount box, English and Chinese only), with placeholders and technical words intact | `python3 timffle/scripts/sync_locales.py --check` |
 | Browser + helper integration tests | Headless Chrome + the real helper, connecting to localhost only; also every interface language in a real Chrome | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
 | Ruffle's own regression suite | Upstream's tests plus the ones we added | `cargo test -p tests --test tests` |
 

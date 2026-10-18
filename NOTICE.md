@@ -34,6 +34,7 @@ Modifications and additions Copyright (c) 2026 Im-Tim-mI and Timffle contributor
 - 「Ruffle」名稱與 Ruffle 標誌屬於 Ruffle 專案。MIT 與 Apache-2.0（第 6 條）都**不授予商標權**，所以 Timffle 的產品名稱、圖示、標題與連結都不使用 Ruffle 的名稱或標誌，只以描述方式提及 Ruffle（「Ruffle 的分支」「基於 Ruffle」「Ruffle wiki」）。哪些地方改了、哪些刻意保留，見 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)。
 - 程式碼內的識別名稱（例如 `ruffle_core`、`window.RufflePlayer`、`<ruffle-player>`）是 Ruffle 的公開 API 與內部名稱，為了相容性與方便跟進上游而保留，不是產品名稱。
 - 「摩爾莊園」「賽爾號」「小花仙」「彈彈堂」「淘米」「Flash」「Adobe」「Chrome」「Windows」「macOS」等名稱與商標屬於各自的權利人，本專案只用來指稱相容的對象。
+- 「Logitech」「Logi」「羅技」與擴充功能、README 的橫幅圖中的羅技產品名稱與照片屬於羅技（Logitech）。**本專案與羅技毫無關係**，沒有隸屬、背書或贊助關係；擴充功能與 README 裡的連結，只是提供一則羅技官方線上商城九折優惠碼（`LOGITIM`）的資訊。
 
 ## 沒有保證
 
@@ -47,6 +48,6 @@ Modifications and additions Copyright (c) 2026 Im-Tim-mI and Timffle contributor
 - **Report Timffle problems to https://github.com/Im-Tim-mI/Timffle/issues, not to Ruffle.**
 - **Licences:** Ruffle's code — MIT OR Apache-2.0 (Ruffle LLC and Ruffle contributors; `LICENSE.md`, `web/LICENSE.md`, which also list the third-party dependencies). rust-flash-lso in `vendor/rust-flash-lso/` — MIT (Callum Thomson). Timffle's modifications and the original parts under `timffle/` — MIT OR Apache-2.0 at your option (Im-Tim-mI and Timffle contributors; `timffle/LICENSE-MIT`, `timffle/LICENSE-APACHE`). ws in `timffle/relay/vendor/ws/` — MIT. Timffle adds no Rust or npm dependencies.
 - **Modification notice (Apache-2.0 §4(b)):** the upstream files changed by Timffle are listed in [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md); each change and its author are in the git history.
-- **Trademarks:** neither licence grants trademark rights. Timffle does not use the Ruffle name or logo as its product name, icon, title or link target, and mentions Ruffle only descriptively. Code identifiers such as `ruffle_core`, `window.RufflePlayer` and `<ruffle-player>` are kept for API compatibility. Game names, "Taomee", "Flash", "Adobe", "Chrome" etc. belong to their owners. See [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md).
+- **Trademarks:** neither licence grants trademark rights. Timffle does not use the Ruffle name or logo as its product name, icon, title or link target, and mentions Ruffle only descriptively. Code identifiers such as `ruffle_core`, `window.RufflePlayer` and `<ruffle-player>` are kept for API compatibility. Game names, "Taomee", "Flash", "Adobe", "Chrome" etc. belong to their owners. "Logitech", "Logi" and the Logitech product names and photos in the discount banner belong to Logitech; Timffle has no connection with Logitech whatsoever, and the link to Logitech's official online store (discount code `LOGITIM`) in the extension and the README is only information. See [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md).
 - **No game assets** are included and game files are not modified. Adobe Flash Player is neither included nor distributed.
 - Provided "as is", without warranty of any kind.

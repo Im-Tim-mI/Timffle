@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build the Timffle Chrome extension (WebAssembly core + extension bundle) from this repository.
 #
-# Usage: VERSION4=0.8.0.26301 timffle/scripts/build-extension.sh
+# Usage: VERSION4=0.8.0.26302 timffle/scripts/build-extension.sh
 #   VERSION4        extension version, four dot-separated numbers (default 0.8.0.1; the last one is just a build counter)
 #   CARGO_FEATURES  Ruffle web features (default: jpegxr)
 #   SKIP_TESTS=1    skip the extension type check and unit tests

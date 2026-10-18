@@ -18,7 +18,7 @@
 
 <p align="center"><a href="README.md">English</a> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <b>简体中文</b></p>
 
-<p align="center">版本 <code>0.8.0.26301</code>（基于 Ruffle nightly 2026-10-13）｜ 授权 MIT 或 Apache-2.0（任选其一）</p>
+<p align="center">版本 <code>0.8.0.26302</code>（基于 Ruffle nightly 2026-10-13）｜ 授权 MIT 或 Apache-2.0（任选其一）</p>
 
 > [!IMPORTANT]
 > **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，与 Ruffle 项目、Ruffle LLC、淘米网络（Taomee）没有隶属或合作关系，也没有得到它们的认可。** Flash 模拟内核几乎全部是 Ruffle 与其[数百位贡献者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 历史、作者记录与授权文件。
@@ -260,6 +260,14 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 之后的 commit 加上了第一次连接时的询问、弹出窗口与设置清单、canvas 文字的 Windows 字体度量，以及各个发行版（见 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每项修正的细节与原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改过的 Ruffle 文件清单（Apache-2.0 第 4(b) 条的「修改声明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差异：`git diff 46fec3f -- . ':!timffle'`。
 
+## 罗技优惠码
+
+<p align="center"><a href="https://store.logitech.tw/discount/LOGITIM"><img src="web/packages/extension/assets/images/promo-logitech-zh.png" alt="横幅：罗技网络旗舰店电竞类别九折折扣码 LOGITIM，可使用到 2026/12/31" width="560"></a></p>
+
+**折扣码 `LOGITIM`：[罗技台湾官方在线商城](https://store.logitech.tw/discount/LOGITIM)电竞类别九折**，可使用到 2026/12/31。点这个链接会自动带入折扣码，也可以在结账页面输入。
+
+**此为罗技官方在线商城的九折优惠码。本项目与罗技毫无关系：**Timffle 与罗技没有隶属、背书或赞助关系。「Logitech」「Logi」与横幅图中的产品名称、照片属于罗技，图中的价格是制作当天的价格。同样的区块也在扩展程序的设置页，以及默认收合的弹出窗口里（只有你点击时才会在浏览器打开链接，不会从网络加载任何东西）。这是台湾商店的优惠码，所以只有浏览器的界面语言是中文或英文时才会显示，其他语言看不到。
+
 ## 开发
 
 ### 从源代码构建
@@ -268,8 +276,8 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26301 timffle/scripts/build-extension.sh   # 构建 wasm 与 Chrome 扩展程序 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26301 timffle/scripts/package-release.sh   # 交叉编译小帮手（7 个平台）并打包发行 ZIP（含授权文件）→ timffle/build/out/
+VERSION4=0.8.0.26302 timffle/scripts/build-extension.sh   # 构建 wasm 与 Chrome 扩展程序 → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26302 timffle/scripts/package-release.sh   # 交叉编译小帮手（7 个平台）并打包发行 ZIP（含授权文件）→ timffle/build/out/
 ```
 
 构建脚本默认会把构建机的家目录与用户名从 wasm 里改写掉，打包脚本打包前后都会检查，发现就拒绝产出发行 ZIP。步骤、工具版本、扩展程序密钥与常见问题：[`timffle/docs/BUILD.md`](timffle/docs/BUILD.md)。Ruffle 原有的桌面版等其他部分，构建方式与上游相同（见 [`README.ruffle.md`](README.ruffle.md)），但请先读 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)。
@@ -283,7 +291,7 @@ VERSION4=0.8.0.26301 timffle/scripts/package-release.sh   # 交叉编译小帮�
 | 打包测试 | 发行 ZIP 的内容、权限与私钥检查 | `timffle/helper/installer-tests/` |
 | 扩展程序单元测试 | 设置、页面桥接、后台权限、第一次连接的询问、36 种语言的文字目录 | `web/packages/extension/tests/` |
 | 品牌检查 | 用户看得到的文字不得再出现「Ruffle」产品名 | `python3 timffle/scripts/rebrand.py --check` |
-| 语言检查 | 每一句界面文字在 36 种语言都有，占位符与技术用词没有被翻掉 | `python3 timffle/scripts/sync_locales.py --check` |
+| 语言检查 | 每一句界面文字在 36 种语言都有（只有折扣码区块例外，只有英文与中文），占位符与技术用词没有被翻掉 | `python3 timffle/scripts/sync_locales.py --check` |
 | 浏览器＋小帮手集成测试 | 无头 Chrome＋真小帮手，只连 localhost；并逐一用每种界面语言开真 Chrome 检查 | [`timffle/tools/native-regress/`](timffle/tools/native-regress/) |
 | Ruffle 自身回归测试 | 上游测试套件加上我们添加的测试 | `cargo test -p tests --test tests` |
 
