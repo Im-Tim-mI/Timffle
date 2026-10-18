@@ -26,6 +26,12 @@ const RTL=new Set(['ar','he']);
 // Chrome has no interface language for these, so it runs in English whatever the system asks for (Firefox has them). Their
 // catalogs are checked by the unit tests; here the browser is only expected to fall back to English.
 const NO_CHROME_UI=new Set(['bs','eo','gl','tt']);
+// The Logitech discount box is a Taiwanese shop's code: the English and Chinese interfaces show it, no other language does.
+const SHOWS_PROMO=new Set(['en','zh_CN','zh_TW']);
+const LINK='https://store.logitech.tw/discount/LOGITIM';
+// Whether the box is out of sight: hidden, not drawn, no height.
+const PROMO_GONE=`(()=>{const s=document.getElementById('promo');return {hidden:s.hidden,display:getComputedStyle(s).display,height:s.getBoundingClientRect().height}})()`;
+const isGone=(s)=>s.hidden===true&&s.display==='none'&&s.height===0;
 const all=languages(extensionDir);
 const todo=wanted.length?wanted:all;
 for(const language of todo)assert.ok(all.includes(language),'the extension has no language '+language);
@@ -96,6 +102,16 @@ for(const language of todo){
   const helperText=await chrome.eval(probe.sessionId,'document.querySelector("#socket-helper-status").textContent');
   // No helper is installed in this run: the status is the "not installed" one (or the "unavailable" one), never blank or the key.
   add(language+':helper-status-is-a-catalog-text',[T('timffle_helper_missing'),T('timffle_helper_unavailable'),T('timffle_helper_incompatible')].includes(helperText),{helperText});
+  // The discount box: shown in English and Chinese only (texts of the language, the banner of the language loaded at its real size, both links exact); out of sight in every other language.
+  if(SHOWS_PROMO.has(language)){
+  const promo=await chrome.eval(probe.sessionId,`(()=>{const section=document.getElementById('promo'),img=section.querySelector('img'),links=[...section.querySelectorAll('a')];
+   return {title:section.querySelector('h2').textContent,note:section.querySelector('.promo-note').textContent,alt:img.alt,src:img.getAttribute('src'),loaded:img.complete&&img.naturalWidth===720&&img.naturalHeight===405,shown:Math.round(img.getBoundingClientRect().width),
+    links:links.map(a=>({href:a.href,text:a.textContent,target:a.target,rel:a.rel})),fits:section.getBoundingClientRect().right<=document.documentElement.clientWidth+1}})()`);
+  add(language+':settings-page-discount-box',promo.title===T('timffle_promo_title')&&promo.note===T('timffle_promo_disclaimer')&&promo.alt===T('timffle_promo_image_alt')&&promo.src==='images/'+T('timffle_promo_image')&&promo.loaded&&promo.shown>300&&promo.fits&&promo.links.length===2&&promo.links.every(l=>l.href===LINK&&l.target==='_blank'&&l.rel==='noopener noreferrer')&&promo.links[1].text===T('timffle_promo_link'),{promo});
+  }else{
+   const gone=await chrome.eval(probe.sessionId,PROMO_GONE);
+   add(language+':settings-page-has-no-discount-box',isGone(gone),{gone});
+  }
   await picture(probe,'settings');
   await chrome.send('Target.closeTarget',{targetId:probe.targetId});
 
@@ -132,6 +148,16 @@ for(const language of todo){
   const pp=await chrome.eval(pop.sessionId,READ);
   add(language+':popup-shows-its-catalog',pp.marked.length>=2&&pp.marked.every(x=>x.text===T(x.key)),{marked:pp.marked.map(x=>x.key)});
   add(language+':popup-language-and-direction',pp.lang===expectLang&&pp.dir===(RTL.has(language)?'rtl':'ltr'),{lang:pp.lang,dir:pp.dir});
+  // The discount box (English and Chinese only): closed (the popup has no room for the picture), and shows the same things once opened; out of sight in every other language.
+  if(SHOWS_PROMO.has(language)){
+  const pr=await chrome.eval(pop.sessionId,`(()=>{const d=document.getElementById('promo'),img=d.querySelector('img');const bodyHeight=()=>document.body.getBoundingClientRect().height;const sum=d.querySelector('summary');const before={open:d.open,height:bodyHeight(),summaryHeight:Math.round(sum.getBoundingClientRect().height),summaryCut:sum.scrollWidth>sum.clientWidth};d.open=true;
+   return new Promise(r=>setTimeout(()=>r({before,grew:Math.round(bodyHeight()-before.height),open:d.open,summary:d.querySelector('summary').textContent,title:d.querySelector('.promo-title').textContent,alt:img.alt,src:img.getAttribute('src'),loaded:img.complete&&img.naturalWidth===720,shown:Math.round(img.getBoundingClientRect().width),note:d.querySelector('.promo-note').textContent,link:d.querySelectorAll('a')[1].textContent,hrefs:[...d.querySelectorAll('a')].map(a=>a.href)}),150))})()`);
+  add(language+':popup-discount-box-is-closed-and-opens',pr.before.open===false&&pr.before.summaryHeight<=28&&!pr.before.summaryCut&&pr.grew>=140&&pr.open===true&&pr.summary===T('timffle_promo_summary')&&pr.title===T('timffle_promo_title')&&pr.alt===T('timffle_promo_image_alt')&&pr.src==='images/'+T('timffle_promo_image')&&pr.loaded&&pr.shown>200&&pr.note===T('timffle_promo_disclaimer')&&pr.link===T('timffle_promo_link')&&pr.hrefs.every(h=>h===LINK),{pr});
+  await picture(pop,'popup-discount');
+  }else{
+   const gone=await chrome.eval(pop.sessionId,PROMO_GONE);
+   add(language+':popup-has-no-discount-box',isGone(gone),{gone});
+  }
   await chrome.send('Target.closeTarget',{targetId:pop.targetId});
  }catch(error){
   add(language+':run',false,{error:String(error?.message??error)});

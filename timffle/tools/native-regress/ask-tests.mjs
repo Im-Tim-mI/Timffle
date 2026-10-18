@@ -231,6 +231,21 @@ try{
  {const shot=await chrome.send('Page.captureScreenshot',{format:'png'},pop.sessionId);await fs.writeFile(path.join(output,'popup-ask.png'),Buffer.from(shot.data,'base64'));}
  const popupHeight=await chrome.eval(pop.sessionId,'document.documentElement.scrollHeight');
  add('popup-fits-the-600px-chrome-allows',popupHeight<=600,{popupHeight});
+ // The Logitech discount box is for the English and Chinese interfaces only. There it is closed in the popup, and opened the real
+ // popup (600 px at most) must scroll to the end of it, not cut it off; in every other language there is no box at all.
+ if(!['en','zh_CN','zh_TW'].includes(locale)){
+  const gone=await chrome.eval(pop.sessionId,'(()=>{const s=document.getElementById("promo");return s.hidden&&getComputedStyle(s).display==="none"})()');
+  add('popup-has-no-discount-box-in-this-language',gone===true,{locale});
+ }else{
+  const closedAtFirst=await chrome.eval(pop.sessionId,'!document.getElementById("promo").open');
+  await click(pop.sessionId,'#promo summary');
+  await until(()=>chrome.eval(pop.sessionId,'(()=>{const d=document.getElementById("promo"),i=d.querySelector("img");return d.open&&i.complete&&i.naturalWidth===720})()'));
+  await delay(800);
+  const box=await chrome.eval(pop.sessionId,'(()=>{window.scrollTo(0,document.documentElement.scrollHeight);const b=document.querySelector("#promo .promo-note").getBoundingClientRect(),e=document.documentElement;return {viewport:window.innerHeight,content:e.scrollHeight,scrolled:Math.round(window.scrollY),noteTop:Math.round(b.top),noteBottom:Math.round(b.bottom),sideways:e.scrollWidth>e.clientWidth}})()');
+  add('popup-discount-box-opens-and-scrolls-inside-the-limit',closedAtFirst&&box.viewport<=600&&box.noteTop>=0&&box.noteBottom<=box.viewport&&!box.sideways&&(box.content<=box.viewport||box.scrolled>0),{closedAtFirst,box});
+  await click(pop.sessionId,'#promo summary');
+  await delay(400);
+ }
  await click(pop.sessionId,'.socket-allow');
  await until(async()=>(await settingsNow())?.allowedOrigins.includes(origin));
  const sa=await settingsNow();
