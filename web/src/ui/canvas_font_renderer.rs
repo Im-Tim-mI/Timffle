@@ -28,6 +28,10 @@ impl CanvasFontRenderer {
     /// Divide each pixel into 20 (use twips precision). It affects metrics.
     const SCALE: f64 = 20.0;
 
+    /// Line height (ascent + descent, in em) above which a stand-in font's
+    /// line metrics are replaced by its CJK em box, see [`Self::line_metrics`].
+    const TALL_LINE_EM: f64 = 1.25;
+
     pub fn new(
         italic: bool,
         bold: bool,
@@ -49,9 +53,8 @@ impl CanvasFontRenderer {
         tracing::debug!("Using the following font string: {font_str}");
         Self::apply_style(&ctx, &font_str);
 
-        let measurement = ctx.measure_text("Myjg")?;
-        let ascent = measurement.font_bounding_box_ascent();
-        let descent = measurement.font_bounding_box_descent();
+        let (ascent, descent) = Self::line_metrics(&ctx, italic, bold, font_family)?;
+        Self::apply_style(&ctx, &font_str);
 
         Ok(Self {
             canvas,
@@ -61,6 +64,56 @@ impl CanvasFontRenderer {
             descent,
             atlases: atlases.clone(),
         })
+    }
+
+    /// Ascent and descent in pixels at [`Self::SIZE_PX`] (timffle).
+    ///
+    /// Flash lays text out with the requested (Windows) font, whose line is
+    /// about 1.0-1.2 em; SimSun is 0.86 + 0.14. When that font is missing, or a
+    /// generic family stands in, the browser's choice can be much taller:
+    /// Android's Noto Sans CJK reports 1.16 + 0.29 em, which puts every line
+    /// about a quarter em lower than the game expects. Such stand-ins use the
+    /// CJK em box instead (bottom at the ideographic baseline, 0.88 + 0.12 em
+    /// for Noto Sans CJK), which matches the classic CJK fonts. Installed fonts
+    /// and ordinary fallbacks keep the browser's metrics.
+    fn line_metrics(
+        ctx: &OffscreenCanvasRenderingContext2d,
+        italic: bool,
+        bold: bool,
+        font_family: &str,
+    ) -> Result<(f64, f64), JsValue> {
+        let font_str = Self::to_font_str(italic, bold, Self::SIZE_PX, font_family);
+        ctx.set_font(&font_str);
+        let measurement = ctx.measure_text("Myjg")?;
+        let ascent = measurement.font_bounding_box_ascent();
+        let descent = measurement.font_bounding_box_descent();
+        if ascent + descent <= Self::TALL_LINE_EM * Self::SIZE_PX
+            || (!Self::is_generic_family(font_family) && Self::is_installed(ctx, &font_str)?)
+        {
+            return Ok((ascent, descent));
+        }
+        let ideographic =
+            js_sys::Reflect::get(&measurement, &JsValue::from_str("ideographicBaseline"))?.as_f64();
+        match ideographic.map(|baseline| -baseline) {
+            Some(em_bottom) if em_bottom > 0.0 && em_bottom < Self::SIZE_PX / 2.0 => {
+                Ok((Self::SIZE_PX - em_bottom, em_bottom))
+            }
+            _ => Ok((ascent, descent)),
+        }
+    }
+
+    /// Whether the browser has the font itself rather than a fallback: text
+    /// measures the same with two different fallback families only then.
+    fn is_installed(
+        ctx: &OffscreenCanvasRenderingContext2d,
+        font_str: &str,
+    ) -> Result<bool, JsValue> {
+        const PROBE: &str = "mmmmmmmmmmlli\u{570B}";
+        ctx.set_font(&format!("{font_str}, monospace"));
+        let with_monospace = ctx.measure_text(PROBE)?.width();
+        ctx.set_font(&format!("{font_str}, serif"));
+        let with_serif = ctx.measure_text(PROBE)?.width();
+        Ok(with_monospace == with_serif)
     }
 
     // TODO Remove it when we stop supporting Firefox <105, Safari <16.4
