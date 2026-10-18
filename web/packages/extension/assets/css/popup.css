@@ -185,8 +185,9 @@ body {
 }
 
 /*
- * The discount box is closed by default (the picture would not fit in the
- * 600 px a popup may have) and then costs one line, without its frame.
+ * The discount box is open by default, which makes the popup taller than the
+ * 600 px Chrome shows (the rest scrolls); folded by the user it costs one line,
+ * without its frame.
  */
 details.promo {
     margin: 0 8px;

@@ -263,13 +263,16 @@ test("English and Chinese name a banner that exists: the Chinese one for Chinese
     }
 });
 
-test("the discount box starts hidden and is shown for the English and Chinese interfaces only", () => {
+test("the discount box starts hidden and is shown for the English and Chinese interfaces only; in the popup it is open", () => {
     for (const name of ["options.html", "popup.html"]) {
         const box = readSources("assets", ".html")[name].match(/<(?:section|details)\b[^>]*\bid="promo"[^>]*>/u)?.[0];
         assert.ok(box, `${name}: no discount box`);
         assert.match(box, /\shidden[\s>]/u, `${name}: the box must start hidden`);
         assert.ok(box.includes('data-i18n-languages="en zh"'), `${name}: ${box}`);
     }
+    // The popup's box is a <details> that is open (folded boxes were not wanted), the settings page's is not foldable at all.
+    const popupBox = readSources("assets", ".html")["popup.html"].match(/<details\b[^>]*\bid="promo"[^>]*>/u)?.[0];
+    assert.match(popupBox, /\sopen[\s>]/u, "the popup's box must be open by default");
 });
 
 test("the banners are PNG pictures of the size the pages reserve for them", () => {
