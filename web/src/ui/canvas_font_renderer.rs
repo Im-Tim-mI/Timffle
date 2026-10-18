@@ -21,6 +21,19 @@ pub struct CanvasFontRenderer {
     atlases: FontAtlases,
 }
 
+/// The line metrics Windows gives a font that Flash content asks for by name.
+struct WindowsFont {
+    /// The font's names, lower-case as far as the script has case.
+    names: &'static [&'static str],
+    ascent: f64,
+    descent: f64,
+    /// Whether these metrics are used even when the browser has a font of that
+    /// name. Fonts like SimSun are often "installed" only as a substitute the
+    /// system maps the name to (fontconfig does that), and the substitute's
+    /// metrics are the wrong ones.
+    even_if_installed: bool,
+}
+
 impl CanvasFontRenderer {
     /// Render fonts with size 64px. It affects the bitmap size.
     const SIZE_PX: f64 = 64.0;
@@ -31,6 +44,68 @@ impl CanvasFontRenderer {
     /// Line height (ascent + descent, in em) above which a stand-in font's
     /// line metrics are replaced by its CJK em box, see [`Self::line_metrics`].
     const TALL_LINE_EM: f64 = 1.25;
+
+    /// Windows fonts that Flash content asks for by name and that are missing
+    /// on most devices, with the ascent and descent (in em) Windows lays their
+    /// lines out with: the SimSun family (its Chinese names included), Microsoft
+    /// YaHei and the Latin fonts the games use. See [`Self::line_metrics`].
+    const WINDOWS_FONTS: &[WindowsFont] = &[
+        WindowsFont {
+            names: &[
+                "simsun",
+                "nsimsun",
+                "\u{5B8B}\u{4F53}",
+                "\u{5B8B}\u{9AD4}",
+                "\u{65B0}\u{5B8B}\u{4F53}",
+                "\u{65B0}\u{5B8B}\u{9AD4}",
+            ],
+            ascent: 220.0 / 256.0,
+            descent: 36.0 / 256.0,
+            even_if_installed: true,
+        },
+        WindowsFont {
+            names: &["arial black"],
+            ascent: 2254.0 / 2048.0,
+            descent: 634.0 / 2048.0,
+            even_if_installed: false,
+        },
+        WindowsFont {
+            names: &["tahoma"],
+            ascent: 2049.0 / 2048.0,
+            descent: 423.0 / 2048.0,
+            even_if_installed: false,
+        },
+        WindowsFont {
+            names: &["verdana"],
+            ascent: 2059.0 / 2048.0,
+            descent: 430.0 / 2048.0,
+            even_if_installed: false,
+        },
+        WindowsFont {
+            names: &["microsoft yahei"],
+            ascent: 2171.0 / 2048.0,
+            descent: 514.0 / 2048.0,
+            even_if_installed: false,
+        },
+        WindowsFont {
+            names: &["arial"],
+            ascent: 1854.0 / 2048.0,
+            descent: 434.0 / 2048.0,
+            even_if_installed: false,
+        },
+        WindowsFont {
+            names: &["times new roman"],
+            ascent: 1825.0 / 2048.0,
+            descent: 443.0 / 2048.0,
+            even_if_installed: false,
+        },
+        WindowsFont {
+            names: &["courier new"],
+            ascent: 1705.0 / 2048.0,
+            descent: 615.0 / 2048.0,
+            even_if_installed: false,
+        },
+    ];
 
     pub fn new(
         italic: bool,
@@ -68,14 +143,26 @@ impl CanvasFontRenderer {
 
     /// Ascent and descent in pixels at [`Self::SIZE_PX`] (timffle).
     ///
-    /// Flash lays text out with the requested (Windows) font, whose line is
-    /// about 1.0-1.2 em; SimSun is 0.86 + 0.14. When that font is missing, or a
-    /// generic family stands in, the browser's choice can be much taller:
-    /// Android's Noto Sans CJK reports 1.16 + 0.29 em, which puts every line
-    /// about a quarter em lower than the game expects. Such stand-ins use the
-    /// CJK em box instead (bottom at the ideographic baseline, 0.88 + 0.12 em
-    /// for Noto Sans CJK), which matches the classic CJK fonts. Installed fonts
-    /// and ordinary fallbacks keep the browser's metrics.
+    /// Flash lays text out with the font it asked for: its ascent and descent
+    /// decide where each line's baseline falls and how tall the line is (the
+    /// first baseline is at the top gutter plus the ascent, rounded to whole
+    /// pixels). The browser often has to put another font in its place, and a
+    /// stand-in's metrics can be far off: Noto Serif CJK as SimSun (0.86 +
+    /// 0.14 em) reports 1.16 + 0.29 em and puts every line a quarter em too
+    /// low, Times as Arial Black (1.10 + 0.31 em) puts it a fifth of an em too
+    /// high.
+    ///
+    /// So the Windows fonts the games use are looked up by name first
+    /// ([`Self::WINDOWS_FONTS`]) and keep the metrics Windows gives them; the
+    /// stand-in only draws the glyphs. A font from the table that the browser
+    /// does have keeps its own metrics, except for the SimSun family, whose
+    /// "installed" copy is usually such a stand-in.
+    ///
+    /// Other fonts keep the browser's metrics, unless the browser chose a tall
+    /// stand-in (Android's Noto Sans CJK reports 1.16 + 0.29 em): that uses
+    /// the CJK em box instead (bottom at the ideographic baseline, 0.88 +
+    /// 0.12 em for Noto Sans CJK), which matches the classic CJK fonts.
+    /// Installed fonts and ordinary fallbacks keep the browser's metrics.
     fn line_metrics(
         ctx: &OffscreenCanvasRenderingContext2d,
         italic: bool,
@@ -83,6 +170,15 @@ impl CanvasFontRenderer {
         font_family: &str,
     ) -> Result<(f64, f64), JsValue> {
         let font_str = Self::to_font_str(italic, bold, Self::SIZE_PX, font_family);
+        let name = font_family.trim().to_lowercase();
+        let windows_font = Self::WINDOWS_FONTS
+            .iter()
+            .find(|font| font.names.contains(&name.as_str()));
+        if let Some(font) = windows_font {
+            if font.even_if_installed || !Self::is_installed(ctx, &font_str)? {
+                return Ok((font.ascent * Self::SIZE_PX, font.descent * Self::SIZE_PX));
+            }
+        }
         ctx.set_font(&font_str);
         let measurement = ctx.measure_text("Myjg")?;
         let ascent = measurement.font_bounding_box_ascent();
