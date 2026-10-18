@@ -5,7 +5,7 @@
 | 測試 | 驗證什麼 | 怎麼跑 | 需要 |
 |---|---|---|---|
 | 小幫手單元測試 | 協定、位址政策、流量控制、安裝／移除（含符號連結與外來檔案保護） | `cd timffle/helper && go test ./... && go test -tags localtest ./...` | Go 1.27 |
-| 擴充功能單元測試 | 設定與允許／拒絕清單（兩種連線方式各一份）、頁面橋接、背景權限、第一次連線的詢問（詢問管理、單次造訪的回答、各種回答與清理路徑、等待中的 Socket 不佔名額）、輸入防護規則、設定寫入的鎖與比對共 144 項 | `cd web && npm ci && npm test --workspace=ruffle-extension` | 不需要 wasm |
+| 擴充功能單元測試 | 設定與允許／拒絕清單（兩種連線方式各一份）、頁面橋接、背景權限、第一次連線的詢問（詢問管理、單次造訪的回答、各種回答與清理路徑、等待中的 Socket 不佔名額）、輸入防護規則、設定寫入的鎖與比對、舊設定的升級共 152 項 | `cd web && npm ci && npm test --workspace=ruffle-extension` | 不需要 wasm |
 | 封裝測試 | 發行 ZIP 的內容、權限、授權檔與私鑰檢查 | `cd timffle/helper/installer-tests && python3 -I test_package.py` | Python 3 |
 | 品牌檢查 | 使用者看得到的文字沒有「Ruffle」產品名、手改的連結都還在 | `python3 timffle/scripts/rebrand.py --check` | Python 3 |
 | 本機代理測試 | `relay/` 的來源、token、私網位址拒絕等（10 項） | `node --test timffle/relay/relay.test.mjs` | Node 22+ |
