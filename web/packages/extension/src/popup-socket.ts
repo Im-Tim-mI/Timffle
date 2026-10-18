@@ -135,6 +135,11 @@ function element<K extends keyof HTMLElementTagNameMap>(
     return node;
 }
 
+const ORIGINS_REQUIRED_MESSAGE =
+    "自訂代理模式至少要有一個允許的網站，所以沒有變更。請先在設定頁加入其他網站，或改用連線小幫手。 / A custom proxy needs at least one allowed website, so nothing was changed. Add another website in the settings page, or switch to the socket helper.";
+const SAVE_FAILED_MESSAGE =
+    "無法儲存設定，請再試一次。 / Could not save the settings; please try again.";
+
 const CHOICE_LABELS: Record<SocketChoice, string> = {
     ask: "每次造訪時詢問 / Ask on every visit",
     allow: "一律允許 / Always allow",
@@ -172,11 +177,23 @@ export async function bindSocketSection({
         return;
     }
     const tabId = tab?.id;
+    /** Shown once, above the sites, after a choice that could not be kept. */
+    let problem: string | undefined;
 
     const choose = async (origin: string, choice: SocketChoice) => {
-        await updateProxySettings((settings) =>
-            setSocketChoice(settings, origin, choice),
-        );
+        try {
+            await updateProxySettings((settings) =>
+                setSocketChoice(settings, origin, choice),
+            );
+        } catch (error) {
+            // The list shows what is really stored again, with the reason.
+            problem =
+                error instanceof Error && error.message === "origins_required"
+                    ? ORIGINS_REQUIRED_MESSAGE
+                    : SAVE_FAILED_MESSAGE;
+            await render();
+            return;
+        }
         // A lasting choice replaces the answer for this visit.
         await forgetVisit(tabId, origin);
         await render();
@@ -202,9 +219,12 @@ export async function bindSocketSection({
             const allow = element(
                 "button",
                 "socket-allow",
-                primary
-                    ? "允許此網站使用 Socket 連線 / Allow this site to use sockets"
-                    : "允許 / Allow",
+                !primary
+                    ? "允許 / Allow"
+                    : state.asks
+                      ? "允許此網站使用 Socket 連線 / Allow this site to use sockets"
+                      : // A custom proxy hands its token to every website it allows.
+                        "允許此網站使用自訂代理（會取得 token） / Allow this site to use your custom proxy (it is given the token)",
             );
             allow.type = "button";
             allow.addEventListener("click", (event) => {
@@ -249,6 +269,12 @@ export async function bindSocketSection({
         }
         const visit = await queryVisit(tabId);
         list.replaceChildren();
+        if (problem !== undefined) {
+            const notice = element("p", "socket-error", problem);
+            notice.setAttribute("role", "alert");
+            list.append(notice);
+            problem = undefined;
+        }
         list.append(
             renderSite(topSite, settings, visit.decisions[topSite], true),
         );

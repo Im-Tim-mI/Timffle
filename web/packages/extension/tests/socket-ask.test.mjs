@@ -4,6 +4,11 @@ import { setImmediate } from "node:timers";
 import { URL } from "node:url";
 import { registerSocketBridge } from "../src/socket-bridge-background.ts";
 import {
+    HELPER_STATUS_REQUEST,
+    MAX_ASKING_SOCKETS,
+    MAX_FRAME_SOCKETS,
+    MAX_GLOBAL_SOCKETS,
+    MAX_TAB_ASKING_SOCKETS,
     SOCKET_PORT_NAME,
     STALL_TIMEOUT_MS,
 } from "../src/socket-bridge-protocol.ts";
@@ -109,8 +114,20 @@ function onTeardown(t, cleanup) {
     list.push(cleanup);
 }
 
-function setup(t, { settings = base(), session = {} } = {}) {
+function setup(
+    t,
+    {
+        settings = base(),
+        session = {},
+        noWindows = false,
+        slowSession = false,
+    } = {},
+) {
     let stored = settings;
+    let releaseSession = () => {};
+    const sessionReady = slowSession
+        ? new Promise((resolve) => (releaseSession = resolve))
+        : Promise.resolve();
     let playerEnabled = true;
     let nextWindow = 500;
     const natives = [];
@@ -151,6 +168,7 @@ function setup(t, { settings = base(), session = {} } = {}) {
             sync: { get: async () => ({ ruffleEnable: playerEnabled }) },
             session: {
                 async get() {
+                    await sessionReady;
                     return JSON.parse(JSON.stringify(sessionData));
                 },
                 async set(items) {
@@ -167,26 +185,28 @@ function setup(t, { settings = base(), session = {} } = {}) {
             },
             onChanged: event(),
         },
-        tabs: { onRemoved: event(), onUpdated: event() },
-        windows: {
-            onRemoved: event(),
-            async create(options) {
-                if (windows.failNext) {
-                    windows.failNext = false;
-                    throw new Error("no windows");
-                }
-                windows.created.push(options);
-                return { id: nextWindow++ };
-            },
-            async get() {
-                return { left: 100, top: 50, width: 1280, height: 900 };
-            },
-            async remove(windowId) {
-                windows.removed.push(windowId);
-                // The browser reports every closed window, ours included.
-                browser.windows.onRemoved.emit(windowId);
-            },
-        },
+        tabs: { onRemoved: event(), onUpdated: event(), onReplaced: event() },
+        windows: noWindows
+            ? undefined
+            : {
+                  onRemoved: event(),
+                  async create(options) {
+                      if (windows.failNext) {
+                          windows.failNext = false;
+                          throw new Error("no windows");
+                      }
+                      windows.created.push(options);
+                      return { id: nextWindow++ };
+                  },
+                  async get() {
+                      return { left: 100, top: 50, width: 1280, height: 900 };
+                  },
+                  async remove(windowId) {
+                      windows.removed.push(windowId);
+                      // The browser reports every closed window, ours included.
+                      browser.windows.onRemoved.emit(windowId);
+                  },
+              },
     };
     globalThis.browser = browser;
     onTeardown(t, registerSocketBridge());
@@ -239,8 +259,13 @@ function setup(t, { settings = base(), session = {} } = {}) {
         promptId,
         connectNative,
         sessionData,
+        releaseSession: () => releaseSession(),
         get stored() {
             return stored;
+        },
+        /** Changes the stored settings without the change event having arrived yet. */
+        quietlyStore(value) {
+            stored = value;
         },
         setSettings(value) {
             stored = value;
@@ -301,6 +326,8 @@ test("always allow: the socket connects, the site is saved, later sockets do not
     assert.equal(reply.reply, true);
     assert.equal(h.natives.length, 1);
     assert.deepEqual(h.stored.allowedOrigins, [MOLE, NEW]);
+    // The helper's list only: the site does not get the custom proxy's token.
+    assert.deepEqual(h.stored.proxyOrigins, [MOLE]);
     assert.deepEqual(h.stored.deniedOrigins, []);
     await h.connectNative();
     assert.deepEqual(p.sent, [{ type: "opened" }]);
@@ -700,4 +727,270 @@ test("questions come one at a time, in order", async (t) => {
     await h.answer("deny-once", 501);
     assert.deepEqual(errors(second), ["not_allowed"]);
     assert.deepEqual(errors(first), []);
+});
+
+const CUSTOM = (extra = {}) =>
+    base({
+        mode: "websocket",
+        proxyUrl: "ws://127.0.0.1:1/connect?host={host}&port={port}&token=t",
+        proxyOrigins: [MOLE],
+        ...extra,
+    });
+
+test("an unanswered question does not use up the connection slots of allowed sites", async (t) => {
+    const h = setup(t);
+    // One unlisted website: two frames with eight sockets each, and a question nobody answers.
+    const pages = [];
+    for (const frameId of [0, 1]) {
+        for (let i = 0; i < MAX_FRAME_SOCKETS; i++) {
+            pages.push(await h.open(frame({ frameId })));
+        }
+    }
+    assert.equal(h.windows.created.length, 1);
+    const refused = pages.filter((p) => errors(p).includes("socket_limit"));
+    // A few wait for the answer; the rest were refused on the spot.
+    assert.equal(pages.length - refused.length, MAX_TAB_ASKING_SOCKETS);
+    assert.ok(refused.every((p) => p.disconnected));
+    // An allowed game site in another tab connects as usual.
+    const mole = await h.open(frame({ origin: MOLE, tab: 3 }));
+    assert.deepEqual(errors(mole), []);
+    assert.equal(h.natives.length, 1);
+    await h.connectNative();
+    assert.deepEqual(mole.sent, [{ type: "opened" }]);
+});
+
+test("waiting sockets are limited per tab and in all, and hold no slot", async (t) => {
+    const h = setup(t);
+    const waiting = (pages) =>
+        pages.filter((p) => !p.disconnected && errors(p).length === 0);
+    const tabs = [];
+    // Each tab asks about its own website, so each has its own question.
+    for (let tab = 1; tab <= 3; tab++) {
+        const pages = [];
+        for (let i = 0; i < MAX_TAB_ASKING_SOCKETS + 2; i++) {
+            pages.push(
+                await h.open(
+                    frame({
+                        origin: `https://site${tab}.example`,
+                        tab,
+                        frameId: i % 2,
+                    }),
+                ),
+            );
+        }
+        tabs.push(pages);
+    }
+    assert.equal(waiting(tabs[0]).length, MAX_TAB_ASKING_SOCKETS);
+    assert.equal(waiting(tabs[1]).length, MAX_TAB_ASKING_SOCKETS);
+    // Eight wait in all (MAX_ASKING_SOCKETS); the third tab gets none.
+    assert.equal(MAX_ASKING_SOCKETS, 2 * MAX_TAB_ASKING_SOCKETS);
+    assert.equal(waiting(tabs[2]).length, 0);
+    assert.ok(tabs[2].every((p) => errors(p).includes("socket_limit")));
+    // None of them counts against the connection slots: a full pool of
+    // allowed sockets still fits next to them.
+    const connected = [];
+    for (
+        let frameId = 0;
+        frameId < MAX_GLOBAL_SOCKETS / MAX_FRAME_SOCKETS;
+        frameId++
+    ) {
+        for (let i = 0; i < MAX_FRAME_SOCKETS; i++) {
+            connected.push(
+                await h.open(frame({ origin: MOLE, tab: 9, frameId })),
+            );
+        }
+    }
+    assert.equal(connected.length, MAX_GLOBAL_SOCKETS);
+    assert.ok(connected.every((p) => errors(p).length === 0));
+    // The pool is now full: one more is refused, as it always was...
+    assert.deepEqual(
+        errors(await h.open(frame({ origin: MOLE, tab: 9, frameId: 5 }))),
+        ["socket_limit"],
+    );
+    // ...and so is the helper check of the options page.
+    const probe = h.send({ type: HELPER_STATUS_REQUEST }, popupUI());
+    await tick();
+    assert.deepEqual(probe.reply, { installed: false, error: "socket_limit" });
+});
+
+test("a socket whose question is answered while every slot is taken is refused, not left waiting", async (t) => {
+    const h = setup(t);
+    const waiting = await h.open();
+    assert.equal(h.windows.created.length, 1);
+    for (
+        let frameId = 0;
+        frameId < MAX_GLOBAL_SOCKETS / MAX_FRAME_SOCKETS;
+        frameId++
+    ) {
+        for (let i = 0; i < MAX_FRAME_SOCKETS; i++) {
+            await h.open(frame({ origin: MOLE, tab: 2, frameId }));
+        }
+    }
+    assert.equal(h.natives.length, MAX_GLOBAL_SOCKETS);
+    await h.answer("allow-once");
+    assert.deepEqual(errors(waiting), ["socket_limit"]);
+    assert.equal(waiting.disconnected, true);
+    assert.equal(h.natives.length, MAX_GLOBAL_SOCKETS);
+});
+
+test("a socket that is allowed at once is not refused because others started to wait", async (t) => {
+    const h = setup(t);
+    for (let i = 0; i < MAX_TAB_ASKING_SOCKETS; i++) {
+        await h.open(frame({ origin: NEW, tab: 1, frameId: i }));
+    }
+    const mole = [];
+    for (let i = 0; i < MAX_FRAME_SOCKETS; i++) {
+        mole.push(await h.open(frame({ origin: MOLE, tab: 2 })));
+    }
+    assert.ok(mole.every((p) => errors(p).length === 0));
+    assert.equal(h.natives.length, MAX_FRAME_SOCKETS);
+});
+
+test("switching to a custom proxy while a question is open ends it and refuses the socket", async (t) => {
+    const h = setup(t);
+    const p = await h.open();
+    assert.equal(h.windows.created.length, 1);
+    h.setSettings(CUSTOM());
+    await tick();
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    assert.deepEqual(h.windows.removed, [500]);
+    assert.equal(h.natives.length, 0);
+    // The stale window cannot answer any more.
+    const late = await h.answer("allow-always");
+    assert.equal(late.reply, false);
+    assert.deepEqual(h.stored, CUSTOM());
+});
+
+test("an answer that arrives before the mode change does is not stored in the new mode", async (t) => {
+    const h = setup(t);
+    const p = await h.open();
+    // The new settings are stored but the change has not been announced yet.
+    h.quietlyStore(CUSTOM());
+    const reply = await h.answer("allow-always");
+    assert.equal(reply.reply, false);
+    assert.deepEqual(h.stored, CUSTOM());
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    assert.equal(h.natives.length, 0);
+    assert.deepEqual(h.windows.removed, [500]);
+});
+
+test("the mode is checked again at the moment the answer is stored", async (t) => {
+    const h = setup(t);
+    await h.open();
+    // The settings change lands between "still asking?" and the write.
+    let reads = 0;
+    const realGet = h.browser.storage.local.get;
+    h.browser.storage.local.get = async (...args) => {
+        const result = await realGet(...args);
+        if (++reads === 1) {
+            h.quietlyStore(CUSTOM());
+        }
+        return result;
+    };
+    const reply = await h.answer("allow-always");
+    assert.equal(reply.reply, false);
+    assert.deepEqual(h.stored, CUSTOM());
+});
+
+test("a website allowed for the helper does not get the custom proxy afterwards", async (t) => {
+    const h = setup(t);
+    await h.open();
+    await h.answer("allow-always");
+    assert.deepEqual(h.stored.allowedOrigins, [MOLE, NEW]);
+    // The owner now switches to a custom proxy, keeping the stored lists.
+    h.setSettings({
+        ...h.stored,
+        ...CUSTOM(),
+        allowedOrigins: h.stored.allowedOrigins,
+    });
+    await tick();
+    const p = await h.open(frame({ tab: 2 }));
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    assert.equal(h.windows.created.length, 1);
+});
+
+test("turning the player off ends the question and the waiting sockets", async (t) => {
+    const h = setup(t);
+    const p = await h.open();
+    h.setPlayer(false);
+    await tick();
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    assert.deepEqual(h.windows.removed, [500]);
+});
+
+test("a tab that is replaced by another takes its question with it", async (t) => {
+    const h = setup(t);
+    const p = await h.open();
+    h.browser.tabs.onReplaced.emit(2, 1);
+    await tick();
+    assert.equal(p.disconnected, true);
+    assert.deepEqual(h.windows.removed, [500]);
+});
+
+test("a browser build that cannot reach the helper does not ask a question it cannot honour", async (t) => {
+    const h = setup(t);
+    h.browser.runtime.connectNative = undefined;
+    const p = await h.open();
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    assert.equal(h.windows.created.length, 0);
+});
+
+test("a browser without windows still allows listed sites and refuses the rest", async (t) => {
+    const h = setup(t, { noWindows: true });
+    const mole = await h.open(frame({ origin: MOLE }));
+    assert.deepEqual(errors(mole), []);
+    assert.equal(h.natives.length, 1);
+    // Without a way to ask, the unlisted website is refused rather than left waiting.
+    const p = await h.open();
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    // A browser that has windows but not their events does not break either.
+    const g = setup(t);
+    g.browser.windows.onRemoved = undefined;
+    assert.doesNotThrow(() => registerSocketBridge());
+});
+
+test("senders without an origin (Firefox) work like the others, and framed pages still do not", async (t) => {
+    const h = setup(t);
+    const noOrigin = (sender) => ({ ...sender, origin: undefined });
+    const p = await h.open(noOrigin(frame()));
+    assert.equal(h.windows.created.length, 1);
+    assert.deepEqual(errors(p), []);
+    const id = h.promptId();
+    const view = h.send(
+        { type: PROMPT_GET_REQUEST, id },
+        noOrigin(promptUI(500)),
+    );
+    assert.deepEqual(view.reply, { origin: NEW });
+    const framed = h.send(
+        { type: PROMPT_GET_REQUEST, id },
+        noOrigin(promptUI(500, { frameId: 3 })),
+    );
+    assert.equal(framed.returned, undefined);
+    const read = h.send(
+        { type: VISIT_GET_REQUEST, tabId: 1 },
+        noOrigin(popupUI()),
+    );
+    await tick();
+    // Nothing was answered for this visit yet; the tab's site is known.
+    assert.deepEqual(read.reply, { top: NEW, decisions: {} });
+});
+
+test("a settings change that arrives before earlier answers are loaded still takes effect", async (t) => {
+    const h = setup(t, {
+        settings: base({ allowedOrigins: [MOLE, NEW] }),
+        slowSession: true,
+    });
+    // The page connects while the session answers are still being loaded:
+    // allowed sockets must not wait for that, so open the socket first.
+    const p = port(frame());
+    h.browser.runtime.onConnect.emit(p);
+    p.onMessage.emit({ type: "open", host: "public.example", port: 1234 });
+    await tick();
+    h.setSettings(base({ allowedOrigins: [MOLE], deniedOrigins: [NEW] }));
+    await tick();
+    h.releaseSession();
+    await tick();
+    await tick();
+    assert.deepEqual(errors(p), ["not_allowed"]);
+    assert.equal(h.natives.length, 0);
 });

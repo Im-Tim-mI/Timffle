@@ -159,6 +159,15 @@ body {
     background: var(--ruffle-blue);
 }
 
+.socket-error {
+    margin: 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #7a1f1f;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .socket-warning {
     margin: 0;
     font-size: 12px;

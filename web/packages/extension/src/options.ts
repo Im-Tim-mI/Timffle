@@ -4,6 +4,12 @@ import { buildInfo } from "ruffle-core";
 import { bindProxyOptions } from "./proxy-options";
 
 window.addEventListener("DOMContentLoaded", async () => {
+    // A web page can frame any extension page the browser lets it; inside a
+    // frame this page must not offer anything to edit or click.
+    if (window.top !== window) {
+        document.body.replaceChildren();
+        return;
+    }
     enableBrowserOnOutdatedChromium();
     const data = await browser.storage.sync.get({
         responseHeadersUnsupported: false,

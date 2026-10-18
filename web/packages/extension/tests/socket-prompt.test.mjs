@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { setImmediate } from "node:timers";
 import {
     createPromptManager,
+    MAX_PROMPTS_PER_MINUTE,
     MAX_PROMPTS_PER_TAB,
     MAX_QUEUED_PROMPTS,
 } from "../src/socket-prompt.ts";
@@ -38,6 +39,8 @@ function setup({ failOpen = false, slowOpen = false } = {}) {
         remembered: [],
         visits: [],
         counts: new Map(),
+        /** Whether the website is still one that gets asked about. */
+        asking: true,
         async remember(origin, choice) {
             this.remembered.push([origin, choice]);
         },
@@ -49,8 +52,12 @@ function setup({ failOpen = false, slowOpen = false } = {}) {
             this.counts.set(tabId, n);
             return n;
         },
+        async stillAsking() {
+            return this.asking;
+        },
     };
-    const manager = createPromptManager(host, effects);
+    const clock = { now: 1_000_000 };
+    const manager = createPromptManager(host, effects, () => clock.now);
     const results = [];
     const ask = (request, signal = new AbortController().signal) => {
         const slot = { outcome: undefined };
@@ -67,6 +74,7 @@ function setup({ failOpen = false, slowOpen = false } = {}) {
         host,
         effects,
         manager,
+        clock,
         ask,
         release: () => releaseOpen(),
     };
@@ -360,6 +368,128 @@ test("a question that was answered elsewhere ends by itself", async () => {
     h.manager.settingsChanged({ ...settings([]), enabled: false });
     await tick();
     assert.equal(c.outcome, "answered");
+});
+
+test("switching to a custom proxy ends every question: that mode never asks", async () => {
+    const h = setup();
+    const a = h.ask({ origin: A });
+    const b = h.ask({ origin: B, tabId: 2 });
+    await tick();
+    const custom = {
+        enabled: true,
+        mode: "websocket",
+        proxyUrl: "ws://127.0.0.1:1/connect?host={host}&port={port}&token=t",
+        allowedOrigins: [],
+        proxyOrigins: ["https://proxy.example"],
+        deniedOrigins: [],
+    };
+    // Neither website is decided, yet the question makes no sense any more.
+    h.manager.settingsChanged(custom);
+    await tick();
+    assert.deepEqual([a.outcome, b.outcome], ["answered", "answered"]);
+    assert.deepEqual(h.host.closed, [h.host.opened[0].windowId]);
+    // The queued question was never shown.
+    assert.equal(h.host.opened.length, 1);
+});
+
+test("an answer is refused when the situation changed while the question was open", async () => {
+    const h = setup();
+    const a = h.ask({});
+    await tick();
+    const { id, windowId } = h.host.opened[0];
+    // E.g. the owner switched to a custom proxy and the settings change has
+    // not reached the manager yet.
+    h.effects.asking = false;
+    assert.equal(await h.manager.answer(id, windowId, "allow-always"), false);
+    await tick();
+    assert.deepEqual(h.effects.remembered, []);
+    assert.deepEqual(h.effects.visits, []);
+    // The waiter decides again from what is stored; the window goes.
+    assert.equal(a.outcome, "answered");
+    assert.deepEqual(h.host.closed, [windowId]);
+    assert.equal(h.manager.view(id, windowId), undefined);
+});
+
+test("a window closed before the browser said which window it opened does not block the queue", async () => {
+    const h = setup({ slowOpen: true });
+    const a = h.ask({ origin: A });
+    const b = h.ask({ origin: B, tabId: 2 });
+    await tick();
+    const { windowId } = h.host.opened[0];
+    // The removal event overtakes the reply to windows.create.
+    h.manager.windowRemoved(windowId);
+    h.release();
+    await tick();
+    await tick();
+    assert.equal(a.outcome, "dismissed");
+    assert.deepEqual(h.effects.visits, [[1, A, "deny", A]]);
+    // The browser already closed it; the next website gets its turn.
+    assert.deepEqual(h.host.closed, []);
+    assert.equal(h.host.opened.length, 2);
+    assert.equal(b.outcome, undefined);
+    h.release();
+    await tick();
+    const second = h.host.opened[1];
+    assert.equal(h.manager.view(second.id, second.windowId).origin, B);
+});
+
+test("a removal that belongs to no question is not remembered", async () => {
+    const h = setup();
+    // Somebody closes one of their own windows long before any question.
+    h.manager.windowRemoved(100);
+    h.ask({});
+    await tick();
+    // The window that gets the id 100 is not treated as closed.
+    assert.equal(h.host.opened[0].windowId, 100);
+    const { id, windowId } = h.host.opened[0];
+    assert.equal(h.manager.view(id, windowId).origin, A);
+    assert.deepEqual(h.effects.visits, []);
+});
+
+test("many unrelated window closings do not stop a real early removal from being noticed", async () => {
+    const h = setup({ slowOpen: true });
+    const a = h.ask({ origin: A });
+    const b = h.ask({ origin: B, tabId: 2 });
+    await tick();
+    // Plenty of other windows being closed while ours is still opening.
+    for (let id = 5000; id < 5100; id++) {
+        h.manager.windowRemoved(id);
+    }
+    const { windowId } = h.host.opened[0];
+    h.manager.windowRemoved(windowId);
+    h.release();
+    await tick();
+    await tick();
+    assert.equal(a.outcome, "dismissed");
+    assert.equal(h.host.opened.length, 2);
+    assert.equal(b.outcome, undefined);
+});
+
+test("the extension opens only a few question windows a minute, whichever tabs ask", async () => {
+    const h = setup();
+    for (let i = 0; i < MAX_PROMPTS_PER_MINUTE; i++) {
+        const slot = h.ask({
+            origin: `https://site${i}.example`,
+            tabId: 10 + i,
+        });
+        await tick();
+        const { id, windowId } = h.host.opened.at(-1);
+        await h.manager.answer(id, windowId, "deny-once");
+        await tick();
+        assert.equal(slot.outcome, "answered");
+    }
+    const over = h.ask({ origin: "https://one-too-many.example", tabId: 99 });
+    await tick();
+    assert.equal(over.outcome, "unavailable");
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_MINUTE);
+    // Being refused for that does not use up the tab's own budget...
+    assert.equal(h.effects.counts.get(99), undefined);
+    // ...and a minute later the website can be asked about.
+    h.clock.now += 60_000;
+    const later = h.ask({ origin: "https://one-too-many.example", tabId: 99 });
+    await tick();
+    assert.equal(later.outcome, undefined);
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_MINUTE + 1);
 });
 
 test("a tab can only cause a few windows per visit", async () => {

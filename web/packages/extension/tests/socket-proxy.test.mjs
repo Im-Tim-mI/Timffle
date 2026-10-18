@@ -41,10 +41,15 @@ test("defaults use the helper for Taomee's four game sites only, with no token",
             `https://${host}`,
             `http://${host}`,
         ]),
+        proxyOrigins: GAME_HOSTS.flatMap((host) => [
+            `https://${host}`,
+            `http://${host}`,
+        ]),
         deniedOrigins: [],
         defaultsVersion: DEFAULTS_VERSION,
     });
     assert.deepEqual(defaults.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
+    assert.deepEqual(defaults.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
     assert.equal(validateProxySettings(defaults).valid, true);
     for (const host of GAME_HOSTS) {
         for (const origin of [`https://${host}`, `http://${host}`]) {
@@ -183,7 +188,12 @@ test("valid template remains intact and origins normalized/deduplicated", () => 
         ],
     });
     assert.equal(r.valid, true);
-    assert.deepEqual(r.settings, { ...settings, deniedOrigins: [] });
+    // Settings that predate the separate lists use their one list for both modes.
+    assert.deepEqual(r.settings, {
+        ...settings,
+        proxyOrigins: settings.allowedOrigins,
+        deniedOrigins: [],
+    });
 });
 test("settings saved before modes existed keep using their proxy", () => {
     const legacy = { ...settings };
@@ -476,5 +486,157 @@ test("only the helper asks; a custom proxy never reaches an unlisted site", () =
     assert.deepEqual(
         applyProxySettings({}, helperSettings(), "https://new.example"),
         {},
+    );
+});
+
+test("each mode has its own allow-list: a website allowed for the helper never gets the proxy token", () => {
+    const both = {
+        ...defaultProxySettings(),
+        allowedOrigins: ["https://helper.example"],
+        proxyOrigins: ["https://proxy.example"],
+        proxyUrl: url,
+    };
+    // Helper mode: only the helper list counts, and its sites get the helper URL.
+    assert.equal(socketPermission(both, "https://helper.example"), "allow");
+    assert.equal(socketPermission(both, "https://proxy.example"), "ask");
+    assert.deepEqual(
+        applyProxySettings({}, both, "https://helper.example").socketProxy,
+        [{ host: "*", port: 0, proxyUrl: HELPER_PROXY_URL }],
+    );
+    assert.deepEqual(applyProxySettings({}, both, "https://proxy.example"), {});
+    // Custom proxy mode: the other list, the token only for its sites.
+    const custom = { ...both, mode: "websocket" };
+    assert.equal(socketPermission(custom, "https://helper.example"), "ask");
+    assert.equal(socketPermission(custom, "https://proxy.example"), "allow");
+    assert.deepEqual(
+        applyProxySettings({}, custom, "https://helper.example"),
+        {},
+    );
+    assert.deepEqual(
+        applyProxySettings({}, custom, "https://proxy.example").socketProxy,
+        [{ host: "*", port: 0, proxyUrl: url }],
+    );
+    assert.equal(
+        resolveSocketAccess(custom, "https://helper.example"),
+        undefined,
+    );
+});
+test("one click in helper mode, then switching to a custom proxy: the clicked website gets no token", () => {
+    const start = defaultProxySettings();
+    const clicked = setSocketChoice(start, "https://evil.example", "allow");
+    assert.equal(socketPermission(clicked, "https://evil.example"), "allow");
+    const switched = { ...clicked, mode: "websocket", proxyUrl: url };
+    assert.equal(validateProxySettings(switched).valid, true);
+    assert.deepEqual(
+        applyProxySettings({}, switched, "https://evil.example"),
+        {},
+    );
+    assert.equal(socketPermission(switched, "https://evil.example"), "ask");
+    // The default sites were on both lists and keep the token they were given.
+    assert.deepEqual(
+        applyProxySettings({}, switched, "https://mole.61.com.tw").socketProxy,
+        [{ host: "*", port: 0, proxyUrl: url }],
+    );
+});
+test("settings saved before the lists were separated use their list for both modes", () => {
+    const legacy = {
+        enabled: true,
+        mode: "helper",
+        proxyUrl: "",
+        allowedOrigins: ["https://typed.example"],
+        deniedOrigins: [],
+        defaultsVersion: DEFAULTS_VERSION,
+    };
+    const r = validateProxySettings(legacy);
+    assert.equal(r.valid, true);
+    assert.deepEqual(r.settings.proxyOrigins, ["https://typed.example"]);
+    // Nothing aliases: changing one list leaves the other list alone.
+    const changed = setSocketChoice(
+        r.settings,
+        "https://more.example",
+        "allow",
+    );
+    assert.deepEqual(changed.proxyOrigins, ["https://typed.example"]);
+    // A saved separate list is kept as it is, even when empty.
+    assert.deepEqual(
+        validateProxySettings({ ...legacy, proxyOrigins: [] }).settings
+            .proxyOrigins,
+        [],
+    );
+});
+test("the proxy list is validated like the other lists, and refusing wins on both", () => {
+    for (const proxyOrigins of ["https://a.example", [1], [{}]]) {
+        assert.deepEqual(
+            validateProxySettings({ ...helperSettings(), proxyOrigins }),
+            { valid: false, error: "invalid_settings" },
+            JSON.stringify(proxyOrigins),
+        );
+    }
+    for (const entry of ["*", "https://a.example/path", "file:///a"]) {
+        assert.deepEqual(
+            validateProxySettings({
+                ...helperSettings(),
+                proxyOrigins: [entry],
+            }),
+            { valid: false, error: "invalid_origin" },
+            entry,
+        );
+    }
+    const r = validateProxySettings(
+        helperSettings({
+            allowedOrigins: ["https://both.example"],
+            proxyOrigins: ["https://both.example", "https://ok.example"],
+            deniedOrigins: ["https://both.example"],
+        }),
+    );
+    assert.deepEqual(r.settings.allowedOrigins, []);
+    assert.deepEqual(r.settings.proxyOrigins, ["https://ok.example"]);
+    // A custom proxy needs a website on ITS list, whatever the helper list holds.
+    assert.deepEqual(
+        validateProxySettings({
+            ...settings,
+            allowedOrigins: ["https://helper.example"],
+            proxyOrigins: [],
+        }),
+        { valid: false, error: "origins_required" },
+    );
+});
+test("allowing and forgetting concern the current mode's list; refusing is final for both", () => {
+    const custom = {
+        ...validateProxySettings({
+            ...helperSettings(),
+            mode: "websocket",
+            proxyUrl: url,
+            proxyOrigins: ["https://p.example"],
+            allowedOrigins: ["https://h.example"],
+        }).settings,
+    };
+    const allowed = setSocketChoice(custom, "https://new.example", "allow");
+    assert.deepEqual(allowed.proxyOrigins, [
+        "https://p.example",
+        "https://new.example",
+    ]);
+    assert.deepEqual(allowed.allowedOrigins, ["https://h.example"]);
+    // "Ask" in custom proxy mode does not silently take the site off the helper list.
+    const forgotten = setSocketChoice(allowed, "https://h.example", "ask");
+    assert.deepEqual(forgotten.allowedOrigins, ["https://h.example"]);
+    const forgottenHere = setSocketChoice(allowed, "https://p.example", "ask");
+    assert.deepEqual(forgottenHere.proxyOrigins, ["https://new.example"]);
+    // Refusing takes the site off both lists, whichever mode the click was in.
+    const refused = setSocketChoice(
+        { ...allowed, allowedOrigins: ["https://new.example"] },
+        "https://new.example",
+        "deny",
+    );
+    assert.deepEqual(refused.allowedOrigins, []);
+    assert.deepEqual(refused.proxyOrigins, ["https://p.example"]);
+    assert.ok(refused.deniedOrigins.includes("https://new.example"));
+    // Allowing a refused site lifts the refusal.
+    assert.ok(
+        !setSocketChoice(
+            refused,
+            "https://new.example",
+            "allow",
+        ).deniedOrigins.includes("https://new.example"),
     );
 });

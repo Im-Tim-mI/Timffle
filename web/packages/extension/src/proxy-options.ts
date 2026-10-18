@@ -1,5 +1,10 @@
-import { getProxySettings, saveProxySettings } from "./proxy-settings";
-import { validateProxySettings } from "./socket-proxy";
+import {
+    getProxySettings,
+    replaceProxySettings,
+    sameProxySettings,
+    SettingsConflictError,
+} from "./proxy-settings";
+import { PROXY_STORAGE_KEY, validateProxySettings } from "./socket-proxy";
 import type {
     ProxyMode,
     ProxySettings,
@@ -31,6 +36,15 @@ const VALIDATION_MESSAGES: Record<ProxyValidationError, string> = {
 const CONFLICT_MESSAGE =
     "同一個網站不能同時在「一律允許」與「一律拒絕」清單中。 / A website cannot be on both the always-allowed and the always-denied list.";
 
+const CHANGED_ELSEWHERE_MESSAGE =
+    "設定已在別處變更（例如彈出視窗或詢問視窗），這次的修改沒有儲存。已改為顯示最新設定，請再改一次。 / The settings were changed elsewhere (for example in the popup or a question window), so your edit was not saved. The latest settings are shown; please edit again.";
+
+const UPDATED_ELSEWHERE_MESSAGE =
+    "設定已在別處變更（例如彈出視窗），已顯示最新設定。 / The settings were changed elsewhere (for example in the popup); the latest settings are shown.";
+
+const STALE_MESSAGE =
+    "設定已在別處變更（例如彈出視窗）。你的修改尚未儲存；儲存時會改為顯示最新設定，不會覆蓋那邊的變更。 / The settings were changed elsewhere (for example in the popup). Your edit is not saved yet; saving will show the latest settings instead of overwriting that change.";
+
 async function queryHelper(): Promise<HelperStatus> {
     try {
         const status = (await browser.runtime.sendMessage({
@@ -43,6 +57,13 @@ async function queryHelper(): Promise<HelperStatus> {
 }
 
 export async function bindProxyOptions(): Promise<void> {
+    // A web page can frame an extension page unless the browser refuses it,
+    // and could cover this form to have somebody type into it. Framed, this
+    // page must not offer anything to edit.
+    if (window.top !== window) {
+        document.body.replaceChildren();
+        return;
+    }
     const form = document.getElementById(
         "socket-proxy-form",
     )! as HTMLFormElement;
@@ -76,6 +97,20 @@ export async function bindProxyOptions(): Promise<void> {
         "socket-helper-check",
     )! as HTMLButtonElement;
 
+    const modeTexts =
+        document.querySelectorAll<HTMLElement>("[data-mode-text]");
+
+    /** The settings as last read from or saved to storage: what the form was made from. */
+    let baseline: ProxySettings | undefined;
+    /** The form has edits that are not saved. */
+    let dirty = false;
+    /**
+     * Each connection method has its own list of allowed websites; the one box
+     * shows the list of the selected method, and the other is kept here.
+     */
+    const lists: Record<ProxyMode, string> = { helper: "", websocket: "" };
+    let shown: ProxyMode = "helper";
+
     function setStatus(message: string, error = false) {
         status.textContent = message;
         status.dataset["state"] = error ? "error" : "info";
@@ -86,7 +121,16 @@ export async function bindProxyOptions(): Promise<void> {
     }
 
     function showMode() {
-        websocketFields.hidden = selectedMode() !== "websocket";
+        const mode = selectedMode();
+        if (mode !== shown) {
+            lists[shown] = origins.value;
+            shown = mode;
+            origins.value = lists[mode];
+        }
+        websocketFields.hidden = mode !== "websocket";
+        for (const node of modeTexts) {
+            node.hidden = node.dataset["modeText"] !== mode;
+        }
     }
 
     function displaySettings(settings: ProxySettings) {
@@ -94,8 +138,12 @@ export async function bindProxyOptions(): Promise<void> {
         helperMode.checked = settings.mode === "helper";
         websocketMode.checked = settings.mode === "websocket";
         proxyUrl.value = settings.proxyUrl;
-        origins.value = settings.allowedOrigins.join("\n");
+        lists.helper = settings.allowedOrigins.join("\n");
+        lists.websocket = settings.proxyOrigins.join("\n");
+        shown = settings.mode;
+        origins.value = lists[shown];
         denied.value = settings.deniedOrigins.join("\n");
+        dirty = false;
         showMode();
     }
 
@@ -130,31 +178,69 @@ export async function bindProxyOptions(): Promise<void> {
 
     save.disabled = true;
     try {
-        const settings = await getProxySettings();
-        displaySettings(settings);
-        savedStatus(settings);
-    } catch {
-        setStatus("無法讀取本機設定。 / Could not read local settings.", true);
-    } finally {
+        baseline = await getProxySettings();
+        displaySettings(baseline);
+        savedStatus(baseline);
         save.disabled = false;
+    } catch {
+        // Saving without knowing what is stored could overwrite it.
+        setStatus("無法讀取本機設定。 / Could not read local settings.", true);
     }
 
     helperCheck.addEventListener("click", () => void checkHelper());
     void checkHelper();
 
-    form.addEventListener("change", showMode);
+    // The popup and the question windows change the same settings while this
+    // page is open. A form that has no edits follows them; one that has is
+    // left alone, and refuses to save over them (see the submit handler).
+    browser.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local" || !(PROXY_STORAGE_KEY in changes)) {
+            return;
+        }
+        void (async () => {
+            let latest: ProxySettings;
+            try {
+                latest = await getProxySettings();
+            } catch {
+                return;
+            }
+            if (!baseline || sameProxySettings(latest, baseline)) {
+                // Our own save, or a change that is no change.
+                return;
+            }
+            if (dirty) {
+                setStatus(STALE_MESSAGE, true);
+            } else {
+                baseline = latest;
+                displaySettings(latest);
+                setStatus(UPDATED_ELSEWHERE_MESSAGE);
+            }
+        })();
+    });
+
+    form.addEventListener("change", () => {
+        showMode();
+        dirty = true;
+    });
     form.addEventListener("input", () => {
+        dirty = true;
         setStatus("尚未儲存。 / Unsaved changes.");
     });
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const allowedLines = origins.value.split(/\r?\n/u);
+        if (!baseline) {
+            return;
+        }
+        lists[shown] = origins.value;
+        const allowedLines = lists.helper.split(/\r?\n/u);
+        const proxyLines = lists.websocket.split(/\r?\n/u);
         const deniedLines = denied.value.split(/\r?\n/u);
         const result = validateProxySettings({
             enabled: enabled.checked,
             mode: selectedMode(),
             proxyUrl: proxyUrl.value,
             allowedOrigins: allowedLines,
+            proxyOrigins: proxyLines,
             deniedOrigins: deniedLines,
         });
         if (!result.valid) {
@@ -167,27 +253,45 @@ export async function bindProxyOptions(): Promise<void> {
             mode: "helper",
             proxyUrl: "",
             allowedOrigins: allowedLines,
+            proxyOrigins: proxyLines,
         });
         if (
             typedAllowed.valid &&
-            typedAllowed.settings.allowedOrigins.some((origin) =>
-                result.settings.deniedOrigins.includes(origin),
-            )
+            [
+                ...typedAllowed.settings.allowedOrigins,
+                ...typedAllowed.settings.proxyOrigins,
+            ].some((origin) => result.settings.deniedOrigins.includes(origin))
         ) {
             setStatus(CONFLICT_MESSAGE, true);
             return;
         }
         save.disabled = true;
         try {
-            await saveProxySettings(result.settings);
-            displaySettings(result.settings);
-            savedStatus(result.settings);
-        } catch {
-            // Browser errors can include input; never display or log the URL/token.
-            setStatus(
-                "儲存失敗；原有設定未確認變更，請重試。 / Save failed; changes were not confirmed. Please retry.",
-                true,
-            );
+            // Only if nobody changed the settings since this form was made
+            // from them; otherwise the old view of the lists would silently
+            // undo what was decided elsewhere (e.g. "always deny").
+            baseline = await replaceProxySettings(baseline, result.settings);
+            displaySettings(baseline);
+            savedStatus(baseline);
+        } catch (error) {
+            if (error instanceof SettingsConflictError) {
+                try {
+                    baseline = await getProxySettings();
+                    displaySettings(baseline);
+                    setStatus(CHANGED_ELSEWHERE_MESSAGE, true);
+                } catch {
+                    setStatus(
+                        "無法讀取本機設定。 / Could not read local settings.",
+                        true,
+                    );
+                }
+            } else {
+                // Browser errors can include input; never display or log the URL/token.
+                setStatus(
+                    "儲存失敗；原有設定未確認變更，請重試。 / Save failed; changes were not confirmed. Please retry.",
+                    true,
+                );
+            }
         } finally {
             save.disabled = false;
         }

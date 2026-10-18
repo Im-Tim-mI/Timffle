@@ -109,21 +109,27 @@
                         範例 / Example: <code>ws://127.0.0.1:18770/connect?host={host}&amp;port={port}&amp;token=&lt;your-token&gt;</code>
                     </p>
                 </div>
-                <label for="socket-proxy-origins">一律允許的網站來源（每行一個） / Always-allowed website origins (one per line)</label>
-                <textarea id="socket-proxy-origins" rows="8"spellcheck="false" autocapitalize="off" placeholder="https://trusted.example" aria-describedby="socket-proxy-origin-help"></textarea>
+                <label for="socket-proxy-origins">
+                    <span data-mode-text="helper">一律允許的網站來源（每行一個） / Always-allowed website origins (one per line)</span>
+                    <span data-mode-text="websocket" hidden>可使用自訂代理的網站來源（每行一個；這些網站會取得代理網址與 token） / Website origins that may use the custom proxy (one per line; they are given the proxy URL and token)</span>
+                </label>
+                <textarea id="socket-proxy-origins" rows="8" spellcheck="false" autocapitalize="off" placeholder="https://trusted.example" aria-describedby="socket-proxy-origin-help"></textarea>
                 <p id="socket-proxy-origin-help">
                     僅接受完整 HTTP/HTTPS 來源（協定、主機、選用連接埠），不接受 * 或路徑。預設允許淘米的摩爾莊園、賽爾號、小花仙、彈彈堂（mole.61.com.tw、seer.61.com.tw、hua.61.com.tw、ddt.61.com.tw，各含 HTTP 與 HTTPS）。內嵌播放器依所在頁框的來源；獨立播放器依 SWF URL 的來源。本機檔案不使用 Socket 連線。 / Exact HTTP/HTTPS origins only (scheme, host, optional port); no * or paths. Taomee's 摩爾莊園, 賽爾號, 小花仙 and 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw and ddt.61.com.tw, each over HTTP and HTTPS) are allowed by default. Embedded players use their frame's origin; the standalone player uses the SWF URL's origin. Local files never get sockets.
+                </p>
+                <p id="socket-proxy-origin-mode-help" data-mode-text="websocket" hidden>
+                    自訂代理有自己的清單，和連線小幫手的清單分開：讓網站使用連線小幫手，不會讓它拿到代理的 token；切換連線方式時，這裡顯示的是目前方式的清單。 / The custom proxy has a list of its own, apart from the helper's: letting a website use the helper never gives it the proxy's token. When you switch the connection method, this box shows the list of the method you chose.
                 </p>
                 <label for="socket-proxy-denied">一律拒絕的網站來源（每行一個） / Always-denied website origins (one per line)</label>
                 <textarea id="socket-proxy-denied" rows="4" spellcheck="false" autocapitalize="off" placeholder="https://untrusted.example" aria-describedby="socket-proxy-denied-help"></textarea>
                 <p id="socket-proxy-denied-help">
-                    這些網站不會被詢問，也不能使用 Socket 連線。同一個網站不能同時出現在兩個清單。 / These websites are never asked about and never get sockets. A website cannot be on both lists.
+                    這些網站不會被詢問，也不能使用 Socket 連線（兩種連線方式都一樣）。同一個網站不能同時出現在「允許」與「拒絕」清單。 / These websites are never asked about and never get sockets, in either connection method. A website cannot be on both lists.
                 </p>
                 <ul class="proxy-notes">
                     <li>不在上面兩個清單的網站，第一次嘗試使用 Socket 連線時，Timffle 會跳出視窗詢問你：「允許」「一律允許」「拒絕」「一律拒絕」。預設建議拒絕——只有線上遊戲可以允許。你也可以在 Timffle 圖示的彈出視窗直接設定目前分頁的網站，不必輸入網址，並可隨時改回「每次造訪時詢問」。（僅限連線小幫手模式；自訂 WebSocket 代理不會詢問，未列出的網站一律不能使用。） / A website on neither list is asked about the first time it tries to open a socket: Allow, Always allow, Deny or Always deny. We recommend denying—only online games should be allowed. You can also set the current tab's website from Timffle's popup without typing its address, and switch it back to “Ask on every visit” at any time. (Socket helper mode only; a custom WebSocket proxy never asks and refuses unlisted websites.)</li>
                     <li>Chrome 擴充套件無法直接開 TCP 連線，所以需要連線小幫手。小幫手只需安裝一次（執行下載包 helper 資料夾裡的安裝檔），之後 Chrome 會在遊戲連線時自動啟動、結束時自動關閉，不需開啟任何視窗或服務。 / Chrome extensions cannot open TCP sockets, hence the helper. Install it once (run the installer in the download's helper folder); Chrome then starts and stops it automatically for each game connection.</li>
                     <li>小幫手只連往公開網路位址，不會連往區域網路或本機，也不記錄連線內容。 / The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic.</li>
-                    <li>自訂 WebSocket 代理需要自行啟動代理程式，Chrome 可能詢問本機網路存取權限；代理 URL（含 token）會提供給允許的網站。 / A custom WebSocket proxy must be started by you, and Chrome may ask for local network access; allowed sites can read the proxy URL, including its token.</li>
+                    <li>自訂 WebSocket 代理需要自行啟動代理程式，Chrome 可能詢問本機網路存取權限；代理 URL（含 token）只會提供給這個方式自己清單裡的網站。 / A custom WebSocket proxy must be started by you, and Chrome may ask for local network access; only the websites on this method's own list can read the proxy URL, including its token.</li>
                     <li>儲存或停用後，請重新載入網頁。 / Reload pages after saving or disabling.</li>
                 </ul>
                 <div class="proxy-actions">

@@ -14,6 +14,8 @@ let activeTab: chrome.tabs.Tab;
 let savedOptions: Options;
 let tabOptions: Options;
 let tabOrigin: string | undefined;
+/** The origin of the tab's own page (its top frame), when the browser hides the tab's address. */
+let topFrameOrigin: string | undefined;
 
 let statusIndicator: HTMLDivElement;
 let statusText: HTMLSpanElement;
@@ -105,6 +107,21 @@ async function queryTabStatus(
     // does not expose activeTab.url without the tabs permission.
     tabOrigin =
         typeof response.origin === "string" ? response.origin : undefined;
+    if (!activeTab.url) {
+        // Whichever frame answered first may belong to another website; the
+        // socket section names "this site", which must be the page itself.
+        try {
+            const top = await browser.tabs.sendMessage(
+                activeTab.id!,
+                { type: "ping" },
+                { frameId: 0 },
+            );
+            topFrameOrigin =
+                typeof top?.origin === "string" ? top.origin : undefined;
+        } catch (_e) {
+            topFrameOrigin = undefined;
+        }
+    }
 
     if (response.loaded) {
         listener("status_result_running");
@@ -218,7 +235,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         savedOptions = options;
         optionsChanged();
     }, tabOrigin);
-    await bindSocketSection({ tab: activeTab, fallbackOrigin: tabOrigin });
+    await bindSocketSection({
+        tab: activeTab,
+        fallbackOrigin: topFrameOrigin,
+    });
     const permissionsButton = document.getElementById(
         "permissions-button",
     ) as HTMLButtonElement;

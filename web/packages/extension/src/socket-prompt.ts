@@ -7,7 +7,7 @@
  * being asked about waits for the same answer, and a page cannot make the
  * extension open more than a few windows.
  */
-import { socketPermission } from "./socket-proxy";
+import { isAsked } from "./socket-proxy";
 import type { SocketChoice } from "./socket-proxy";
 import type { VisitDecision } from "./socket-visit";
 
@@ -20,6 +20,11 @@ export const PROMPT_ANSWER_REQUEST = "socket_prompt_answer";
 export const MAX_QUEUED_PROMPTS = 8;
 /** Question windows one tab may cause during one visit. */
 export const MAX_PROMPTS_PER_TAB = 3;
+/** Question windows the extension opens per minute, whichever tabs ask. */
+export const MAX_PROMPTS_PER_MINUTE = 6;
+const MINUTE_MS = 60000;
+/** Window removals that arrived before the browser said which window it had opened. */
+const MAX_EARLY_REMOVALS = 16;
 
 export type PromptChoice =
     "allow-once" | "allow-always" | "deny-once" | "deny-always";
@@ -76,6 +81,12 @@ export interface PromptEffects {
     ): Promise<void>;
     /** Counts a question window for the tab; returns how many it has caused. */
     countPrompt(tabId: number, top?: string): Promise<number>;
+    /**
+     * Whether this website is still one that gets asked about under the
+     * settings as they are now (the mode or the lists may have changed since
+     * the question was opened).
+     */
+    stillAsking(origin: string): Promise<boolean>;
 }
 
 export interface PromptManager {
@@ -123,9 +134,13 @@ interface Entry {
 export function createPromptManager(
     host: PromptHost,
     effects: PromptEffects,
+    now: () => number = Date.now,
 ): PromptManager {
     let current: Entry | undefined;
     const queue: Entry[] = [];
+    /** When the recent question windows were opened. */
+    let opened: number[] = [];
+    const earlyRemovals = new Set<number>();
 
     const everyEntry = () => (current ? [current, ...queue] : [...queue]);
 
@@ -154,8 +169,34 @@ export function createPromptManager(
         pump();
     };
 
+    /** The user closed the window without answering: refuse for this visit. */
+    const closedUnanswered = (entry: Entry) => {
+        const done = async () => {
+            try {
+                for (const [tabId, top] of entry.tabs) {
+                    await effects.recordVisit(tabId, entry.origin, "deny", top);
+                }
+            } catch {
+                /* The waiters are refused below either way. */
+            }
+            settle(entry, "dismissed");
+        };
+        // Stop treating the window as open before the answer is stored.
+        entry.windowId = undefined;
+        void done();
+    };
+
     const show = async (entry: Entry) => {
         try {
+            // A page cannot make the extension flood the screen with windows,
+            // not even by asking from many tabs.
+            const time = now();
+            opened = opened.filter((at) => time - at < MINUTE_MS);
+            if (opened.length >= MAX_PROMPTS_PER_MINUTE) {
+                settle(entry, "unavailable");
+                return;
+            }
+            opened.push(time);
             // One count per window, however many requests share it; a tab
             // that has used up its budget is not asked again this visit.
             const asked = await effects.countPrompt(
@@ -176,6 +217,9 @@ export function createPromptManager(
                 host.close(windowId).catch(() => {
                     /* Already closed. */
                 });
+            } else if (earlyRemovals.delete(windowId)) {
+                // Closed before the browser told us its id: nobody will say so again.
+                closedUnanswered(entry);
             }
         } catch {
             settle(entry, "unavailable");
@@ -287,6 +331,16 @@ export function createPromptManager(
                 return false;
             }
             try {
+                // The mode or the lists may have changed while the question
+                // was open; an answer must not outlive the situation it was
+                // asked in.
+                if (!(await effects.stillAsking(entry.origin))) {
+                    settle(entry, "answered");
+                    return false;
+                }
+                if (entry.settled) {
+                    return false;
+                }
                 if (choice === "allow-always" || choice === "deny-always") {
                     await effects.remember(
                         entry.origin,
@@ -316,27 +370,29 @@ export function createPromptManager(
                 (candidate) => candidate.windowId === windowId,
             );
             if (!entry || entry.settled) {
+                // The removal can overtake the browser's reply to "open a
+                // window": remember it for the question that is waiting for one.
+                if (
+                    !entry &&
+                    everyEntry().some(
+                        (candidate) =>
+                            !candidate.settled &&
+                            candidate.windowId === undefined,
+                    )
+                ) {
+                    earlyRemovals.add(windowId);
+                    if (earlyRemovals.size > MAX_EARLY_REMOVALS) {
+                        // Unrelated windows being closed: forget the oldest.
+                        const oldest = earlyRemovals.values().next().value;
+                        if (oldest !== undefined) {
+                            earlyRemovals.delete(oldest);
+                        }
+                    }
+                }
                 return;
             }
             // Closing the question without answering refuses for this visit.
-            const done = async () => {
-                try {
-                    for (const [tabId, top] of entry.tabs) {
-                        await effects.recordVisit(
-                            tabId,
-                            entry.origin,
-                            "deny",
-                            top,
-                        );
-                    }
-                } catch {
-                    /* The waiters are refused below either way. */
-                }
-                settle(entry, "dismissed");
-            };
-            // Stop treating the window as open before the answer is stored.
-            entry.windowId = undefined;
-            void done();
+            closedUnanswered(entry);
         },
 
         tabGone(tabId) {
@@ -356,7 +412,9 @@ export function createPromptManager(
 
         settingsChanged(settings) {
             for (const entry of everyEntry()) {
-                if (socketPermission(settings, entry.origin) !== "ask") {
+                // Decided elsewhere, or no longer a question at all (sockets
+                // switched off, or a custom proxy, which never asks).
+                if (!isAsked(settings, entry.origin)) {
                     settle(entry, "answered");
                 }
             }
@@ -366,6 +424,7 @@ export function createPromptManager(
             for (const entry of everyEntry()) {
                 settle(entry, "dismissed");
             }
+            earlyRemovals.clear();
         },
     };
 }

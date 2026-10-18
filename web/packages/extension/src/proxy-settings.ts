@@ -21,40 +21,92 @@ export async function getProxySettings(): Promise<ProxySettings> {
         : { ...defaultProxySettings(), enabled: false };
 }
 
+/** Saves the settings and returns them as they are stored. */
 export async function saveProxySettings(
     settings: ProxySettings,
-): Promise<void> {
+): Promise<ProxySettings> {
     const result = validateProxySettings(settings);
     if (!result.valid) {
         throw new Error(result.error);
     }
     // What the user saves is their choice, whatever the current defaults are.
-    await browser.storage.local.set({
-        [PROXY_STORAGE_KEY]: {
-            ...result.settings,
-            defaultsVersion: DEFAULTS_VERSION,
-        },
-    });
+    const stored = { ...result.settings, defaultsVersion: DEFAULTS_VERSION };
+    await browser.storage.local.set({ [PROXY_STORAGE_KEY]: stored });
+    return stored;
+}
+
+/** Whether two settings (as `getProxySettings` returns them) are the same. */
+export function sameProxySettings(a: ProxySettings, b: ProxySettings): boolean {
+    const same = (x: readonly string[], y: readonly string[]) =>
+        x.length === y.length && x.every((entry, i) => entry === y[i]);
+    return (
+        a.enabled === b.enabled &&
+        a.mode === b.mode &&
+        a.proxyUrl === b.proxyUrl &&
+        a.defaultsVersion === b.defaultsVersion &&
+        same(a.allowedOrigins, b.allowedOrigins) &&
+        same(a.proxyOrigins, b.proxyOrigins) &&
+        same(a.deniedOrigins, b.deniedOrigins)
+    );
+}
+
+/** The settings were changed by somebody else since they were read. */
+export class SettingsConflictError extends Error {
+    constructor() {
+        super("settings_changed");
+    }
+}
+
+const SETTINGS_LOCK = "timffle-socket-settings";
+
+/**
+ * The popup, the options page and the service worker all change the settings;
+ * a Web Lock (shared by all of them) keeps one read-change-write from
+ * overwriting another. Without Web Locks (very old browsers) only changes made
+ * from one context are ordered.
+ */
+function withSettingsLock<T>(task: () => Promise<T>): Promise<T> {
+    const locks = (globalThis.navigator as Navigator | undefined)?.locks;
+    return locks ? locks.request(SETTINGS_LOCK, task) : task();
 }
 
 let pendingUpdate: Promise<unknown> = Promise.resolve();
 
 /**
  * Reads the settings fresh, applies `change` and saves the result. Updates
- * made through this function in one context run one after the other, so two
- * quick answers cannot overwrite each other.
+ * made through this function run one after the other, in this context and
+ * (with Web Locks) across the extension's pages and service worker, so two
+ * quick changes cannot overwrite each other. `change` may throw to cancel.
  */
 export function updateProxySettings(
     change: (settings: ProxySettings) => ProxySettings,
 ): Promise<ProxySettings> {
-    const run = async () => {
-        const next = change(await getProxySettings());
-        await saveProxySettings(next);
-        return next;
-    };
+    const run = () =>
+        withSettingsLock(async () => {
+            const next = change(await getProxySettings());
+            return saveProxySettings(next);
+        });
     const result = pendingUpdate.then(run, run);
     pendingUpdate = result.catch(() => undefined);
     return result;
+}
+
+/**
+ * Saves `next` only if the settings are still `expected`, the ones it was
+ * made from. A form that has been open for a while must not write its old view
+ * of the lists over what the popup or a question has changed since (a website
+ * that was refused there would be allowed again).
+ */
+export function replaceProxySettings(
+    expected: ProxySettings,
+    next: ProxySettings,
+): Promise<ProxySettings> {
+    return updateProxySettings((current) => {
+        if (!sameProxySettings(current, expected)) {
+            throw new SettingsConflictError();
+        }
+        return next;
+    });
 }
 
 export async function resetProxySettings(): Promise<void> {

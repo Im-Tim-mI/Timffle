@@ -13,8 +13,20 @@ export interface ProxySettings {
     enabled: boolean;
     mode: ProxyMode;
     proxyUrl: string;
-    /** 「一律允許」: websites that may use sockets without being asked. */
+    /**
+     * 「一律允許」 in socket helper mode: websites that may use sockets without
+     * being asked.
+     */
     allowedOrigins: string[];
+    /**
+     * 「一律允許」 in custom WebSocket proxy mode: websites that may use the
+     * proxy, which means they are given its URL including the token. A list of
+     * its own, so that a website allowed to use the helper (perhaps by one
+     * click) never receives the token just because the owner switched modes.
+     * Settings saved before the lists were separated have the same sites in
+     * both.
+     */
+    proxyOrigins: string[];
     /**
      * 「一律拒絕」: websites that never get sockets and are never asked about.
      * Settings saved before the first-use prompt existed have none.
@@ -116,6 +128,7 @@ export function defaultProxySettings(): ProxySettings {
         mode: "helper",
         proxyUrl: "",
         allowedOrigins: [...DEFAULT_ALLOWED_ORIGINS],
+        proxyOrigins: [...DEFAULT_ALLOWED_ORIGINS],
         deniedOrigins: [],
         defaultsVersion: DEFAULTS_VERSION,
     };
@@ -155,12 +168,9 @@ export function validateProxySettings(value: unknown): ProxyValidationResult {
         !Array.isArray(value.allowedOrigins) ||
         !value.allowedOrigins.every((origin) => typeof origin === "string") ||
         // Absent in settings saved before the first-use prompt existed.
-        ("deniedOrigins" in value &&
-            value.deniedOrigins !== undefined &&
-            (!Array.isArray(value.deniedOrigins) ||
-                !value.deniedOrigins.every(
-                    (origin) => typeof origin === "string",
-                )))
+        !isOptionalStringList(value, "deniedOrigins") ||
+        // Absent in settings saved before the two allow-lists were separated.
+        !isOptionalStringList(value, "proxyOrigins")
     ) {
         return { valid: false, error: "invalid_settings" };
     }
@@ -221,21 +231,28 @@ export function validateProxySettings(value: unknown): ProxyValidationResult {
     }
 
     const allowedOrigins = normalizeOriginList(value.allowedOrigins);
+    const proxyOrigins = normalizeOriginList(
+        // Settings that predate the separate lists used one list for both.
+        "proxyOrigins" in value && Array.isArray(value.proxyOrigins)
+            ? value.proxyOrigins
+            : value.allowedOrigins,
+    );
     const deniedOrigins = normalizeOriginList(
         "deniedOrigins" in value && Array.isArray(value.deniedOrigins)
             ? value.deniedOrigins
             : [],
     );
-    if (!allowedOrigins || !deniedOrigins) {
+    if (!allowedOrigins || !proxyOrigins || !deniedOrigins) {
         return { valid: false, error: "invalid_origin" };
     }
     // A website cannot be both: refusing wins, whichever list was edited last.
     for (const origin of deniedOrigins) {
         allowedOrigins.delete(origin);
+        proxyOrigins.delete(origin);
     }
     // Helper mode asks about unlisted websites, so an empty list is fine there;
     // a custom proxy has no prompt and is useless without an allowed website.
-    if (value.enabled && mode === "websocket" && allowedOrigins.size === 0) {
+    if (value.enabled && mode === "websocket" && proxyOrigins.size === 0) {
         return { valid: false, error: "origins_required" };
     }
 
@@ -255,10 +272,24 @@ export function validateProxySettings(value: unknown): ProxyValidationResult {
             mode,
             proxyUrl,
             allowedOrigins: Array.from(allowedOrigins),
+            proxyOrigins: Array.from(proxyOrigins),
             deniedOrigins: Array.from(deniedOrigins),
             ...(defaultsVersion === undefined ? {} : { defaultsVersion }),
         },
     };
+}
+
+/** The key is absent, or holds a list of strings. */
+function isOptionalStringList(value: object, key: string): boolean {
+    if (!(key in value)) {
+        return true;
+    }
+    const list: unknown = (value as Record<string, unknown>)[key];
+    return (
+        list === undefined ||
+        (Array.isArray(list) &&
+            list.every((entry) => typeof entry === "string"))
+    );
 }
 
 /** Trimmed, normalized and de-duplicated; undefined if any entry is not an origin. */
@@ -292,11 +323,23 @@ export function socketPermission(
     if (!validation.valid || !validation.settings.enabled || !websiteOrigin) {
         return "off";
     }
-    const { allowedOrigins, deniedOrigins } = validation.settings;
+    const { deniedOrigins } = validation.settings;
     if (deniedOrigins.includes(websiteOrigin)) {
         return "deny";
     }
-    return allowedOrigins.includes(websiteOrigin) ? "allow" : "ask";
+    return allowList(validation.settings).includes(websiteOrigin)
+        ? "allow"
+        : "ask";
+}
+
+/**
+ * The websites allowed in the current mode: the helper's list, or the list of
+ * websites that may receive the custom proxy's URL and token.
+ */
+export function allowList(settings: ProxySettings): string[] {
+    return settings.mode === "websocket"
+        ? settings.proxyOrigins
+        : settings.allowedOrigins;
 }
 
 /**
@@ -314,8 +357,23 @@ export function promptsForUnlisted(settings: unknown): boolean {
 }
 
 /**
+ * Whether a question is the right thing for this website right now: nobody
+ * has decided about it, and sockets are on in helper mode (a custom proxy
+ * never asks).
+ */
+export function isAsked(settings: unknown, origin?: string): boolean {
+    return (
+        socketPermission(settings, origin) === "ask" &&
+        promptsForUnlisted(settings)
+    );
+}
+
+/**
  * Settings after the user chose "allow", "deny" or "ask" (forget) for a
- * website; the other list never keeps the origin.
+ * website. "Allow" and "ask" concern the list of the current mode only: what
+ * the user sees and decides is that mode's list, so the other mode's list
+ * stays as it was. "Deny" is final for both. A website is never on a list it
+ * was just taken off or refused on.
  */
 export function setSocketChoice(
     settings: ProxySettings,
@@ -328,12 +386,17 @@ export function setSocketChoice(
     }
     const without = (list: string[]) =>
         list.filter((entry) => entry !== websiteOrigin);
+    const websocket = settings.mode === "websocket";
+    const changes = (list: string[], current: boolean) =>
+        choice === "allow" && current
+            ? [...without(list), websiteOrigin]
+            : choice === "deny" || (choice === "ask" && current)
+              ? without(list)
+              : list;
     return {
         ...settings,
-        allowedOrigins:
-            choice === "allow"
-                ? [...without(settings.allowedOrigins), websiteOrigin]
-                : without(settings.allowedOrigins),
+        allowedOrigins: changes(settings.allowedOrigins, !websocket),
+        proxyOrigins: changes(settings.proxyOrigins, websocket),
         deniedOrigins:
             choice === "deny"
                 ? [...without(settings.deniedOrigins), websiteOrigin]
@@ -370,8 +433,7 @@ export function askSocketProxies(
     settings: unknown,
     origin?: string,
 ): Config.SocketProxy[] {
-    return socketPermission(settings, origin) === "ask" &&
-        promptsForUnlisted(settings)
+    return isAsked(settings, origin)
         ? [{ host: "*", port: 0, proxyUrl: HELPER_PROXY_URL }]
         : [];
 }

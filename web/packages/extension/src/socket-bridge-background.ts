@@ -2,6 +2,7 @@
 import { getProxySettings, updateProxySettings } from "./proxy-settings";
 import {
     defaultProxySettings,
+    isAsked,
     PROXY_STORAGE_KEY,
     promptsForUnlisted,
     resolveSocketAccess,
@@ -32,8 +33,10 @@ import type { SessionArea, VisitStore } from "./socket-visit";
 import {
     HELLO_TIMEOUT_MS,
     HELPER_STATUS_REQUEST,
+    MAX_ASKING_SOCKETS,
     MAX_FRAME_SOCKETS,
     MAX_GLOBAL_SOCKETS,
+    MAX_TAB_ASKING_SOCKETS,
     NATIVE_HOST_NAME,
     SOCKET_PORT_NAME,
     STALL_TIMEOUT_MS,
@@ -149,12 +152,25 @@ interface SocketHandle {
     stop: (code: string) => void;
     /** Still waiting for the permission check, which may include a question to the user. */
     checking: () => boolean;
+    /**
+     * Waiting for a person to answer the first-use question. Such a socket
+     * holds no connection slot: an ignored question must not use up the slots
+     * that sockets of allowed sites need.
+     */
+    waiting: () => boolean;
+}
+
+/** Whether a socket may start waiting for an answer, or start connecting after one. */
+interface SocketLimits {
+    mayAsk: () => boolean;
+    mayConnect: () => boolean;
 }
 
 function handleSocketPort(
     page: chrome.runtime.Port,
     authorize: (signal: AbortSignal, asking: () => void) => Promise<boolean>,
     release: () => void,
+    limits: SocketLimits,
 ): SocketHandle {
     const abort = new AbortController();
     let native: chrome.runtime.Port | null = null;
@@ -166,6 +182,7 @@ function handleSocketPort(
         | "open"
         | "closing"
         | "done" = "idle";
+    let asking = false;
     let sending = false;
     let receiving = false;
     let phaseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -330,9 +347,15 @@ function handleSocketPort(
             state = "checking";
             authorize(abort.signal, () => {
                 // A person is being asked: wait for the answer, not for start-up.
-                if (state === "checking") {
-                    arm(STALL_TIMEOUT_MS, "prompt_timeout");
+                if (state !== "checking") {
+                    return;
                 }
+                if (!limits.mayAsk()) {
+                    fail("socket_limit");
+                    return;
+                }
+                asking = true;
+                arm(STALL_TIMEOUT_MS, "prompt_timeout");
             }).then(
                 (allowed) => {
                     if (state !== "checking") {
@@ -340,6 +363,11 @@ function handleSocketPort(
                     }
                     if (!allowed) {
                         fail("not_allowed");
+                        return;
+                    }
+                    // The slots may have been taken while the person decided.
+                    if (asking && !limits.mayConnect()) {
+                        fail("socket_limit");
                         return;
                     }
                     connectHelper(message);
@@ -375,6 +403,7 @@ function handleSocketPort(
         sender: page.sender,
         stop: fail,
         checking: () => state === "checking",
+        waiting: () => state === "checking" && asking,
     };
 }
 
@@ -492,9 +521,17 @@ function browserPromptHost(): PromptHost {
 function browserPromptEffects(visits: VisitStore): PromptEffects {
     return {
         async remember(origin, choice) {
-            await updateProxySettings((settings) =>
-                setSocketChoice(settings, origin, choice),
-            );
+            await updateProxySettings((settings) => {
+                // Decided against the settings as they are when it is stored,
+                // not as they were when the question was opened.
+                if (!isAsked(settings, origin)) {
+                    throw new Error("not_asking");
+                }
+                return setSocketChoice(settings, origin, choice);
+            });
+        },
+        async stillAsking(origin) {
+            return isAsked(await getProxySettings(), origin);
         },
         recordVisit: (tabId, origin, decision, top) =>
             visits.record(tabId, origin, decision, top),
@@ -522,6 +559,22 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
     const active = new Set<SocketHandle>();
     let epoch = 0;
     let probe: ReturnType<typeof probeHelper> | undefined;
+
+    /** The sockets that hold a connection slot: all but those waiting for an answer. */
+    const holdingSlots = (except?: SocketHandle) =>
+        [...active].filter((other) => other !== except && !other.waiting());
+    /** Whether one more socket from this frame fits under the global and per-frame limits. */
+    const hasFreeSlot = (sender: Sender, except: SocketHandle | undefined) => {
+        const holding = holdingSlots(except);
+        return (
+            holding.length + Number(!!probe) < MAX_GLOBAL_SOCKETS &&
+            holding.filter(
+                (other) =>
+                    other.sender?.tab?.id === sender?.tab?.id &&
+                    other.sender?.frameId === sender?.frameId,
+            ).length < MAX_FRAME_SOCKETS
+        );
+    };
 
     /** "ask" means a person has to decide; everything else is final. */
     const evaluate = async (
@@ -569,7 +622,16 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
         }
         let answer = await evaluate(origin, tabId);
         if (answer === "ask") {
+            // Where there is no way to reach the helper (a browser build
+            // without native messaging) a question could only mislead.
+            if (typeof browser.runtime.connectNative !== "function") {
+                return false;
+            }
             asking();
+            if (signal.aborted) {
+                // Too many sockets are waiting already, or the page went away.
+                return false;
+            }
             const top = topOrigin(sender);
             const windowId = sender?.tab?.windowId;
             await prompts.ask(
@@ -623,16 +685,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
             return;
         }
         const origin = senderOrigin(page.sender);
-        const sameFrame = [...active].filter(
-            ({ sender }) =>
-                sender?.tab?.id === page.sender?.tab?.id &&
-                sender?.frameId === page.sender?.frameId,
-        ).length;
-        if (
-            !origin ||
-            active.size + Number(!!probe) >= MAX_GLOBAL_SOCKETS ||
-            sameFrame >= MAX_FRAME_SOCKETS
-        ) {
+        if (!origin || !hasFreeSlot(page.sender, undefined)) {
             try {
                 page.postMessage({
                     type: "error",
@@ -644,10 +697,25 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
             disconnect(page);
             return;
         }
+        const tabId = page.sender?.tab?.id;
         const handle = handleSocketPort(
             page,
             (signal, asking) => authorize(origin, page.sender, signal, asking),
             () => active.delete(handle),
+            {
+                mayAsk: () => {
+                    const waiting = [...active].filter((other) =>
+                        other.waiting(),
+                    );
+                    return (
+                        waiting.length < MAX_ASKING_SOCKETS &&
+                        waiting.filter(
+                            (other) => other.sender?.tab?.id === tabId,
+                        ).length < MAX_TAB_ASKING_SOCKETS
+                    );
+                },
+                mayConnect: () => hasFreeSlot(page.sender, handle),
+            },
         );
         active.add(handle);
     };
@@ -664,7 +732,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 if (!isExtensionUI(sender)) {
                     return undefined;
                 }
-                if (!probe && active.size >= MAX_GLOBAL_SOCKETS) {
+                if (!probe && holdingSlots().length >= MAX_GLOBAL_SOCKETS) {
                     sendResponse({ installed: false, error: "socket_limit" });
                     return false;
                 }
@@ -791,6 +859,8 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 for (const handle of active) {
                     handle.stop("not_allowed");
                 }
+                // With the player off there is nothing left to ask about.
+                prompts.dispose();
             }
         }
     };
@@ -834,19 +904,26 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
     };
     const onWindowRemoved = (windowId: number) =>
         prompts.windowRemoved(windowId);
+    // A tab swapped for another (a prerendered page taking over) is gone as
+    // far as its sockets and questions are concerned.
+    const onReplaced = (_addedTabId: number, removedTabId: number) =>
+        closeTab(removedTabId);
     browser.runtime.onConnect.addListener(onConnect);
     browser.runtime.onMessage.addListener(onMessage);
     browser.storage.onChanged.addListener(onChanged);
     browser.tabs.onRemoved.addListener(closeTab);
     browser.tabs.onUpdated.addListener(onUpdated);
-    browser.windows?.onRemoved.addListener(onWindowRemoved);
+    browser.tabs.onReplaced?.addListener(onReplaced);
+    // `windows` (or its events) is missing in some browsers.
+    browser.windows?.onRemoved?.addListener(onWindowRemoved);
     return () => {
         browser.runtime.onConnect.removeListener(onConnect);
         browser.runtime.onMessage.removeListener(onMessage);
         browser.storage.onChanged.removeListener(onChanged);
         browser.tabs.onRemoved.removeListener(closeTab);
         browser.tabs.onUpdated.removeListener(onUpdated);
-        browser.windows?.onRemoved.removeListener(onWindowRemoved);
+        browser.tabs.onReplaced?.removeListener(onReplaced);
+        browser.windows?.onRemoved?.removeListener(onWindowRemoved);
         for (const handle of active) {
             handle.stop("bridge_closed");
         }

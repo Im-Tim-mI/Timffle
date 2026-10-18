@@ -10,11 +10,14 @@ import {
     PROMPT_CHOICES,
 } from "./socket-prompt";
 import type { PromptChoice, PromptView } from "./socket-prompt";
+import { createInputGuard } from "./prompt-guard";
+import type { PressKind } from "./prompt-guard";
 
 /**
  * Clicks and keys in this long after the window appeared (or got focus) are
  * ignored: the question can pop up while the visitor is clicking or typing in
- * the game, and that input is not an answer.
+ * the game, and that input is not an answer. See prompt-guard.ts for the rest
+ * of what has to be true before input counts.
  */
 const IGNORE_INPUT_MS = 700;
 const KEEP_ALIVE_MS = 10000;
@@ -97,21 +100,32 @@ window.addEventListener("DOMContentLoaded", async () => {
         document.querySelectorAll<HTMLButtonElement>("button[data-choice]"),
     );
     const error = document.getElementById("prompt-error")!;
-    let armedAt = 0;
+    const guard = createInputGuard(IGNORE_INPUT_MS);
     let answering = false;
     let waiting: ReturnType<typeof setTimeout> | undefined;
     // The buttons stay focusable (the safe one has the focus) but do nothing
-    // for a moment; the dimming tells the visitor why.
+    // for a moment, and while the window has no focus; the dimming tells the
+    // visitor why.
     const arm = () => {
-        armedAt = Date.now() + IGNORE_INPUT_MS;
+        guard.arm(Date.now());
         document.body.dataset["wait"] = "1";
         clearTimeout(waiting);
         waiting = setTimeout(() => {
             delete document.body.dataset["wait"];
         }, IGNORE_INPUT_MS);
     };
-    arm();
+    const disarm = () => {
+        guard.disarm();
+        document.body.dataset["wait"] = "1";
+        clearTimeout(waiting);
+    };
+    if (document.hasFocus()) {
+        arm();
+    } else {
+        disarm();
+    }
     window.addEventListener("focus", arm);
+    window.addEventListener("blur", disarm);
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
             // Closing the window refuses for this visit.
@@ -120,14 +134,37 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 
     for (const button of buttons) {
+        const key = button.id;
+        button.addEventListener("pointermove", () => {
+            guard.pointerMoved(key, Date.now());
+        });
+        button.addEventListener("pointerdown", (event) => {
+            const kind: PressKind =
+                event.pointerType === "touch"
+                    ? "touch"
+                    : event.pointerType === "pen"
+                      ? "pen"
+                      : "mouse";
+            guard.pressed(key, kind, Date.now());
+        });
+        button.addEventListener("keydown", (event) => {
+            // Enter clicks on this press, Space when the key is let go.
+            if (event.key === "Enter" || event.key === " ") {
+                guard.pressed(key, "key", Date.now());
+            }
+        });
         button.addEventListener("click", async (event) => {
             const choice = button.dataset["choice"] as PromptChoice | undefined;
             if (
-                !event.isTrusted ||
                 answering ||
-                Date.now() < armedAt ||
                 !choice ||
-                !PROMPT_CHOICES.includes(choice)
+                !PROMPT_CHOICES.includes(choice) ||
+                !guard.accepts(
+                    choice,
+                    key,
+                    { isTrusted: event.isTrusted, detail: event.detail },
+                    Date.now(),
+                )
             ) {
                 return;
             }

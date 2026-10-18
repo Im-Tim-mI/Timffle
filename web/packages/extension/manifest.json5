@@ -74,8 +74,13 @@
         "scripting",
         "declarativeNetRequestWithHostAccess",
     ],
+    // Only what a web page has to load: Ruffle itself (script and wasm, in dist/)
+    // and the standalone player, which links to SWF files are redirected to.
+    // The extension's other pages (popup, settings, welcome, the socket question)
+    // are left out on purpose: a page that could frame them could cover them and
+    // have the visitor click or type into them.
     "web_accessible_resources": [{
-        "resources": ["*"],
+        "resources": ["dist/*", "player.html"],
         "matches": ["<all_urls>"],
     }],
     "declarative_net_request": {

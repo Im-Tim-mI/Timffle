@@ -12,6 +12,11 @@ export const MAX_GLOBAL_SOCKETS = 16;
 // A game frame may hold login + game + chat sockets while an old one is still
 // draining or a reconnect is in progress; each layer also frees slots slightly later.
 export const MAX_FRAME_SOCKETS = 8;
+// Sockets that wait for a person to answer the first-use question hold no
+// connection slot (an ignored question must not starve the sockets of allowed
+// sites), so they have limits of their own.
+export const MAX_ASKING_SOCKETS = 8;
+export const MAX_TAB_ASKING_SOCKETS = 4;
 export const STALL_TIMEOUT_MS = 30000;
 // Includes native host process start-up (e.g. a first antivirus scan on Windows).
 export const HELLO_TIMEOUT_MS = 10000;

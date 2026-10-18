@@ -18,7 +18,12 @@ export function armSocketBridge(config: object, install: () => void): boolean {
         get() {
             if (!installed) {
                 installed = true;
-                install();
+                try {
+                    install();
+                } catch {
+                    // Ruffle is in the middle of loading a movie and must not
+                    // fail because of this; the movie's sockets fail instead.
+                }
             }
             return value;
         },
