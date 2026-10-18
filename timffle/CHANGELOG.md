@@ -2,7 +2,7 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.2.0（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
-## 未發布
+## 0.8.0.26297 — 2026-10-18
 
 - **wgpu 渲染器在只有 256 個頂點 uniform 向量的 GPU 上不再當掉**（Android 模擬器與許多手機 GPU 都是這個 WebGL 2 最低值）。上游 Ruffle 從 2026-09 起每次繪製把最多 200 組 transform 放進一個 uniform 陣列（約 1200 個向量）；有些 WebGL 實作會把它算進 `GL_MAX_VERTEX_UNIFORM_VECTORS`，建立管線時驗證失敗，播放器整個停掉。網頁版建立 wgpu-webgl 前先查這個上限，每次繪製的 transform 數改成「(上限 − 64) ÷ 6」（256 時為 32），超出的照常分批畫；上限夠大的裝置（一般 PC 是 4096）維持 200，行為不變。改動在 `render/wgpu/src/dynamic_transforms.rs`、`render/wgpu/src/lib.rs`、`web/src/builder.rs`。
 - **系統語言是中文的 Android 上，遊戲的裝置字型文字不再偏低**（例如摩爾莊園登入失敗提示框的文字）。遊戲指定的 SimSun 在 Android 上不存在，瀏覽器改用 Noto Sans CJK，它的行高是 1.16 + 0.29 em，比 Flash 排版時用的 Windows SimSun（0.86 + 0.14 em）高很多，基線因此往下約 0.28 個字高（12px 字約 3 px）。現在只有在「要求的字型不存在或是 `_sans` 這類通用字型」而且瀏覽器實際用的字型行高超過 1.25 em 時，才改用該字型的中文字框（以 ideographic 基線為底：0.88 + 0.12 em）；裝了該字型的電腦與一般的退回字型（例如 Arial、Roboto）不受影響。改動在 `web/src/ui/canvas_font_renderer.rs`。驗證：Android 模擬器把 App 語言設成 zh-TW 時，提示框文字比修正前高約 4 個 CSS 像素，且比英文系統（Roboto）略高，符合 SimSun 的上緣比 Roboto 低；英文系統下行為不變（判斷不觸發）。**沒有**在實體手機與 Windows 上比對。
