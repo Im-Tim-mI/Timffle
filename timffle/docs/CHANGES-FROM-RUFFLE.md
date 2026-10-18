@@ -25,6 +25,7 @@
 - **整合**：`utils.ts` 的 `getOptions(origin)` 只對「允許使用 Socket 的網站」注入 `socketProxy` 設定；對這些網站、且使用者沒有自己指定渲染器時，預設把裝置字型改成 `canvas`（用瀏覽器字型畫中文）。不在清單內的網站與本機檔案收不到任何 Socket 設定。`build.ts` 加上 `nativeMessaging` 權限，並把環境變數 `EXTENSION_PUBLIC_KEY` 寫成 `manifest.key`（固定 ID）。
 - **`web/packages/core/.../load-options.ts`**：`socketProxy` 設定的型別與文件，說明萬用字元對應（`host:"*"`、`port:0`）、`{host}`／`{port}` 樣板、精確對應優先，以及「成功＝WebSocket OPEN」的語意（見 0002）。
 - **測試**：3 個測試檔共 38 項（設定與允許清單、頁面橋接、背景權限）。
+- **之後新增（發行前）**：第一次連線時的詢問、「一律拒絕」清單、彈出視窗的「允許此網站使用 Socket 連線」按鈕。這些在原本的補丁之後以獨立 commit 加入，說明見 [`ARCHITECTURE.md`](ARCHITECTURE.md) 第 3a 節與 [`../CHANGELOG.md`](../CHANGELOG.md)。同一批改動還把 `manifest.json5` 的 `web_accessible_resources` 從 `*` 縮到 `dist/*` 與 `player.html`（上游是整個資料夾對所有網頁開放，網頁可以把擴充功能自己的頁面嵌進頁框）。
 
 ## 0002 — 網頁版執行期：Socket 後端與 canvas 通用字型（3 個檔案）
 

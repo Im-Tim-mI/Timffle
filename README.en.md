@@ -40,9 +40,9 @@ Timffle does both: **a patched Ruffle (WebAssembly) plus a connection helper tha
 ## Features
 
 - **One package**: [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) provides `timffle-chrome-<version>.zip` with the Chrome extension, the connection helper (Windows, macOS, Linux) and the installers.
-- **No proxy to set up**: the four game sites are allowed to use sockets by default; nothing else has to be started.
+- **No proxy to set up**: the four game sites are allowed to use sockets by default; nothing else has to be started. Any other site is asked about the first time it wants sockets (we recommend denying; only online games should be allowed).
 - **Real Flash as the reference**: every compatibility fix for Ruffle is compared line by line with the output of Adobe Flash Player 32 (30 golden files).
-- **Conservative security design**: only allow-listed sites can use sockets; the helper connects to public internet addresses only, listens on no port, does not stay running and records no traffic.
+- **Conservative security design**: only sites you allow can use sockets (a site that is not listed needs your approval first); the helper connects to public internet addresses only, listens on no port, does not stay running and records no traffic.
 - **Open source, upstream history kept**: Ruffle's complete git history, authorship and licences are preserved; Timffle's own parts are MIT OR Apache-2.0 at your option, like Ruffle.
 
 ## Quick start
@@ -126,8 +126,44 @@ The extension's options page has a section "**Socket 連線（遊戲伺服器）
 <p align="center"><img src="timffle/docs/images/options-socket.png" alt="The socket section of the extension's options page: the connection helper is shown as installed, followed by the list of allowed website origins" width="560"></p>
 
 - **Connection method**: "Socket helper" is the default and recommended. Advanced users can switch to "Custom WebSocket proxy" and run the local WebSocket↔TCP proxy in [`timffle/relay/`](timffle/relay/) themselves (needs Node.js 22+; Chrome may ask for local network access).
-- **Allowed website origins (one per line)**: only the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets. The default is `mole`, `seer`, `hua` and `ddt` `.61.com.tw`, each with `http://` and `https://`. Add other sites yourself — **only sites you trust**, because an allowed site can reach any TCP address on the public internet through the helper.
+- **Always-allowed website origins (one per line)**: the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets directly, without being asked. The default is `mole`, `seer`, `hua` and `ddt` `.61.com.tw`, each with `http://` and `https://`. You do **not have to type** other sites: use "The first-use question" or "Setting a site from the popup" below. **Allow only online games you trust**, because an allowed site can reach any TCP address on the public internet through the helper.
+- **Always-denied website origins (one per line)**: these sites are never asked about and never get sockets (with either connection method). A site cannot be on both the allowed and the denied list (saving warns you; if it is in both anyway, refusing wins).
+- **Each connection method has its own always-allowed list**: switch to "Custom WebSocket proxy" and the box shows the proxy's own list; only the sites on that list are given the proxy URL and its token. So a site you allowed in Socket helper mode never gets the token just because you switched to a custom proxy later.
+- **While the settings page is open**, if you change something in the popup (for example set a site to "Always deny"), a form with no edits updates itself; a form with edits is stopped when you save and shows the latest settings, so it never changes that decision back.
 - Reload the game page after saving or disabling.
+
+### The first-use question
+
+With the connection method "Socket helper", a site that is **on neither list** is asked about the first time it tries to open a socket, in a **window of the extension's own**. It is a separate window, not part of the page, so the page can neither cover it nor click it for you:
+
+<p align="center"><img src="timffle/docs/images/socket-question.png" alt="The question window: the website origin https://game.example, the warning 'We recommend denying. Only online games should be allowed.', and four buttons: Deny (recommended), Allow, Always deny, Always allow" width="420"></p>
+
+| Button | Effect |
+|---|---|
+| **Deny (recommended)** | Refused for this visit of this tab. Asked again after the tab is closed or goes to another site |
+| **Allow** | Allowed for this visit of this tab. Asked again later in the same way (reloading the same page is not a new visit) |
+| **Always deny** | Saved to the always-denied list; never asked again |
+| **Always allow** | Saved to the always-allowed list; never asked again |
+
+- **We recommend denying; only online games should be allowed.** The window says so, and the "Deny" button is the highlighted one with the focus.
+- Closing the window counts as "Deny" (for this visit). So that a click or keystroke meant for the game is not taken as an answer: all input in the first 0.7 s after the window appears or gets focus is ignored; "Allow" accepts **only a mouse (or touch) click, never the keyboard** (Tab, Enter and Space are the keys of a game's login form), and the mouse must move onto the button after that 0.7 s; "Deny" accepts any input. To allow with the keyboard, use the button in the toolbar popup.
+- Several connections from one site at once share one question; only one window is open at a time; one tab causes at most 3 windows per visit and the whole extension at most 6 per minute, and sites beyond that are refused without a question. Connections waiting for your answer do not use up connection slots, so an ignored question cannot affect games that are already allowed.
+- By the time you answer, the game has usually timed out and shown a connection failure: **after allowing, try again in the game**; if text looks wrong, reload the page.
+- A game embedded in another site's page (an `iframe`) is asked about with **its own origin**; the window also shows the origin of the page around it.
+- Only "Socket helper" mode asks. "Custom WebSocket proxy" mode never asks and refuses sites that are not listed (the proxy URL contains a token and is never given to a site nobody approved).
+- Pages without Flash content are unaffected, and Timffle does not touch the browser's `WebSocket` on them (one exception: when a page has a same-origin `iframe`, Ruffle's own frame detection reads the settings and the bridge is installed early; it behaves like the native `WebSocket`).
+- The extension's own pages (popup, settings, welcome page, question window) **cannot be framed by a web page**, so a page can neither fake nor cover them.
+
+### Setting a site from the popup
+
+Click the Timffle icon on the browser toolbar; the "Socket connections" section of the popup shows the **current tab's website**:
+
+<p align="center"><img src="timffle/docs/images/socket-popup.png" alt="The popup's Socket connections section: https://game.example with the state 'Ask on every visit', a yellow 'Allow this site to use sockets' button, the setting drop-down and the reminder to deny by default" width="300"></p>
+
+- **Allow this site to use sockets**: adds the site to the always-allowed list in one click, no typing. A tab that is already open must be reloaded to pick it up (the popup's "Reload Tab" button lights up).
+- The drop-down switches the site to "**Ask on every visit**" (removed from both lists; asked again next time), "**Always allow**" or "**Always deny**". To cancel an always-allow or always-deny, switch it back to "Ask on every visit".
+- **Frames of other websites** in this tab that were asked about are listed below, each with its own button and drop-down.
+- The status line also shows this tab's allow or deny for "this visit".
 - The other options on that page are Ruffle's usual playback settings (device fonts, emulated Flash version, ActionScript time limit, …).
 
 ## Troubleshooting
@@ -150,7 +186,7 @@ game page  https://mole.61.com.tw/
    ▼
 Chrome extension (Manifest V3)
    │   page bridge → content script → service worker
-   │   allow-listed origins only; one Native Messaging connection per socket
+   │   allow-listed origins only, other sites are asked first; one Native Messaging connection per socket
    ▼
 connection helper timffle-socket-helper (Go; started by Chrome on demand, exits afterwards)
    │   public addresses only: private, loopback, link-local, multicast and reserved addresses are refused (including IPv4-mapped IPv6)
@@ -167,7 +203,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 
 ## Known limitations
 
-- **Platforms**: Windows was tested under Wine only, macOS not at all; the helper is **not signed**.
+- **Platforms**: Windows was tested under Wine only, macOS not at all; the helper is **not signed**. The question window and the popup were verified only in desktop Chrome 155 (headless); not in headed Chrome, on Windows, macOS, Firefox or Safari.
 - **Other games**: 賽爾號, 小花仙 and 彈彈堂 merely have sockets allowed by default; gameplay was not tested.
 - **Branding**: only the web UI (extension, web demo, player screens) is renamed Timffle; the texts and identifiers of the desktop app, the Safari extension and the npm packages are still upstream Ruffle's, so **do not distribute builds of those under the Timffle name** (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)).
 - **3D**: nested "projection owners" differ from Flash; Flash bilinear-filters 3D pictures by about 1 px, Timffle's edges are crisper; perspective is implemented in the wgpu renderer only. `Matrix3D.determinant`/`invert` differ from Flash in the last significant digit.

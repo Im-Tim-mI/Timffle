@@ -5,7 +5,7 @@
 | 測試 | 驗證什麼 | 怎麼跑 | 需要 |
 |---|---|---|---|
 | 小幫手單元測試 | 協定、位址政策、流量控制、安裝／移除（含符號連結與外來檔案保護） | `cd timffle/helper && go test ./... && go test -tags localtest ./...` | Go 1.27 |
-| 擴充功能單元測試 | 設定與允許清單、頁面橋接、背景權限 | `cd web && npm ci && npm test --workspace=ruffle-extension` | 不需要 wasm |
+| 擴充功能單元測試 | 設定與允許／拒絕清單（兩種連線方式各一份）、頁面橋接、背景權限、第一次連線的詢問（詢問管理、單次造訪的回答、各種回答與清理路徑、等待中的 Socket 不佔名額）、輸入防護規則、設定寫入的鎖與比對共 144 項 | `cd web && npm ci && npm test --workspace=ruffle-extension` | 不需要 wasm |
 | 封裝測試 | 發行 ZIP 的內容、權限、授權檔與私鑰檢查 | `cd timffle/helper/installer-tests && python3 -I test_package.py` | Python 3 |
 | 品牌檢查 | 使用者看得到的文字沒有「Ruffle」產品名、手改的連結都還在 | `python3 timffle/scripts/rebrand.py --check` | Python 3 |
 | 本機代理測試 | `relay/` 的來源、token、私網位址拒絕等（10 項） | `node --test timffle/relay/relay.test.mjs` | Node 22+ |
@@ -91,7 +91,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
   timffle/tools/native-regress/run-regression.sh
 ```
 
-涵蓋五種情境（最近一次共 73 項通過）：
+涵蓋六種情境（最近一次：前五種共 73 項、第六種 60 項，全部通過）：
 
 | 情境 | 項數 | 內容 |
 |---|---|---|
@@ -100,6 +100,25 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 | delayed | 13 | 小幫手很慢才回應 |
 | incompatible | 12 | 協定不相容 |
 | manual | 8 | 自訂 WebSocket 代理模式 |
+| ask | 60 | 第一次連線的詢問（見下） |
+
+### 第一次連線的詢問（`ask-tests.mjs`）
+
+單獨執行：`node timffle/tools/native-regress/ask-tests.mjs <解壓後的extension資料夾> <測試版小幫手>`（約 4 分鐘；`run-regression.sh` 也會跑）。在無頭 Chrome 裡用真的測試版小幫手與真的擴充功能頁面——**詢問視窗與彈出視窗都是真的**（彈出視窗用 `chrome.action.openPopup()` 開，按鈕與下拉選單用 CDP 的真實輸入事件操作，因為頁面不接受腳本產生的點擊）：
+
+| 區段（`ASK_ONLY=` 的名稱） | 驗證什麼 |
+|---|---|
+| `basics` | 沒有 Flash 的網頁保有原生 `WebSocket`；第一次連線開出詢問視窗、文字與警告、預設選取「拒絕」、問題開著時不連線；「允許」連上並且什麼都不存、重新整理同一頁不再問、另一個分頁再問；「拒絕」與不再重問；「一律允許」連上、存進設定、不再問；「一律拒絕」拒絕、存進設定、之後該網站收不到 `socketProxy` 且 `WebSocket` 仍是原生的 |
+| `popup` | 彈出視窗：一鍵加入「一律允許」且不需輸入、改成一律拒絕／每次造訪時詢問／一律允許、允許後「重新載入」按鈕亮起、頁面照新設定連線；高度 ≤ 600 px（Chrome 彈出視窗的上限）；頁框內另一個網站被詢問後列在彈出視窗並可單獨允許；非網站的分頁、Socket 已停用、自訂代理模式的顯示 |
+| `framing` | 網頁把 `popup.html`、`options.html`、`onboard.html`、`prompt.html` 嵌進頁框：瀏覽器拒絕載入（對照：manifest 開放的 `player.html` 載得進來）；網頁拿得到 Ruffle 與 wasm 但拿不到那四個頁面；萬一被嵌入（改由擴充功能自己的頁面去嵌），設定頁與詢問頁什麼都不顯示、彈出視窗的 Socket 區塊不顯示 |
+| `dismissal` | 關掉詢問視窗＝這次造訪拒絕，重新整理不會再問 |
+| `guard` | 詢問視窗的輸入防護：腳本產生的點擊不能回答；Tab 到「允許」再按 Enter／Space 不能回答；沒有先在按鈕上移動指標的按下不能回答；視窗沒有焦點時不算、取得焦點後 0.7 秒內不算；之後真的點擊可以回答；鍵盤可以「拒絕」 |
+| `options` | 設定頁：小幫手與自訂代理各有自己的清單、切換時保留各自輸入、儲存只改目前方式的清單；自訂代理的 token 只給它自己清單裡的網站（真的頁面讀 `RufflePlayer.config.socketProxy`，只在小幫手清單裡的網站讀不到）；沒有編輯的表單跟著別處的變更更新；有編輯的表單收到警告，儲存時被拒絕並顯示最新設定，**舊表單不能把「一律拒絕」改回去** |
+| `keepalive` | 詢問視窗開著、什麼都不做，等 75 秒（超過 MV3 service worker 30 秒閒置回收）後仍能回答。**對照實驗**：把詢問頁的保活 Port 拿掉，同一個測試會失敗（視窗還在，但回答不被接受，因為 service worker 已被回收、問題丟了）；所以這個測試確實量到保活機制，等待時間可用 `ASK_IDLE_MS` 調整 |
+
+`ASK_ONLY=popup,framing` 只跑指定的區段。輸入防護用真的 CDP 輸入事件測（`Input.dispatchMouseEvent`／`dispatchKeyEvent`，鍵盤要送帶字元的 `keyDown` 才會啟動按鈕）；沒有移動指標的按下是只送 `mousePressed`／`mouseReleased`。「按下發生在 0.7 秒之前」這類時間規則由 `tests/prompt-guard.test.mjs` 單元測試涵蓋（端對端測試做不到精確的時間控制）。
+
+另外 `timffle/tools/screenshots/socket-ui-shots.mjs` 用同樣的環境產生 README 用的設定頁、彈出視窗、詢問視窗截圖（詢問視窗與彈出視窗顯示的網站名稱換成範例的 `https://game.example`，其餘是真的頁面）。
 
 ## 5. 真實帳號冒煙測試（`timffle/tools/real-login/`，手動）
 

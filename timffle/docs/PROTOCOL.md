@@ -65,7 +65,7 @@
 | `refused` | 對方拒絕連線 |
 | `unreachable` | 網路無法到達，或連線在傳輸中斷開 |
 
-擴充功能收到 `error` 時一律關閉這條連線，不論 `code` 是否認得；頁面端把它轉成 WebSocket 的 `error` 與 `close` 事件交給 Ruffle。頁面端自己也會產生原因碼（`socket_limit`、`buffer_limit`、`bridge_closed`、`connection_cancelled`、`close_timeout` 等），那些不屬於本協定。
+擴充功能收到 `error` 時一律關閉這條連線，不論 `code` 是否認得；頁面端把它轉成 WebSocket 的 `error` 與 `close` 事件交給 Ruffle。頁面端與背景服務自己也會產生原因碼（`socket_limit`、`buffer_limit`、`bridge_closed`、`connection_cancelled`、`close_timeout`、`not_allowed`（這個來源沒有被允許，或使用者在詢問視窗拒絕了）、`prompt_timeout`（等不到使用者回答）等），那些不屬於本協定。
 
 ## 5. 位址政策
 
