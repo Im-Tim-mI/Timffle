@@ -230,19 +230,24 @@ try{
  add('popup-offers-to-allow-this-site',ps.visible&&ps.sites.length===1&&ps.sites[0].origin===origin&&ps.sites[0].state===T('timffle_choice_ask')&&ps.sites[0].allow===T('timffle_popup_allow_site')&&ps.sites[0].select==='ask'&&norm(ps.warning)===norm(T('timffle_popup_warning')),{ps});
  {const shot=await chrome.send('Page.captureScreenshot',{format:'png'},pop.sessionId);await fs.writeFile(path.join(output,'popup-ask.png'),Buffer.from(shot.data,'base64'));}
  const popupHeight=await chrome.eval(pop.sessionId,'document.documentElement.scrollHeight');
- add('popup-fits-the-600px-chrome-allows',popupHeight<=600,{popupHeight});
- // The Logitech discount box is for the English and Chinese interfaces only. There it is closed in the popup, and opened the real
- // popup (600 px at most) must scroll to the end of it, not cut it off; in every other language there is no box at all.
+ // The Logitech discount box is for the English and Chinese interfaces only. In every other language there is no box and the whole popup
+ // fits the 600 px Chrome shows. Where the box is, it is open, so the popup is taller (Chrome scrolls it): what has to fit is everything
+ // above the box and its summary line, the end of the box must be reachable by scrolling without sideways overflow, and folding it (a real
+ // click) brings the whole popup back under 600 px.
  if(!['en','zh_CN','zh_TW'].includes(locale)){
+  add('popup-fits-the-600px-chrome-allows',popupHeight<=600,{popupHeight});
   const gone=await chrome.eval(pop.sessionId,'(()=>{const s=document.getElementById("promo");return s.hidden&&getComputedStyle(s).display==="none"})()');
   add('popup-has-no-discount-box-in-this-language',gone===true,{locale});
  }else{
-  const closedAtFirst=await chrome.eval(pop.sessionId,'!document.getElementById("promo").open');
-  await click(pop.sessionId,'#promo summary');
   await until(()=>chrome.eval(pop.sessionId,'(()=>{const d=document.getElementById("promo"),i=d.querySelector("img");return d.open&&i.complete&&i.naturalWidth===720})()'));
-  await delay(800);
-  const box=await chrome.eval(pop.sessionId,'(()=>{window.scrollTo(0,document.documentElement.scrollHeight);const b=document.querySelector("#promo .promo-note").getBoundingClientRect(),e=document.documentElement;return {viewport:window.innerHeight,content:e.scrollHeight,scrolled:Math.round(window.scrollY),noteTop:Math.round(b.top),noteBottom:Math.round(b.bottom),sideways:e.scrollWidth>e.clientWidth}})()');
-  add('popup-discount-box-opens-and-scrolls-inside-the-limit',closedAtFirst&&box.viewport<=600&&box.noteTop>=0&&box.noteBottom<=box.viewport&&!box.sideways&&(box.content<=box.viewport||box.scrolled>0),{closedAtFirst,box});
+  const top=await chrome.eval(pop.sessionId,'(()=>{const s=document.querySelector("#promo summary").getBoundingClientRect();return {open:document.getElementById("promo").open,summaryBottom:Math.round(s.bottom+scrollY)}})()');
+  add('popup-controls-and-the-discount-summary-fit-the-600px-chrome-allows',top.open&&top.summaryBottom<=600,{top,popupHeight});
+  const box=await chrome.eval(pop.sessionId,'(()=>{window.scrollTo(0,document.documentElement.scrollHeight);const b=document.querySelector("#promo .promo-note").getBoundingClientRect(),e=document.documentElement;return {viewport:window.innerHeight,innerWidth:window.innerWidth,clientWidth:e.clientWidth,content:e.scrollHeight,scrolled:Math.round(window.scrollY),noteTop:Math.round(b.top),noteBottom:Math.round(b.bottom),sideways:e.scrollWidth>e.clientWidth}})()');
+  add('popup-discount-box-is-open-and-scrolls-to-its-end',box.viewport<=600&&box.noteTop>=0&&box.noteBottom<=box.viewport&&!box.sideways&&(box.content<=box.viewport||box.scrolled>0),{box});
+  await click(pop.sessionId,'#promo summary');
+  await delay(400);
+  const folded=await chrome.eval(pop.sessionId,'({open:document.getElementById("promo").open,height:document.documentElement.scrollHeight})');
+  add('popup-discount-box-can-be-folded-and-then-the-popup-fits-600px',folded.open===false&&folded.height<=600,{folded});
   await click(pop.sessionId,'#promo summary');
   await delay(400);
  }

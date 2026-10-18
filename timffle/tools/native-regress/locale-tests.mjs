@@ -148,12 +148,14 @@ for(const language of todo){
   const pp=await chrome.eval(pop.sessionId,READ);
   add(language+':popup-shows-its-catalog',pp.marked.length>=2&&pp.marked.every(x=>x.text===T(x.key)),{marked:pp.marked.map(x=>x.key)});
   add(language+':popup-language-and-direction',pp.lang===expectLang&&pp.dir===(RTL.has(language)?'rtl':'ltr'),{lang:pp.lang,dir:pp.dir});
-  // The discount box (English and Chinese only): closed (the popup has no room for the picture), and shows the same things once opened; out of sight in every other language.
+  // The discount box (English and Chinese only) is open when the popup opens (the popup then scrolls); it shows the texts of the language and can be folded, which gives the room back. Out of sight in every other language.
   if(SHOWS_PROMO.has(language)){
-  const pr=await chrome.eval(pop.sessionId,`(()=>{const d=document.getElementById('promo'),img=d.querySelector('img');const bodyHeight=()=>document.body.getBoundingClientRect().height;const sum=d.querySelector('summary');const before={open:d.open,height:bodyHeight(),summaryHeight:Math.round(sum.getBoundingClientRect().height),summaryCut:sum.scrollWidth>sum.clientWidth};d.open=true;
-   return new Promise(r=>setTimeout(()=>r({before,grew:Math.round(bodyHeight()-before.height),open:d.open,summary:d.querySelector('summary').textContent,title:d.querySelector('.promo-title').textContent,alt:img.alt,src:img.getAttribute('src'),loaded:img.complete&&img.naturalWidth===720,shown:Math.round(img.getBoundingClientRect().width),note:d.querySelector('.promo-note').textContent,link:d.querySelectorAll('a')[1].textContent,hrefs:[...d.querySelectorAll('a')].map(a=>a.href)}),150))})()`);
-  add(language+':popup-discount-box-is-closed-and-opens',pr.before.open===false&&pr.before.summaryHeight<=28&&!pr.before.summaryCut&&pr.grew>=140&&pr.open===true&&pr.summary===T('timffle_promo_summary')&&pr.title===T('timffle_promo_title')&&pr.alt===T('timffle_promo_image_alt')&&pr.src==='images/'+T('timffle_promo_image')&&pr.loaded&&pr.shown>200&&pr.note===T('timffle_promo_disclaimer')&&pr.link===T('timffle_promo_link')&&pr.hrefs.every(h=>h===LINK),{pr});
   await picture(pop,'popup-discount');
+  const pr=await chrome.eval(pop.sessionId,`(()=>{const d=document.getElementById('promo'),img=d.querySelector('img'),sum=d.querySelector('summary');const bodyHeight=()=>document.body.getBoundingClientRect().height;
+   const before={open:d.open,height:bodyHeight(),summaryHeight:Math.round(sum.getBoundingClientRect().height),summaryCut:sum.scrollWidth>sum.clientWidth,summary:sum.textContent,title:d.querySelector('.promo-title').textContent,alt:img.alt,src:img.getAttribute('src'),loaded:img.complete&&img.naturalWidth===720,shown:Math.round(img.getBoundingClientRect().width),note:d.querySelector('.promo-note').textContent,link:d.querySelectorAll('a')[1].textContent,hrefs:[...d.querySelectorAll('a')].map(a=>a.href)};
+   d.open=false;
+   return new Promise(r=>setTimeout(()=>r({before,shrank:Math.round(before.height-bodyHeight()),open:d.open}),150))})()`);
+  add(language+':popup-discount-box-is-open-and-can-be-folded',pr.before.open===true&&pr.before.summaryHeight<=28&&!pr.before.summaryCut&&pr.before.summary===T('timffle_promo_summary')&&pr.before.title===T('timffle_promo_title')&&pr.before.alt===T('timffle_promo_image_alt')&&pr.before.src==='images/'+T('timffle_promo_image')&&pr.before.loaded&&pr.before.shown>200&&pr.before.note===T('timffle_promo_disclaimer')&&pr.before.link===T('timffle_promo_link')&&pr.before.hrefs.every(h=>h===LINK)&&pr.open===false&&pr.shrank>=140,{pr});
   }else{
    const gone=await chrome.eval(pop.sessionId,PROMO_GONE);
    add(language+':popup-has-no-discount-box',isGone(gone),{gone});
