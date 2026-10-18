@@ -38,5 +38,6 @@ difftest/.wineprefix/
 
 # native-regress run outputs
 tools/native-regress/browser-*/
+tools/native-regress/ask-*/
 tools/native-regress/regress-*.exit
 tools/native-regress/regress-summary.txt

@@ -2,6 +2,7 @@ import { Setup, setCurrentScriptURL, type Config } from "ruffle-core";
 import { Message } from "./messages";
 import { mergeSocketProxies } from "./socket-proxy";
 import { installSocketBridge } from "./socket-bridge-page";
+import { armSocketBridge } from "./socket-bridge-arm";
 
 /**
  *
@@ -15,6 +16,10 @@ import { installSocketBridge } from "./socket-bridge-page";
 
 // Current message ID to be included in openInNewTab
 let currentMessageId: string | null = null;
+
+// The bridge of a website that is only asked about: installed when Ruffle first
+// reads its socket proxy list (see socket-bridge-arm.ts), not before.
+let askedBridgePort: MessagePort | undefined;
 
 function handleMessage(message: Message) {
     switch (message.type) {
@@ -47,6 +52,16 @@ function handleMessage(message: Message) {
                     : {}),
                 openInNewTab,
             };
+            if (askedBridgePort) {
+                armSocketBridge(window.RufflePlayer.config, () => {
+                    // Once: a second install would close the port it is given.
+                    const port = askedBridgePort;
+                    askedBridgePort = undefined;
+                    if (port) {
+                        installSocketBridge(port);
+                    }
+                });
+            }
             setCurrentScriptURL(publicPath);
             Setup.installRuffle("extension");
             return {};
@@ -84,7 +99,11 @@ window.addEventListener("message", (event) => {
         if (data?.type === "socket_bridge") {
             const port = event.ports[0];
             if (port) {
-                installSocketBridge(port);
+                if (data.lazy === true) {
+                    askedBridgePort = port;
+                } else {
+                    installSocketBridge(port);
+                }
             }
             return;
         }

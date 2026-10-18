@@ -1,6 +1,16 @@
 body {
-    width: 240px;
+    /* Wide enough for the bilingual Socket section. */
+    width: 340px;
     overflow: hidden;
+}
+
+/*
+ * Chrome shows a popup at most 600 px tall and scrolls beyond that; with the
+ * Socket section the page is taller than it used to be, so the header and the
+ * status are tighter than the options page's.
+ */
+.header {
+    padding: 10px 16px 4px;
 }
 
 .hidden {
@@ -8,7 +18,7 @@ body {
 }
 
 .logo {
-    max-width: 200px;
+    max-width: 150px;
 }
 
 .container {
@@ -17,6 +27,7 @@ body {
 }
 
 #status-container {
+    padding: 8px 12px;
     text-align: center;
     background-color: white;
     background-image: linear-gradient(#fff1, #fff1 50%, #0001 50%, #0001);
@@ -81,6 +92,78 @@ body {
         height 0.2s ease-out,
         margin-bottom 0.2s ease-out;
     cursor: pointer;
+}
+
+/* Socket connections */
+
+.socket {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 0;
+}
+
+.socket-title {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ruffle-orange);
+}
+
+#socket-sites {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.socket-site {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--ruffle-dark-blue);
+}
+
+.socket-site p {
+    margin: 0;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.socket-origin {
+    font: 13px monospace;
+}
+
+.socket-state {
+    font-size: 12px;
+}
+
+.socket-allow {
+    width: 100%;
+    background: var(--ruffle-orange);
+    border-color: var(--ruffle-dark-orange);
+    color: var(--ruffle-dark-blue);
+    font-weight: bold;
+    text-shadow: none;
+}
+
+.socket-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12px;
+}
+
+.socket-select {
+    min-width: 0;
+    background: var(--ruffle-blue);
+}
+
+.socket-warning {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ruffle-orange);
 }
 
 @media (prefers-color-scheme: dark) {

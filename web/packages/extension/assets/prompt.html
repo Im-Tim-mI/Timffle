@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Timffle — Socket 連線要求 / Socket request</title>
+        <link rel="icon" type="image/png" href="images/icon32.png" />
+        <link rel="stylesheet" href="css/common.css" />
+        <link rel="stylesheet" href="css/prompt.css" />
+    </head>
+    <body>
+        <main id="prompt" role="alertdialog" aria-labelledby="prompt-title" aria-describedby="prompt-warning" translate="no" hidden>
+            <img src="images/logo.svg" alt="Timffle" class="logo" />
+            <h1 id="prompt-title">
+                有網站想使用 Socket 連線
+                <span>A website wants to use socket connections</span>
+            </h1>
+            <p id="prompt-origin" class="origin"></p>
+            <p id="prompt-embedded" class="embedded" hidden></p>
+            <p class="what">
+                這個網站上的 Flash 內容想建立 TCP（Socket）連線，連到網際網路上的伺服器。只有線上遊戲才需要這個功能。允許後，它可以連到網際網路上的任何伺服器（連不到你的區域網路與這台電腦）。<br />
+                Flash content on this website wants to open TCP (socket) connections to servers on the internet. Only online games need this. If allowed, it can reach any server on the internet (never your local network or this computer).
+            </p>
+            <div id="prompt-warning" class="warning">
+                <p><strong>預設建議拒絕。只有線上遊戲可以允許。</strong>如果你不確定，請按「拒絕」。</p>
+                <p><strong>We recommend denying. Only online games should be allowed.</strong> If you are not sure, choose “Deny”.</p>
+            </div>
+            <div class="buttons">
+                <button type="button" id="deny-once" class="recommended" data-choice="deny-once">
+                    拒絕（建議） / Deny (recommended)
+                    <small>只限這個分頁這次造訪 / This visit of this tab only</small>
+                </button>
+                <button type="button" id="allow-once" data-choice="allow-once">
+                    允許 / Allow
+                    <small>只限這個分頁這次造訪 / This visit of this tab only</small>
+                </button>
+                <button type="button" id="deny-always" data-choice="deny-always">
+                    一律拒絕 / Always deny
+                    <small>不再詢問這個網站 / Never ask about this website again</small>
+                </button>
+                <button type="button" id="allow-always" data-choice="allow-always">
+                    一律允許 / Always allow
+                    <small>以後不再詢問 / Do not ask again</small>
+                </button>
+            </div>
+            <p class="detail">
+                之後可在 Timffle 圖示的彈出視窗或設定頁修改。若遊戲已顯示連線失敗，允許後請在遊戲中重試；若文字顯示不正常，請重新載入頁面。<br />
+                You can change this later in Timffle's popup or settings page. If the game already reported a connection failure, retry in the game after allowing; if text looks wrong, reload the page.
+            </p>
+            <p id="prompt-error" class="error" role="alert" hidden></p>
+        </main>
+        <main id="expired" translate="no" hidden>
+            <p>
+                這個要求已失效，可以關閉此視窗。<br />
+                This request is no longer active. You can close this window.
+            </p>
+            <button type="button" id="close-window">關閉 / Close</button>
+        </main>
+        <script src="dist/prompt.js"></script>
+    </body>
+</html>

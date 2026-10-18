@@ -7,6 +7,7 @@ import {
 } from "./utils";
 import type { Options } from "./common";
 import { bindOptions } from "./common";
+import { bindSocketSection } from "./popup-socket";
 import { buildInfo } from "ruffle-core";
 
 let activeTab: chrome.tabs.Tab;
@@ -217,6 +218,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         savedOptions = options;
         optionsChanged();
     }, tabOrigin);
+    await bindSocketSection({ tab: activeTab, fallbackOrigin: tabOrigin });
     const permissionsButton = document.getElementById(
         "permissions-button",
     ) as HTMLButtonElement;

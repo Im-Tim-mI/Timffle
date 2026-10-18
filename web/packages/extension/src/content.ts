@@ -14,7 +14,11 @@ import {
 } from "./utils";
 import { isMessage } from "./messages";
 import { getProxySettings } from "./proxy-settings";
-import { resolveSocketAccess } from "./socket-proxy";
+import {
+    askSocketProxies,
+    mergeSocketProxies,
+    resolveSocketAccess,
+} from "./socket-proxy";
 import { startContentSocketBridge } from "./socket-bridge-content";
 
 declare global {
@@ -202,15 +206,25 @@ function isXMLDocument(): boolean {
 
     // Sockets of allowed sites go to the native helper. The bridge is posted
     // before "load", so it is in place before Ruffle can open a socket.
+    // A site that is neither allowed nor refused gets the helper URL too, so
+    // that its first connection attempt reaches the background's question;
+    // its page is only changed once a movie is about to load (see
+    // socket-bridge-arm.ts).
     const proxySettings = await getProxySettings().catch(() => undefined);
-    if (resolveSocketAccess(proxySettings, origin)?.mode === "helper") {
+    const allowed =
+        resolveSocketAccess(proxySettings, origin)?.mode === "helper";
+    const asked = askSocketProxies(proxySettings, origin);
+    if (allowed || asked.length) {
         startContentSocketBridge((port) =>
             window.postMessage(
                 {
                     to: "ruffle_page",
                     index: null,
                     id: ID,
-                    data: { type: "socket_bridge" },
+                    data: {
+                        type: "socket_bridge",
+                        ...(allowed ? {} : { lazy: true }),
+                    },
                 },
                 "*",
                 [port],
@@ -222,6 +236,14 @@ function isXMLDocument(): boolean {
         type: "load",
         config: {
             ...explicitOptions,
+            ...(asked.length
+                ? {
+                      socketProxy: mergeSocketProxies(
+                          explicitOptions.socketProxy,
+                          asked,
+                      ),
+                  }
+                : {}),
             autoplay: options.autostart ? "on" : "auto",
             unmuteOverlay: options.autostart ? "hidden" : "visible",
             splashScreen: !options.autostart,

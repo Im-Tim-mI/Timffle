@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { URL } from "node:url";
 import {
+    askSocketProxies,
     defaultProxySettings,
+    promptsForUnlisted,
+    setSocketChoice,
+    socketPermission,
     validateProxySettings,
     applyProxySettings,
     normalizeWebsiteOrigin,
@@ -37,6 +41,7 @@ test("defaults use the helper for Taomee's four game sites only, with no token",
             `https://${host}`,
             `http://${host}`,
         ]),
+        deniedOrigins: [],
         defaultsVersion: DEFAULTS_VERSION,
     });
     assert.deepEqual(defaults.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
@@ -178,7 +183,7 @@ test("valid template remains intact and origins normalized/deduplicated", () => 
         ],
     });
     assert.equal(r.valid, true);
-    assert.deepEqual(r.settings, settings);
+    assert.deepEqual(r.settings, { ...settings, deniedOrigins: [] });
 });
 test("settings saved before modes existed keep using their proxy", () => {
     const legacy = { ...settings };
@@ -256,11 +261,27 @@ test("origin list rejects wildcard, path, query, credentials, null and file URLs
         assert.equal(normalizeWebsiteOrigin(origin), undefined);
     }
 });
-test("enabled settings require an explicit trusted origin", () =>
+test("a custom proxy needs an allowed origin; the helper asks instead", () => {
+    // A custom WebSocket proxy has no prompt, so it is useless without one.
+    assert.deepEqual(
+        validateProxySettings({ ...settings, allowedOrigins: [] }),
+        { valid: false, error: "origins_required" },
+    );
     assert.equal(
-        validateProxySettings({ ...settings, allowedOrigins: [] }).valid,
-        false,
-    ));
+        validateProxySettings({
+            ...settings,
+            enabled: false,
+            allowedOrigins: [],
+        }).valid,
+        true,
+    );
+    // The helper asks about every website that is not listed.
+    assert.equal(
+        validateProxySettings({ ...defaultProxySettings(), allowedOrigins: [] })
+            .valid,
+        true,
+    );
+});
 test("missing, malformed and disabled settings do not inject proxy", () => {
     for (const s of [
         undefined,
@@ -309,5 +330,151 @@ test("exact mappings ordered before wildcard without mutating inputs", () => {
             "https://mole.61.com.tw",
         ).socketProxy,
         [exact, wild],
+    );
+});
+
+const helperSettings = (extra = {}) => ({
+    enabled: true,
+    mode: "helper",
+    proxyUrl: "",
+    allowedOrigins: ["https://mole.61.com.tw", "https://ok.example"],
+    deniedOrigins: ["https://no.example"],
+    ...extra,
+});
+test("every website is allowed, refused or asked about; nothing else is a question", () => {
+    const s = helperSettings();
+    assert.equal(socketPermission(s, "https://ok.example"), "allow");
+    assert.equal(socketPermission(s, "https://no.example"), "deny");
+    assert.equal(socketPermission(s, "https://new.example"), "ask");
+    // Origins compare exactly: scheme, host and port all count.
+    assert.equal(socketPermission(s, "http://ok.example"), "ask");
+    assert.equal(socketPermission(s, "https://ok.example:8443"), "ask");
+    // No website origin, or sockets switched off or unusable: never a question.
+    for (const origin of [undefined, "null", "file:///a.swf", "about:blank"]) {
+        assert.equal(socketPermission(s, origin), "off", String(origin));
+    }
+    for (const bad of [
+        undefined,
+        null,
+        {},
+        [],
+        "x",
+        { ...s, enabled: false },
+    ]) {
+        assert.equal(socketPermission(bad, "https://ok.example"), "off");
+    }
+});
+test("a website in both lists is refused, whichever list was edited last", () => {
+    const both = helperSettings({
+        allowedOrigins: ["https://both.example", "https://ok.example"],
+        deniedOrigins: ["https://both.example"],
+    });
+    const r = validateProxySettings(both);
+    assert.equal(r.valid, true);
+    assert.deepEqual(r.settings.allowedOrigins, ["https://ok.example"]);
+    assert.deepEqual(r.settings.deniedOrigins, ["https://both.example"]);
+    assert.equal(socketPermission(both, "https://both.example"), "deny");
+    assert.equal(resolveSocketAccess(both, "https://both.example"), undefined);
+});
+test("settings saved before the first-use prompt have no refused sites", () => {
+    const old = {
+        enabled: true,
+        mode: "helper",
+        proxyUrl: "",
+        allowedOrigins: ["https://mole.61.com.tw"],
+        defaultsVersion: 2,
+    };
+    const r = validateProxySettings(old);
+    assert.equal(r.valid, true);
+    assert.deepEqual(r.settings.deniedOrigins, []);
+    assert.equal(socketPermission(old, "https://mole.61.com.tw"), "allow");
+    assert.equal(socketPermission(old, "https://other.example"), "ask");
+});
+test("the refused list is validated like the allowed list", () => {
+    for (const deniedOrigins of ["https://no.example", [1], [{}]]) {
+        assert.deepEqual(
+            validateProxySettings({ ...helperSettings(), deniedOrigins }),
+            { valid: false, error: "invalid_settings" },
+            JSON.stringify(deniedOrigins),
+        );
+    }
+    for (const entry of [
+        "*",
+        "https://*.example",
+        "https://a.example/path",
+        "file:///a",
+        "https://u:p@a.example",
+    ]) {
+        assert.deepEqual(
+            validateProxySettings({
+                ...helperSettings(),
+                deniedOrigins: [entry],
+            }),
+            { valid: false, error: "invalid_origin" },
+            entry,
+        );
+    }
+    const r = validateProxySettings(
+        helperSettings({
+            deniedOrigins: ["HTTPS://NO.EXAMPLE/", "https://no.example", ""],
+        }),
+    );
+    assert.deepEqual(r.settings.deniedOrigins, ["https://no.example"]);
+});
+test("choosing for a website moves it between the lists", () => {
+    const start = validateProxySettings(helperSettings()).settings;
+    const allowed = setSocketChoice(start, "https://New.Example/", "allow");
+    assert.deepEqual(allowed.allowedOrigins, [
+        "https://mole.61.com.tw",
+        "https://ok.example",
+        "https://new.example",
+    ]);
+    const denied = setSocketChoice(allowed, "https://new.example", "deny");
+    assert.ok(!denied.allowedOrigins.includes("https://new.example"));
+    assert.deepEqual(denied.deniedOrigins, [
+        "https://no.example",
+        "https://new.example",
+    ]);
+    const asked = setSocketChoice(denied, "https://new.example", "ask");
+    assert.ok(!asked.allowedOrigins.includes("https://new.example"));
+    assert.ok(!asked.deniedOrigins.includes("https://new.example"));
+    assert.equal(socketPermission(asked, "https://new.example"), "ask");
+    // Choosing again does not duplicate; other settings and the input stay as they were.
+    assert.deepEqual(
+        setSocketChoice(allowed, "https://new.example", "allow"),
+        allowed,
+    );
+    assert.deepEqual(start.deniedOrigins, ["https://no.example"]);
+    assert.equal(asked.mode, "helper");
+    assert.equal(asked.defaultsVersion, start.defaultsVersion);
+    for (const bad of ["null", "file:///a", "https://a.example/x", "*", ""]) {
+        assert.throws(() => setSocketChoice(start, bad, "allow"), bad);
+    }
+});
+test("only the helper asks; a custom proxy never reaches an unlisted site", () => {
+    assert.equal(promptsForUnlisted(helperSettings()), true);
+    assert.equal(promptsForUnlisted(helperSettings({ enabled: false })), false);
+    assert.equal(promptsForUnlisted(settings), false);
+    assert.equal(promptsForUnlisted(undefined), false);
+    // A site that is asked gets the helper URL (no secret) so an attempt reaches the check.
+    assert.deepEqual(
+        askSocketProxies(helperSettings(), "https://new.example"),
+        [{ host: "*", port: 0, proxyUrl: HELPER_PROXY_URL }],
+    );
+    // Listed, refused, switched off, no origin, and websocket mode: nothing to ask.
+    for (const [s, origin] of [
+        [helperSettings(), "https://ok.example"],
+        [helperSettings(), "https://no.example"],
+        [helperSettings({ enabled: false }), "https://new.example"],
+        [helperSettings(), undefined],
+        [helperSettings(), "file:///a.swf"],
+        [{ ...settings, deniedOrigins: [] }, "https://new.example"],
+    ]) {
+        assert.deepEqual(askSocketProxies(s, origin), [], String(origin));
+    }
+    // The Ruffle config of a site that is only asked about stays untouched.
+    assert.deepEqual(
+        applyProxySettings({}, helperSettings(), "https://new.example"),
+        {},
     );
 });

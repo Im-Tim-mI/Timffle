@@ -25,8 +25,11 @@ const VALIDATION_MESSAGES: Record<ProxyValidationError, string> = {
     invalid_origin:
         "每行只能填寫一個完整 HTTP/HTTPS 來源（協定、主機、選用連接埠），不可含路徑、帳密、查詢或萬用字元。 / Enter one exact HTTP/HTTPS origin per line, without paths, credentials, queries or wildcards.",
     origins_required:
-        "啟用前請至少指定一個信任的網站來源。 / Explicitly allow at least one trusted website origin before enabling.",
+        "使用自訂 WebSocket 代理時，請至少指定一個一律允許的網站來源。 / With a custom WebSocket proxy, allow at least one website origin.",
 };
+
+const CONFLICT_MESSAGE =
+    "同一個網站不能同時在「一律允許」與「一律拒絕」清單中。 / A website cannot be on both the always-allowed and the always-denied list.";
 
 async function queryHelper(): Promise<HelperStatus> {
     try {
@@ -61,6 +64,9 @@ export async function bindProxyOptions(): Promise<void> {
     const origins = document.getElementById(
         "socket-proxy-origins",
     )! as HTMLTextAreaElement;
+    const denied = document.getElementById(
+        "socket-proxy-denied",
+    )! as HTMLTextAreaElement;
     const save = document.getElementById(
         "socket-proxy-save",
     )! as HTMLButtonElement;
@@ -89,13 +95,14 @@ export async function bindProxyOptions(): Promise<void> {
         websocketMode.checked = settings.mode === "websocket";
         proxyUrl.value = settings.proxyUrl;
         origins.value = settings.allowedOrigins.join("\n");
+        denied.value = settings.deniedOrigins.join("\n");
         showMode();
     }
 
     function savedStatus(settings: ProxySettings) {
         setStatus(
             settings.enabled
-                ? "已儲存並啟用，僅限允許的來源。請重新載入網頁；此狀態不代表已連線。 / Saved and enabled for allowed origins only. Reload the page; this is not a connection test."
+                ? "已儲存並啟用：清單內的網站直接使用，其他網站會先詢問你。請重新載入網頁；此狀態不代表已連線。 / Saved and enabled: listed websites use sockets directly, other websites are asked first. Reload the page; this is not a connection test."
                 : "Socket 連線已停用。變更後請重新載入網頁。 / Sockets disabled. Reload the page after changes.",
         );
     }
@@ -141,14 +148,33 @@ export async function bindProxyOptions(): Promise<void> {
     });
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        const allowedLines = origins.value.split(/\r?\n/u);
+        const deniedLines = denied.value.split(/\r?\n/u);
         const result = validateProxySettings({
             enabled: enabled.checked,
             mode: selectedMode(),
             proxyUrl: proxyUrl.value,
-            allowedOrigins: origins.value.split(/\r?\n/u),
+            allowedOrigins: allowedLines,
+            deniedOrigins: deniedLines,
         });
         if (!result.valid) {
             setStatus(VALIDATION_MESSAGES[result.error], true);
+            return;
+        }
+        // Validation lets "refuse" win quietly; the person typing should be told.
+        const typedAllowed = validateProxySettings({
+            enabled: false,
+            mode: "helper",
+            proxyUrl: "",
+            allowedOrigins: allowedLines,
+        });
+        if (
+            typedAllowed.valid &&
+            typedAllowed.settings.allowedOrigins.some((origin) =>
+                result.settings.deniedOrigins.includes(origin),
+            )
+        ) {
+            setStatus(CONFLICT_MESSAGE, true);
             return;
         }
         save.disabled = true;

@@ -37,6 +37,26 @@ export async function saveProxySettings(
     });
 }
 
+let pendingUpdate: Promise<unknown> = Promise.resolve();
+
+/**
+ * Reads the settings fresh, applies `change` and saves the result. Updates
+ * made through this function in one context run one after the other, so two
+ * quick answers cannot overwrite each other.
+ */
+export function updateProxySettings(
+    change: (settings: ProxySettings) => ProxySettings,
+): Promise<ProxySettings> {
+    const run = async () => {
+        const next = change(await getProxySettings());
+        await saveProxySettings(next);
+        return next;
+    };
+    const result = pendingUpdate.then(run, run);
+    pendingUpdate = result.catch(() => undefined);
+    return result;
+}
+
 export async function resetProxySettings(): Promise<void> {
     await browser.storage.local.remove(PROXY_STORAGE_KEY);
 }

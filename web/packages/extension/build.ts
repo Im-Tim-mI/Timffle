@@ -164,6 +164,7 @@ for (const file of rootFiles) {
 await esbuild.build({
     entryPoints: {
         popup: "./src/popup.ts",
+        prompt: "./src/prompt.ts",
         options: "./src/options.ts",
         onboard: "./src/onboard.ts",
         content: "./src/content.ts",

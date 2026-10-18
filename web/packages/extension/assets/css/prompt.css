@@ -1,0 +1,144 @@
+body {
+    margin: 0;
+    min-height: 100vh;
+}
+
+main {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 540px;
+    margin: auto;
+    padding: 12px 24px 16px;
+}
+
+main[hidden] {
+    display: none;
+}
+
+.logo {
+    width: 110px;
+    align-self: center;
+}
+
+.logo:hover {
+    transform: none;
+}
+
+h1 {
+    margin: 0;
+    font-size: 19px;
+    line-height: 1.35;
+    color: var(--ruffle-orange);
+}
+
+h1 span {
+    display: block;
+    font-size: 13px;
+    font-weight: normal;
+    color: white;
+    opacity: 0.85;
+}
+
+p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.origin {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--ruffle-dark-blue);
+    font: bold 17px monospace;
+    overflow-wrap: anywhere;
+}
+
+.embedded {
+    font-size: 13px;
+    opacity: 0.85;
+    overflow-wrap: anywhere;
+}
+
+.what,
+.detail {
+    font-size: 13px;
+}
+
+.detail {
+    opacity: 0.85;
+}
+
+.warning {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 2px solid var(--ruffle-orange);
+    border-radius: 8px;
+    background: #0003;
+    font-size: 13px;
+}
+
+.warning strong {
+    color: var(--ruffle-orange);
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.buttons button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 8px;
+    font-size: 14px;
+}
+
+.buttons button small {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+/* The safe answer is the one the eye lands on. */
+.buttons .recommended {
+    background: var(--ruffle-orange);
+    border-color: var(--ruffle-dark-orange);
+    color: var(--ruffle-dark-blue);
+    font-weight: bold;
+    text-shadow: none;
+}
+
+button:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.buttons button:focus-visible {
+    outline: 3px solid white;
+    outline-offset: 2px;
+}
+
+body[data-wait] .buttons button {
+    cursor: default;
+    opacity: 0.45;
+}
+
+#close-window:focus-visible {
+    outline: 3px solid white;
+    outline-offset: 2px;
+}
+
+.error {
+    color: var(--ruffle-orange);
+    font-size: 13px;
+}
+
+#expired {
+    align-items: flex-start;
+    padding-top: 40px;
+}

@@ -31,7 +31,7 @@ try{
  const setStorage=(area,values)=>chrome.eval(options.sessionId,'chrome.storage.'+area+'.set('+JSON.stringify(values)+')');
  const base={autostart:true,autoplay:'on',unmuteOverlay:'hidden',allowScriptAccess:true,preferredRenderer:'canvas',deviceFontRenderer:'canvas'};
  await setStorage('sync',base);
- const settings={enabled:true,mode:'websocket',proxyUrl:template,allowedOrigins:[origin],defaultsVersion:2};
+ const settings={enabled:true,mode:'websocket',proxyUrl:template,allowedOrigins:[origin],deniedOrigins:[],defaultsVersion:2};
  if(!legacy){
   // data-state is set only after the options script loaded settings and bound its submit handler.
   await chrome.wait(options.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status"),b=document.querySelector("#socket-proxy-save");return !!s&&!!s.dataset.state&&!!b&&!b.disabled})()');
