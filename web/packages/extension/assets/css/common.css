@@ -164,3 +164,51 @@ button {
     height: 20px;
     margin: auto;
 }
+
+/* Timffle: the discount code for Logitech's online store (texts: timffle_promo_* in the message catalogs). */
+.promo {
+    border: 1px solid var(--ruffle-light-blue);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.promo > * + * {
+    margin-top: 8px;
+}
+
+.promo h2 {
+    margin: 0;
+    color: var(--ruffle-orange);
+    font-size: 18px;
+}
+
+.promo p {
+    margin-block: 0;
+    line-height: 1.5;
+}
+
+.promo a {
+    color: var(--ruffle-orange);
+}
+
+.promo-banner {
+    display: block;
+    line-height: 0;
+}
+
+.promo img {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+}
+
+.promo-note {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.promo summary {
+    cursor: pointer;
+    color: var(--ruffle-orange);
+    font-weight: bold;
+}

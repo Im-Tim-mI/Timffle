@@ -73,5 +73,11 @@
     "timffle_unsaved": "尚未保存。",
     "timffle_read_failed": "无法读取本地设置。",
     "timffle_save_failed": "保存失败；原有设置是否已更改未能确认，请重试。",
-    "timffle_attribution": "Timffle 是 <1>Ruffle</1> 的非官方分支，与 Ruffle 项目没有隶属关系；Flash 模拟内核来自 Ruffle 及其贡献者。问题请反馈到 <2>Timffle</2>，不要反馈给 Ruffle。"
+    "timffle_attribution": "Timffle 是 <1>Ruffle</1> 的非官方分支，与 Ruffle 项目没有隶属关系；Flash 模拟内核来自 Ruffle 及其贡献者。问题请反馈到 <2>Timffle</2>，不要反馈给 Ruffle。",
+    "timffle_promo_summary": "罗技九折优惠码 LOGITIM",
+    "timffle_promo_title": "罗技网络旗舰店：电竞类别九折折扣码 LOGITIM",
+    "timffle_promo_link": "前往罗技（Logitech）网络商店（折扣码会自动带入）",
+    "timffle_promo_disclaimer": "此为罗技（Logitech）台湾官方线上商城的九折优惠码。Timffle 这个项目与罗技毫无关系。",
+    "timffle_promo_image_alt": "横幅：罗技网络旗舰店电竞类别九折折扣码 LOGITIM，可使用到 2026/12/31",
+    "timffle_promo_image": "promo-logitech-zh.png"
 }

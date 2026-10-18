@@ -8,8 +8,17 @@
  * `data-i18n="key"` gets the message as its text, and an element marked
  * `data-i18n-rich="key"` gets a message with `<1>…</1>` spans, each of which
  * becomes a copy of the element's n-th child (a link, or bold text) holding
- * the spanned text.
+ * the spanned text. `data-i18n-alt="key"` sets an element's `alt`, and
+ * `data-i18n-image="key"` sets an `<img>`'s picture to the file in `images/`
+ * that the message names (a banner that exists in some languages only).
+ * `data-i18n-languages="en zh"` keeps an element (which starts `hidden`) hidden
+ * unless the browser's interface is in one of those languages.
  */
+
+/** The primary language of the browser's interface: "en" for en-GB, "zh" for zh-TW. */
+export function interfaceLanguage(): string {
+    return browser.i18n.getUILanguage().split(/[-_]/u)[0]!.toLowerCase();
+}
 
 /** The message for `key`; the key itself when it is missing, so a gap shows instead of staying blank. */
 export function text(key: string, substitutions?: string | string[]): string {
@@ -65,5 +74,25 @@ export function localizePage(root: ParentNode = document): void {
     }
     for (const node of root.querySelectorAll<HTMLElement>("[data-i18n-rich]")) {
         fillRich(node, text(node.dataset["i18nRich"]!));
+    }
+    for (const node of root.querySelectorAll<HTMLElement>("[data-i18n-alt]")) {
+        node.setAttribute("alt", text(node.dataset["i18nAlt"]!));
+    }
+    for (const node of root.querySelectorAll<HTMLImageElement>(
+        "[data-i18n-image]",
+    )) {
+        const file = text(node.dataset["i18nImage"]!);
+        // Only a plain file name: a message must never point anywhere else.
+        if (/^[\w-]+\.(?:png|svg|jpg|webp)$/u.test(file)) {
+            node.src = `images/${file}`;
+        }
+    }
+    for (const node of root.querySelectorAll<HTMLElement>(
+        "[data-i18n-languages]",
+    )) {
+        node.hidden =
+            !node.dataset["i18nLanguages"]!.split(" ").includes(
+                interfaceLanguage(),
+            );
     }
 }

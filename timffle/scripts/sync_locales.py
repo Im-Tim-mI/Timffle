@@ -13,6 +13,8 @@ this script copies them into the catalogs, every key starting with "timffle_":
 Run it after every merge from upstream (after rebrand.py), and whenever a file in timffle/locales changes.
 It also checks the texts: every language of the extension has a file with every key, placeholders ($VERSION$),
 the literal tokens the user types ({host}, {port}) and the <1>...</1> link/bold tags survive translation.
+The one exception is the Logitech discount box (keys timffle_promo_*): it is a Taiwanese shop's code, so only the
+English and Chinese files have those texts, and no other language may carry them.
 """
 import json
 import re
@@ -24,6 +26,9 @@ SOURCES = ROOT / "timffle/locales"
 CATALOGS = ROOT / "web/packages/extension/assets/_locales"
 PREFIX = "timffle_"
 SOURCE_LANGUAGE = "en"
+# Texts that only some languages carry: the interface shows the Logitech discount box in these languages only.
+REGIONAL_PREFIX = "timffle_promo_"
+REGIONAL_LANGUAGES = {"en", "zh_CN", "zh_TW"}
 
 PLACEHOLDER = re.compile(r"\$([A-Za-z0-9_@]+)\$")
 LITERAL = re.compile(r"\{[a-z]+\}")
@@ -45,6 +50,11 @@ def load_source(path):
     return entries
 
 
+def wanted(language, master):
+    """The keys the file of `language` must have: all of them, except the texts of the regional box in other languages."""
+    return [key for key in master if language in REGIONAL_LANGUAGES or not key.startswith(REGIONAL_PREFIX)]
+
+
 def problems_in(language, entries, master):
     problems = []
     for key, entry in entries.items():
@@ -54,6 +64,9 @@ def problems_in(language, entries, master):
             continue
         if key not in master:
             problems.append(f"{where}: not in {SOURCE_LANGUAGE}.json")
+            continue
+        if key not in wanted(language, master):
+            problems.append(f"{where}: only {', '.join(sorted(REGIONAL_LANGUAGES))} carry the {REGIONAL_PREFIX}* texts")
             continue
         message = entry["message"]
         if not message.strip():
@@ -74,7 +87,7 @@ def problems_in(language, entries, master):
             problems.append(f"{where}: tags differ from {SOURCE_LANGUAGE} ({TAG.findall(want)})")
         if "description" in entry or "placeholders" in entry:
             problems.append(f"{where}: only {SOURCE_LANGUAGE}.json carries descriptions and placeholders")
-    for key in master:
+    for key in wanted(language, master):
         if key not in entries:
             problems.append(f"timffle/locales/{language}.json: missing {key}")
     return problems
@@ -151,7 +164,11 @@ def main():
         print("\n".join(problems), file=sys.stderr)
         sys.exit(1)
     if check:
-        print(f"locales check: OK ({len(languages)} languages, {len(master)} texts each)")
+        regional = sum(key.startswith(REGIONAL_PREFIX) for key in master)
+        print(
+            f"locales check: OK ({len(languages)} languages, {len(master) - regional} texts each, "
+            f"{regional} more in {' '.join(sorted(REGIONAL_LANGUAGES))})"
+        )
 
 
 if __name__ == "__main__":

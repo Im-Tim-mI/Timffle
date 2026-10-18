@@ -31,6 +31,9 @@ class FakeNode {
         }
         return data;
     }
+    setAttribute(name, value) {
+        this.attributes[name] = value;
+    }
     set textContent(value) {
         this.childNodes = [];
         this.own = value;
@@ -132,4 +135,65 @@ test("localizePage fills every marked element from the catalog", () => {
     assert.match(note.textContent, /Timffle/u);
     assert.equal(note.children.length, 2);
     assert.equal(untouched.textContent, "stays");
+});
+
+test("localizePage sets the alt text and picks the banner a language has", () => {
+    for (const [language, banner] of [
+        ["en", "promo-logitech-en.png"],
+        ["zh_TW", "promo-logitech-zh.png"],
+        ["zh_CN", "promo-logitech-zh.png"],
+    ]) {
+        globalThis.browser = { i18n: fakeI18n(language) };
+        const picture = new FakeNode("img", {
+            "data-i18n-image": "timffle_promo_image",
+            "data-i18n-alt": "timffle_promo_image_alt",
+        });
+        globalThis.document = fakeDocument([picture]);
+        localizePage(globalThis.document);
+        assert.equal(picture.src, `images/${banner}`, language);
+        assert.equal(
+            picture.attributes.alt,
+            fakeI18n(language).getMessage("timffle_promo_image_alt"),
+            language,
+        );
+    }
+});
+
+test("a picture message that is not a plain file name is ignored", () => {
+    for (const bad of [
+        "../icon.png",
+        "https://example.com/a.png",
+        "//example.com/a.png",
+        "a/b.png",
+        "javascript:alert(1)",
+        "banner.exe",
+        "",
+        "timffle_promo_image",
+    ]) {
+        globalThis.browser = {
+            i18n: { getMessage: (key) => (key === "timffle_promo_image" ? bad : "") },
+        };
+        const picture = new FakeNode("img", { "data-i18n-image": "timffle_promo_image" });
+        globalThis.document = fakeDocument([picture]);
+        localizePage(globalThis.document);
+        assert.equal(picture.src, undefined, JSON.stringify(bad));
+    }
+});
+
+test("an element marked with languages is shown in those interface languages only", () => {
+    const shownIn = (getUILanguage) => {
+        globalThis.browser = { i18n: { getUILanguage, getMessage: () => "" } };
+        const box = new FakeNode("section", { "data-i18n-languages": "en zh" });
+        box.hidden = true;
+        globalThis.document = fakeDocument([box]);
+        localizePage(globalThis.document);
+        return !box.hidden;
+    };
+    // Chrome writes the interface language with a hyphen, and has regional variants of English.
+    for (const language of ["en", "en-US", "en-GB", "zh-TW", "zh-CN", "ZH-tw"]) {
+        assert.equal(shownIn(() => language), true, language);
+    }
+    for (const language of ["ja", "ar", "de", "pt-BR", "ko", "he", "ru", "es-419", "eo", ""]) {
+        assert.equal(shownIn(() => language), false, JSON.stringify(language));
+    }
 });

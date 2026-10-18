@@ -22,12 +22,14 @@ export function readCatalog(language) {
 /**
  * `browser.i18n` as Chrome behaves for the pieces the extension uses: a key
  * missing from the language falls back to English, `$NAME$` placeholders are
- * replaced by the substitutions, and a missing key gives "".
+ * replaced by the substitutions, a missing key gives "", and the interface
+ * language is written with a hyphen (zh_TW → "zh-TW").
  */
 export function fakeI18n(language) {
     const own = readCatalog(language);
     const fallback = readCatalog("en");
     return {
+        getUILanguage: () => language.replace("_", "-"),
         getMessage(key, substitutions) {
             if (key === "@@ui_locale") {
                 return language;

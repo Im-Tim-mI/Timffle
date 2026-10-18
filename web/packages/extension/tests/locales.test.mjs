@@ -4,8 +4,10 @@
 // translation, and the pages and sources use exactly the texts that exist.
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { DEFAULT_ALLOWED_ORIGINS } from "../src/socket-proxy.ts";
-import { languages, readCatalog, readSources } from "./catalog-support.mjs";
+import { languages, packageDir, readCatalog, readSources } from "./catalog-support.mjs";
 
 const PREFIX = "timffle_";
 const own = (catalog) =>
@@ -14,6 +16,12 @@ const en = own(readCatalog("en"));
 const keys = Object.keys(en);
 const message = (language, key) => readCatalog(language)[key]?.message;
 const nonEnglish = languages.filter((language) => language !== "en");
+
+// The discount code is a Taiwanese shop's: only the English and Chinese interfaces show its box, so only they carry
+// its texts (timffle_promo_*); every other language has the other keys and no more.
+const PROMO_LANGUAGES = ["en", "zh_CN", "zh_TW"];
+const keysOf = (language) =>
+    keys.filter((key) => PROMO_LANGUAGES.includes(language) || !key.startsWith("timffle_promo_"));
 
 const PLACEHOLDER = /\$([A-Za-z0-9_@]+)\$/gu;
 const LITERAL = /\{[a-z]+\}/gu;
@@ -33,8 +41,8 @@ test("every language has every text of Timffle, and nothing else of Timffle's", 
         const catalog = own(readCatalog(language));
         assert.deepEqual(
             Object.keys(catalog).sort(),
-            [...keys].sort(),
-            `${language}: the set of timffle_ texts differs from English`,
+            keysOf(language).sort(),
+            `${language}: the set of timffle_ texts is not the expected one`,
         );
         for (const [key, entry] of Object.entries(catalog)) {
             assert.equal(typeof entry.message, "string", `${language}/${key}`);
@@ -45,7 +53,7 @@ test("every language has every text of Timffle, and nothing else of Timffle's", 
 
 test("placeholders, {host}/{port} and <n> tags survive translation", () => {
     for (const language of nonEnglish) {
-        for (const key of keys) {
+        for (const key of keysOf(language)) {
             const text = message(language, key);
             const want = en[key].message;
             assert.deepEqual(all(PLACEHOLDER, text), all(PLACEHOLDER, want), `${language}/${key}: placeholders`);
@@ -58,7 +66,7 @@ test("placeholders, {host}/{port} and <n> tags survive translation", () => {
 test("every placeholder a text uses is defined, with the same content in every language", () => {
     for (const language of languages) {
         const catalog = readCatalog(language);
-        for (const key of keys) {
+        for (const key of keysOf(language)) {
             const used = all(PLACEHOLDER, catalog[key].message).map((token) => token.slice(1, -1));
             const defined = Object.keys(catalog[key].placeholders ?? {}).map((name) => name.toLowerCase());
             assert.deepEqual(used.sort(), defined.sort(), `${language}/${key}`);
@@ -73,7 +81,7 @@ const NOT_TEXTS = new Set(["timffle_socket_helper" /* the native messaging host 
 test("pages and sources use exactly the texts that exist", () => {
     const used = new Set();
     for (const [name, source] of Object.entries(readSources("assets", ".html"))) {
-        for (const match of source.matchAll(/data-i18n(?:-rich)?="([^"]+)"/gu)) {
+        for (const match of source.matchAll(/data-i18n(?:-rich|-alt|-image)?="([^"]+)"/gu)) {
             assert.ok(match[1] in en, `${name}: ${match[1]} is not in the catalog`);
             used.add(match[1]);
         }
@@ -123,6 +131,11 @@ const MUST_CONTAIN = {
     timffle_error_invalid_origin: ["HTTP/HTTPS"],
     timffle_error_origins_required: ["WebSocket"],
     timffle_attribution: ["<1>Ruffle</1>", "<2>Timffle</2>"],
+    timffle_promo_summary: ["LOGITIM"],
+    timffle_promo_title: ["LOGITIM"],
+    timffle_promo_link: ["Logitech"],
+    timffle_promo_disclaimer: ["Logitech", "Timffle"],
+    timffle_promo_image_alt: ["LOGITIM", "2026"],
 };
 
 test("names, protocols and what the user types are kept", () => {
@@ -131,6 +144,9 @@ test("names, protocols and what the user types are kept", () => {
     }
     for (const language of languages) {
         for (const [key, tokens] of Object.entries(MUST_CONTAIN)) {
+            if (!keysOf(language).includes(key)) {
+                continue;
+            }
             for (const token of tokens) {
                 // "token" is a common noun in some languages (German: Token); everything else is exact.
                 const [text, wanted] =
@@ -184,7 +200,7 @@ test("the instructions quote the words of the buttons and choices", () => {
 
 test("long texts are translated, not copied from English", () => {
     for (const language of nonEnglish) {
-        for (const key of keys) {
+        for (const key of keysOf(language)) {
             const text = message(language, key);
             if (en[key].message.length > 30 && language !== "en") {
                 assert.notEqual(text, en[key].message, `${language}/${key} is still English`);
@@ -209,14 +225,14 @@ const SCRIPT = {
 
 test("each language is written in its own script", () => {
     for (const [language, script] of Object.entries(SCRIPT)) {
-        for (const key of keys) {
+        for (const key of keysOf(language)) {
             if (en[key].message.length > 30) {
                 assert.match(message(language, key), script, `${language}/${key}`);
             }
         }
     }
     for (const language of nonEnglish.filter((language) => !(language in SCRIPT))) {
-        for (const key of keys) {
+        for (const key of keysOf(language)) {
             if (en[key].message.length > 30) {
                 // Latin script: no Chinese, Cyrillic, Arabic... mixed in (the game names are the exception).
                 const text = message(language, key).replace(/摩爾莊園|賽爾號|小花仙|彈彈堂/gu, "");
@@ -230,4 +246,60 @@ test("Traditional and Simplified Chinese differ where they should", () => {
     assert.equal(message("zh_TW", "timffle_options_enable").includes("啟用"), true);
     assert.equal(message("zh_CN", "timffle_options_enable").includes("启用"), true);
     assert.equal(message("zh_CN", "timffle_options_enable").includes("啟用"), false);
+});
+
+const IMAGES = path.join(packageDir, "assets", "images");
+
+test("English and Chinese name a banner that exists: the Chinese one for Chinese, the English one for English", () => {
+    for (const language of PROMO_LANGUAGES) {
+        const file = message(language, "timffle_promo_image");
+        assert.match(file, /^[A-Za-z0-9_-]+\.png$/u, `${language}: ${file}`);
+        assert.equal(
+            file,
+            language.startsWith("zh_") ? "promo-logitech-zh.png" : "promo-logitech-en.png",
+            language,
+        );
+        assert.ok(fs.existsSync(path.join(IMAGES, file)), `${language}: ${file} is missing`);
+    }
+});
+
+test("the discount box starts hidden and is shown for the English and Chinese interfaces only", () => {
+    for (const name of ["options.html", "popup.html"]) {
+        const box = readSources("assets", ".html")[name].match(/<(?:section|details)\b[^>]*\bid="promo"[^>]*>/u)?.[0];
+        assert.ok(box, `${name}: no discount box`);
+        assert.match(box, /\shidden[\s>]/u, `${name}: the box must start hidden`);
+        assert.ok(box.includes('data-i18n-languages="en zh"'), `${name}: ${box}`);
+    }
+});
+
+test("the banners are PNG pictures of the size the pages reserve for them", () => {
+    for (const file of ["promo-logitech-zh.png", "promo-logitech-en.png"]) {
+        const png = fs.readFileSync(path.join(IMAGES, file));
+        assert.equal(png.subarray(1, 4).toString("latin1"), "PNG", file);
+        assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [720, 405], file);
+    }
+    for (const name of ["options.html", "popup.html"]) {
+        const pictures = [...readSources("assets", ".html")[name].matchAll(/<img\b[^>]*data-i18n-image[^>]*>/gu)];
+        assert.equal(pictures.length, 1, name);
+        assert.match(pictures[0][0], /width="720" height="405"/u, name);
+    }
+});
+
+test("the discount box links to Logitech's store and to nothing else, loads nothing from the web, and the code never fetches it", () => {
+    const URL = "https://store.logitech.tw/discount/LOGITIM";
+    const pages = readSources("assets", ".html");
+    for (const name of ["options.html", "popup.html"]) {
+        const links = [...pages[name].matchAll(/<a\b[^>]*href="https:\/\/store\.logitech\.tw[^"]*"[^>]*>/gu)].map((m) => m[0]);
+        assert.equal(links.length, 2, `${name}: the banner and the text link`);
+        for (const link of links) {
+            assert.ok(link.includes(`href="${URL}"`), `${name}: ${link}`);
+            assert.ok(link.includes('target="_blank"') && link.includes('rel="noopener noreferrer"'), `${name}: ${link}`);
+        }
+    }
+    for (const [name, source] of Object.entries(pages)) {
+        assert.doesNotMatch(source, /<(?:img|script|link|iframe|source|video|audio|embed|object)\b[^>]*\s(?:src|href|data)="(?:https?:)?\/\//u, `${name} loads something from the web`);
+    }
+    for (const [name, source] of Object.entries(readSources("src", ".ts"))) {
+        assert.doesNotMatch(source, /logitech/iu, `${name} must not know about the store`);
+    }
 });

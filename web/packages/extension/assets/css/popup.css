@@ -1,7 +1,9 @@
 body {
-    /* Wide enough for the bilingual Socket section. */
+    /* Wide enough for the Socket section. */
     width: 340px;
-    overflow: hidden;
+    overflow-x: hidden;
+    /* Taller than 600 px (the discount box opened) scrolls instead of cutting off the buttons. */
+    overflow-y: auto;
 }
 
 /*
@@ -180,4 +182,33 @@ body {
         background-color: #333;
         color: white;
     }
+}
+
+/*
+ * The discount box is closed by default (the picture would not fit in the
+ * 600 px a popup may have) and then costs one line, without its frame.
+ */
+details.promo {
+    margin: 0 8px;
+    padding: 0;
+    border: none;
+    font-size: small;
+}
+
+details.promo summary {
+    padding: 3px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+details.promo[open] {
+    margin: 8px;
+    padding: 8px 12px 12px;
+    border: 1px solid var(--ruffle-light-blue);
+}
+
+.promo-title {
+    color: var(--ruffle-orange);
+    font-weight: bold;
 }

@@ -277,5 +277,29 @@
     "timffle_attribution": {
         "message": "Timffle is an unofficial fork of <1>Ruffle</1> and is not affiliated with the Ruffle project; its Flash emulation comes from Ruffle and its contributors. Please report problems to <2>Timffle</2>, not to Ruffle.",
         "description": "<1>…</1> and <2>…</2> are links; keep the tags and keep the names Ruffle and Timffle."
+    },
+    "timffle_promo_summary": {
+        "message": "Logitech: 10% off (code LOGITIM)",
+        "description": "A short line (it must fit on one line of the toolbar popup) that opens the box about the Logitech discount code; the full heading is the next text. The code LOGITIM must stay exactly as it is."
+    },
+    "timffle_promo_title": {
+        "message": "Logitech store: 10% off gaming products (code LOGITIM)",
+        "description": "Heading of a box about a discount code for the official Logitech online store in Taiwan (in the popup it is the line that opens the box). The code LOGITIM must stay exactly as it is."
+    },
+    "timffle_promo_link": {
+        "message": "Open Logitech's online store (the code is applied for you)",
+        "description": "Text of a link to https://store.logitech.tw/discount/LOGITIM, which opens the store with the code already set. “Logitech” stays in Latin letters."
+    },
+    "timffle_promo_disclaimer": {
+        "message": "This is a 10% discount code for Logitech's official online store in Taiwan. Timffle has no connection with Logitech whatsoever.",
+        "description": "Keep the meaning exactly: the code belongs to Logitech's store, and this project has nothing to do with Logitech. “Logitech” and “Timffle” stay in Latin letters."
+    },
+    "timffle_promo_image_alt": {
+        "message": "Banner: Logitech Taiwan online store, 10% off gaming products with the code LOGITIM, valid until 2026-12-31",
+        "description": "Alternative text of the banner picture (the picture itself is in Chinese or English)."
+    },
+    "timffle_promo_image": {
+        "message": "promo-logitech-en.png",
+        "description": "Not a text: the file name of the banner in the extension's images folder. The Chinese languages use promo-logitech-zh.png, every other language promo-logitech-en.png."
     }
 }
