@@ -8,6 +8,9 @@
 - **系統語言是中文的 Android 上，遊戲的裝置字型文字不再偏低**（例如摩爾莊園登入失敗提示框的文字）。遊戲指定的 SimSun 在 Android 上不存在，瀏覽器改用 Noto Sans CJK，它的行高是 1.16 + 0.29 em，比 Flash 排版時用的 Windows SimSun（0.86 + 0.14 em）高很多，基線因此往下約 0.28 個字高（12px 字約 3 px）。現在只有在「要求的字型不存在或是 `_sans` 這類通用字型」而且瀏覽器實際用的字型行高超過 1.25 em 時，才改用該字型的中文字框（以 ideographic 基線為底：0.88 + 0.12 em）；裝了該字型的電腦與一般的退回字型（例如 Arial、Roboto）不受影響。改動在 `web/src/ui/canvas_font_renderer.rs`。驗證：Android 模擬器把 App 語言設成 zh-TW 時，提示框文字比修正前高約 4 個 CSS 像素，且比英文系統（Roboto）略高，符合 SimSun 的上緣比 Roboto 低；英文系統下行為不變（判斷不觸發）。**沒有**在實體手機與 Windows 上比對。
 - 驗證：在回報 256 的 Android 模擬器（`-gpu swiftshader_indirect`）裡，原本 wgpu-webgl 會 panic，改後能建立渲染器並載入摩爾莊園，Timffle 瀏覽器的 10 項裝置測試（含 Ruffle 的 8 個 socket SWF）通過；該模式的 GPU 轉譯層連一般 WebGL 都畫不對，所以畫面另外在桌面無頭 Chrome 把上限假裝成 256 檢查（每次 32 組）：摩爾莊園首頁與真實上限（200 組）的畫面一致。回報 4096 的 `-gpu swangle_indirect` 模擬器畫面正常。**沒有**在實體手機上試、沒有跑完整上游測試。
 
+- 發行驗證：擴充功能單元測試 38/38、封裝測試 23/23、品牌檢查、本機代理 10/10、比對工具、小幫手 `go test`（含 localtest）通過；對最終 ZIP 的整合測試 73/73；無頭 Chrome 載入這份擴充功能跑 8 個差異測試（3D、透視、drawBitmap、Utils3D、pointTowards、AMF、URLLoader 時序）全部與真 Flash 相同（URLLoader 時序第一次誤判，之後 3 次相同）。小幫手仍是 1.2.0，不需要重裝。
+- **發行包**（tag `v0.8.0.26297` = `44f25d94b`）：打包前後的路徑檢查通過，上傳後下載回來再檢查一次也通過。未簽章、未公證。發行包 SHA-256：`d279fa1a10c33f47d5504963f5e953dacf21ab34935b64fb2ac4eef7ae1eeb36`。
+
 ## 0.8.0.26296 — 2026-10-17（Timffle 第一版）
 
 **專案改名為 Timffle，並改成 Ruffle 的完整分支。** 行為與 0.8.0.26295 相同，只有名稱、圖示、連結與 repo 結構改變。
