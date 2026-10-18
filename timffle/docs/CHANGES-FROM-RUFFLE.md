@@ -38,6 +38,7 @@
   - 問題：`deviceFontRenderer=canvas` 時，具名裝置字型（SimSun、Arial…）交給瀏覽器畫，但 Flash 的通用名稱 `_sans`／`_serif`／`_typewriter` 仍綁在 Ruffle 內建、只含拉丁字母的 Noto Sans，**中日韓文字寬度為 0、整段消失**；遊戲用 `textWidth` 決定欄寬，欄位縮成幾像素，畫面上只剩圖示。
   - 修正：canvas 模式下把六個預設字型對應到瀏覽器的 `sans-serif`／`serif`／`monospace`（使用者的 `defaultFonts` 優先，內建 Noto Sans 只當最後備援）；CSS 通用名稱不加引號。嵌入式字型模式行為不變。
   - 重現方法：任何 `_sans` 欄位含中文的 SWF 都可以；測試機沒有中日韓字型時，用私有的 fontconfig 檔給測試用的 Chrome 一份 Noto Sans CJK，不要改系統字型。
+  - 行位置：Flash 把第一行的基線放在「欄位頂端 2 px ＋ 它指定的那個 Windows 字型的上緣」，行高是上緣＋下緣＋行距。瀏覽器沒有該字型時，頂替字型的上下緣常常差很多，所以 `line_metrics` 先按字型名稱查表（SimSun 系列、Microsoft YaHei、Arial Black、Tahoma、Verdana、Arial、Times New Roman、Courier New），用 Windows 的上下緣排版，頂替字型只畫字形；表外的字型維持瀏覽器自己的數值（太高的頂替字型改用中文字框，見 0.8.0.26297）。
 
 ## 0003 — AVM2 網路、載入與 LocalConnection（53 個檔案）
 

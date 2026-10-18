@@ -2,6 +2,15 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.2.0（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26300 — 2026-10-18
+
+**修正：沒有裝遊戲指定的 Windows 字型的電腦上，文字的位置更貼近原版 Flash**（愛心廣場標題文字與它下方的倒數時間偏離原版）。擴充功能與 Ruffle 的網頁部分（wasm）有改變；小幫手仍是 1.2.0（**不需要重跑安裝程式**）、通訊協定不變。
+
+- **問題**（0.8.0.26299 回報）：愛心廣場標題下方的倒數時間，位置和原版 Flash 不同。Flash 排文字時用的是它指定的那個 Windows 字型的上緣（ascent）與下緣（descent）：第一行的基線在「欄位頂端 2 px ＋ 上緣」，行高是上緣＋下緣＋行距。這點用真的 Flash Player（在 Wine 下）量過：Tahoma、Liberation、Noto Sans CJK 的欄位，純文字或 HTML 段落、有沒有行距，基線都是 2 ＋ 上緣，Ruffle 的 canvas 字型在同一批字型都裝了的情況下與它相差不到 1 px。但瀏覽器沒有那個字型時會拿別的字型頂替，頂替字型的上下緣可能差很多：在這台 Linux 上，SimSun（0.86 ＋ 0.14 em）被系統對應成 Noto Serif CJK（1.16 ＋ 0.29 em），標題文字比原版低 1.5–2.7 px 並被欄位底邊切掉一截；Arial Black（1.10 ＋ 0.31 em）被換成矮得多的字型，倒數時間比原版高 5 px。
+- **修正**：`web/src/ui/canvas_font_renderer.rs` 先用字型**名稱**查表（SimSun 系列含 宋体／宋體／新宋体／新宋體、Microsoft YaHei、Arial Black、Tahoma、Verdana、Arial、Times New Roman、Courier New），用 Windows 給那個字型的上下緣排版，頂替字型只負責畫字形。SimSun 系列一律用表（它在系統裡常常只是被對應到別的字型，反而用到錯的數值）；其他字型只在瀏覽器沒有那個字型時才用表，已經有的就保留它自己的數值。不在表裡的字型行為與 0.8.0.26299 相同。
+- **驗證**：以原版 Flash Player 的截圖為準，在 Linux 上用 Ruffle 載入同一個 `topUI.swf` 量位置：標題文字的上下緣（舞台像素）原版 7.3–20.2；修正前 10.0–21.7（偏低且被切）、修正後 6.3–19.0（差約 1 px，不再被切）。倒數時間數字的底邊原版 54.3；修正前 49.3、修正後 52.3（剩下的約 2 px 差距內建字型模式也一樣，已查過不是版面規則：Flash 與 Ruffle 對 HTML 段落與行距的處理相同）。表裡 Tahoma、Arial、Times New Roman、Courier New 的數值對照過字型檔（Wine 的 Tahoma、與 Arial／Times New Roman／Courier New 度量相容的 Liberation）；Arial Black、Verdana、SimSun、Microsoft YaHei 沒有原字型檔可對照，數值來自這些字型已公開的表格。
+- **沒有驗證**：沒有在 macOS 上看過。Mac 上 Arial Black 等多半有裝，所以這個修正在 Mac 上的預期改變不大；若 Mac 上的倒數時間或標題仍然偏離，需要該畫面的截圖與該瀏覽器回報的字型數值才能判斷。
+
 ## 0.8.0.26299 — 2026-10-18
 
 **修正：網站被詢問、被拒絕、或停用 Socket 連線時，遊戲裡的中文不再消失。**只有 Chrome 擴充功能改變；小幫手仍是 1.2.0（**不需要重跑安裝程式**）、通訊協定不變、Ruffle 核心（wasm）沒有動。
