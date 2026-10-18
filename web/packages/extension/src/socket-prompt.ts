@@ -82,6 +82,12 @@ export interface PromptEffects {
     /** Counts a question window for the tab; returns how many it has caused. */
     countPrompt(tabId: number, top?: string): Promise<number>;
     /**
+     * Whether the tab has already caused all the windows one visit may, as far
+     * as is known without waiting. A new question from such a tab could only
+     * be refused.
+     */
+    budgetSpent(tabId: number): boolean;
+    /**
      * Whether this website is still one that gets asked about under the
      * settings as they are now (the mode or the lists may have changed since
      * the question was opened).
@@ -189,14 +195,14 @@ export function createPromptManager(
     const show = async (entry: Entry) => {
         try {
             // A page cannot make the extension flood the screen with windows,
-            // not even by asking from many tabs.
+            // not even by asking from many tabs. Checked before the tab is
+            // charged, so that a question refused here costs its tab nothing.
             const time = now();
             opened = opened.filter((at) => time - at < MINUTE_MS);
             if (opened.length >= MAX_PROMPTS_PER_MINUTE) {
                 settle(entry, "unavailable");
                 return;
             }
-            opened.push(time);
             // One count per window, however many requests share it; a tab
             // that has used up its budget is not asked again this visit.
             const asked = await effects.countPrompt(
@@ -210,6 +216,11 @@ export function createPromptManager(
                 settle(entry, "unavailable");
                 return;
             }
+            // Only a window that is about to open is taken from the
+            // extension's budget, so a tab that is past its own cannot use up
+            // everybody else's by asking. Questions are shown one at a time,
+            // so the room found above is still there.
+            opened.push(now());
             const windowId = await host.open(entry.id, entry.near);
             entry.windowId = windowId;
             if (entry.settled) {
@@ -255,6 +266,14 @@ export function createPromptManager(
             );
             if (!entry) {
                 if (queue.length >= MAX_QUEUED_PROMPTS) {
+                    return "unavailable";
+                }
+                // Such a tab would be refused when its turn comes. It is
+                // refused now instead, so that it neither waits (with its
+                // socket) behind a question a person is still reading nor
+                // takes a place in the queue from websites that may still be
+                // asked.
+                if (effects.budgetSpent(request.tabId)) {
                     return "unavailable";
                 }
                 entry = {

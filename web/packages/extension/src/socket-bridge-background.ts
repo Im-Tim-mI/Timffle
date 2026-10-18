@@ -542,6 +542,8 @@ function browserPromptEffects(visits: VisitStore): PromptEffects {
                 ? visit.prompts
                 : visits.countPrompt(tabId, top);
         },
+        budgetSpent: (tabId) =>
+            (visits.get(tabId)?.prompts ?? 0) >= MAX_PROMPTS_PER_TAB,
     };
 }
 

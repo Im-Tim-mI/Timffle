@@ -52,6 +52,9 @@ function setup({ failOpen = false, slowOpen = false } = {}) {
             this.counts.set(tabId, n);
             return n;
         },
+        budgetSpent(tabId) {
+            return (this.counts.get(tabId) ?? 0) >= MAX_PROMPTS_PER_TAB;
+        },
         async stillAsking() {
             return this.asking;
         },
@@ -511,6 +514,121 @@ test("a tab can only cause a few windows per visit", async () => {
     await tick();
     assert.equal(other.outcome, undefined);
     assert.equal(h.host.opened.length, MAX_PROMPTS_PER_TAB + 1);
+});
+
+test("a question refused for the tab's budget does not use up the extension's windows", async () => {
+    const h = setup();
+    // A page with many frames asks from all of them at once: from more
+    // websites than one tab may have windows for.
+    const slots = [];
+    for (let i = 0; i < MAX_QUEUED_PROMPTS + 1; i++) {
+        slots.push(h.ask({ origin: `https://site${i}.example` }));
+    }
+    await tick();
+    for (let i = 0; i < MAX_PROMPTS_PER_TAB; i++) {
+        const { id, windowId } = h.host.opened.at(-1);
+        await h.manager.answer(id, windowId, "deny-once");
+        await tick();
+    }
+    // The first few were asked, the rest refused when their turn came.
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_TAB);
+    assert.deepEqual(
+        slots.map((slot) => slot.outcome),
+        slots.map((_, i) =>
+            i < MAX_PROMPTS_PER_TAB ? "answered" : "unavailable",
+        ),
+    );
+    // What was not opened was not spent: the rest of the minute's windows
+    // still go to the tabs that ask next.
+    for (let i = MAX_PROMPTS_PER_TAB; i < MAX_PROMPTS_PER_MINUTE; i++) {
+        const other = h.ask({
+            origin: `https://other${i}.example`,
+            tabId: 10 + i,
+        });
+        await tick();
+        assert.equal(other.outcome, undefined);
+        const { id, windowId } = h.host.opened.at(-1);
+        await h.manager.answer(id, windowId, "deny-once");
+        await tick();
+        assert.equal(other.outcome, "answered");
+    }
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_MINUTE);
+    // Only now is the minute used up.
+    const last = h.ask({ origin: "https://one-too-many.example", tabId: 99 });
+    await tick();
+    assert.equal(last.outcome, "unavailable");
+});
+
+test("a tab that has used up its windows is refused at once, not queued behind other questions", async () => {
+    const h = setup();
+    for (let i = 0; i < MAX_PROMPTS_PER_TAB; i++) {
+        const slot = h.ask({ origin: `https://site${i}.example` });
+        await tick();
+        const { id, windowId } = h.host.opened.at(-1);
+        await h.manager.answer(id, windowId, "deny-once");
+        await tick();
+        assert.equal(slot.outcome, "answered");
+    }
+    // A question of another tab is open; a person is reading it.
+    const reading = h.ask({ origin: "https://game.example", tabId: 2 });
+    await tick();
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_TAB + 1);
+    // The tab keeps asking, from more websites than the queue holds. Each is
+    // refused on the spot instead of waiting for the open question to end...
+    for (let i = 0; i < MAX_QUEUED_PROMPTS + 2; i++) {
+        const over = h.ask({ origin: `https://more${i}.example` });
+        await tick();
+        assert.equal(over.outcome, "unavailable");
+    }
+    // ...so it takes no place from the websites that may still be asked.
+    const waiting = [];
+    for (let i = 0; i < MAX_QUEUED_PROMPTS; i++) {
+        waiting.push(
+            h.ask({ origin: `https://waits${i}.example`, tabId: 20 + i }),
+        );
+        await tick();
+    }
+    assert.deepEqual(
+        waiting.map((slot) => slot.outcome),
+        waiting.map(() => undefined),
+    );
+    assert.equal(reading.outcome, undefined);
+    // Joining a question that is already open needs no window of its own.
+    const joined = h.ask({ origin: "https://game.example" });
+    await tick();
+    assert.equal(joined.outcome, undefined);
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_TAB + 1);
+});
+
+test("a question that ends while its count is being stored does not use up a window either", async () => {
+    const h = setup();
+    let release;
+    h.effects.countPrompt = () =>
+        new Promise((resolve) => (release = () => resolve(1)));
+    const gone = h.ask({ origin: A, tabId: 1 });
+    await tick();
+    // The tab goes away before the count is stored.
+    h.manager.tabGone(1);
+    await tick();
+    assert.equal(gone.outcome, "dismissed");
+    release();
+    await tick();
+    assert.equal(h.host.opened.length, 0);
+    // The whole minute's windows are still there.
+    h.effects.countPrompt = async () => 1;
+    for (let i = 0; i < MAX_PROMPTS_PER_MINUTE; i++) {
+        const slot = h.ask({
+            origin: `https://site${i}.example`,
+            tabId: 10 + i,
+        });
+        await tick();
+        assert.equal(slot.outcome, undefined);
+        const { id, windowId } = h.host.opened.at(-1);
+        await h.manager.answer(id, windowId, "deny-once");
+        await tick();
+        assert.equal(slot.outcome, "answered");
+    }
+    assert.equal(h.host.opened.length, MAX_PROMPTS_PER_MINUTE);
 });
 
 test("a flood of websites queues a few and refuses the rest", async () => {

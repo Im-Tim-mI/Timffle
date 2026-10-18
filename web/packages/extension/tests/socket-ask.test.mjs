@@ -16,6 +16,7 @@ import {
     PROMPT_ANSWER_REQUEST,
     PROMPT_GET_REQUEST,
     PROMPT_PORT_NAME,
+    MAX_PROMPTS_PER_MINUTE,
     MAX_PROMPTS_PER_TAB,
 } from "../src/socket-prompt.ts";
 import {
@@ -518,6 +519,66 @@ test("one tab cannot keep opening question windows", async (t) => {
     );
     assert.deepEqual(errors(p), ["not_allowed"]);
     assert.equal(h.windows.created.length, MAX_PROMPTS_PER_TAB);
+});
+
+test("a tab that has used up its windows cannot use up the extension's for everybody else", async (t) => {
+    const h = setup(t);
+    const hostile = (n) =>
+        frame({
+            origin: `https://e${n}.evil.example`,
+            top: "https://evil.example",
+            frameId: n,
+        });
+    for (let n = 1; n <= MAX_PROMPTS_PER_TAB; n++) {
+        await h.open(hostile(n));
+        await h.answer("deny-once");
+    }
+    // It keeps asking, from one more website, more often than the extension
+    // may open windows in a minute. Nothing is recorded about the refusals.
+    for (let k = 0; k < MAX_PROMPTS_PER_MINUTE; k++) {
+        assert.deepEqual(errors(await h.open(hostile(9))), ["not_allowed"]);
+    }
+    assert.equal(h.windows.created.length, MAX_PROMPTS_PER_TAB);
+    // A game in another tab is still asked.
+    const game = await h.open(
+        frame({ origin: "https://game.example", tab: 2 }),
+    );
+    assert.equal(h.windows.created.length, MAX_PROMPTS_PER_TAB + 1);
+    assert.deepEqual(game.sent, []);
+    await h.answer("allow-once");
+    await h.connectNative();
+    assert.deepEqual(game.sent, [{ type: "opened" }]);
+});
+
+test("a tab that has used up its windows is refused at once while another question is open", async (t) => {
+    const h = setup(t);
+    const hostile = (n) =>
+        frame({
+            origin: `https://e${n}.evil.example`,
+            top: "https://evil.example",
+            frameId: n,
+        });
+    for (let n = 1; n <= MAX_PROMPTS_PER_TAB; n++) {
+        await h.open(hostile(n));
+        await h.answer("deny-once");
+    }
+    // A game in another tab is being asked about.
+    const game = await h.open(
+        frame({ origin: "https://game.example", tab: 2 }),
+    );
+    assert.equal(h.windows.created.length, MAX_PROMPTS_PER_TAB + 1);
+    // The hostile tab's next websites do not wait behind it (holding
+    // waiting-socket places until they time out): they are refused now.
+    for (let n = 9; n < 9 + MAX_TAB_ASKING_SOCKETS + 1; n++) {
+        const p = await h.open(hostile(n));
+        assert.deepEqual(errors(p), ["not_allowed"]);
+        assert.equal(p.disconnected, true);
+    }
+    // The game's question is still open, and answering it still works.
+    assert.deepEqual(game.sent, []);
+    await h.answer("allow-once");
+    await h.connectNative();
+    assert.deepEqual(game.sent, [{ type: "opened" }]);
 });
 
 test("only the question window can read or answer the question", async (t) => {
