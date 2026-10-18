@@ -5,7 +5,6 @@ import {
     applyProxySettings,
     defaultProxySettings,
     PROXY_STORAGE_KEY,
-    resolveSocketAccess,
 } from "./socket-proxy";
 
 const DEFAULT_OPTIONS: Required<Options> = {
@@ -64,10 +63,12 @@ export async function getOptions(origin?: string): Promise<Options> {
     // an old/manual storage edit placed this key in the wrong storage area.
     const { [PROXY_STORAGE_KEY]: _privateSettings, ...options } = synced;
 
-    // Sites allowed to use sockets (the games this is for) need device fonts
-    // to show Chinese text, unless the user picked a renderer explicitly.
+    // Ruffle's own text engine has no Chinese glyphs, so device text (SimSun,
+    // _sans, ...) is drawn with the browser's fonts unless the user picked a
+    // renderer explicitly. This must not depend on what the user decided about
+    // sockets for the website: a game that is asked about, refused, or opened
+    // with sockets switched off still shows its Chinese text.
     const fonts =
-        resolveSocketAccess(proxySettings, origin) &&
         options["deviceFontRenderer"] === undefined
             ? { deviceFontRenderer: Config.DeviceFontRenderer.Canvas }
             : {};

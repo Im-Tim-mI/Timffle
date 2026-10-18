@@ -457,6 +457,22 @@ try{
  await close(t9.targetId);
 
  }
+ if(runs('fonts')){
+ // ---- 7. what the user decided about sockets never changes how the page's text is drawn. Ruffle's own font has no Chinese
+ // glyphs, so device text must use the browser's fonts (canvas) whether the website is allowed, asked about, refused or has
+ // sockets switched off (it used to be canvas only for "always allow": a game that was asked about lost its Chinese text).
+ const rendererOf=async()=>{const p=await fixtureTab(origin,'bare=1');await chrome.wait(p.sessionId,'typeof window.RufflePlayer?.config?.openInNewTab==="function"',20000);const v=await chrome.eval(p.sessionId,'window.RufflePlayer.config.deviceFontRenderer??null');await close(p.targetId);return v;};
+ const none={enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:[],proxyOrigins:[],deniedOrigins:[]};
+ const socketStates={'always-allow':{...none,allowedOrigins:[origin]},'ask-each-visit':none,'always-deny':{...none,deniedOrigins:[origin]},'sockets-off':{...none,enabled:false}};
+ const renderers={};
+ for(const [name,value] of Object.entries(socketStates)){await setSettings(value);renderers[name]=await rendererOf();}
+ add('device-fonts-use-the-browsers-fonts-in-every-socket-state',Object.values(renderers).every(v=>v==='canvas'),{renderers});
+ // An explicit choice of the user still wins (the default renderer is not sent to the page at all).
+ await chrome.eval(opts.sessionId,'chrome.storage.sync.set({deviceFontRenderer:"embedded"})');
+ const explicit=await rendererOf();
+ await chrome.eval(opts.sessionId,'chrome.storage.sync.remove("deviceFontRenderer")');
+ add('an-explicitly-chosen-device-font-renderer-still-wins',explicit!=='canvas',{explicit});
+ }
  await fs.writeFile(path.join(output,'results.json'),JSON.stringify({results},null,2));
  console.log('RESULTS '+output);
 }catch(e){results.push({name:'harness-error',pass:false,error:e.message});await fs.writeFile(path.join(output,'results.json'),JSON.stringify({results},null,2));console.error(e.stack);process.exitCode=1;}
