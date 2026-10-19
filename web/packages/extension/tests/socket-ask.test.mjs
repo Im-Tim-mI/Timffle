@@ -1268,8 +1268,13 @@ test("a notice that is still open is replaced by the next page load's, so it can
         null,
     );
     assert.deepEqual(helperView(h, 501), { helper: "missing", origin: MOLE });
-    // The browser's report that the old window is gone does not take the new one away.
+    // A late report that the old window is gone, and one about some other window, do not take the new one away.
+    h.browser.windows.onRemoved.emit(500);
+    h.browser.windows.onRemoved.emit(12345);
     assert.deepEqual(helperView(h, 501), { helper: "missing", origin: MOLE });
+    // Its own removal does.
+    h.browser.windows.onRemoved.emit(501);
+    assert.equal(helperView(h, 501), null);
 });
 
 test("at most three notices a minute whichever tabs need the helper (the clock is the manager unit tests')", async (t) => {

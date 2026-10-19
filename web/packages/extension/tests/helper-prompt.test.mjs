@@ -215,10 +215,16 @@ test("a window that is closed before the browser says which window it is does no
     const first = manager.show(request());
     await tick();
     await tick();
+    const { id } = fake.state.opened[0];
     // Closed while it was still opening.
     manager.windowRemoved(700);
     fake.state.release();
     assert.equal(await first, true);
+    assert.equal(
+        manager.view(id, 700),
+        undefined,
+        "nobody is left to show it to: the browser will not say so again",
+    );
     fake.state.hold = false;
     assert.equal(await manager.show(request({ documentId: "doc-2" })), true);
 });
@@ -293,6 +299,63 @@ test("a window whose tab closes while it is still opening is closed as soon as i
     fake.state.release();
     assert.equal(await opening, false);
     assert.deepEqual(fake.state.closed, [700]);
+});
+
+test("a tab that closes while its request is still being decided gets no window; another tab's closing changes nothing", async () => {
+    // The two waits before the window: the session storage is read when the
+    // service worker has just started, and the page load is written down.
+    for (const waiting of ["ready", "add"]) {
+        for (const closed of [1, 2]) {
+            const label = `${waiting}, tab ${closed} closes`;
+            const fake = host();
+            let release;
+            let written = 0;
+            const gate = new Promise((resolve) => (release = resolve));
+            const slow = {
+                ready: waiting === "ready" ? gate : Promise.resolve(),
+                has: () => false,
+                add: () => {
+                    written++;
+                    return waiting === "add" ? gate : Promise.resolve();
+                },
+                forgetTab: async () => {},
+            };
+            const manager = createHelperPromptManager(
+                fake,
+                slow,
+                () => 1_000_000,
+            );
+            const showing = manager.show(request());
+            await tick();
+            await tick();
+            manager.tabGone(closed);
+            release();
+            if (closed === 1) {
+                assert.equal(await showing, false, label);
+                assert.equal(fake.state.opened.length, 0, label);
+                assert.deepEqual(fake.state.closed, [], label);
+                assert.equal(
+                    written,
+                    waiting === "ready" ? 0 : 1,
+                    `${label}: a gone tab's page load is not written down once that is known`,
+                );
+                assert.equal(
+                    manager.view("any", 700),
+                    undefined,
+                    `${label}: nothing to show`,
+                );
+            } else {
+                assert.equal(await showing, true, label);
+                assert.equal(fake.state.opened.length, 1, label);
+            }
+            // Whatever happened, the manager is usable again.
+            assert.equal(
+                await manager.show(request({ tabId: 3, documentId: "doc-3" })),
+                true,
+                `${label}: usable again`,
+            );
+        }
+    }
 });
 
 test("turning the player off while the page load is still being written down opens nothing", async () => {

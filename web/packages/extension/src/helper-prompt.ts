@@ -177,6 +177,8 @@ export function createHelperPromptManager(
     let current: Opening | undefined;
     /** A request is being decided or its window opened: others wait for their next failure. */
     let busy = false;
+    /** The request being decided; `gone` is set when its tab closes meanwhile. */
+    let deciding: { tabId: number; gone: boolean } | undefined;
     /** Bumped by dispose(): what was under way is dropped. */
     let epoch = 0;
     /** When the recent windows were opened. */
@@ -215,12 +217,20 @@ export function createHelperPromptManager(
             }
             busy = true;
             const started = epoch;
+            // Until the window exists there is nothing for tabGone() to close:
+            // a tab that closes in the awaits below must stop the request.
+            const asking = { tabId: request.tabId, gone: false };
+            deciding = asking;
             try {
                 await told.ready;
                 const pageLoad =
                     request.documentId ??
                     `${request.frameId}|${request.origin}`;
-                if (epoch !== started || told.has(request.tabId, pageLoad)) {
+                if (
+                    epoch !== started ||
+                    asking.gone ||
+                    told.has(request.tabId, pageLoad)
+                ) {
                     return false;
                 }
                 const time = now();
@@ -232,7 +242,7 @@ export function createHelperPromptManager(
                 // Remembered before the window opens, so that a browser that
                 // cannot open one is not asked again by every failing socket.
                 await told.add(request.tabId, pageLoad);
-                if (epoch !== started) {
+                if (epoch !== started || asking.gone) {
                     return false;
                 }
                 // A window that is still open (it may be behind the browser's
@@ -275,6 +285,7 @@ export function createHelperPromptManager(
                 return false;
             } finally {
                 busy = false;
+                deciding = undefined;
             }
         },
 
@@ -313,6 +324,9 @@ export function createHelperPromptManager(
             // The page the window is about is gone with its tab.
             if (current?.tabId === tabId) {
                 dropCurrent();
+            }
+            if (deciding?.tabId === tabId) {
+                deciding.gone = true;
             }
         },
 

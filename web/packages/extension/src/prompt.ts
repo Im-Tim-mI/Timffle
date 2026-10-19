@@ -133,8 +133,11 @@ function guardInput({
     window.addEventListener("focus", arm);
     window.addEventListener("blur", disarm);
     document.addEventListener("keydown", (event) => {
+        // A key that was held down for the game keeps repeating into the
+        // window that has just taken the focus; a repeat is not a press.
         if (
             event.key === "Escape" &&
+            !event.repeat &&
             (!escapeWaits || guard.ready(Date.now()))
         ) {
             // Closing the window refuses (the question) or does nothing (the helper notice).
@@ -158,8 +161,12 @@ function guardInput({
                 guard.pressed(key, kind, Date.now());
             });
             control.addEventListener("keydown", (event) => {
-                // Enter clicks on this press, Space when the key is let go.
-                if (event.key === "Enter" || event.key === " ") {
+                // Enter clicks on this press, Space when the key is let go. A
+                // repeat is the same press: it began before, perhaps in the game.
+                if (
+                    !event.repeat &&
+                    (event.key === "Enter" || event.key === " ")
+                ) {
                     guard.pressed(key, "key", Date.now());
                 }
             });
