@@ -72,7 +72,7 @@ Timffle is built for **Flash online games in general**: a site you allow can use
 
 | Game | URL | Status |
 |---|---|---|
-| 摩爾莊園 | https://mole.61.com.tw/ | **Verified with a real account** (Linux + Chrome 155, version 0.8.0.26294, the last full run recorded here): login, the 3D saved-account page, entering the world, walking, changing maps, kart seats. |
+| 摩爾莊園 | https://mole.61.com.tw/ | **Verified with a real account**. |
 | 賽爾號 | http://seer.61.com.tw/ | Sockets allowed by default. |
 | 小花仙 | http://hua.61.com.tw/ | Sockets allowed by default. |
 | 彈彈堂 | http://ddt.61.com.tw/main_index.php | Sockets allowed by default. |

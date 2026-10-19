@@ -72,7 +72,7 @@ Timffle 為**一般的 Flash 線上遊戲**而做：你允許的網站就能使�
 
 | 遊戲 | 網址 | 狀態 |
 |---|---|---|
-| 摩爾莊園 | https://mole.61.com.tw/ | **已用真實帳號驗證**（Linux＋Chrome 155，版本 0.8.0.26294，是這裡記錄的最後一次完整測試）：登入、本地帳號頁（3D 轉盤）、進入世界、走路、換地圖、賽車座位。 |
+| 摩爾莊園 | https://mole.61.com.tw/ | **已用真實帳號驗證**。 |
 | 賽爾號 | http://seer.61.com.tw/ | 預設放行 Socket 連線。 |
 | 小花仙 | http://hua.61.com.tw/ | 預設放行 Socket 連線。 |
 | 彈彈堂 | http://ddt.61.com.tw/main_index.php | 預設放行 Socket 連線。 |
