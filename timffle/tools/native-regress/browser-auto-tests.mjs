@@ -253,7 +253,7 @@ try{
     const sessionId=await attach(target);
     const view=await chrome.wait(sessionId,noticeRead,12000);
     const wantText=T(mode==='incompatible'?'timffle_helper_notice_incompatible':'timffle_helper_notice_missing');
-    add('notice-window-says-what-is-wrong-and-for-whom',view.title===T('timffle_helper_prompt_title')&&view.origin===site&&!view.embedded&&view.text===wantText&&view.intro===T('timffle_helper_page_intro')&&view.safe===T('timffle_helper_page_safe')&&!view.question&&!view.expired&&view.pageTitle===T('timffle_prompt_page_title'),{view});
+    add('notice-window-says-what-is-wrong-and-for-whom',view.title===T('timffle_helper_prompt_title')&&view.origin===site&&!view.embedded&&view.text===wantText&&view.intro===T('timffle_helper_page_intro')&&view.safe===T('timffle_helper_page_safe')&&!view.question&&!view.expired&&view.pageTitle===T('timffle_helper_prompt_title'),{view});
     add('notice-window-offers-the-installer-for-this-system',view.download===T('timffle_helper_notice_button')&&view.label.shown&&view.label.text===T('timffle_helper_download_for',[own.label])&&view.more.shown&&view.more.text===T('timffle_helper_download_more')&&view.close.shown&&view.close.text===T('timffle_close'),{view});
     add('notice-window-has-the-safe-button-focused',view.focused==='helper-close',{focused:view.focused});
     // With a real window (CHROME_HEADED=1 CHROME_WINDOW_SIZE=none, e.g. under xvfb-run) the size it was opened with decides; headless Chrome forces its own.
@@ -287,20 +287,51 @@ try{
     await realClick(sessionId,'#helper-close');
     add('notice-window-closes-with-its-button',!!await until(async()=>(await noticeWindows()).length===0,5000));
    },
-   // A page load is told once: the window of the game tab (opened when its page connected) is closed, the same page tries again, and nothing opens; a reload is a new page load.
+   // A page load is told once, whether or not its window is still there; the next page load's window replaces one that is still open
+   // (it may be behind the browser's own); the window ignores clicks and Escape in its first moment.
    async pageLoads(game,site,port){
-    const target=await until(async()=>(await noticeWindows())[0],10000);
-    add('notice-window-opens-again-for-another-page',!!target);
-    if(target)await chrome.send('Target.closeTarget',{targetId:target.targetId});
-    await until(async()=>(await noticeWindows()).length===0,5000);
-    await chrome.eval(game.sessionId,'new Promise(resolve=>{const s=new WebSocket("ws://timffle-socket.invalid/connect?host=127.0.0.1&port='+port+'");s.onerror=()=>resolve("error");s.onopen=()=>resolve("open");setTimeout(()=>resolve("timeout"),4000)})');
-    await delay(1500);
-    add('notice-window-not-again-for-the-same-page-load',(await noticeWindows()).length===0);
+    const trySocket=()=>chrome.eval(game.sessionId,'new Promise(resolve=>{const s=new WebSocket("ws://timffle-socket.invalid/connect?host=127.0.0.1&port='+port+'");s.onerror=()=>resolve("error");s.onopen=()=>resolve("open");setTimeout(()=>resolve("timeout"),4000)})');
+    const w2=await until(async()=>(await noticeWindows())[0],10000);
+    add('notice-window-opens-again-for-another-page-load',!!w2&&(await noticeWindows()).length===1);
+    // The same page load needs a connection again while its window is open: no second window, and not another one in place of it.
+    await trySocket();await delay(1200);
+    const same=await noticeWindows();
+    add('notice-window-same-page-load-keeps-its-one-window',same.length===1&&same[0].targetId===w2.targetId,{windows:same.length});
+    // The page is reloaded with the window still open: the old window is replaced by the new page load's, one window in all.
     await chrome.send('Page.reload',{},game.sessionId);await chrome.wait(game.sessionId,'window.__probe',15000);
-    const again=await until(async()=>(await noticeWindows())[0],10000);
-    add('notice-window-again-after-the-page-was-reloaded',!!again);
-    if(again)await chrome.send('Target.closeTarget',{targetId:again.targetId});
-    await until(async()=>(await noticeWindows()).length===0,5000);
+    const w3=await until(async()=>{const w=await noticeWindows();return w.length===1&&w[0].targetId!==w2.targetId?w[0]:false;},10000);
+    add('notice-window-next-page-load-replaces-the-window-that-is-still-open',!!w3,{windows:(await noticeWindows()).length});
+    if(w3){
+     const s=await attach(w3);
+     await chrome.wait(s,noticeRead,12000);
+     // The window's own page is loaded again, which starts its first moment again: clicks and Escape in it must do nothing.
+     const inMoment=async(act)=>{
+      for(let attempt=0;attempt<5;attempt++){
+       try{
+        await chrome.send('Page.reload',{},s);
+        const ready=await chrome.wait(s,'(()=>{const d=document.getElementById("helper-download");return document.readyState==="complete"&&d&&!d.hidden&&document.body.dataset.wait==="1"})()',8000).catch(()=>false);
+        if(!ready)continue;
+        await act();
+        // Only a press inside the moment counts as a test (a slow machine may have let it pass).
+        if(await chrome.eval(s,'document.body.dataset.wait==="1"'))return true;
+       }catch(e){return 'the window is gone: '+e.message;}
+      }
+      return false;
+     };
+     const escape=()=>chrome.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27},s);
+     const requestsBefore=github.requests.length,savedBefore=saved().length;
+     const early={download:await inMoment(()=>realClick(s,'#helper-download')),more:await inMoment(()=>realClick(s,'#helper-more')),close:await inMoment(()=>realClick(s,'#helper-close')),escape:await inMoment(escape)};
+     await delay(1200);
+     const windowsLeft=(await noticeWindows()).length;
+     add('notice-window-ignores-clicks-and-escape-in-its-first-moment',Object.values(early).every(v=>v===true)&&github.requests.length===requestsBefore&&saved().length===savedBefore&&(await installPageTabs()).length===0&&windowsLeft===1,{early,requests:github.requests.length-requestsBefore,saved:saved().length-savedBefore,installPages:(await installPageTabs()).length,windows:windowsLeft});
+     // After the moment the same keys count.
+     await chrome.wait(s,'document.body.dataset.wait!=="1"',5000);
+     await escape();
+     add('notice-window-closes-with-escape-after-the-moment',!!await until(async()=>(await noticeWindows()).length===0,5000));
+    }
+    // Its page load was told: the window is closed and a connection from the same page does not bring it back.
+    await trySocket();await delay(1500);
+    add('notice-window-not-again-for-the-same-page-load',(await noticeWindows()).length===0);
    },
   };
   const page=await chrome.tab('chrome-extension://'+ID+'/helper.html');
@@ -379,10 +410,15 @@ try{
   const cancelled=await chrome.eval(cancelPage.sessionId,'new Promise(resolve=>{const events=[];const s=new WebSocket("ws://timffle-socket.invalid/connect?host=127.0.0.1&port=1234");s.onopen=()=>events.push("open");s.onerror=()=>events.push("error");s.onclose=()=>events.push("close");setTimeout(()=>s.close(),100);setTimeout(()=>resolve({events,state:s.readyState}),900);})');
   add('cancel-before-open-stops-native',JSON.stringify(cancelled.events)==='["error","close"]'&&cancelled.state===3&&countHelpers()===0,{cancelled});await chrome.send('Target.closeTarget',{targetId:cancelPage.targetId});
  }else{
-  const before=small.stat.connections;await fixture(mode+'-no-fake-connect',{},noConnect);add(mode+'-no-tcp',small.stat.connections===before);
+  const before=small.stat.connections;
   const wantsWindow=['missing','incompatible'].includes(mode);
-  // That page needed a TCP connection and the helper is not there: the window that says so opens (and is checked, then closed).
+  // The first page: no TCP connection is made. It needed one and the helper is not there, so the window that says so opens; the page's
+  // tab stays open while that window is looked at (a window goes with its tab) and is closed by its own button.
+  const first=await chrome.tab(origin+'/?'+new URLSearchParams({host:'127.0.0.1',port:small.port,size:6,timeout:1800,cancel:-1}));
+  const firstResult=await chrome.wait(first.sessionId,'window.__probe',15000);
+  add(mode+'-no-fake-connect',noConnect(firstResult),{result:firstResult});add(mode+'-no-tcp',small.stat.connections===before);
   if(wantsWindow)await noticeApi.exercise(origin);
+  await chrome.send('Target.closeTarget',{targetId:first.targetId});
   // The toolbar icon: a game that needed the helper and could not get it marks the tab it is in, until the page is left.
   const marked=()=>chrome.eval(opts.sessionId,'(async()=>{const out=[];for(const t of await chrome.tabs.query({})){const text=await chrome.action.getBadgeText({tabId:t.id});if(text)out.push({text,color:await chrome.action.getBadgeBackgroundColor({tabId:t.id})})}return out})()');
   const game=await chrome.tab(origin+'/?'+new URLSearchParams({host:'127.0.0.1',port:small.port,size:6,timeout:1800,cancel:-1}));
