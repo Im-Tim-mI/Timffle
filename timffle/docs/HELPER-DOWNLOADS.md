@@ -1,6 +1,6 @@
 # 小幫手的獨立下載（「直接下載安裝程式」）
 
-插件工具列彈出視窗（與設定頁）在小幫手還沒裝好時有一顆「直接下載安裝程式」按鈕：它判斷使用者的系統，**一點就開始下載**對的安裝檔。這份文件說明下載位置、檔案、插件怎麼選檔案、檔案怎麼做出來、怎麼發佈新版，以及這個做法的限制。介面與判斷的程式在 `web/packages/extension/src/helper-download.ts`（設計見 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的 3b）。
+插件工具列彈出視窗（與設定頁，以及遊戲需要 TCP 連線而小幫手不在時自動開的「請先安裝小幫手」視窗）在小幫手還沒裝好時有一顆「直接下載安裝程式」按鈕：它判斷使用者的系統，**一點就開始下載**對的安裝檔。這份文件說明下載位置、檔案、插件怎麼選檔案、檔案怎麼做出來、怎麼發佈新版，以及這個做法的限制。介面與判斷的程式在 `web/packages/extension/src/helper-download.ts`（設計見 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的 3b）。
 
 ## 1. 下載位置
 
@@ -33,7 +33,7 @@
 ## 3. 插件怎麼選檔案、怎麼下載
 
 - **選檔案**：`chooseInstaller()` 依 `navigator.userAgentData` 的作業系統與**處理器**（`x86`／`arm`、32／64 位元）選出上表的一列。macOS 只看處理器，因為 Apple silicon 的 Mac 上 Chrome 的 User-Agent 也寫 Intel；沒有處理器資訊就不猜（猜錯的程式開不起來），按鈕不出現，只剩「其他系統與安裝說明」（安裝頁列出所有檔案）。Chrome OS 與 Android 沒有安裝檔。
-- **下載**：`tabs.create({ url, active: false })`。GitHub 的回應是附件，Chrome 存檔、顯示自己的下載提示並自己關掉那個分頁。**不需要任何新權限**（不用 `downloads`），插件不抓取、不檢查、不解壓縮、不執行檔案。
+- **下載**：`tabs.create({ url, active: false })`。GitHub 的回應是附件，Chrome 存檔、顯示自己的下載提示並自己關掉那個分頁。**不需要任何新權限**（不用 `downloads`），插件不抓取、不檢查、不解壓縮、不執行檔案。彈出視窗、設定頁與「請先安裝小幫手」視窗三處的按鈕走同一個 `bindHelperDownload()`；從獨立視窗（`prompt.html`）呼叫時，新分頁開在瀏覽器的一般視窗裡（有測試）。
 - **沒有事先檢查**：檔案不存在（標籤打錯、release 還沒發佈、倉庫是私人的）時，那個分頁會停在 GitHub 的「找不到頁面」，沒有東西被存下來，而提示仍寫「已開始下載」。這是已知的取捨（換來不需要權限、也不依賴彈出視窗開著）；發佈新版的流程因此要在公開前自己下載一次驗證（見下）。
 - **釘住版本**：`HELPER_RELEASE`（`helper-download.ts`）是一個固定的標籤，不是「最新版」。插件永遠下載它所對應的小幫手；之後如果出了通訊協定不同的小幫手，舊插件不會裝到它用不了的版本。單元測試 `helper-download.test.mjs` 檢查 `HELPER_RELEASE` 等於 `main.go` 的版本，並檢查表裡的檔名與 `package-installers.py` 寫出的檔名一致。
 

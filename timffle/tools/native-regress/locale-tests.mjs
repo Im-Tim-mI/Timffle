@@ -2,7 +2,7 @@
 // that language's catalog, in the right script and direction, and nothing sticks out of its box. It does not need
 // the socket helper or a network; the flows themselves are covered by ask-tests.mjs (run with TEST_LOCALE=<language>).
 //   node locale-tests.mjs <unpacked extension dir> [language ...]     (default: all languages of the extension)
-// SHOTS=<dir> also writes a picture of the question window and of the settings page for each language.
+// SHOTS=<dir> also writes a picture of the question window, the "install the helper first" window and the settings page for each language.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
