@@ -124,7 +124,7 @@ The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/D
    2. Click **Load unpacked** and pick the unzipped `extension` folder.
    3. If the official Ruffle extension is installed, disable or remove it first so the two do not fight over the same pages.
 
-4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.2.0)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it.
+4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.2.0)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it. You do not have to go looking for this: while the helper is missing, the toolbar popup says so, with an **Install the helper** button that opens a page with these steps for each system (a Chrome extension cannot start the installer itself, so running it stays your click); and a game that needed the helper but could not reach it puts a red **!** on the Timffle icon of its tab.
 
 5. **Play**: open a game site (for example https://mole.61.com.tw/ ), press the player's play button and log in as usual; no proxy needed. 賽爾號, 小花仙 and 彈彈堂 work the same way from their own sites; any other site is asked about the first time it wants a socket ([The first-use question](#the-first-use-question)). After loading the extension for the first time, reload any game page that was already open; if it still shows the "download Flash" message, wait a few seconds and reload once more.
 
@@ -145,6 +145,7 @@ The extension's options page has a section "**Socket connections (game servers)*
 
 <p align="center"><img src="timffle/docs/images/options-socket.png" alt="The socket section of the extension's options page: the connection helper is shown as installed, followed by the list of allowed website origins" width="560"></p>
 
+- **The helper's status** (under "Socket helper"): "Installed (version …)", or why it is not. When the helper is missing or does not match this extension, an **Install the helper** button next to it opens the install page, the same page the popup's notice opens.
 - **Connection method**: "Socket helper" is the default and recommended. Advanced users can switch to "Custom WebSocket proxy" and run the local WebSocket↔TCP proxy in [`timffle/relay/`](timffle/relay/) themselves (needs Node.js 22+; Chrome may ask for local network access).
 - **Always-allowed website origins (one per line)**: the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets directly, without being asked. The default is Taomee Taiwan's four game sites, `mole`, `seer`, `hua` and `ddt` `.61.com.tw`, each with `http://` and `https://`. You do **not have to type** other sites: use "The first-use question" or "Setting a site from the popup" below. **Allow only online games you trust**, because an allowed site can reach any TCP address on the public internet through the helper.
 - **Always-denied website origins (one per line)**: these sites are never asked about and never get sockets (with either connection method). A site cannot be on both the allowed and the denied list (saving warns you; if it is in both anyway, refusing wins).
@@ -172,7 +173,7 @@ With the connection method "Socket helper", a site that is **on neither list** i
 - A game embedded in another site's page (an `iframe`) is asked about with **its own origin**; the window also shows the origin of the page around it.
 - Only "Socket helper" mode asks. "Custom WebSocket proxy" mode never asks and refuses sites that are not listed (the proxy URL contains a token and is never given to a site nobody approved).
 - Pages without Flash content are unaffected, and Timffle does not touch the browser's `WebSocket` on them (one exception: when a page has a same-origin `iframe`, Ruffle's own frame detection reads the settings and the bridge is installed early; it behaves like the native `WebSocket`).
-- The extension's own pages (popup, settings, welcome page, question window) **cannot be framed by a web page**, so a page can neither fake nor cover them.
+- The extension's own pages (popup, settings, welcome page, install page, question window) **cannot be framed by a web page**, so a page can neither fake nor cover them.
 
 ### Setting a site from the popup
 
@@ -188,9 +189,9 @@ Click the Timffle icon on the browser toolbar; the "Socket connections" section 
 
 ## Languages
 
-Timffle's pages (settings, popup, question window) follow the browser's interface language. The languages are the same 36 as in the Ruffle extension: Arabic, Bosnian, Catalan, Chinese (Simplified and Traditional), Croatian, Czech, Dutch, English, Esperanto, Finnish, French, Galician, German, Hebrew, Hungarian, Indonesian, Italian, Japanese, Korean, Norwegian Bokmål, Polish, Portuguese (Brazil and Portugal), Romanian, Russian, Serbian, Slovak, Slovenian, Spanish, Swedish, Tatar, Thai, Turkish, Ukrainian and Vietnamese. Arabic and Hebrew are laid out right to left.
+Timffle's pages (settings, popup, install page, question window) follow the browser's interface language. The languages are the same 36 as in the Ruffle extension: Arabic, Bosnian, Catalan, Chinese (Simplified and Traditional), Croatian, Czech, Dutch, English, Esperanto, Finnish, French, Galician, German, Hebrew, Hungarian, Indonesian, Italian, Japanese, Korean, Norwegian Bokmål, Polish, Portuguese (Brazil and Portugal), Romanian, Russian, Serbian, Slovak, Slovenian, Spanish, Swedish, Tatar, Thai, Turkish, Ukrainian and Vietnamese. Arabic and Hebrew are laid out right to left.
 
-- **Who translated what**: the texts Timffle added (the socket settings, the popup section and the question window) are in [`timffle/locales/`](timffle/locales/), one file per language. English and Traditional Chinese are written by the author; **the other 34 languages are machine translations** (Simplified Chinese is converted from the Traditional text) that no native speaker has reviewed, so some wording may be off, Tatar most of all. Corrections are welcome in [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues).
+- **Who translated what**: the texts Timffle added (the socket settings, the popup section and notice, the install page and the question window) are in [`timffle/locales/`](timffle/locales/), one file per language. English and Traditional Chinese are written by the author; **the other 34 languages are machine translations** (Simplified Chinese is converted from the Traditional text) that no native speaker has reviewed, so some wording may be off, Tatar most of all. Corrections are welcome in [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues).
 - **Ruffle's own texts** (the standard options and the player's messages) come from Ruffle's translations and are as complete as Ruffle's: a few languages (for example Esperanto, Galician, Norwegian and Thai) still show English there until Ruffle's translators have finished them.
 - **Chrome has no interface language** for Bosnian, Esperanto, Galician and Tatar, so Chrome shows these pages in English; the translations are included anyway, as in Ruffle.
 - **Not translated**: the helper installer's messages (Traditional Chinese and English) and this README (English, Traditional Chinese and Simplified Chinese).
@@ -199,7 +200,7 @@ Timffle's pages (settings, popup, question window) follow the browser's interfac
 
 | Symptom | What to do |
 |---|---|
-| The options page cannot find the helper | Run the installer in `helper` again, then **fully quit Chrome** (including background processes) and start it. Chrome reads Native Messaging registrations only at start-up. |
+| The popup says the helper is not installed, or the options page cannot find it | Run the installer in `helper` (the **Install the helper** button shows the steps), then **fully quit Chrome** (including background processes) and start it. Chrome reads Native Messaging registrations only at start-up. |
 | The game still shows "download Flash" | Make sure the extension is enabled and the official Ruffle extension is not; reload, wait a few seconds and reload once more. |
 | A game cannot connect | Check that its site is allowed (the toolbar popup shows the current state); if the game already timed out before you answered the question, try again in the game. Reload the page after changing a setting. |
 | The first click (play button or the game's "start") does nothing | Click again. In automated tests the first click occasionally had no effect; the cause was not found. |
@@ -236,7 +237,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 - **Other Flash online games**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; only 摩爾莊園 has been played with a real account, and the other three Taomee Taiwan games merely have sockets allowed by default.
 - **No socket policy files**: real Flash asked the destination server for a socket policy file before every socket connection. Timffle (like Ruffle) does not, so **the game server has no veto**: the allow list and your answer to the first-use question are the only gate. That is why you should allow only online games you trust.
 - **ActionScript 2 `XMLSocket`** goes through the same socket path as `flash.net.Socket`, but only `flash.net.Socket` has been tested.
-- **Platforms**: Windows was tested under Wine only, macOS not at all; the helper is **not signed**. The question window and the popup were verified only in desktop Chrome 155 (headless); not in headed Chrome, on Windows, macOS, Firefox or Safari.
+- **Platforms**: Windows was tested under Wine only, macOS not at all; the helper is **not signed**. The question window, the popup (with its helper notice) and the install page were verified only in desktop Chrome 155 (headless); not in headed Chrome, on Windows, macOS, Firefox or Safari.
 - **Branding**: only the web UI (extension, web demo, player screens) is renamed Timffle; the texts and identifiers of the desktop app, the Safari extension and the npm packages are still upstream Ruffle's, so **do not distribute builds of those under the Timffle name** (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)).
 - **3D**: nested "projection owners" differ from Flash; Flash bilinear-filters 3D pictures by about 1 px, Timffle's edges are crisper; perspective is implemented in the wgpu renderer only. `Matrix3D.determinant`/`invert` differ from Flash in the last significant digit.
 - **Hit testing**: Flash's `hitTestPoint(x, y, true)` works on whole pixels, Timffle on exact coordinates; edges occasionally differ by 1–2 cells.

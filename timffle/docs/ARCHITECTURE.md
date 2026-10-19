@@ -42,7 +42,7 @@
 | 元件 | 位置 | 說明 |
 |---|---|---|
 | 核心（WASM） | `core/`、`render/`、`web/src/` 等（Ruffle＋Timffle 的修正） | 模擬 Flash；相容性修正見 [`CHANGES-FROM-RUFFLE.md`](CHANGES-FROM-RUFFLE.md) |
-| 擴充功能 | `web/packages/extension/` | Manifest V3；`socket-bridge-{page,content,background,protocol,arm}.ts`、設定頁、`socket-proxy.ts`（設定、允許／拒絕清單與三態判斷）、`socket-prompt.ts`（詢問管理）、`socket-visit.ts`（單次造訪的回答）、`prompt.html`／`prompt.ts`（詢問視窗）、`popup-socket.ts`（彈出視窗的 Socket 區塊）、`i18n.ts`（把訊息目錄的文字填進頁面，見第 7 節） |
+| 擴充功能 | `web/packages/extension/` | Manifest V3；`socket-bridge-{page,content,background,protocol,arm}.ts`、設定頁、`socket-proxy.ts`（設定、允許／拒絕清單與三態判斷）、`socket-prompt.ts`（詢問管理）、`socket-visit.ts`（單次造訪的回答）、`prompt.html`／`prompt.ts`（詢問視窗）、`popup-socket.ts`（彈出視窗的 Socket 區塊）、`helper-status.ts`（查小幫手狀態、把結果翻成顯示的句子）、`popup-helper.ts`（彈出視窗的「小幫手沒裝好」提示）、`helper.html`／`helper.ts`（安裝頁，見第 3b 節）、`i18n.ts`（把訊息目錄的文字填進頁面，見第 7 節） |
 | 連線小幫手 | [`helper/`](../helper/) | Go；沒有第三方相依套件；內建安裝／移除程式 |
 | 安裝啟動檔 | `helper/installers/` | 只是薄薄的啟動器，真正的安裝程式在小幫手執行檔裡（`--install`／`--uninstall`） |
 | 封裝工具 | `helper/package.py` | 驗證輸入（拒絕符號連結、私鑰標記、過大檔案）並產生發行 ZIP |
@@ -77,6 +77,17 @@
 **設定的寫入**（`proxy-settings.ts`）：彈出視窗、設定頁、詢問視窗（經背景服務）會同時改同一份設定。所有「讀取—修改—寫入」都在一個跨頁面共用的 Web Lock 裡進行，所以兩個同時的更新不會互相蓋掉；**設定頁的表單還要比對**：儲存時如果設定自從表單載入之後被別處改過（例如在彈出視窗把某網站設成「一律拒絕」），這次儲存會被拒絕、改為顯示最新設定——否則表單裡舊的清單會悄悄把「一律拒絕」改回「一律允許」。沒有編輯過的表單會自動跟著別處的變更更新；有編輯的表單會顯示警告但不被覆蓋。
 
 **彈出視窗**（`popup-socket.ts`）：顯示目前分頁的網站（瀏覽器不告訴分頁網址時，只採用最上層頁框自己回報的來源，不採用「第一個回應的頁框」）；「允許此網站使用 Socket 連線」一鍵寫入目前方式的「一律允許」清單（自訂代理模式的按鈕會明講「會取得 token」）；存不了時（例如自訂代理模式下拿掉最後一個允許的網站）顯示原因，下拉選單還原；下拉選單切換「每次造訪時詢問」（兩個清單都移除）／「一律允許」／「一律拒絕」，並清除這個分頁這次造訪的回答（背景服務同時關掉依賴那個回答的連線）。這個分頁裡被詢問過的其他網站的頁框也會列出。非網站的分頁（`chrome://`、本機檔案、擴充功能頁面）不顯示這個區塊。
+
+### 3b. 小幫手沒裝好時的提示
+
+Chrome 擴充功能不能自己執行程式，所以**沒有辦法由擴充功能代使用者執行安裝程式**；能做的只有讓使用者看得到「少了什麼」並指到安裝的步驟。三個地方：
+
+- **彈出視窗的提示**（`popup-helper.ts`）：只有在**需要小幫手**時才去問——Timffle 開著、Socket 沒被停用、連線方式是「連線小幫手」、瀏覽器有 `connectNative`（Firefox 建置沒有）——才向背景服務問小幫手的狀態（`socket_helper_status`，和設定頁用的是同一個請求，背景服務共用同一個探測：啟動小幫手、只送 `hello`、馬上結束，不開任何 TCP）。答案是「找不到」或「版本不相容」才顯示提示與「安裝小幫手」按鈕；其餘（正常、逾時、啟動失敗、連線數已滿…）什麼都不顯示，免得誤報。探測在彈出視窗其餘內容載入的同時進行，提示在答案回來時才出現。按鈕只接受真的點擊（`isTrusted`），開啟安裝頁後彈出視窗自己關閉。彈出視窗被網頁嵌進頁框時什麼都不做。
+- **設定頁**：「連線小幫手」狀態列旁，找不到或不相容時多一個同樣的按鈕；狀態句子與彈出視窗、安裝頁共用 `helper-status.ts`。
+- **安裝頁**（`helper.html`／`helper.ts`，只能在擴充功能的分頁裡開；不在 `web_accessible_resources`，網頁嵌不進去）：為什麼需要小幫手、Windows／macOS／Linux 各一行（要執行哪個檔案、在哪個資料夾；檔名放在 `<code dir="ltr">`，所有語言都是由左到右）、狀態列與「重新檢查」、再來是「完全關閉 Chrome 再檢查」的提醒、安裝程式的保證（只替目前使用者安裝、不需要系統管理員權限、不裝背景服務、不改安全設定）、以及到 Releases 頁面取得下載包的連結。頁面開著時，分頁回到前景會自動再檢查一次。只有 `/options.html`、`/popup.html`、`/helper.html` 的最上層頁框問得到小幫手狀態；網頁、其他擴充功能頁面、頁框內的頁面都問不到。
+- **工具列圖示的紅色「!」**：某個頁面的 Socket 因為 `helper_missing` 或 `helper_incompatible` 失敗時，背景服務對**那個分頁**設 `action.setBadgeText({tabId, text: "!"})`（紅底）。徽章是分頁專屬的，分頁換到別的頁面就消失（在 Chrome 155 實測過）；沒有 `action` API 的瀏覽器或已不存在的分頁都靜默略過。其他種失敗（伺服器拒絕、被允許清單擋下…）不設徽章。
+
+沒有新權限（不需要 `downloads`、`notifications`），也不下載或執行任何東西。安裝頁的 12 句文字與其他頁面一樣放在 `timffle/locales/`，36 種語言都有。
 
 ## 4. 安全模型
 
