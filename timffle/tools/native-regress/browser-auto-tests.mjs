@@ -7,11 +7,13 @@ import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {Chrome,delay} from './chrome-cdp-native.mjs';
 import {loadTexts} from './catalog.mjs';
+import {startFakeGitHub} from './fake-github.mjs';
 import {WebSocketServer} from '../../relay/vendor/ws/wrapper.mjs';
 
 const root=path.dirname(new URL(import.meta.url).pathname);
 const [extensionDir,helper,mode='localtest']=process.argv.slice(2);
 assert.ok(extensionDir&&helper,'Usage: node browser-auto-tests.mjs extension-dir helper-binary mode');
+const HELPER_VERSION='1.3.0';
 const manifest=JSON.parse(await fs.readFile(path.join(extensionDir,'manifest.json'),'utf8'));
 const locale=process.env.TEST_LOCALE||'en',T=loadTexts(extensionDir,locale);
 const digest=crypto.createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32);
@@ -34,6 +36,9 @@ const web=http.createServer((req,res)=>{const u=new URL(req.url,'http://localhos
  res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8"><title>Native bridge regression</title><script>window.__probe=null;window.nativeProbeDone=s=>window.__probe=JSON.parse(s);window.RufflePlayer={config:{autoplay:"on",unmuteOverlay:"hidden",allowScriptAccess:true,preferredRenderer:"canvas",logLevel:"error"}};</script>'+(u.searchParams.has('bare')?'':('<embed src="/NativeProbe.swf" type="application/x-shockwave-flash" width="400" height="300" allowScriptAccess="always" flashvars="'+vars.replaceAll('&','&amp;')+'">')));});
 const pagePort=await listen(web),origin='http://127.0.0.1:'+pagePort;
 const wsHttp=http.createServer();const wss=new WebSocketServer({server:wsHttp});wss.on('connection',s=>s.on('message',(d,b)=>s.send(d,{binary:b})));const wsPort=await listen(wsHttp);cleanup.push(()=>new Promise(r=>wss.close(r)));
+// The helper's installers are downloaded from GitHub; the test browser is sent to this stand-in instead (see fake-github.mjs).
+const github=await startFakeGitHub(path.join(output,'tls'));cleanup.push(()=>github.close());
+const downloads=path.join(output,'downloads');await fs.mkdir(downloads,{recursive:true});
 const realClick=async(sessionId,selector)=>{const r=await chrome.eval(sessionId,'(()=>{const e=document.querySelector('+JSON.stringify(selector)+');e.scrollIntoView({block:"center"});const b=e.getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2}})()');for(const type of ['mousePressed','mouseReleased'])await chrome.send('Input.dispatchMouseEvent',{type,x:r.x,y:r.y,button:'left',clickCount:1},sessionId);};
 const until=async(fn,ms=5000)=>{const end=Date.now()+ms;while(Date.now()<end){const v=await fn();if(v)return v;await delay(80);}return false;};
 // Real helpers are installed by their own --install into a disposable HOME,
@@ -55,9 +60,10 @@ try{
   const hosts=path.join(userDataDir,'NativeMessagingHosts');await fs.mkdir(hosts,{recursive:true});
   await fs.writeFile(path.join(hosts,'timffle_socket_helper.json'),JSON.stringify({name:'timffle_socket_helper',description:'Isolated test host',path:path.resolve(helper),type:'stdio',allowed_origins:['chrome-extension://'+ID+'/']}));
  }
- chrome=new Chrome(work,{recordEvents:true,fontConfig:process.env.TEST_FONTCONFIG||undefined,userDataDir,locale});
+ chrome=new Chrome(work,{recordEvents:true,fontConfig:process.env.TEST_FONTCONFIG||undefined,userDataDir,locale,args:github.args});
  chrome.tab=async(url)=>{const {targetId}=await chrome.send('Target.createTarget',{url:'about:blank'});const {sessionId}=await chrome.send('Target.attachToTarget',{targetId,flatten:true});for(const method of ['Page.enable','Runtime.enable','Network.enable'])await chrome.send(method,{},sessionId);await chrome.send('Page.navigate',{url},sessionId);return {targetId,sessionId};};
  const version=(await chrome.send('Browser.getVersion')).product;
+ await chrome.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloads,eventsEnabled:true});
  const loaded=await chrome.send('Extensions.loadUnpacked',{path:path.resolve(extensionDir)});add('stable-extension-id',loaded.id===ID,{id:loaded.id});
  const opts=await chrome.tab('chrome-extension://'+ID+'/options.html');
  await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()');
@@ -81,57 +87,181 @@ try{
  await chrome.eval(opts.sessionId,'chrome.storage.local.remove("socketProxySettings")');
 
  const status=await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&s.textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'?{text:s.textContent,state:s.dataset.state}:false})()',12000);
- const expectedGood=!['missing','incompatible'].includes(mode);add('helper-detection',expectedGood?status.state==='info'&&status.text===T('timffle_helper_installed',['1.2.0']):status.state==='error'&&status.text===T(mode==='incompatible'?'timffle_helper_incompatible':'timffle_helper_missing'),{status});
+ const expectedGood=!['missing','incompatible'].includes(mode);add('helper-detection',expectedGood?status.state==='info'&&status.text===T('timffle_helper_installed',[HELPER_VERSION]):status.state==='error'&&status.text===T(mode==='incompatible'?'timffle_helper_incompatible':'timffle_helper_missing'),{status});
  await until(()=>countHelpers()===0);add('status-check-exits-helper',countHelpers()===0);
 
- // The notice that tells the visitor to install the helper: the settings page's button, the popup's notice and the install page.
+ // The notice that tells the visitor to install the helper, and the button that downloads the installer for the visitor's system:
+ // the settings page's button, the popup's notice and the install page. Downloads go to the stand-in for GitHub (fake-github.mjs).
  {
   const needsInstall=['missing','incompatible'].includes(mode);
   const wantStatus=T(mode==='incompatible'?'timffle_helper_incompatible':'timffle_helper_missing');
-  const button=await chrome.eval(opts.sessionId,'(()=>{const b=document.querySelector("#socket-helper-install"),r=b.getBoundingClientRect();return {hidden:b.hidden,shown:getComputedStyle(b).display!=="none"&&r.width>0&&r.height>0,text:b.textContent}})()');
-  add('options-install-button',button.hidden===!needsInstall&&button.shown===needsInstall&&button.text===T('timffle_helper_notice_button'),{button});
+  const RELEASE='https://github.com/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/';
+  // What each system gets: the label under the button, and the file (the table of src/helper-download.ts, written out again on purpose).
+  const SYSTEMS=[
+   {id:'windows-x64',label:'Windows 64-bit',file:'timffle-helper-windows-x64.exe',meta:{platform:'Windows',architecture:'x86',bitness:'64'}},
+   {id:'windows-arm64',label:'Windows ARM64',file:'timffle-helper-windows-arm64.exe',meta:{platform:'Windows',architecture:'arm',bitness:'64'}},
+   {id:'windows-x86',label:'Windows 32-bit',file:'timffle-helper-windows-x86.exe',meta:{platform:'Windows',architecture:'x86',bitness:'32'}},
+   {id:'macos-arm64',label:'macOS Apple silicon',file:'timffle-helper-macos-arm64.zip',meta:{platform:'macOS',architecture:'arm',bitness:'64'}},
+   {id:'macos-x64',label:'macOS Intel',file:'timffle-helper-macos-x64.zip',meta:{platform:'macOS',architecture:'x86',bitness:'64'}},
+   {id:'linux-x64',label:'Linux x64',file:'timffle-helper-linux-x64.tar.gz',meta:{platform:'Linux',architecture:'x86',bitness:'64'}},
+   {id:'linux-arm64',label:'Linux ARM64',file:'timffle-helper-linux-arm64.tar.gz',meta:{platform:'Linux',architecture:'arm',bitness:'64'}},
+  ];
+  // This test browser's own system: what its buttons download without any pretending.
+  const own=SYSTEMS.find(x=>x.id===({linux:{x64:'linux-x64',arm64:'linux-arm64'},darwin:{x64:'macos-x64',arm64:'macos-arm64'},win32:{x64:'windows-x64',arm64:'windows-arm64',ia32:'windows-x86'}}[process.platform]??{})[process.arch]);
+  assert.ok(own,'this test needs a system the helper has an installer for');
+  const saved=()=>chrome.events.filter(e=>e.method==='Browser.downloadProgress'&&e.params.state==='completed').map(e=>e.params.filePath);
+  // The release files only: a tab opened on github.com also asks for the site's icon.
+  const requested=()=>github.requests.filter(r=>r.host==='github.com'&&r.url.startsWith('/Im-Tim-mI/')).map(r=>r.url);
+  const waitSaved=async(file,count)=>!!await until(()=>saved().filter(f=>path.basename(f)===file).length>=count,8000);
+  // What the install page shows, read the same way for every system.
+  const INSTALL_PAGE_JS='({title:document.title,heading:document.querySelector("h1").textContent,lead:document.querySelector(".helper-state").nextElementSibling.textContent,groups:[...document.querySelectorAll(".helper-systems > li")].map(li=>({family:li.dataset.family,links:[...li.querySelectorAll(".helper-files li")].map(item=>{const a=item.querySelector("a");return {label:a.textContent,href:a.href,target:a.target,rel:a.rel,current:a.getAttribute("aria-current"),file:item.querySelector("code").textContent,fileDir:item.querySelector("code").dir}}),text:li.querySelector("p").textContent,code:li.querySelector("p code")?.textContent,codeDir:li.querySelector("p code")?.dir})),after:document.querySelector(".helper-systems").nextElementSibling.textContent,link:(()=>{const a=document.querySelector("#helper-releases");return {href:a.href,text:a.textContent,target:a.target,rel:a.rel}})(),dir:document.documentElement.dir,lang:document.documentElement.lang})';
+  // The installers in the order the page lists them for a visitor on `ownId`: each group starts with that visitor's own, which is marked.
+  const arrange=(ownId)=>['windows','macos','linux'].map(f=>{const group=SYSTEMS.filter(x=>x.id.startsWith(f));return [...group.filter(x=>x.id===ownId),...group.filter(x=>x.id!==ownId)];});
+  const linuxCommandFor=(system)=>{const file=system&&system.id.startsWith('linux')?system.file:'timffle-helper-linux-x64.tar.gz';return 'tar xzf '+file+' && ./'+file.replace(/\.tar\.gz$/,'');};
+  const forget=async(file)=>{await fs.rm(path.join(downloads,file),{force:true});};
+  // A real click, then the wait for one more saved copy of the file (counting the earlier ones, so an old download is not taken for this one).
+  const clickAndWaitForFile=async(sessionId,selector,file)=>{const had=saved().filter(f=>path.basename(f)===file).length;await realClick(sessionId,selector);return waitSaved(file,had+1);};
+  // A tab that Chrome believes runs on another system (what navigator.userAgentData tells the page), as a person on that system would see it.
+  const tabAs=async(url,meta)=>{
+   const {targetId}=await chrome.send('Target.createTarget',{url:'about:blank'});const {sessionId}=await chrome.send('Target.attachToTarget',{targetId,flatten:true});
+   for(const method of ['Page.enable','Runtime.enable'])await chrome.send(method,{},sessionId);
+   await chrome.send('Emulation.setUserAgentOverride',{userAgent:'Mozilla/5.0 (test) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36',userAgentMetadata:{brands:[{brand:'Chromium',version:'155'},{brand:'Google Chrome',version:'155'}],fullVersion:'155.0.0.0',platform:meta.platform,platformVersion:'10.0.0',architecture:meta.architecture,model:'',mobile:false,bitness:meta.bitness,wow64:false}},sessionId);
+   await chrome.send('Page.navigate',{url},sessionId);return {targetId,sessionId};};
+  const pagesOnGitHub=async()=>(await chrome.send('Target.getTargets')).targetInfos.filter(t=>t.type==='page'&&/github\.com|githubusercontent/.test(t.url));
+  const button=await chrome.eval(opts.sessionId,'(()=>{const b=document.querySelector("#socket-helper-install"),r=b.getBoundingClientRect(),d=document.querySelector("#socket-helper-download"),f=document.querySelector("#socket-helper-for"),m=document.querySelector("#socket-helper-more");const shown=e=>getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;return {hidden:b.hidden,shown:getComputedStyle(b).display!=="none"&&r.width>0&&r.height>0,text:b.textContent,line:shown(d),forText:f.textContent,forShown:shown(f),more:{text:m.textContent,href:m.href,target:m.target,shown:shown(m)}}})()');
+  add('options-install-button',button.hidden===!needsInstall&&button.shown===needsInstall&&button.text===T('timffle_helper_notice_button')&&button.line===needsInstall&&(!needsInstall||(button.forText===T('timffle_helper_download_for',[own.label])&&button.forShown&&button.more.text===T('timffle_helper_download_more')&&button.more.href==='chrome-extension://'+ID+'/helper.html'&&button.more.target==='_blank'&&button.more.shown)),{button});
   const popup=await chrome.tab('chrome-extension://'+ID+'/popup.html');
   // Whether the notice is really on the page (drawn, with height), not only whether it lacks the "hidden" class; read once the page and its style sheets have loaded.
-  const noticeJs='(()=>{const n=document.querySelector("#helper-notice");if(!n||document.readyState!=="complete")return false;const r=n.getBoundingClientRect();return getComputedStyle(n).display!=="none"&&r.height>0?{text:document.querySelector("#helper-notice-text").textContent,button:document.querySelector("#helper-notice-button").textContent,height:Math.round(r.height)}:false})()';
+  const noticeJs='(()=>{const n=document.querySelector("#helper-notice");if(!n||document.readyState!=="complete")return false;const r=n.getBoundingClientRect();const f=document.querySelector("#helper-notice-for"),m=document.querySelector("#helper-notice-more"),b=document.querySelector("#helper-notice-button");const shown=e=>getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;return getComputedStyle(n).display!=="none"&&r.height>0?{text:document.querySelector("#helper-notice-text").textContent,button:b.textContent,buttonShown:shown(b),forText:f.textContent,forShown:shown(f),more:{text:m.textContent,href:m.href,target:m.target,rel:m.rel,shown:shown(m)},height:Math.round(r.height)}:false})()';
   if(needsInstall){
    const notice=await chrome.wait(popup.sessionId,noticeJs,12000);
-   add('popup-notice',notice.text===T(mode==='incompatible'?'timffle_helper_notice_incompatible':'timffle_helper_notice_missing')&&notice.button===T('timffle_helper_notice_button'),{notice});
+   add('popup-notice',notice.text===T(mode==='incompatible'?'timffle_helper_notice_incompatible':'timffle_helper_notice_missing')&&notice.button===T('timffle_helper_notice_button')&&notice.buttonShown,{notice});
+   add('popup-notice-names-the-system-and-the-other-installers',notice.forText===T('timffle_helper_download_for',[own.label])&&notice.forShown&&notice.more.text===T('timffle_helper_download_more')&&notice.more.href==='chrome-extension://'+ID+'/helper.html'&&notice.more.target==='_blank'&&notice.more.rel==='noopener noreferrer'&&notice.more.shown,{notice});
    const noticeShot=await chrome.send('Page.captureScreenshot',{format:'png'},popup.sessionId);await fs.writeFile(path.join(output,'popup-notice.png'),Buffer.from(noticeShot.data,'base64'));
-   // Only a real click counts; it opens the install page in a tab of its own.
+   // Only a real click counts, and it downloads at once: no page opens first.
    await chrome.eval(popup.sessionId,'document.querySelector("#helper-notice-button").click()');
-   await delay(600);
-   const targetsAfterScriptClick=(await chrome.send('Target.getTargets')).targetInfos.filter(t=>t.type==='page'&&t.url==='chrome-extension://'+ID+'/helper.html');
-   add('popup-script-click-ignored',targetsAfterScriptClick.length===0,{targetsAfterScriptClick});
-   await realClick(popup.sessionId,'#helper-notice-button');
+   await delay(900);
+   add('popup-script-click-ignored',github.requests.length===0&&saved().length===0,{requests:github.requests.length,saved:saved()});
+   add('popup-button-downloads-the-installer',await clickAndWaitForFile(popup.sessionId,'#helper-notice-button',own.file)&&JSON.stringify(requested())===JSON.stringify(['/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/'+own.file]),{requested:requested(),saved:saved()});
+   const body=await fs.readFile(path.join(downloads,own.file),'utf8').catch(()=>null);
+   add('popup-download-is-the-file-of-the-release',body==='fake installer '+own.file,{body});
+   const after=await chrome.eval(popup.sessionId,'document.querySelector("#helper-notice-text").textContent');
+   add('popup-says-the-download-started',after===T('timffle_helper_download_started'),{after});
+   // The tab that fetched the file closes by itself: nothing of GitHub stays open, and the install page was not opened.
+   await until(async()=>(await pagesOnGitHub()).length===0,5000);
+   add('popup-leaves-no-tab-behind',(await pagesOnGitHub()).length===0&&!(await chrome.send('Target.getTargets')).targetInfos.some(t=>t.type==='page'&&t.url==='chrome-extension://'+ID+'/helper.html'),{pages:(await chrome.send('Target.getTargets')).targetInfos.filter(t=>t.type==='page').map(t=>t.url.slice(0,80))});
+   // A double click is one download.
+   await forget(own.file);await delay(2300);const before=requested().length;
+   await realClick(popup.sessionId,'#helper-notice-button');await realClick(popup.sessionId,'#helper-notice-button');
+   await delay(1500);
+   add('popup-double-click-is-one-download',requested().length-before===1,{extra:requested().length-before});
+   // The link to the other installers opens the install page in a tab of its own.
+   await realClick(popup.sessionId,'#helper-notice-more');
    const opened=await until(async()=>(await chrome.send('Target.getTargets')).targetInfos.find(t=>t.type==='page'&&t.url==='chrome-extension://'+ID+'/helper.html'));
-   add('popup-button-opens-install-page',!!opened,{opened});
+   add('popup-link-opens-the-install-page',!!opened);
    if(opened)await chrome.send('Target.closeTarget',{targetId:opened.targetId});
+   await forget(own.file);
   }else{
    await delay(2500);
    add('popup-no-notice-when-helper-works',!(await chrome.eval(popup.sessionId,noticeJs)));
   }
-  // After the button was used the popup has closed itself, as the real popup does.
   await chrome.send('Target.closeTarget',{targetId:popup.targetId}).catch(()=>{});
   if(needsInstall){
+   // The same for every system the helper has an installer for, as seen by a person on that system; and systems it has none for.
+   if(mode==='missing'){
+    for(const system of SYSTEMS){
+     const tab=await tabAs('chrome-extension://'+ID+'/popup.html',system.meta);
+     const n=await chrome.wait(tab.sessionId,noticeJs,12000);
+     const had=saved().filter(f=>path.basename(f)===system.file).length;
+     await realClick(tab.sessionId,'#helper-notice-button');
+     const done=await waitSaved(system.file,had+1);
+     add('popup-downloads-for-'+system.id,n.forText===T('timffle_helper_download_for',[system.label])&&n.buttonShown&&done,{forText:n.forText,saved:saved().map(f=>path.basename(f)),requested:requested().slice(-1)});
+     add('popup-asks-github-for-'+system.id,requested().at(-1)==='/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/'+system.file);
+     await chrome.send('Target.closeTarget',{targetId:tab.targetId}).catch(()=>{});await forget(system.file);
+    }
+    for(const [name,meta] of [['chromeos',{platform:'Chrome OS',architecture:'x86',bitness:'64'}],['android',{platform:'Android',architecture:'arm',bitness:'64'}],['unknown-processor',{platform:'macOS',architecture:'',bitness:''}]]){
+     const tab=await tabAs('chrome-extension://'+ID+'/popup.html',meta);
+     const n=await chrome.wait(tab.sessionId,noticeJs,12000);
+     const was=requested().length;
+     add('popup-without-installer-for-'+name,n.text===T('timffle_helper_notice_missing')&&!n.buttonShown&&!n.forShown&&n.more.shown&&n.more.href==='chrome-extension://'+ID+'/helper.html',{n});
+     await chrome.send('Target.closeTarget',{targetId:tab.targetId}).catch(()=>{});
+     add('popup-without-installer-for-'+name+'-downloads-nothing',requested().length===was);
+    }
+    // The install page for visitors on other systems: their installer first in its group and marked, and the Linux line with the command for their processor.
+    for(const system of [SYSTEMS[1],SYSTEMS[3],SYSTEMS[4],SYSTEMS[6]]){
+     const tab=await tabAs('chrome-extension://'+ID+'/helper.html',system.meta);
+     await chrome.wait(tab.sessionId,'document.querySelectorAll(".helper-files li").length===7',12000);
+     const c=await chrome.eval(tab.sessionId,INSTALL_PAGE_JS);
+     const arranged=arrange(system.id);
+     add('install-page-for-'+system.id,c.groups.every((g,k)=>JSON.stringify(g.links.map(l=>l.label+(l.current?'*':'')))===JSON.stringify(arranged[k].map(x=>x.label+(x.id===system.id?'*':''))))&&c.groups[2].code===linuxCommandFor(system),{groups:c.groups.map(g=>g.links.map(l=>l.label+(l.current?'*':''))),code:c.groups[2].code});
+     await chrome.send('Target.closeTarget',{targetId:tab.targetId}).catch(()=>{});
+    }
+    // A system without an installer (Chrome OS): nothing is marked on the install page, the settings page offers no button but the way to the install page.
+    {
+     const tab=await tabAs('chrome-extension://'+ID+'/helper.html',{platform:'Chrome OS',architecture:'x86',bitness:'64'});
+     await chrome.wait(tab.sessionId,'document.querySelectorAll(".helper-files li").length===7',12000);
+     const c=await chrome.eval(tab.sessionId,INSTALL_PAGE_JS);
+     add('install-page-for-a-system-without-installer',c.groups.every((g,k)=>g.links.every(l=>l.current===null)&&JSON.stringify(g.links.map(l=>l.label))===JSON.stringify(SYSTEMS.filter(x=>x.id.startsWith(['windows','macos','linux'][k])).map(x=>x.label)))&&c.groups[2].code===linuxCommandFor(undefined),{groups:c.groups.map(g=>g.links.map(l=>l.label+(l.current?'*':'')))});
+     await chrome.send('Target.closeTarget',{targetId:tab.targetId}).catch(()=>{});
+     const options=await tabAs('chrome-extension://'+ID+'/options.html',{platform:'Chrome OS',architecture:'x86',bitness:'64'});
+     await chrome.wait(options.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&document.querySelector("#socket-helper-status").textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'})()',12000);
+     const o=await chrome.eval(options.sessionId,'(()=>{const shown=e=>getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;const b=document.querySelector("#socket-helper-install"),d=document.querySelector("#socket-helper-download"),f=document.querySelector("#socket-helper-for"),m=document.querySelector("#socket-helper-more");return {button:shown(b),line:shown(d),label:shown(f),more:shown(m)}})()');
+     add('options-for-a-system-without-installer',o.button===false&&o.line===true&&o.label===false&&o.more===true,{o});
+     await chrome.send('Target.closeTarget',{targetId:options.targetId}).catch(()=>{});
+    }
+    // A release that is not there (not published yet, or private): nothing is saved, and the tab that was opened for it stays and shows GitHub's own page.
+    github.setStatus(404);
+    {
+     const tab=await chrome.tab('chrome-extension://'+ID+'/popup.html');
+     await chrome.wait(tab.sessionId,noticeJs,12000);
+     const had=saved().length;
+     await realClick(tab.sessionId,'#helper-notice-button');
+     const page404=await until(async()=>(await pagesOnGitHub())[0],8000);
+     await delay(500);
+     add('popup-release-not-found-saves-nothing-and-shows-githubs-page',!!page404&&saved().length===had&&/github\.com/.test(page404.url),{page:page404&&page404.url,saved:saved().length-had});
+     if(page404)await chrome.send('Target.closeTarget',{targetId:page404.targetId});
+     await chrome.send('Target.closeTarget',{targetId:tab.targetId}).catch(()=>{});
+    }
+    github.setStatus(200);
+   }
    const installPages=async()=>(await chrome.send('Target.getTargets')).targetInfos.filter(t=>t.type==='page'&&t.url==='chrome-extension://'+ID+'/helper.html');
-   await chrome.eval(opts.sessionId,'document.querySelector("#socket-helper-install").click()');await delay(600);
-   add('options-script-click-ignored',(await installPages()).length===0);
-   await realClick(opts.sessionId,'#socket-helper-install');
-   const opened=await until(async()=>(await installPages())[0]);
-   add('options-button-opens-install-page',!!opened);
-   if(opened)await chrome.send('Target.closeTarget',{targetId:opened.targetId});
+   const requestsBefore=github.requests.length;
+   await chrome.eval(opts.sessionId,'document.querySelector("#socket-helper-install").click()');await delay(900);
+   add('options-script-click-ignored',github.requests.length===requestsBefore&&(await installPages()).length===0);
+   add('options-button-downloads-the-installer',await clickAndWaitForFile(opts.sessionId,'#socket-helper-install',own.file)&&requested().at(-1)==='/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/'+own.file,{requested:requested().slice(-2),saved:saved().map(f=>path.basename(f))});
+   const optionsAfter=await chrome.eval(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return {text:s.textContent,state:s.dataset.state}})()');
+   add('options-says-the-download-started',optionsAfter.text===T('timffle_helper_download_started')&&optionsAfter.state==='info',{optionsAfter});
+   await forget(own.file);
+   await realClick(opts.sessionId,'#socket-helper-more');
+   const openedFromOptions=await until(async()=>(await installPages())[0]);
+   add('options-link-opens-the-install-page',!!openedFromOptions);
+   if(openedFromOptions)await chrome.send('Target.closeTarget',{targetId:openedFromOptions.targetId});
   }
   const page=await chrome.tab('chrome-extension://'+ID+'/helper.html');
   const pageStatusJs='(()=>{const s=document.querySelector("#helper-page-status");return s&&s.dataset.state&&s.textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'?{text:s.textContent,state:s.dataset.state}:false})()';
   const shown=await chrome.wait(page.sessionId,pageStatusJs,12000);
-  add('install-page-status',needsInstall?shown.state==='error'&&shown.text===wantStatus:shown.state==='info'&&shown.text===T('timffle_helper_installed',['1.2.0']),{shown});
-  const content=await chrome.eval(page.sessionId,'({title:document.title,heading:document.querySelector("h1").textContent,steps:[...document.querySelectorAll(".helper-steps li")].map(li=>({text:li.textContent,code:li.querySelector("code")?.textContent,dir:li.querySelector("code")?.dir})),after:document.querySelector(".helper-steps").nextElementSibling.textContent,link:(()=>{const a=document.querySelector("a[href*=releases]");return {href:a.href,text:a.textContent,target:a.target,rel:a.rel}})(),dir:document.documentElement.dir,lang:document.documentElement.lang})');
-  const stripTags=k=>T(k).replace(/<\/?\d>/g,'');
-  add('install-page-texts',content.title===T('timffle_helper_page_title')&&content.heading===T('timffle_helper_page_heading')
-   &&['windows','macos','linux'].every((system,i)=>content.steps[i]?.text===stripTags('timffle_helper_step_'+system))
-   &&content.steps.map(x=>x.code).join('|')==='install-windows.cmd|install-macos.command|sh install-linux.sh'&&content.steps.every(x=>x.dir==='ltr')
+  add('install-page-status',needsInstall?shown.state==='error'&&shown.text===wantStatus:shown.state==='info'&&shown.text===T('timffle_helper_installed',[HELPER_VERSION]),{shown});
+  await chrome.wait(page.sessionId,'document.querySelectorAll(".helper-files li").length===7');
+  const content=await chrome.eval(page.sessionId,INSTALL_PAGE_JS);
+  const stripTags=(k,subs)=>T(k,subs).replace(/<\/?\d>/g,'');
+  const command=linuxCommandFor(own);
+  const order=SYSTEMS.filter(x=>x.id.startsWith('windows')).map(x=>x.id).concat(SYSTEMS.filter(x=>x.id.startsWith('macos')).map(x=>x.id),SYSTEMS.filter(x=>x.id.startsWith('linux')).map(x=>x.id));
+  const listed=content.groups.flatMap(g=>g.links);
+  const arranged=arrange(own.id);
+  add('install-page-texts',content.title===T('timffle_helper_page_title')&&content.heading===T('timffle_helper_page_heading')&&content.lead===T('timffle_helper_page_downloads')
+   &&content.groups.map(g=>g.family).join('|')==='windows|macos|linux'
+   &&content.groups[0].text===T('timffle_helper_step_windows')&&content.groups[1].text===T('timffle_helper_step_macos')&&content.groups[2].text===stripTags('timffle_helper_step_linux',[command])
+   &&content.groups[2].code===command&&content.groups[2].codeDir==='ltr'
    &&content.after===T('timffle_helper_step_after')
-   &&content.link.href==='https://github.com/Im-Tim-mI/Timffle/releases/latest'&&content.link.target==='_blank'&&content.link.rel==='noopener noreferrer'&&content.link.text===T('timffle_helper_page_download').match(/<1>([^<]*)<\/1>/)[1],{content});
+   &&content.link.href==='https://github.com/Im-Tim-mI/Timffle-Helper/releases/tag/v1.3.0'&&content.link.target==='_blank'&&content.link.rel==='noopener noreferrer'&&content.link.text===T('timffle_helper_page_download').match(/<1>([^<]*)<\/1>/)[1],{content});
+  add('install-page-lists-every-installer-for-its-system',content.groups.every((g,i)=>JSON.stringify(g.links.map(l=>l.label))===JSON.stringify(arranged[i].map(x=>x.label))&&g.links.every((l,k)=>l.href===RELEASE+arranged[i][k].file&&l.file===arranged[i][k].file&&l.fileDir==='ltr'&&l.target==='_blank'&&l.rel==='noopener noreferrer'&&l.current===(arranged[i][k].id===own.id?'true':null))),{groups:content.groups.map(g=>g.links.map(l=>l.label+(l.current?'*':'')))});
+  assert.equal(listed.length,order.length);
+  // A link on the install page downloads that file (a real click, as the other buttons).
+  const linuxLink=await chrome.eval(page.sessionId,'(()=>{const a=document.querySelector(\'.helper-files a[href$="timffle-helper-linux-arm64.tar.gz"]\');a.scrollIntoView({block:"center"});const b=a.getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2}})()');
+  const hadArm=saved().filter(f=>path.basename(f)==='timffle-helper-linux-arm64.tar.gz').length;
+  for(const type of ['mousePressed','mouseReleased'])await chrome.send('Input.dispatchMouseEvent',{type,x:linuxLink.x,y:linuxLink.y,button:'left',clickCount:1},page.sessionId);
+  add('install-page-link-downloads-that-file',await waitSaved('timffle-helper-linux-arm64.tar.gz',hadArm+1)&&requested().at(-1)==='/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/timffle-helper-linux-arm64.tar.gz');
+  await forget('timffle-helper-linux-arm64.tar.gz');
   await chrome.eval(page.sessionId,'document.querySelector("#helper-page-check").click()');
   const again=await chrome.wait(page.sessionId,pageStatusJs,12000);
   add('install-page-check-again',JSON.stringify(again)===JSON.stringify(shown),{again});
@@ -215,5 +345,6 @@ try{
 finally{
  if(chrome)await chrome.close();for(const socket of tcpSockets)socket.destroy();for(const client of wss.clients)client.terminate();for(const fn of cleanup.reverse())await fn();
  if(originalPrivate===undefined)delete process.env.TIMFFLE_SOCKET_HELPER_ALLOW_PRIVATE;else process.env.TIMFFLE_SOCKET_HELPER_ALLOW_PRIVATE=originalPrivate;
- await delay(300);await fs.rm(path.join(output,'chrome'),{recursive:true,force:true});
+ // Chrome may still write into its profile for a moment after it was closed: remove again instead of failing the run.
+ await delay(300);await fs.rm(path.join(output,'chrome'),{recursive:true,force:true,maxRetries:8,retryDelay:250});
 }
