@@ -103,18 +103,18 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 - **每一種系統**（`missing` 情境）：用 `Emulation.setUserAgentOverride` 的 `userAgentMetadata` 讓 Chrome 以為自己在 Windows 64-bit／ARM64／32-bit、macOS Apple silicon／Intel、Linux x64／ARM64 上，各按一次真的按鈕，檢查按鈕下面的標籤、存下來的檔名與向 GitHub 要的路徑；Chrome OS、Android、處理器不明的 Mac 沒有按鈕、不下載、仍有「其他系統與安裝說明」。**release 不存在**（假 GitHub 回 404）時沒有存任何檔案，開出來的分頁停在 GitHub 的「找不到頁面」。
 - **安裝頁**：狀態、標題、每個系統一組（每個安裝檔的直接下載連結：網址、順序、**這台電腦的排最前並標記**、檔名在由左到右的 `code` 裡）、Linux 那行指令與它的 `code`、連結（`target=_blank`、`rel=noopener noreferrer`）、「重新檢查」，真的點一個連結會下載那個檔案，以及分頁回到前景時自動再檢查一次（狀態句子先變「檢查中」再回到原來的結果）；遊戲分頁因找不到小幫手而得到紅色「!」（顏色 `[217,48,37,255]`），分頁導覽走之後徽章消失；小幫手正常的情境裡沒有任何分頁有徽章。
 
-- **「請先安裝小幫手」視窗**（`missing` 與 `incompatible` 情境，`notice-window-*`）：遊戲的頁面一需要 TCP 連線就開一個視窗（網址是 `prompt.html?id=…`）；視窗寫的是那個頁面的來源、標題、出了什麼問題（`missing`：「尚未安裝」；`incompatible`：「版本不相容」）、為什麼需要小幫手、安裝程式的保證，下載按鈕與「適用於 Linux x64」都在，「關閉」有焦點，沒有詢問的區塊也沒有「已失效」；腳本點擊什麼都不做、真的點擊下載（假 GitHub 收到對的路徑、存好內容正確的檔案、句子換成「已開始下載…」、沒有 GitHub 的分頁留下、視窗還在）、連點兩下只下載一次、「其他系統與安裝說明」在瀏覽器的一般視窗開出安裝頁而視窗還在、「關閉」關掉視窗。**同一次頁面載入只提示一次**：同一頁在視窗還開著時再連線，不多開、也不換掉它（`notice-window-same-page-load-keeps-its-one-window`）；重新整理那一頁，新的頁面載入的視窗**取代**還開著的舊視窗，一共只有一個（`notice-window-next-page-load-replaces-the-window-that-is-still-open`）；視窗關掉之後，同一頁再開一條 Socket 不會再開（`notice-window-not-again-for-the-same-page-load`）。**第一刻的輸入保護**（`notice-window-ignores-clicks-and-escape-in-its-first-moment`）：把視窗頁面重新載入，0.7 秒就重新開始，在這一刻內用 `Input.dispatchMouseEvent` 的真實點擊分別點下載、其他系統、關閉，再按 Escape，全都什麼也不做（假 GitHub 沒收到請求、沒存檔案、沒開安裝頁、視窗還在；只有真的落在這一刻內的嘗試才算數，沒趕上的會重試）；過了這一刻 Escape 才關得掉視窗（`notice-window-closes-with-escape-after-the-moment`）。視窗的 `document.title` 是它自己的標題，不是詢問視窗的。有畫面的 Chrome（`CHROME_HEADED=1 CHROME_WINDOW_SIZE=none`，例如 `xvfb-run`）另外檢查真的 540 × 620 視窗裡內容不用捲動（`notice-window-fits-its-window-without-scrolling`；無頭模式的 Chrome 自己決定視窗大小，只記錄不判斷）。
+- **「請先安裝小幫手」視窗**（`missing` 與 `incompatible` 情境，`notice-window-*`）：遊戲的頁面一需要 TCP 連線就開一個視窗（網址是 `prompt.html?id=…`）；視窗寫的是那個頁面的來源、標題、出了什麼問題（`missing`：「尚未安裝」；`incompatible`：「版本不相容」）、為什麼需要小幫手、安裝程式的保證，下載按鈕與「適用於 Linux x64」都在，「關閉」有焦點，沒有詢問的區塊也沒有「已失效」；腳本點擊什麼都不做、真的點擊下載（假 GitHub 收到對的路徑、存好內容正確的檔案、句子換成「已開始下載…」、沒有 GitHub 的分頁留下、視窗還在）、連點兩下只下載一次、「其他系統與安裝說明」在瀏覽器的一般視窗開出安裝頁而視窗還在、「關閉」關掉視窗。**同一次頁面載入只提示一次**：同一頁在視窗還開著時再連線，不多開、也不換掉它（`notice-window-same-page-load-keeps-its-one-window`）；重新整理那一頁，新的頁面載入的視窗**取代**還開著的舊視窗，一共只有一個（`notice-window-next-page-load-replaces-the-window-that-is-still-open`）；視窗關掉之後，同一頁再開一條 Socket 不會再開（`notice-window-not-again-for-the-same-page-load`）。**第一刻的輸入保護**（`notice-window-ignores-clicks-and-escape-in-its-first-moment`）：把視窗頁面重新載入，0.7 秒就重新開始，在這一刻內用 `Input.dispatchMouseEvent` 的真實點擊分別點下載、其他系統、關閉，再按 Escape，全都什麼也不做（假 GitHub 沒收到請求、沒存檔案、沒開安裝頁、視窗還在；只有真的落在這一刻內的嘗試才算數，沒趕上的會重試）；過了這一刻，只是自動重複的 Escape 與 Enter（`Input.dispatchKeyEvent` 的 `autoRepeat: true`，等於遊戲裡按住的鍵一直重複進來）仍什麼也不做（`notice-window-ignores-a-key-that-only-repeats`），單獨按一下 Escape 才關得掉視窗（`notice-window-closes-with-escape-after-the-moment`）。視窗的 `document.title` 是它自己的標題，不是詢問視窗的。有畫面的 Chrome（`CHROME_HEADED=1 CHROME_WINDOW_SIZE=none`，例如 `xvfb-run`）另外檢查真的 540 × 620 視窗裡內容不用捲動（`notice-window-fits-its-window-without-scrolling`；無頭模式的 Chrome 自己決定視窗大小，只記錄不判斷）。
 
 **對照實驗**：把彈出視窗樣式表裡 `.helper-notice.hidden { display: none }` 拿掉，`localtest` 的 `popup-no-notice-when-helper-works` 與 `ask-tests.mjs` 的 `popup-controls-and-the-discount-summary-fit-the-600px-chrome-allows`（提示佔掉高度，區塊標題列掉到 610 px）都失敗；原因是 `.helper-notice` 自己的 `display: flex` 贏過 `.hidden`，提示在小幫手正常時也畫出一個空框。
 
 | 情境 | 項數 | 內容 |
 |---|---|---|
 | localtest | 36 | 正常連線、二進位傳輸、拒絕未允許的網站、流量控制、關閉與清理；小幫手正常時彈出視窗沒有提示、安裝頁顯示已安裝並列出所有安裝檔 |
-| missing | 76 | 找不到小幫手時的錯誤與選項頁的訊息；彈出視窗的提示、按鈕與下載（七種系統、三種沒有安裝檔的系統、release 不存在）、設定頁的按鈕、安裝頁、遊戲分頁的紅色「!」與「請先安裝小幫手」視窗（見上） |
+| missing | 80 | 找不到小幫手時的錯誤與選項頁的訊息；彈出視窗的提示、按鈕與下載（七種系統、三種沒有安裝檔的系統、release 不存在）、設定頁的按鈕、安裝頁、遊戲分頁的紅色「!」與「請先安裝小幫手」視窗（見上） |
 | delayed | 21 | 小幫手很慢才回應 |
-| incompatible | 49 | 協定不相容（提示、按鈕與下載、安裝頁、徽章與視窗同 missing，不含七種系統的巡禮） |
+| incompatible | 53 | 協定不相容（提示、按鈕與下載、安裝頁、徽章與視窗同 missing，不含七種系統的巡禮） |
 | manual | 8 | 自訂 WebSocket 代理模式 |
-| ask | 66 | 第一次連線的詢問、字型設定與彈出視窗（見下） |
+| ask | 67 | 第一次連線的詢問、字型設定與彈出視窗（見下） |
 
 ### 第一次連線的詢問（`ask-tests.mjs`）
 
@@ -126,7 +126,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 | `popup` | 彈出視窗：一鍵加入「一律允許」且不需輸入、改成一律拒絕／每次造訪時詢問／一律允許、允許後「重新載入」按鈕亮起、頁面照新設定連線；高度 ≤ 600 px（Chrome 彈出視窗的上限；英文與中文的折扣區塊預設展開，所以那兩種改量區塊之上的部分，細節見下）；頁框內另一個網站被詢問後列在彈出視窗並可單獨允許；非網站的分頁、Socket 已停用、自訂代理模式的顯示 |
 | `framing` | 網頁把 `popup.html`、`options.html`、`onboard.html`、`prompt.html`、`helper.html` 嵌進頁框：瀏覽器拒絕載入（對照：manifest 開放的 `player.html` 載得進來）；網頁拿得到 Ruffle 與 wasm 但拿不到那四個頁面；SWF 位址（直接輸入、或從網頁上的連結點進去）仍被導向獨立播放器（`player.html` 在開放清單裡的原因）；萬一被嵌入（改由擴充功能自己的頁面去嵌），設定頁與詢問頁什麼都不顯示、彈出視窗的 Socket 區塊不顯示 |
 | `dismissal` | 關掉詢問視窗＝這次造訪拒絕，重新整理不會再問 |
-| `guard` | 詢問視窗的輸入防護：腳本產生的點擊不能回答；Tab 到「允許」再按 Enter／Space 不能回答；沒有先在按鈕上移動指標的按下不能回答；視窗沒有焦點時不算、取得焦點後 0.7 秒內不算；之後真的點擊可以回答；鍵盤可以「拒絕」 |
+| `guard` | 詢問視窗的輸入防護：腳本產生的點擊不能回答；Tab 到「允許」再按 Enter／Space 不能回答；沒有先在按鈕上移動指標的按下不能回答；視窗沒有焦點時不算、取得焦點後 0.7 秒內不算；之後真的點擊可以回答；鍵盤可以「拒絕」；自動重複的 Enter／Escape（`autoRepeat: true`）不回答、也不關視窗 |
 | `options` | 設定頁：小幫手與自訂代理各有自己的清單、切換時保留各自輸入、儲存只改目前方式的清單；自訂代理的 token 只給它自己清單裡的網站（真的頁面讀 `RufflePlayer.config.socketProxy`，只在小幫手清單裡的網站讀不到）；沒有編輯的表單跟著別處的變更更新；有編輯的表單收到警告，儲存時被拒絕並顯示最新設定，**舊表單不能把「一律拒絕」改回去** |
 | `keepalive` | 詢問視窗開著、什麼都不做，等 75 秒（超過 MV3 service worker 30 秒閒置回收）後仍能回答。**對照實驗**：把詢問頁的保活 Port 拿掉，同一個測試會失敗（視窗還在，但回答不被接受，因為 service worker 已被回收、問題丟了）；所以這個測試確實量到保活機制，等待時間可用 `ASK_IDLE_MS` 調整 |
 | `fonts` | 網站的 Socket 決定不影響文字怎麼畫：「一律允許」「每次造訪時詢問」「一律拒絕」「停用 Socket」四種狀態下，頁面收到的 `deviceFontRenderer` 都是 `canvas`（Ruffle 內建的字型沒有中文字，只有瀏覽器字型畫得出中文；曾經只有「一律允許」是 `canvas`，被詢問或拒絕的遊戲中文會消失）；使用者在選項頁明確選的渲染器仍然優先 |
