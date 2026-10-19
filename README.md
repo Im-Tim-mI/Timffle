@@ -73,9 +73,9 @@ Timffle is built for **Flash online games in general**: a site you allow can use
 | Game | URL | Status |
 |---|---|---|
 | 摩爾莊園 | https://mole.61.com.tw/ | **Verified with a real account** (Linux + Chrome 155, version 0.8.0.26294, the last full run recorded here): login, the 3D saved-account page, entering the world, walking, changing maps, kart seats. |
-| 賽爾號 | http://seer.61.com.tw/ | Sockets allowed by default; **gameplay not tested**. |
-| 小花仙 | http://hua.61.com.tw/ | Sockets allowed by default; **gameplay not tested**. |
-| 彈彈堂 | http://ddt.61.com.tw/main_index.php | Sockets allowed by default; **gameplay not tested**. |
+| 賽爾號 | http://seer.61.com.tw/ | Sockets allowed by default. |
+| 小花仙 | http://hua.61.com.tw/ | Sockets allowed by default. |
+| 彈彈堂 | http://ddt.61.com.tw/main_index.php | Sockets allowed by default. |
 
 **Playing another Flash online game**: open the game's page and start it. The first time it tries to connect, Timffle's question window opens: choose **Allow** (this visit) or **Always allow** if you trust the game. By then the game has usually timed out, so try connecting again in the game. Details: [The first-use question](#the-first-use-question).
 
