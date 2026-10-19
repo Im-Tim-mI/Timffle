@@ -68,7 +68,7 @@ Details are in [Install](#install).
 
 ### Games
 
-Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs. Whether a particular game then works depends on how much of what it uses Ruffle supports, and **only Taomee Taiwan's 摩爾莊園 has been played with a real account so far**. Taomee Taiwan's four games have sockets allowed by default:
+Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs. Whether a particular game then works depends on how much of what it uses Ruffle supports; **Taomee Taiwan's 摩爾莊園 has been played with a real account**. Taomee Taiwan's four games have sockets allowed by default:
 
 | Game | URL | Status |
 |---|---|---|
