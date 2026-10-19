@@ -326,8 +326,14 @@ try{
      await delay(1200);
      const windowsLeft=(await noticeWindows()).length;
      add('notice-window-ignores-clicks-and-escape-in-its-first-moment',Object.values(early).every(v=>v===true)&&github.requests.length===requestsBefore&&saved().length===savedBefore&&(await installPageTabs()).length===0&&windowsLeft===1,{early,requests:github.requests.length-requestsBefore,saved:saved().length-savedBefore,installPages:(await installPageTabs()).length,windows:windowsLeft});
-     // After the moment the same keys count.
+     // After the moment the same keys count, but not a key that only repeats: one held down for the game keeps repeating into the window that has just taken the focus.
      await chrome.wait(s,'document.body.dataset.wait!=="1"',5000);
+     const repeatKey=(key,vk,text)=>chrome.send('Input.dispatchKeyEvent',{type:'keyDown',key,code:key,windowsVirtualKeyCode:vk,text,autoRepeat:true},s).catch(()=>{});
+     await repeatKey('Escape',27);
+     await repeatKey('Enter',13,'\r');
+     await delay(800);
+     add('notice-window-ignores-a-key-that-only-repeats',(await noticeWindows()).length===1&&github.requests.length===requestsBefore&&saved().length===savedBefore&&(await installPageTabs()).length===0,{windows:(await noticeWindows()).length,requests:github.requests.length-requestsBefore,saved:saved().length-savedBefore});
+     for(const [key,vk] of [['Escape',27],['Enter',13]])await chrome.send('Input.dispatchKeyEvent',{type:'keyUp',key,code:key,windowsVirtualKeyCode:vk},s).catch(()=>{});
      await escape();
      add('notice-window-closes-with-escape-after-the-moment',!!await until(async()=>(await noticeWindows()).length===0,5000));
     }

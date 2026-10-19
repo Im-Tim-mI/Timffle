@@ -395,6 +395,11 @@ try{
  const tk=await fixtureTab(origin,'');
  const qk=await question();
  const focusedAtStart=await chrome.eval(qk.sessionId,'document.activeElement?.id');
+ // A key that was held down for the game keeps repeating into the window that has just taken the focus: a repeat is not a press, it neither answers nor closes the window.
+ for(const [key,vk,text] of [['Enter',13,'\r'],['Escape',27,undefined]])await chrome.send('Input.dispatchKeyEvent',{type:'keyDown',key,code:key,windowsVirtualKeyCode:vk,text,autoRepeat:true},qk.sessionId).catch(()=>{});
+ await delay(500);
+ add('a-repeating-key-does-not-answer',(await promptTargets()).length===1&&await chrome.eval(qk.sessionId,'!document.getElementById("prompt").hidden'));
+ for(const [key,vk] of [['Enter',13],['Escape',27]])await chrome.send('Input.dispatchKeyEvent',{type:'keyUp',key,code:key,windowsVirtualKeyCode:vk},qk.sessionId).catch(()=>{});
  await typeKey(qk.sessionId,'Enter','Enter',13,'\r');
  const rk=await probe(tk,25000);
  add('the-keyboard-can-refuse',focusedAtStart==='deny-once'&&noConnect(rk),{focusedAtStart,rk});
