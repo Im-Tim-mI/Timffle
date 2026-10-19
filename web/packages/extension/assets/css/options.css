@@ -120,6 +120,25 @@
     text-shadow: none;
 }
 
+/* Which system that button downloads for, and the way to the other installers: a line of its own. */
+.helper-download {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 13px;
+}
+
+.helper-download[hidden],
+.helper-download [hidden] {
+    display: none;
+}
+
+#socket-helper-for:not([hidden]) + #socket-helper-more::before {
+    content: "·";
+    display: inline-block;
+    margin-inline: 0.5em;
+    text-decoration: none;
+}
+
 #socket-proxy-websocket-fields {
     display: flex;
     flex-direction: column;

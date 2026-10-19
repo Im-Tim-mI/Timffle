@@ -258,7 +258,7 @@
         "message": "Versione non compatibile: installa il programma di supporto corrispondente a questa estensione."
     },
     "timffle_helper_missing": {
-        "message": "Non installato: esegui il programma di installazione per il tuo sistema nella cartella helper del download, poi controlla di nuovo."
+        "message": "Non installato: scarica ed esegui il programma di installazione per il tuo sistema, poi controlla di nuovo."
     },
     "timffle_helper_unavailable": {
         "message": "Programma di supporto non disponibile: controlla l'installazione e gli avvisi di sicurezza del sistema operativo, poi riprova."
@@ -267,10 +267,25 @@
         "message": "Il programma di supporto socket non è installato, quindi i giochi online non possono connettersi."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Il programma di supporto socket non corrisponde a questa estensione. Reinstallalo dallo stesso download."
+        "message": "Il programma di supporto socket non corrisponde a questa estensione. Scarica ed esegui di nuovo il programma di installazione."
     },
     "timffle_helper_notice_button": {
-        "message": "Installa il programma di supporto"
+        "message": "Scarica il programma di installazione"
+    },
+    "timffle_helper_download_for": {
+        "message": "Per $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Altri sistemi e istruzioni"
+    },
+    "timffle_helper_download_started": {
+        "message": "Download avviato. Al termine, esegui il programma di installazione scaricato, poi ricarica la pagina del gioco."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: installare il programma di supporto socket"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "I giochi online richiedono connessioni TCP, che le estensioni di Chrome non possono aprire, quindi Timffle usa un piccolo programma di supporto. Installalo una volta sola; poi Chrome lo avvia da solo ogni volta che un gioco si connette e lo richiude."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Scarica il programma di installazione per il tuo sistema:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: nel download di Timffle apri la cartella helper (si trova accanto alla cartella che hai caricato in Chrome) e fai doppio clic su <1>install-windows.cmd</1>. Se Windows avvisa che il file non è riconosciuto, controlla che sia il file giusto prima di consentirne l'esecuzione."
+        "message": "Windows: apri il file scaricato. Se Windows avvisa che il file non è riconosciuto, controlla che sia il file giusto prima di consentirne l'esecuzione."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: nel download di Timffle apri la cartella helper (si trova accanto alla cartella che hai caricato in Chrome) e fai doppio clic su <1>install-macos.command</1>. Se macOS lo blocca, consentilo in Impostazioni di Sistema → Privacy e sicurezza, poi fai di nuovo doppio clic."
+        "message": "macOS: apri il file zip scaricato, poi fai doppio clic sul programma al suo interno. Se macOS lo blocca, consentilo in Impostazioni di Sistema → Privacy e sicurezza, poi fai di nuovo doppio clic."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: nel download di Timffle apri un terminale nella cartella helper (si trova accanto alla cartella che hai caricato in Chrome) ed esegui <1>sh install-linux.sh</1>"
+        "message": "Linux: apri un terminale nella cartella del download ed esegui <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Poi controlla di nuovo. Se continua a dire che il programma di supporto non è installato, chiudi completamente Chrome (anche i processi in background), riavvialo e controlla ancora una volta."
@@ -297,7 +321,7 @@
         "message": "Il programma di installazione funziona solo per il tuo account utente: non richiede diritti di amministratore, non installa servizi in background e non modifica alcuna impostazione di sicurezza."
     },
     "timffle_helper_page_download": {
-        "message": "Non hai la cartella del download? Scarica il pacchetto dalla <1>pagina Releases</1>."
+        "message": "Preferisci guardare i file da solo? Si trovano nella <1>pagina Releases</1>."
     },
     "timffle_options_url": {
         "message": "Modello di URL (con token, nascosto)"
@@ -330,7 +354,7 @@
         "message": "Per un sito che non è in nessuno dei due elenchi viene chiesto la prima volta che prova ad aprire un socket: “Consenti”, “Consenti sempre”, “Rifiuta” o “Rifiuta sempre”. Consigliamo di rifiutare: solo i giochi online dovrebbero essere consentiti. Puoi anche impostare il sito della scheda corrente dal popup di Timffle senza digitarne l'indirizzo, e tornare in qualsiasi momento a “Chiedi a ogni visita”. (Solo con il programma di supporto socket; un proxy WebSocket personalizzato non chiede mai e rifiuta i siti non in elenco.)"
     },
     "timffle_note_helper": {
-        "message": "Le estensioni di Chrome non possono aprire socket TCP, da qui il programma di supporto. Installalo una sola volta (esegui il programma di installazione nella cartella helper del download); in seguito Chrome lo avvia e lo chiude automaticamente a ogni connessione di gioco."
+        "message": "Le estensioni di Chrome non possono aprire socket TCP, da qui il programma di supporto. Installalo una sola volta (scarica il programma di installazione ed eseguilo); in seguito Chrome lo avvia e lo chiude automaticamente a ogni connessione di gioco."
     },
     "timffle_note_public": {
         "message": "Il programma di supporto si connette solo a indirizzi internet pubblici, mai alla tua rete locale né a questo computer, e non registra il traffico."

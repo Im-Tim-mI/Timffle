@@ -228,7 +228,7 @@
         "message": "Versió incompatible: instal·la l'assistent que correspongui a aquesta extensió."
     },
     "timffle_helper_missing": {
-        "message": "No instal·lat: executa l'instal·lador del teu sistema a la carpeta helper de la baixada i torna a comprovar."
+        "message": "No instal·lat: baixa i executa l'instal·lador del teu sistema i torna a comprovar."
     },
     "timffle_helper_unavailable": {
         "message": "Assistent no disponible: comprova la instal·lació i els avisos de seguretat del sistema operatiu i torna-ho a provar."
@@ -237,10 +237,25 @@
         "message": "L'assistent de sockets no està instal·lat, així que els jocs en línia no poden connectar-se."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "L'assistent de sockets no correspon a aquesta extensió. Torna'l a instal·lar des de la mateixa baixada."
+        "message": "L'assistent de sockets no correspon a aquesta extensió. Baixa i torna a executar l'instal·lador."
     },
     "timffle_helper_notice_button": {
-        "message": "Instal·la l'assistent"
+        "message": "Baixa l'instal·lador"
+    },
+    "timffle_helper_download_for": {
+        "message": "Per a $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Altres sistemes i instruccions"
+    },
+    "timffle_helper_download_started": {
+        "message": "La baixada ha començat. Quan acabi, executa l'instal·lador baixat i torna a carregar la pàgina del joc."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: instal·lació de l'assistent de sockets"
@@ -251,14 +266,23 @@
     "timffle_helper_page_intro": {
         "message": "Els jocs en línia necessiten connexions TCP, que les extensions de Chrome no poden obrir, així que Timffle fa servir un petit programa assistent. Instal·la'l una sola vegada; després Chrome l'inicia sol cada cop que un joc es connecta i el tanca de nou."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Baixa l'instal·lador del teu sistema:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: a la baixada de Timffle, obre la carpeta helper (és al costat de la carpeta que has carregat a Chrome) i fes doble clic a <1>install-windows.cmd</1>. Si Windows avisa que no reconeix el fitxer, comprova que és el que volies abans de deixar-lo executar."
+        "message": "Windows: obre el fitxer baixat. Si Windows avisa que no reconeix el fitxer, comprova que és el que volies abans de deixar-lo executar."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: a la baixada de Timffle, obre la carpeta helper (és al costat de la carpeta que has carregat a Chrome) i fes doble clic a <1>install-macos.command</1>. Si macOS el bloqueja, permet-lo a Configuració del Sistema → Privadesa i seguretat i torna-hi a fer doble clic."
+        "message": "macOS: obre el fitxer zip baixat i fes doble clic al programa que hi ha dins. Si macOS el bloqueja, permet-lo a Configuració del Sistema → Privadesa i seguretat i torna-hi a fer doble clic."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: a la baixada de Timffle, obre un terminal a la carpeta helper (és al costat de la carpeta que has carregat a Chrome) i executa <1>sh install-linux.sh</1>"
+        "message": "Linux: obre un terminal a la carpeta de la baixada i executa <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Després torna a comprovar. Si encara diu que l'assistent no està instal·lat, tanca Chrome del tot (també els processos en segon pla), torna'l a obrir i comprova-ho un cop més."
@@ -267,7 +291,7 @@
         "message": "L'instal·lador funciona només per al teu compte d'usuari: no necessita drets d'administrador, no instal·la cap servei en segon pla i no canvia cap opció de seguretat."
     },
     "timffle_helper_page_download": {
-        "message": "No tens la carpeta de la baixada? Obtén el paquet a <1>la pàgina Releases</1>."
+        "message": "Prefereixes mirar els fitxers tu mateix? Són a <1>la pàgina Releases</1>."
     },
     "timffle_options_url": {
         "message": "Plantilla d'URL (amb token, amagada)"
@@ -300,7 +324,7 @@
         "message": "Un lloc que no és a cap de les dues llistes es consulta la primera vegada que intenta obrir un socket: «Permet», «Permet sempre», «Denega» o «Denega sempre». Recomanem denegar: només s'haurien de permetre els jocs en línia. També pots definir el lloc de la pestanya actual des de la finestra emergent de Timffle sense escriure'n l'adreça, i tornar-lo a «Pregunta a cada visita» en qualsevol moment. (Només en el mode d'assistent de sockets; un proxy WebSocket personalitzat mai no pregunta i rebutja els llocs que no són a la llista.)"
     },
     "timffle_note_helper": {
-        "message": "Les extensions de Chrome no poden obrir sockets TCP, d'aquí l'assistent. Instal·la'l una sola vegada (executa l'instal·lador de la carpeta helper de la baixada); després Chrome l'inicia i l'atura automàticament a cada connexió de joc."
+        "message": "Les extensions de Chrome no poden obrir sockets TCP, d'aquí l'assistent. Instal·la'l una sola vegada (baixa l'instal·lador i executa'l); després Chrome l'inicia i l'atura automàticament a cada connexió de joc."
     },
     "timffle_note_public": {
         "message": "L'assistent només es connecta a adreces públiques d'internet, mai a la teva xarxa local ni a aquest ordinador, i no registra el trànsit."

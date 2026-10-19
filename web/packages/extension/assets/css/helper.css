@@ -41,12 +41,41 @@ p {
     color: var(--ruffle-orange);
 }
 
-.helper-steps {
+/* One group for each system: its installers, then how to run one. */
+.helper-systems {
     display: flex;
     flex-direction: column;
     gap: 10px;
     margin: 12px 0 16px;
-    padding-inline-start: 22px;
+    padding: 0;
+    list-style: none;
+}
+
+.helper-systems > li {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--ruffle-dark-blue);
+}
+
+.helper-systems p {
+    margin: 0;
+}
+
+.helper-files {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+}
+
+/* The installer for the computer this page is open on. */
+.helper-yours {
+    padding: 0 4px;
+    border-radius: 4px;
+    outline: 2px solid var(--ruffle-orange);
+    font-weight: bold;
 }
 
 /* File names and commands read left to right in every language. */

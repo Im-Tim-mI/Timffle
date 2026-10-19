@@ -258,7 +258,7 @@
         "message": "Versão incompatível: instale o assistente correspondente a esta extensão."
     },
     "timffle_helper_missing": {
-        "message": "Não instalado: execute o instalador do seu sistema na pasta helper da transferência e depois verifique novamente."
+        "message": "Não instalado: transfira e execute o instalador do seu sistema e depois verifique novamente."
     },
     "timffle_helper_unavailable": {
         "message": "Assistente indisponível: verifique a instalação e os avisos de segurança do sistema operativo e tente novamente."
@@ -267,10 +267,25 @@
         "message": "O assistente de sockets não está instalado, por isso os jogos online não conseguem ligar-se."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "O assistente de sockets não corresponde a esta extensão. Instale-o novamente a partir da mesma transferência."
+        "message": "O assistente de sockets não corresponde a esta extensão. Transfira e execute novamente o instalador."
     },
     "timffle_helper_notice_button": {
-        "message": "Instalar o assistente"
+        "message": "Transferir o instalador"
+    },
+    "timffle_helper_download_for": {
+        "message": "Para $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Outros sistemas e instruções"
+    },
+    "timffle_helper_download_started": {
+        "message": "A transferência começou. Quando terminar, execute o instalador transferido e depois recarregue a página do jogo."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: instalar o assistente de sockets"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "Os jogos online precisam de ligações TCP, que as extensões do Chrome não conseguem abrir, por isso o Timffle usa um pequeno programa assistente. Instale-o uma única vez; depois disso o Chrome inicia-o sozinho sempre que um jogo se liga e volta a fechá-lo."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Transfira o instalador do seu sistema:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: na transferência do Timffle, abra a pasta helper (fica ao lado da pasta que carregou no Chrome) e faça duplo clique em <1>install-windows.cmd</1>. Se o Windows avisar que o ficheiro não é reconhecido, confirme que é o ficheiro certo antes de permitir a execução."
+        "message": "Windows: abra o ficheiro transferido. Se o Windows avisar que o ficheiro não é reconhecido, confirme que é o ficheiro pretendido antes de permitir a execução."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: na transferência do Timffle, abra a pasta helper (fica ao lado da pasta que carregou no Chrome) e faça duplo clique em <1>install-macos.command</1>. Se o macOS o bloquear, permita-o em Definições do Sistema → Privacidade e Segurança e volte a fazer duplo clique."
+        "message": "macOS: abra o ficheiro zip transferido e faça duplo clique no programa que está lá dentro. Se o macOS o bloquear, permita-o em Definições do Sistema → Privacidade e Segurança e volte a fazer duplo clique."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: na transferência do Timffle, abra um terminal na pasta helper (fica ao lado da pasta que carregou no Chrome) e execute <1>sh install-linux.sh</1>"
+        "message": "Linux: abra um terminal na pasta da transferência e execute <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Depois, verifique novamente. Se continuar a dizer que o assistente não está instalado, feche o Chrome por completo (incluindo os processos em segundo plano), abra-o de novo e verifique mais uma vez."
@@ -297,7 +321,7 @@
         "message": "O instalador funciona apenas para a sua conta de utilizador: não exige direitos de administrador, não instala nenhum serviço em segundo plano e não altera nenhuma definição de segurança."
     },
     "timffle_helper_page_download": {
-        "message": "Não tem a pasta da transferência? Obtenha o pacote na <1>página Releases</1>."
+        "message": "Prefere ver os ficheiros por si? Estão na <1>página Releases</1>."
     },
     "timffle_options_url": {
         "message": "Modelo de URL (com token, oculto)"
@@ -330,7 +354,7 @@
         "message": "Um site que não está em nenhuma das duas listas é questionado na primeira vez que tenta abrir um socket: “Permitir”, “Permitir sempre”, “Recusar” ou “Recusar sempre”. Recomendamos recusar: apenas os jogos online devem ser permitidos. Também pode definir o site do separador atual a partir da janela pop-up do Timffle, sem escrever o endereço, e voltar a “Perguntar em cada visita” em qualquer momento. (Apenas no modo assistente de sockets; um proxy WebSocket personalizado nunca pergunta e recusa os sites que não estão na lista.)"
     },
     "timffle_note_helper": {
-        "message": "As extensões do Chrome não conseguem abrir sockets TCP, daí o assistente. Instale-o uma única vez (execute o instalador na pasta helper da transferência); depois, o Chrome inicia-o e termina-o automaticamente em cada ligação de jogo."
+        "message": "As extensões do Chrome não conseguem abrir sockets TCP, daí o assistente. Instale-o uma única vez (transfira o instalador e execute-o); depois, o Chrome inicia-o e termina-o automaticamente em cada ligação de jogo."
     },
     "timffle_note_public": {
         "message": "O assistente só se liga a endereços públicos da internet, nunca à sua rede local nem a este computador, e não regista o tráfego."

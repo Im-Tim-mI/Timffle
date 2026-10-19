@@ -252,7 +252,7 @@
         "message": "Versi tidak kompatibel: pasang pembantu yang sesuai dengan ekstensi ini."
     },
     "timffle_helper_missing": {
-        "message": "Belum terpasang: jalankan pemasang untuk sistem Anda di folder helper pada unduhan, lalu periksa lagi."
+        "message": "Belum terpasang: unduh dan jalankan pemasang untuk sistem Anda, lalu periksa lagi."
     },
     "timffle_helper_unavailable": {
         "message": "Pembantu tidak tersedia: periksa pemasangan dan peringatan keamanan sistem operasi, lalu coba lagi."
@@ -261,10 +261,25 @@
         "message": "Pembantu socket belum terpasang, sehingga game online tidak dapat terhubung."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Pembantu socket tidak cocok dengan ekstensi ini. Pasang ulang dari unduhan yang sama."
+        "message": "Pembantu socket tidak cocok dengan ekstensi ini. Unduh dan jalankan pemasang lagi."
     },
     "timffle_helper_notice_button": {
-        "message": "Pasang pembantu"
+        "message": "Unduh pemasang"
+    },
+    "timffle_helper_download_for": {
+        "message": "Untuk $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Sistem lain dan petunjuk"
+    },
+    "timffle_helper_download_started": {
+        "message": "Unduhan dimulai. Setelah selesai, jalankan pemasang yang diunduh, lalu muat ulang halaman game."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: memasang pembantu socket"
@@ -275,14 +290,23 @@
     "timffle_helper_page_intro": {
         "message": "Game online memerlukan koneksi TCP yang tidak dapat dibuka oleh ekstensi Chrome, jadi Timffle memakai program pembantu kecil. Pasang sekali saja; setelah itu Chrome menjalankannya sendiri setiap kali game terhubung dan menutupnya lagi."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Unduh pemasang untuk sistem Anda:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: di unduhan Timffle, buka folder helper (letaknya di samping folder yang Anda muat ke Chrome) lalu klik dua kali <1>install-windows.cmd</1>. Jika Windows memperingatkan bahwa berkas tidak dikenali, pastikan itu berkas yang Anda maksud sebelum mengizinkannya berjalan."
+        "message": "Windows: buka berkas yang diunduh. Jika Windows memperingatkan bahwa berkas tidak dikenali, pastikan itu berkas yang Anda maksud sebelum mengizinkannya berjalan."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: di unduhan Timffle, buka folder helper (letaknya di samping folder yang Anda muat ke Chrome) lalu klik dua kali <1>install-macos.command</1>. Jika diblokir macOS, izinkan di Pengaturan Sistem → Privasi & Keamanan, lalu klik dua kali lagi."
+        "message": "macOS: buka berkas zip yang diunduh, lalu klik dua kali program di dalamnya. Jika diblokir macOS, izinkan di Pengaturan Sistem → Privasi & Keamanan, lalu klik dua kali lagi."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: di unduhan Timffle, buka terminal di folder helper (letaknya di samping folder yang Anda muat ke Chrome) lalu jalankan <1>sh install-linux.sh</1>"
+        "message": "Linux: buka terminal di folder tempat unduhan berada lalu jalankan <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Lalu periksa lagi. Jika masih tertulis pembantu belum terpasang, tutup Chrome sepenuhnya (termasuk proses latar belakangnya), jalankan lagi, dan periksa sekali lagi."
@@ -291,7 +315,7 @@
         "message": "Pemasang hanya bekerja untuk akun pengguna Anda: tidak memerlukan hak administrator, tidak memasang layanan latar belakang, dan tidak mengubah pengaturan keamanan apa pun."
     },
     "timffle_helper_page_download": {
-        "message": "Tidak punya folder unduhannya? Dapatkan paketnya dari <1>halaman Releases</1>."
+        "message": "Ingin melihat berkasnya sendiri? Semuanya ada di <1>halaman Releases</1>."
     },
     "timffle_options_url": {
         "message": "Templat URL (termasuk token, disembunyikan)"
@@ -324,7 +348,7 @@
         "message": "Situs yang tidak ada di kedua daftar ditanya saat pertama kali mencoba membuka socket: “Izinkan”, “Selalu izinkan”, “Tolak”, atau “Selalu tolak”. Kami menyarankan untuk menolak—hanya game online yang sebaiknya diizinkan. Anda juga dapat mengatur situs pada tab saat ini dari popup Timffle tanpa mengetik alamatnya, dan mengembalikannya ke “Tanya setiap kunjungan” kapan saja. (Hanya pada mode pembantu socket; proxy WebSocket kustom tidak pernah bertanya dan menolak situs yang tidak ada dalam daftar.)"
     },
     "timffle_note_helper": {
-        "message": "Ekstensi Chrome tidak dapat membuka socket TCP, karena itu ada pembantu. Pasang sekali saja (jalankan pemasang di folder helper pada unduhan); setelah itu Chrome memulai dan menghentikannya secara otomatis untuk setiap koneksi game."
+        "message": "Ekstensi Chrome tidak dapat membuka socket TCP, karena itu ada pembantu. Pasang sekali saja (unduh pemasang lalu jalankan); setelah itu Chrome memulai dan menghentikannya secara otomatis untuk setiap koneksi game."
     },
     "timffle_note_public": {
         "message": "Pembantu hanya terhubung ke alamat internet publik, tidak pernah ke jaringan lokal Anda atau komputer ini, dan tidak merekam lalu lintas."

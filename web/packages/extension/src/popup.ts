@@ -1,7 +1,6 @@
 import {
     enableBrowserOnOutdatedChromium,
     hasHostPermissionForActiveTab,
-    openHelperPage,
     openOptionsPage,
     openPlayerPage,
     setPageLanguage,
@@ -236,11 +235,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     // Starts the helper for a moment to see whether it is there, so it runs
     // beside the rest of the popup's start-up instead of holding it up.
-    void bindHelperNotice({
-        install: () => {
-            void openHelperPage().then(() => window.close());
-        },
-    });
+    void bindHelperNotice();
 
     await displayTabStatus();
     await bindOptions((options) => {

@@ -258,7 +258,7 @@
         "message": "Uyumsuz sürüm: bu uzantıyla eşleşen yardımcıyı yükleyin."
     },
     "timffle_helper_missing": {
-        "message": "Yüklü değil: indirmedeki helper klasöründe sisteminize uygun yükleyiciyi çalıştırın, sonra yeniden denetleyin."
+        "message": "Yüklü değil: sisteminize uygun yükleyiciyi indirip çalıştırın, sonra yeniden denetleyin."
     },
     "timffle_helper_unavailable": {
         "message": "Yardımcı kullanılamıyor: kurulumu ve işletim sisteminin güvenlik uyarılarını denetleyin, sonra yeniden deneyin."
@@ -267,10 +267,25 @@
         "message": "Soket yardımcısı yüklü değil, bu yüzden çevrimiçi oyunlar bağlanamaz."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Soket yardımcısı bu uzantıyla eşleşmiyor. Aynı indirmeden yeniden yükleyin."
+        "message": "Soket yardımcısı bu uzantıyla eşleşmiyor. Yükleyiciyi indirip yeniden çalıştırın."
     },
     "timffle_helper_notice_button": {
-        "message": "Yardımcıyı yükle"
+        "message": "Yükleyiciyi indir"
+    },
+    "timffle_helper_download_for": {
+        "message": "$SYSTEM$ için",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Diğer sistemler ve yönergeler"
+    },
+    "timffle_helper_download_started": {
+        "message": "İndirme başladı. Bittiğinde indirdiğiniz yükleyiciyi çalıştırın, sonra oyun sayfasını yeniden yükleyin."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: soket yardımcısını yükleme"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "Çevrimiçi oyunlar, Chrome uzantılarının açamadığı TCP bağlantılarına ihtiyaç duyar; bu yüzden Timffle küçük bir yardımcı program kullanır. Bir kez yükleyin; sonrasında Chrome onu bir oyun her bağlandığında kendiliğinden başlatır ve yeniden kapatır."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Sisteminize uygun yükleyiciyi indirin:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: Timffle indirmesinde helper klasörünü açın (Chrome'a yüklediğiniz klasörün yanındadır) ve <1>install-windows.cmd</1> dosyasına çift tıklayın. Windows dosyanın tanınmadığı uyarısı verirse, çalışmasına izin vermeden önce istediğiniz dosya olduğundan emin olun."
+        "message": "Windows: indirilen dosyayı açın. Windows dosyanın tanınmadığı konusunda uyarırsa, çalışmasına izin vermeden önce istediğiniz dosya olduğundan emin olun."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: Timffle indirmesinde helper klasörünü açın (Chrome'a yüklediğiniz klasörün yanındadır) ve <1>install-macos.command</1> dosyasına çift tıklayın. macOS engellerse, Sistem Ayarları → Gizlilik ve Güvenlik bölümünden izin verin ve yeniden çift tıklayın."
+        "message": "macOS: indirilen zip dosyasını açın, sonra içindeki programa çift tıklayın. macOS engellerse, Sistem Ayarları → Gizlilik ve Güvenlik bölümünden izin verin ve yeniden çift tıklayın."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: Timffle indirmesinde helper klasöründe bir terminal açın (Chrome'a yüklediğiniz klasörün yanındadır) ve <1>sh install-linux.sh</1> komutunu çalıştırın"
+        "message": "Linux: indirilen dosyanın bulunduğu klasörde bir terminal açın ve <1>$COMMAND$</1> komutunu çalıştırın",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Ardından yeniden denetleyin. Hâlâ yardımcının yüklü olmadığı yazıyorsa Chrome'u arka plan işlemleri dahil tamamen kapatın, yeniden başlatın ve bir kez daha denetleyin."
@@ -297,7 +321,7 @@
         "message": "Yükleyici yalnızca kendi kullanıcı hesabınız için çalışır: yönetici hakkı gerektirmez, arka plan hizmeti kurmaz ve hiçbir güvenlik ayarını değiştirmez."
     },
     "timffle_helper_page_download": {
-        "message": "İndirme klasörü sizde yok mu? Paketi <1>Releases sayfasından</1> alın."
+        "message": "Dosyalara kendiniz bakmak ister misiniz? Hepsi <1>Releases sayfasında</1>."
     },
     "timffle_options_url": {
         "message": "URL şablonu (token dahil, gizli)"
@@ -330,7 +354,7 @@
         "message": "İki listede de olmayan bir siteye, ilk kez soket açmayı denediğinde sorulur: “İzin ver”, “Her zaman izin ver”, “Reddet” veya “Her zaman reddet”. Reddetmenizi öneririz – yalnızca çevrimiçi oyunlara izin verilmelidir. Geçerli sekmenin sitesini adresini yazmadan Timffle'ın açılır penceresinden de ayarlayabilir ve istediğiniz zaman “Her ziyarette sor” seçeneğine geri döndürebilirsiniz. (Yalnızca soket yardımcısı modunda; özel bir WebSocket proxy asla sormaz ve listede olmayan siteleri reddeder.)"
     },
     "timffle_note_helper": {
-        "message": "Chrome uzantıları TCP soketi açamaz, yardımcı bu yüzden var. Bir kez yükleyin (indirmedeki helper klasöründeki yükleyiciyi çalıştırın); sonrasında Chrome onu her oyun bağlantısı için otomatik olarak başlatır ve durdurur."
+        "message": "Chrome uzantıları TCP soketi açamaz, yardımcı bu yüzden var. Bir kez yükleyin (yükleyiciyi indirip çalıştırın); sonrasında Chrome onu her oyun bağlantısı için otomatik olarak başlatır ve durdurur."
     },
     "timffle_note_public": {
         "message": "Yardımcı yalnızca genel internet adreslerine bağlanır, yerel ağınıza veya bu bilgisayara asla bağlanmaz ve trafiği kaydetmez."

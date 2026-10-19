@@ -120,7 +120,7 @@
         "message": "Nekongrua versio: instalu la helpilon, kiu kongruas kun ĉi tiu etendaĵo."
     },
     "timffle_helper_missing": {
-        "message": "Ne instalita: rulu la instalilon por via sistemo en la dosierujo helper de la elŝuto, poste kontrolu denove."
+        "message": "Ne instalita: elŝutu kaj rulu la instalilon por via sistemo, poste kontrolu denove."
     },
     "timffle_helper_unavailable": {
         "message": "Helpilo ne disponeblas: kontrolu la instaladon kaj la sekurecajn avertojn de la operaciumo, poste reprovu."
@@ -129,10 +129,25 @@
         "message": "La socket-helpilo ne estas instalita, do interretaj ludoj ne povas konektiĝi."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "La socket-helpilo ne kongruas kun ĉi tiu etendaĵo. Instalu ĝin denove el la sama elŝuto."
+        "message": "La socket-helpilo ne kongruas kun ĉi tiu etendaĵo. Elŝutu kaj rulu la instalilon denove."
     },
     "timffle_helper_notice_button": {
-        "message": "Instali la helpilon"
+        "message": "Elŝuti la instalilon"
+    },
+    "timffle_helper_download_for": {
+        "message": "Por $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Aliaj sistemoj kaj instrukcioj"
+    },
+    "timffle_helper_download_started": {
+        "message": "La elŝuto komenciĝis. Kiam ĝi finiĝos, rulu la elŝutitan instalilon, poste reŝargu la ludan paĝon."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: instali la socket-helpilon"
@@ -143,14 +158,23 @@
     "timffle_helper_page_intro": {
         "message": "Interretaj ludoj bezonas TCP-konektojn, kiujn etendaĵoj de Chrome ne povas malfermi, tial Timffle uzas malgrandan helpprogramon. Instalu ĝin unufoje; poste Chrome mem startigas ĝin kiam ajn ludo konektiĝas kaj denove fermas ĝin."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Elŝutu la instalilon por via sistemo:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: en la elŝuto de Timffle malfermu la dosierujon helper (ĝi troviĝas apud la dosierujo, kiun vi ŝargis en Chrome) kaj duoble alklaku <1>install-windows.cmd</1>. Se Windows avertas, ke la dosiero ne estas rekonata, kontrolu, ke ĝi estas la dosiero, kiun vi volis, antaŭ ol lasi ĝin ruliĝi."
+        "message": "Windows: malfermu la elŝutitan dosieron. Se Windows avertas, ke la dosiero ne estas rekonata, kontrolu, ke ĝi estas la dosiero, kiun vi volis, antaŭ ol lasi ĝin ruliĝi."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: en la elŝuto de Timffle malfermu la dosierujon helper (ĝi troviĝas apud la dosierujo, kiun vi ŝargis en Chrome) kaj duoble alklaku <1>install-macos.command</1>. Se macOS blokas ĝin, permesu ĝin en Sistemaj Agordoj → Privateco kaj sekureco, poste duoble alklaku denove."
+        "message": "macOS: malfermu la elŝutitan zip-dosieron, poste duoble alklaku la programon en ĝi. Se macOS blokas ĝin, permesu ĝin en Sistemaj Agordoj → Privateco kaj sekureco, poste duoble alklaku denove."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: en la elŝuto de Timffle malfermu terminalon en la dosierujo helper (ĝi troviĝas apud la dosierujo, kiun vi ŝargis en Chrome) kaj rulu <1>sh install-linux.sh</1>"
+        "message": "Linux: malfermu terminalon en la dosierujo kun la elŝuto kaj rulu <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Poste kontrolu denove. Se ĝi ankoraŭ diras, ke la helpilo ne estas instalita, tute fermu Chrome (inkluzive de ĝiaj fonaj procezoj), startigu ĝin denove kaj kontrolu ankoraŭfoje."
@@ -159,7 +183,7 @@
         "message": "La instalilo funkcias nur por via uzantokonto: ĝi ne bezonas administrajn rajtojn, ne instalas fonan servon kaj ne ŝanĝas ian sekurecan agordon."
     },
     "timffle_helper_page_download": {
-        "message": "Ĉu vi ne havas la dosierujon de la elŝuto? Akiru la pakaĵon de <1>la paĝo Releases</1>."
+        "message": "Ĉu vi preferas mem rigardi la dosierojn? Ili troviĝas en <1>la paĝo Releases</1>."
     },
     "timffle_options_url": {
         "message": "URL-ŝablono (inkluzive de token, kaŝita)"
@@ -192,7 +216,7 @@
         "message": "Retejo, kiu ne estas en iu el la du listoj, estas demandata la unuan fojon kiam ĝi provas malfermi socket: „Permesi“, „Ĉiam permesi“, „Malpermesi“ aŭ „Ĉiam malpermesi“. Ni rekomendas malpermesi – nur interretaj ludoj estu permesataj. Vi ankaŭ povas agordi la retejon de la nuna langeto en la ŝprucfenestro de Timffle sen tajpi ĝian adreson, kaj ĉiam reŝanĝi ĝin al „Demandi je ĉiu vizito“. (Nur en la reĝimo de socket-helpilo; propra WebSocket-proxy neniam demandas kaj rifuzas retejojn ne en la listo.)"
     },
     "timffle_note_helper": {
-        "message": "Etendaĵoj de Chrome ne povas malfermi TCP-sockets, tial la helpilo. Instalu ĝin unufoje (rulu la instalilon en la dosierujo helper de la elŝuto); poste Chrome aŭtomate startigas kaj haltigas ĝin por ĉiu luda konekto."
+        "message": "Etendaĵoj de Chrome ne povas malfermi TCP-sockets, tial la helpilo. Instalu ĝin unufoje (elŝutu la instalilon kaj rulu ĝin); poste Chrome aŭtomate startigas kaj haltigas ĝin por ĉiu luda konekto."
     },
     "timffle_note_public": {
         "message": "La helpilo konektiĝas nur al publikaj interretaj adresoj, neniam al via loka reto aŭ ĉi tiu komputilo, kaj ne registras trafikon."

@@ -231,7 +231,7 @@
         "message": "Yhteensopimaton versio: asenna tähän laajennukseen sopiva apuohjelma."
     },
     "timffle_helper_missing": {
-        "message": "Ei asennettu: suorita järjestelmällesi tarkoitettu asennusohjelma latauksen helper-kansiossa ja tarkista sitten uudelleen."
+        "message": "Ei asennettu: lataa ja suorita järjestelmällesi tarkoitettu asennusohjelma ja tarkista sitten uudelleen."
     },
     "timffle_helper_unavailable": {
         "message": "Apuohjelma ei ole käytettävissä: tarkista asennus ja käyttöjärjestelmän tietoturvailmoitukset ja yritä sitten uudelleen."
@@ -240,10 +240,25 @@
         "message": "Socket-apuohjelmaa ei ole asennettu, joten verkkopelit eivät voi yhdistää."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Socket-apuohjelma ei vastaa tätä laajennusta. Asenna se uudelleen samasta latauksesta."
+        "message": "Socket-apuohjelma ei vastaa tätä laajennusta. Lataa asennusohjelma ja suorita se uudelleen."
     },
     "timffle_helper_notice_button": {
-        "message": "Asenna apuohjelma"
+        "message": "Lataa asennusohjelma"
+    },
+    "timffle_helper_download_for": {
+        "message": "Järjestelmälle $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Muut järjestelmät ja ohjeet"
+    },
+    "timffle_helper_download_started": {
+        "message": "Lataus on alkanut. Kun se on valmis, suorita ladattu asennusohjelma ja lataa sitten pelin sivu uudelleen."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: Socket-apuohjelman asennus"
@@ -254,14 +269,23 @@
     "timffle_helper_page_intro": {
         "message": "Verkkopelit tarvitsevat TCP-yhteyksiä, joita Chrome-laajennukset eivät voi avata, joten Timffle käyttää pientä apuohjelmaa. Asenna se kerran; sen jälkeen Chrome käynnistää sen itse aina, kun peli yhdistää, ja sulkee sen taas."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Lataa järjestelmällesi sopiva asennusohjelma:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: avaa Timffle-latauksessa helper-kansio (se on Chromeen lataamasi kansion vieressä) ja kaksoisnapsauta tiedostoa <1>install-windows.cmd</1>. Jos Windows varoittaa, ettei tiedostoa tunnisteta, varmista, että se on oikea tiedosto, ennen kuin sallit sen suorittamisen."
+        "message": "Windows: avaa ladattu tiedosto. Jos Windows varoittaa, ettei tiedostoa tunnisteta, varmista, että se on oikea tiedosto, ennen kuin sallit sen suorittamisen."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: avaa Timffle-latauksessa helper-kansio (se on Chromeen lataamasi kansion vieressä) ja kaksoisnapsauta tiedostoa <1>install-macos.command</1>. Jos macOS estää sen, salli se kohdassa Järjestelmäasetukset → Tietosuoja ja turvallisuus ja kaksoisnapsauta uudelleen."
+        "message": "macOS: avaa ladattu zip-tiedosto ja kaksoisnapsauta sen sisällä olevaa ohjelmaa. Jos macOS estää sen, salli se kohdassa Järjestelmäasetukset → Tietosuoja ja turvallisuus ja kaksoisnapsauta uudelleen."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: avaa Timffle-latauksessa pääte helper-kansiossa (se on Chromeen lataamasi kansion vieressä) ja suorita <1>sh install-linux.sh</1>"
+        "message": "Linux: avaa pääte latauksen sisältävässä kansiossa ja suorita <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Tarkista sitten uudelleen. Jos siinä yhä lukee, ettei apuohjelmaa ole asennettu, sulje Chrome kokonaan (myös taustaprosessit), käynnistä se uudelleen ja tarkista vielä kerran."
@@ -270,7 +294,7 @@
         "message": "Asennusohjelma toimii vain omalle käyttäjätilillesi: se ei tarvitse järjestelmänvalvojan oikeuksia, ei asenna taustapalvelua eikä muuta mitään suojausasetusta."
     },
     "timffle_helper_page_download": {
-        "message": "Eikö sinulla ole latauskansiota? Hae paketti <1>Releases-sivulta</1>."
+        "message": "Haluatko katsoa tiedostot itse? Ne ovat <1>Releases-sivulla</1>."
     },
     "timffle_options_url": {
         "message": "URL-malli (sisältää tokenin, piilotettu)"
@@ -303,7 +327,7 @@
         "message": "Sivustolta, joka ei ole kummassakaan luettelossa, kysytään ensimmäisellä socketin avausyrityksellä: ”Salli”, ”Salli aina”, ”Estä” tai ”Estä aina”. Suosittelemme estämistä – vain verkkopelit tulisi sallia. Voit myös määrittää nykyisen välilehden sivuston Timfflen ponnahdusikkunassa kirjoittamatta sen osoitetta ja palauttaa sen milloin tahansa asetukseen ”Kysy joka käynnillä”. (Vain socket-apuohjelmatilassa; oma WebSocket-välityspalvelin ei kysy koskaan ja hylkää luettelossa olemattomat sivustot.)"
     },
     "timffle_note_helper": {
-        "message": "Chrome-laajennukset eivät voi avata TCP-socketeja, siksi tarvitaan apuohjelma. Asenna se kerran (suorita asennusohjelma latauksen helper-kansiossa); sen jälkeen Chrome käynnistää ja sulkee sen automaattisesti jokaisen pelin yhteyden ajaksi."
+        "message": "Chrome-laajennukset eivät voi avata TCP-socketeja, siksi tarvitaan apuohjelma. Asenna se kerran (lataa asennusohjelma ja suorita se); sen jälkeen Chrome käynnistää ja sulkee sen automaattisesti jokaisen pelin yhteyden ajaksi."
     },
     "timffle_note_public": {
         "message": "Apuohjelma ottaa yhteyden vain julkisiin internet-osoitteisiin, ei koskaan lähiverkkoosi tai tähän tietokoneeseen, eikä tallenna liikennettä."

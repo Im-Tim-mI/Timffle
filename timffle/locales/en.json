@@ -150,8 +150,8 @@
         "description": "Status of the socket helper."
     },
     "timffle_helper_missing": {
-        "message": "Not installed: run the installer for your system in the download's helper folder, then check again.",
-        "description": "Status of the socket helper. The folder is literally named “helper”; keep that name in Latin letters so the reader can find the folder."
+        "message": "Not installed: download and run the installer for your system, then check again.",
+        "description": "Status of the socket helper."
     },
     "timffle_helper_unavailable": {
         "message": "Helper unavailable: check installation and operating-system security prompts, then retry.",
@@ -162,12 +162,30 @@
         "description": "Notice at the top of the toolbar popup when the socket helper (a small program the extension needs for online games) is not installed. The popup is narrow: keep it short."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "The socket helper does not match this extension. Install it again from the same download.",
-        "description": "Notice at the top of the toolbar popup when a socket helper is installed but is not the one this extension needs. “The same download” is the Timffle download (a ZIP) that contains both the extension and the helper."
+        "message": "The socket helper does not match this extension. Download and run the installer again.",
+        "description": "Notice at the top of the toolbar popup when a socket helper is installed but is not the one this extension needs. The installer is the file that the button under the notice downloads. The popup is narrow: keep it short."
     },
     "timffle_helper_notice_button": {
-        "message": "Install the helper",
-        "description": "Button in the popup notice and next to the helper status on the settings page. It opens the page that explains how to install the socket helper. Keep it short."
+        "message": "Download the installer",
+        "description": "Button in the popup notice and next to the helper status on the settings page. Pressing it starts the download of the installer for the user's own system at once. Keep it short."
+    },
+    "timffle_helper_download_for": {
+        "message": "For $SYSTEM$",
+        "description": "Small line under the download button: says which system the installer is for. $SYSTEM$ is a system and processor name such as “Windows 64-bit” or “macOS Apple silicon”: keep the placeholder as it is.",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Other systems and instructions",
+        "description": "Link under the download button in the popup and on the settings page. It opens the install page, which lists the installers for all systems and says how to run them. Keep it short."
+    },
+    "timffle_helper_download_started": {
+        "message": "Download started. When it has finished, run the downloaded installer, then reload the game page.",
+        "description": "Shown in the popup notice (or next to the helper status on the settings page) after the download button was pressed. The popup is narrow: keep it short."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: install the socket helper",
@@ -181,17 +199,27 @@
         "message": "Online games need TCP connections, which Chrome extensions cannot open, so Timffle uses a small helper program. Install it once; after that Chrome starts it by itself whenever a game connects and closes it again.",
         "description": "First paragraph of the install page. TCP and Chrome stay in Latin letters."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Download the installer for your system:",
+        "description": "Sentence above the list of installers on the install page. The list follows it, one group for each system (Windows, macOS, Linux)."
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: in the Timffle download, open the helper folder (it sits next to the folder you loaded into Chrome) and double-click <1>install-windows.cmd</1>. If Windows warns that the file is not recognized, check that it is the file you meant before you let it run.",
-        "description": "One line of the install page, for Windows. <1>…</1> is the installer's file name, shown in a code font: keep the tags and keep the file name exactly. The folder is literally named “helper”; keep that name in Latin letters so the reader can find it. Start the line with the system name (Windows)."
+        "message": "Windows: open the downloaded file. If Windows warns that it is not recognized, check that it is the file you meant before you let it run.",
+        "description": "One line of the install page, for Windows, below the download links. Start the line with the system name (Windows)."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: in the Timffle download, open the helper folder (it sits next to the folder you loaded into Chrome) and double-click <1>install-macos.command</1>. If macOS blocks it, allow it in System Settings → Privacy & Security, then double-click it again.",
-        "description": "One line of the install page, for macOS. <1>…</1> is the installer's file name, shown in a code font: keep the tags and keep the file name exactly. The folder is literally named “helper”; keep that name in Latin letters. “System Settings → Privacy & Security” is where macOS lets the user allow a blocked file: use the names macOS shows in your language."
+        "message": "macOS: open the downloaded zip file, then double-click the program inside. If macOS blocks it, allow it in System Settings → Privacy & Security, then double-click it again.",
+        "description": "One line of the install page, for macOS, below the download links. “zip” is the file type and stays in Latin letters. “System Settings → Privacy & Security” is where macOS lets the user allow a blocked file: use the names macOS shows in your language. Start the line with the system name (macOS)."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: in the Timffle download, open a terminal in the helper folder (it sits next to the folder you loaded into Chrome) and run <1>sh install-linux.sh</1>",
-        "description": "One line of the install page, for Linux. <1>…</1> is the command to type, shown in a code font: keep the tags and keep the command exactly. The folder is literally named “helper”; keep that name in Latin letters."
+        "message": "Linux: open a terminal in the folder with the download and run <1>$COMMAND$</1>",
+        "description": "One line of the install page, for Linux, below the download links. <1>$COMMAND$</1> is the command to type, shown in a code font: keep the tags and the placeholder exactly. Start the line with the system name (Linux).",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Then check again. If it still says the helper is not installed, fully quit Chrome (including its background processes), start it again and check once more.",
@@ -202,8 +230,8 @@
         "description": "A reassurance on the install page: the installer is per user and needs no special rights."
     },
     "timffle_helper_page_download": {
-        "message": "Do not have the download folder? Get the package from <1>the Releases page</1>.",
-        "description": "Line at the bottom of the install page. <1>…</1> is a link to the project's Releases page, where the download is published: keep the tags and keep the word Releases in Latin letters."
+        "message": "Prefer to look at the files yourself? They are on <1>the Releases page</1>.",
+        "description": "Line at the bottom of the install page. <1>…</1> is a link to the Releases page where the installers are published: keep the tags and keep the word Releases in Latin letters."
     },
     "timffle_options_url": {
         "message": "URL template (including token, concealed)",
@@ -244,8 +272,8 @@
         "description": "Use the same words as the buttons (timffle_allow, timffle_choice_allow, timffle_prompt_deny_once, timffle_choice_deny) and the choice timffle_choice_ask."
     },
     "timffle_note_helper": {
-        "message": "Chrome extensions cannot open TCP sockets, hence the helper. Install it once (run the installer in the download's helper folder); Chrome then starts and stops it automatically for each game connection.",
-        "description": "The folder is literally named “helper”; keep that name in Latin letters so the reader can find the folder."
+        "message": "Chrome extensions cannot open TCP sockets, hence the helper. Install it once (download the installer and run it); Chrome then starts and stops it automatically for each game connection.",
+        "description": "Explains the socket helper on the settings page."
     },
     "timffle_note_public": {
         "message": "The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic."

@@ -258,7 +258,7 @@
         "message": "版本不兼容：请使用同一个下载包里的扩展程序和连接助手，重新安装助手后再检查。"
     },
     "timffle_helper_missing": {
-        "message": "尚未安装：请运行下载包 helper 文件夹里对应系统的安装程序，完成后点击“重新检查”。"
+        "message": "尚未安装：请下载并运行适合你系统的安装程序，完成后点击“重新检查”。"
     },
     "timffle_helper_unavailable": {
         "message": "无法启动或响应超时：请确认安装是否完成，并查看操作系统的安全提示后再检查。"
@@ -267,10 +267,25 @@
         "message": "尚未安装连接助手，在线游戏无法连接。"
     },
     "timffle_helper_notice_incompatible": {
-        "message": "连接助手与这个扩展程序不匹配。请从同一个下载包重新安装。"
+        "message": "连接助手与这个扩展程序不匹配。请重新下载并运行安装程序。"
     },
     "timffle_helper_notice_button": {
-        "message": "安装助手"
+        "message": "直接下载安装程序"
+    },
+    "timffle_helper_download_for": {
+        "message": "适用于 $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "其他系统与安装说明"
+    },
+    "timffle_helper_download_started": {
+        "message": "已开始下载。下载完成后请运行安装程序，然后刷新游戏页面。"
     },
     "timffle_helper_page_title": {
         "message": "Timffle：安装连接助手"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "在线游戏需要 TCP 连接，而 Chrome 的扩展程序无法自己建立，所以 Timffle 使用一个小程序作为助手。只需安装一次；之后每当游戏连接，Chrome 会自动启动它，用完再关闭。"
     },
+    "timffle_helper_page_downloads": {
+        "message": "请下载适合你系统的安装程序："
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows：在 Timffle 下载包里打开 helper 文件夹（就在你加载到 Chrome 的那个文件夹旁边），双击 <1>install-windows.cmd</1>。如果 Windows 警告无法识别这个文件，请先确认它就是你要的文件，再允许运行。"
+        "message": "Windows：打开下载的文件。如果 Windows 警告无法识别这个文件，请先确认它就是你要的文件，再允许运行。"
     },
     "timffle_helper_step_macos": {
-        "message": "macOS：在 Timffle 下载包里打开 helper 文件夹（就在你加载到 Chrome 的那个文件夹旁边），双击 <1>install-macos.command</1>。如果 macOS 拦截了它，请在系统设置 → 隐私与安全性中允许，然后再双击一次。"
+        "message": "macOS：打开下载的 zip 文件，双击里面的程序。如果 macOS 拦截了它，请在系统设置 → 隐私与安全性中允许，然后再双击一次。"
     },
     "timffle_helper_step_linux": {
-        "message": "Linux：在 Timffle 下载包里的 helper 文件夹（就在你加载到 Chrome 的那个文件夹旁边）打开终端，运行 <1>sh install-linux.sh</1>"
+        "message": "Linux：在下载文件所在的文件夹打开终端，运行 <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "然后重新检查。如果仍显示尚未安装助手，请完全退出 Chrome（包括后台进程），重新启动后再检查一次。"
@@ -297,7 +321,7 @@
         "message": "安装程序只为你的用户账户安装：不需要管理员权限，不安装后台服务，也不更改任何安全设置。"
     },
     "timffle_helper_page_download": {
-        "message": "没有下载包文件夹？请到 <1>Releases 页面</1>获取。"
+        "message": "想自己查看文件？都在 <1>Releases 页面</1>。"
     },
     "timffle_options_url": {
         "message": "WebSocket URL 模板（含 token，隐藏显示）"
@@ -330,7 +354,7 @@
         "message": "不在上面两个列表中的网站，第一次尝试使用 Socket 连接时，Timffle 会弹出窗口询问你：“允许”“一律允许”“拒绝”“一律拒绝”。默认建议拒绝——只有在线游戏可以允许。你也可以在 Timffle 图标的弹出窗口里直接设置当前标签页的网站，不必输入网址，并可随时改回“每次访问时询问”。（仅限连接助手模式；自定义 WebSocket 代理不会询问，未列出的网站一律不能使用。）"
     },
     "timffle_note_helper": {
-        "message": "Chrome 扩展程序无法直接建立 TCP 连接，所以需要连接助手。助手只需安装一次（运行下载包 helper 文件夹里的安装程序），之后 Chrome 会在游戏连接时自动启动、结束时自动关闭，不需要打开任何窗口或服务。"
+        "message": "Chrome 扩展程序无法直接建立 TCP 连接，所以需要连接助手。助手只需安装一次（下载安装程序并运行），之后 Chrome 会在游戏连接时自动启动、结束时自动关闭，不需要打开任何窗口或服务。"
     },
     "timffle_note_public": {
         "message": "助手只连接公开的互联网地址，不会连接局域网或本机，也不会记录连接内容。"

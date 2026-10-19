@@ -258,7 +258,7 @@
         "message": "Incompatibele versie: installeer de helper die bij deze extensie hoort."
     },
     "timffle_helper_missing": {
-        "message": "Niet geïnstalleerd: voer het installatieprogramma voor je systeem uit in de map helper van de download en controleer daarna opnieuw."
+        "message": "Niet geïnstalleerd: download en voer het installatieprogramma voor je systeem uit en controleer daarna opnieuw."
     },
     "timffle_helper_unavailable": {
         "message": "Helper niet beschikbaar: controleer de installatie en de beveiligingsmeldingen van het besturingssysteem en probeer het daarna opnieuw."
@@ -267,10 +267,25 @@
         "message": "De sockethelper is niet geïnstalleerd, dus onlinegames kunnen geen verbinding maken."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "De sockethelper past niet bij deze extensie. Installeer hem opnieuw vanuit dezelfde download."
+        "message": "De sockethelper past niet bij deze extensie. Download het installatieprogramma en voer het opnieuw uit."
     },
     "timffle_helper_notice_button": {
-        "message": "Helper installeren"
+        "message": "Installatieprogramma downloaden"
+    },
+    "timffle_helper_download_for": {
+        "message": "Voor $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Andere systemen en instructies"
+    },
+    "timffle_helper_download_started": {
+        "message": "De download is gestart. Voer na afloop het gedownloade installatieprogramma uit en laad daarna de gamepagina opnieuw."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: de sockethelper installeren"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "Onlinegames hebben TCP-verbindingen nodig, die Chrome-extensies niet kunnen openen, daarom gebruikt Timffle een klein hulpprogramma. Installeer het één keer; daarna start Chrome het zelf wanneer een game verbinding maakt en sluit het weer af."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Download het installatieprogramma voor je systeem:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: open in de Timffle-download de map helper (die staat naast de map die je in Chrome hebt geladen) en dubbelklik op <1>install-windows.cmd</1>. Waarschuwt Windows dat het bestand niet wordt herkend, controleer dan of het het bedoelde bestand is voordat je het laat uitvoeren."
+        "message": "Windows: open het gedownloade bestand. Waarschuwt Windows dat het bestand niet wordt herkend, controleer dan of het het bedoelde bestand is voordat je het laat uitvoeren."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: open in de Timffle-download de map helper (die staat naast de map die je in Chrome hebt geladen) en dubbelklik op <1>install-macos.command</1>. Blokkeert macOS het bestand, sta het dan toe via Systeeminstellingen → Privacy en beveiliging en dubbelklik opnieuw."
+        "message": "macOS: open het gedownloade zip-bestand en dubbelklik op het programma erin. Blokkeert macOS het, sta het dan toe via Systeeminstellingen → Privacy en beveiliging en dubbelklik opnieuw."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: open in de Timffle-download een terminal in de map helper (die staat naast de map die je in Chrome hebt geladen) en voer <1>sh install-linux.sh</1> uit"
+        "message": "Linux: open een terminal in de map met de download en voer <1>$COMMAND$</1> uit",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Controleer daarna opnieuw. Staat er nog steeds dat de helper niet is geïnstalleerd, sluit Chrome dan volledig af (ook de achtergrondprocessen), start het opnieuw en controleer nog een keer."
@@ -297,7 +321,7 @@
         "message": "Het installatieprogramma werkt alleen voor je eigen gebruikersaccount: het vraagt geen beheerdersrechten, installeert geen achtergrondservice en wijzigt geen beveiligingsinstelling."
     },
     "timffle_helper_page_download": {
-        "message": "Heb je de downloadmap niet? Haal het pakket op via de <1>Releases-pagina</1>."
+        "message": "Liever zelf naar de bestanden kijken? Ze staan op <1>de Releases-pagina</1>."
     },
     "timffle_options_url": {
         "message": "URL-sjabloon (inclusief token, verborgen)"
@@ -330,7 +354,7 @@
         "message": "Een website die op geen van beide lijsten staat, krijgt de eerste keer dat hij een socket probeert te openen een vraag: “Toestaan”, “Altijd toestaan”, “Weigeren” of “Altijd weigeren”. Wij raden aan te weigeren: alleen onlinegames zouden toegestaan moeten worden. Je kunt de website van het huidige tabblad ook instellen via de pop-up van Timffle zonder het adres te typen, en op elk moment terugzetten naar “Bij elk bezoek vragen”. (Alleen in de modus sockethelper; een eigen WebSocket-proxy vraagt nooit en weigert websites die niet op de lijst staan.)"
     },
     "timffle_note_helper": {
-        "message": "Chrome-extensies kunnen geen TCP-sockets openen, vandaar de helper. Installeer hem één keer (voer het installatieprogramma in de map helper van de download uit); daarna start en stopt Chrome hem automatisch bij elke gameverbinding."
+        "message": "Chrome-extensies kunnen geen TCP-sockets openen, vandaar de helper. Installeer hem één keer (download het installatieprogramma en voer het uit); daarna start en stopt Chrome hem automatisch bij elke gameverbinding."
     },
     "timffle_note_public": {
         "message": "De helper maakt alleen verbinding met openbare internetadressen, nooit met je lokale netwerk of deze computer, en legt geen verkeer vast."

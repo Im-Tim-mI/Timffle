@@ -255,7 +255,7 @@
         "message": "Nezdružljiva različica: namestite pomočnika, ki ustreza tej razširitvi."
     },
     "timffle_helper_missing": {
-        "message": "Ni nameščeno: zaženite namestitveni program za svoj sistem v mapi helper prenosa in nato znova preverite."
+        "message": "Ni nameščeno: prenesite in zaženite namestitveni program za svoj sistem in nato znova preverite."
     },
     "timffle_helper_unavailable": {
         "message": "Pomočnik ni na voljo: preverite namestitev in varnostna obvestila operacijskega sistema ter poskusite znova."
@@ -264,10 +264,25 @@
         "message": "Pomočnik za socket ni nameščen, zato se spletne igre ne morejo povezati."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Pomočnik za socket se ne ujema s to razširitvijo. Znova ga namestite iz istega prenosa."
+        "message": "Pomočnik za socket se ne ujema s to razširitvijo. Prenesite namestitveni program in ga znova zaženite."
     },
     "timffle_helper_notice_button": {
-        "message": "Namesti pomočnika"
+        "message": "Prenesi namestitveni program"
+    },
+    "timffle_helper_download_for": {
+        "message": "Za $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Drugi sistemi in navodila"
+    },
+    "timffle_helper_download_started": {
+        "message": "Prenos se je začel. Ko se konča, zaženite preneseni namestitveni program in nato znova naložite stran igre."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: namestitev pomočnika za socket"
@@ -278,14 +293,23 @@
     "timffle_helper_page_intro": {
         "message": "Spletne igre potrebujejo povezave TCP, ki jih razširitve za Chrome ne morejo odpreti, zato Timffle uporablja majhen pomožni program. Namestite ga enkrat; potem ga Chrome zažene sam, ko se igra poveže, in ga spet zapre."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Prenesite namestitveni program za svoj sistem:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: v prenosu Timffle odprite mapo helper (je poleg mape, ki ste jo naložili v Chrome) in dvakrat kliknite <1>install-windows.cmd</1>. Če vas Windows opozori, da datoteka ni prepoznana, preverite, ali je to datoteka, ki ste jo želeli, preden dovolite njen zagon."
+        "message": "Windows: odprite preneseno datoteko. Če Windows opozori, da datoteka ni prepoznana, preverite, ali je to datoteka, ki ste jo želeli, preden dovolite njen zagon."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: v prenosu Timffle odprite mapo helper (je poleg mape, ki ste jo naložili v Chrome) in dvakrat kliknite <1>install-macos.command</1>. Če ga macOS blokira, ga dovolite v Sistemske nastavitve → Zasebnost in varnost ter znova dvakrat kliknite."
+        "message": "macOS: odprite preneseno datoteko zip in dvakrat kliknite program v njej. Če ga macOS blokira, ga dovolite v Sistemske nastavitve → Zasebnost in varnost ter znova dvakrat kliknite."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: v prenosu Timffle odprite terminal v mapi helper (je poleg mape, ki ste jo naložili v Chrome) in zaženite <1>sh install-linux.sh</1>"
+        "message": "Linux: odprite terminal v mapi s prenosom in zaženite <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Nato znova preverite. Če še vedno piše, da pomočnik ni nameščen, povsem zaprite Chrome (vključno s procesi v ozadju), ga znova zaženite in preverite še enkrat."
@@ -294,7 +318,7 @@
         "message": "Namestitveni program deluje samo za vaš uporabniški račun: ne potrebuje skrbniških pravic, ne namesti storitve v ozadju in ne spremeni nobene varnostne nastavitve."
     },
     "timffle_helper_page_download": {
-        "message": "Nimate prenesene mape? Paket dobite na <1>strani Releases</1>."
+        "message": "Želite datoteke pogledati sami? Najdete jih na <1>strani Releases</1>."
     },
     "timffle_options_url": {
         "message": "Predloga URL (vključno s tokenom, skrita)"
@@ -327,7 +351,7 @@
         "message": "Spletno mesto, ki ni na nobenem od obeh seznamov, je ob prvem poskusu odpiranja socketa vprašano: »Dovoli«, »Vedno dovoli«, »Zavrni« ali »Vedno zavrni«. Priporočamo zavrnitev – dovoliti bi bilo treba samo spletne igre. Spletno mesto trenutnega zavihka lahko nastavite tudi v pojavnem oknu Timffle, ne da bi vtipkali njegov naslov, in ga kadar koli vrnete na »Vprašaj ob vsakem obisku«. (Samo v načinu pomočnika za socket; lasten proxy WebSocket nikoli ne vpraša in zavrača spletna mesta, ki niso na seznamu.)"
     },
     "timffle_note_helper": {
-        "message": "Razširitve Chrome ne morejo odpirati socketov TCP, zato pomočnik. Namestite ga enkrat (zaženite namestitveni program v mapi helper prenosa); Chrome ga nato samodejno zažene in ustavi ob vsaki povezavi z igro."
+        "message": "Razširitve Chrome ne morejo odpirati socketov TCP, zato pomočnik. Namestite ga enkrat (prenesite namestitveni program in ga zaženite); Chrome ga nato samodejno zažene in ustavi ob vsaki povezavi z igro."
     },
     "timffle_note_public": {
         "message": "Pomočnik se povezuje samo z javnimi internetnimi naslovi, nikoli z vašim lokalnim omrežjem ali tem računalnikom, in ne beleži prometa."

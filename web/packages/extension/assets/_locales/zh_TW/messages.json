@@ -258,7 +258,7 @@
         "message": "版本不相容：請使用同一下載包的插件與連線小幫手，重新安裝小幫手後再檢查。"
     },
     "timffle_helper_missing": {
-        "message": "尚未安裝：請執行下載包 helper 資料夾裡對應系統的安裝檔，完成後按「重新檢查」。"
+        "message": "尚未安裝：請下載並執行適合你系統的安裝程式，完成後按「重新檢查」。"
     },
     "timffle_helper_unavailable": {
         "message": "無法啟動或回應逾時：請確認安裝是否完成，並查看作業系統的安全提示後再檢查。"
@@ -267,10 +267,25 @@
         "message": "尚未安裝連線小幫手，線上遊戲無法連線。"
     },
     "timffle_helper_notice_incompatible": {
-        "message": "連線小幫手與這個插件不相符。請從同一個下載包重新安裝。"
+        "message": "連線小幫手與這個插件不相符。請重新下載並執行安裝程式。"
     },
     "timffle_helper_notice_button": {
-        "message": "安裝小幫手"
+        "message": "直接下載安裝程式"
+    },
+    "timffle_helper_download_for": {
+        "message": "適用於 $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "其他系統與安裝說明"
+    },
+    "timffle_helper_download_started": {
+        "message": "已開始下載。下載完成後請執行安裝程式，再重新整理遊戲頁面。"
     },
     "timffle_helper_page_title": {
         "message": "Timffle：安裝連線小幫手"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "線上遊戲需要 TCP 連線，Chrome 的擴充功能無法自己開啟，所以 Timffle 使用一個小程式當小幫手。只要安裝一次；之後每當遊戲連線，Chrome 會自動啟動它，用完再關閉。"
     },
+    "timffle_helper_page_downloads": {
+        "message": "請下載適合你系統的安裝程式："
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows：在 Timffle 下載包裡開啟 helper 資料夾（就在你載入 Chrome 的那個資料夾旁邊），連按兩下 <1>install-windows.cmd</1>。如果 Windows 警告無法辨識這個檔案，請先確認它就是你要的檔案，再允許執行。"
+        "message": "Windows：開啟下載的檔案。如果 Windows 警告無法辨識這個檔案，請先確認它就是你要的檔案，再允許執行。"
     },
     "timffle_helper_step_macos": {
-        "message": "macOS：在 Timffle 下載包裡開啟 helper 資料夾（就在你載入 Chrome 的那個資料夾旁邊），連按兩下 <1>install-macos.command</1>。如果 macOS 擋下它，請在系統設定 → 隱私權與安全性中允許，再連按兩下一次。"
+        "message": "macOS：開啟下載的 zip 檔，連按兩下裡面的程式。如果 macOS 擋下它，請在系統設定 → 隱私權與安全性中允許，再連按兩下一次。"
     },
     "timffle_helper_step_linux": {
-        "message": "Linux：在 Timffle 下載包裡的 helper 資料夾（就在你載入 Chrome 的那個資料夾旁邊）開啟終端機，執行 <1>sh install-linux.sh</1>"
+        "message": "Linux：在下載檔所在的資料夾開啟終端機，執行 <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "然後重新檢查。如果仍顯示尚未安裝小幫手，請完全結束 Chrome（包含背景程序），重新啟動後再檢查一次。"
@@ -297,7 +321,7 @@
         "message": "安裝程式只替你的使用者帳號安裝：不需要系統管理員權限、不安裝背景服務，也不更動任何安全性設定。"
     },
     "timffle_helper_page_download": {
-        "message": "沒有下載包資料夾？請到 <1>Releases 頁面</1>取得。"
+        "message": "想自己看檔案？都在 <1>Releases 頁面</1>。"
     },
     "timffle_options_url": {
         "message": "WebSocket URL 範本（含 token，隱藏顯示）"
@@ -330,7 +354,7 @@
         "message": "不在上面兩個清單的網站，第一次嘗試使用 Socket 連線時，Timffle 會跳出視窗詢問你：「允許」「一律允許」「拒絕」「一律拒絕」。預設建議拒絕——只有線上遊戲可以允許。你也可以在 Timffle 圖示的彈出視窗直接設定目前分頁的網站，不必輸入網址，並可隨時改回「每次造訪時詢問」。（僅限連線小幫手模式；自訂 WebSocket 代理不會詢問，未列出的網站一律不能使用。）"
     },
     "timffle_note_helper": {
-        "message": "Chrome 擴充套件無法直接開 TCP 連線，所以需要連線小幫手。小幫手只需安裝一次（執行下載包 helper 資料夾裡的安裝檔），之後 Chrome 會在遊戲連線時自動啟動、結束時自動關閉，不需開啟任何視窗或服務。"
+        "message": "Chrome 擴充套件無法直接開 TCP 連線，所以需要連線小幫手。小幫手只需安裝一次（下載安裝程式並執行），之後 Chrome 會在遊戲連線時自動啟動、結束時自動關閉，不需開啟任何視窗或服務。"
     },
     "timffle_note_public": {
         "message": "小幫手只連往公開網路位址，不會連往區域網路或本機，也不記錄連線內容。"

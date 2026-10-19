@@ -22,14 +22,24 @@
                 <p id="helper-page-status" role="status" aria-live="polite" data-i18n="timffle_helper_checking"></p>
                 <button type="button" id="helper-page-check" data-i18n="timffle_helper_check"></button>
             </div>
-            <ul class="helper-steps">
-                <li data-i18n-rich="timffle_helper_step_windows"><code dir="ltr" translate="no"></code></li>
-                <li data-i18n-rich="timffle_helper_step_macos"><code dir="ltr" translate="no"></code></li>
-                <li data-i18n-rich="timffle_helper_step_linux"><code dir="ltr" translate="no"></code></li>
+            <p data-i18n="timffle_helper_page_downloads"></p>
+            <ul class="helper-systems">
+                <li data-family="windows">
+                    <ul class="helper-files"></ul>
+                    <p data-i18n="timffle_helper_step_windows"></p>
+                </li>
+                <li data-family="macos">
+                    <ul class="helper-files"></ul>
+                    <p data-i18n="timffle_helper_step_macos"></p>
+                </li>
+                <li data-family="linux">
+                    <ul class="helper-files"></ul>
+                    <p id="helper-step-linux"><code dir="ltr" translate="no"></code></p>
+                </li>
             </ul>
             <p data-i18n="timffle_helper_step_after"></p>
             <p class="helper-small" data-i18n="timffle_helper_page_safe"></p>
-            <p class="helper-small" data-i18n-rich="timffle_helper_page_download"><a href="https://github.com/Im-Tim-mI/Timffle/releases/latest" target="_blank" rel="noopener noreferrer"></a></p>
+            <p class="helper-small" data-i18n-rich="timffle_helper_page_download"><a id="helper-releases" target="_blank" rel="noopener noreferrer"></a></p>
         </main>
         <script src="dist/helper.js"></script>
     </body>

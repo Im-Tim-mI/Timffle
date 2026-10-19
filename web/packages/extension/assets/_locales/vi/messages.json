@@ -258,7 +258,7 @@
         "message": "Phiên bản không tương thích: hãy cài trình hỗ trợ khớp với tiện ích này."
     },
     "timffle_helper_missing": {
-        "message": "Chưa cài đặt: hãy chạy trình cài đặt dành cho hệ thống của bạn trong thư mục helper của bản tải về, rồi kiểm tra lại."
+        "message": "Chưa cài đặt: hãy tải về và chạy trình cài đặt dành cho hệ thống của bạn, rồi kiểm tra lại."
     },
     "timffle_helper_unavailable": {
         "message": "Trình hỗ trợ không khả dụng: hãy kiểm tra việc cài đặt và các cảnh báo bảo mật của hệ điều hành, rồi thử lại."
@@ -267,10 +267,25 @@
         "message": "Trình hỗ trợ socket chưa được cài đặt nên game trực tuyến không thể kết nối."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Trình hỗ trợ socket không khớp với tiện ích này. Hãy cài lại từ cùng bản tải về."
+        "message": "Trình hỗ trợ socket không khớp với tiện ích này. Hãy tải trình cài đặt về và chạy lại."
     },
     "timffle_helper_notice_button": {
-        "message": "Cài đặt trình hỗ trợ"
+        "message": "Tải trình cài đặt"
+    },
+    "timffle_helper_download_for": {
+        "message": "Dành cho $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Hệ thống khác và hướng dẫn"
+    },
+    "timffle_helper_download_started": {
+        "message": "Đã bắt đầu tải về. Khi xong, hãy chạy trình cài đặt đã tải về, rồi tải lại trang trò chơi."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: cài đặt trình hỗ trợ socket"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "Game trực tuyến cần kết nối TCP mà tiện ích Chrome không thể mở, nên Timffle dùng một chương trình hỗ trợ nhỏ. Chỉ cần cài đặt một lần; sau đó Chrome tự khởi động nó mỗi khi game kết nối và đóng lại."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Tải trình cài đặt dành cho hệ thống của bạn:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: trong bản tải về của Timffle, hãy mở thư mục helper (nằm cạnh thư mục bạn đã nạp vào Chrome) rồi nhấp đúp <1>install-windows.cmd</1>. Nếu Windows cảnh báo không nhận ra tệp, hãy kiểm tra đó đúng là tệp bạn muốn trước khi cho phép chạy."
+        "message": "Windows: hãy mở tệp đã tải về. Nếu Windows cảnh báo không nhận ra tệp, hãy kiểm tra đó đúng là tệp bạn muốn trước khi cho phép chạy."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: trong bản tải về của Timffle, hãy mở thư mục helper (nằm cạnh thư mục bạn đã nạp vào Chrome) rồi nhấp đúp <1>install-macos.command</1>. Nếu macOS chặn, hãy cho phép trong Cài đặt hệ thống → Quyền riêng tư & Bảo mật, rồi nhấp đúp lại."
+        "message": "macOS: hãy mở tệp zip đã tải về, rồi nhấp đúp vào chương trình bên trong. Nếu macOS chặn, hãy cho phép trong Cài đặt hệ thống → Quyền riêng tư & Bảo mật, rồi nhấp đúp lại."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: trong bản tải về của Timffle, hãy mở terminal trong thư mục helper (nằm cạnh thư mục bạn đã nạp vào Chrome) rồi chạy <1>sh install-linux.sh</1>"
+        "message": "Linux: hãy mở terminal trong thư mục chứa bản tải về và chạy <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Sau đó kiểm tra lại. Nếu vẫn báo chưa cài trình hỗ trợ, hãy thoát hoàn toàn Chrome (kể cả các tiến trình chạy nền), mở lại và kiểm tra thêm một lần."
@@ -297,7 +321,7 @@
         "message": "Trình cài đặt chỉ hoạt động cho tài khoản người dùng của bạn: không cần quyền quản trị, không cài dịch vụ chạy nền và không thay đổi bất kỳ cài đặt bảo mật nào."
     },
     "timffle_helper_page_download": {
-        "message": "Bạn không có thư mục tải về? Hãy lấy gói tại <1>trang Releases</1>."
+        "message": "Muốn tự xem các tệp? Chúng nằm ở <1>trang Releases</1>."
     },
     "timffle_options_url": {
         "message": "Mẫu URL (gồm token, được ẩn)"
@@ -330,7 +354,7 @@
         "message": "Trang web không nằm trong danh sách nào sẽ được hỏi vào lần đầu nó cố mở socket: “Cho phép”, “Luôn cho phép”, “Từ chối” hoặc “Luôn từ chối”. Chúng tôi khuyên nên từ chối—chỉ nên cho phép các trò chơi trực tuyến. Bạn cũng có thể đặt trang web của tab hiện tại từ cửa sổ bật lên của Timffle mà không cần gõ địa chỉ, và đặt lại về “Hỏi ở mỗi lần truy cập” bất cứ lúc nào. (Chỉ ở chế độ trình hỗ trợ socket; proxy WebSocket tùy chỉnh không bao giờ hỏi và từ chối các trang web không có trong danh sách.)"
     },
     "timffle_note_helper": {
-        "message": "Tiện ích mở rộng của Chrome không thể mở socket TCP, vì vậy cần có trình hỗ trợ. Chỉ cần cài một lần (chạy trình cài đặt trong thư mục helper của bản tải về); sau đó Chrome tự động khởi động và dừng nó cho mỗi kết nối trò chơi."
+        "message": "Tiện ích mở rộng của Chrome không thể mở socket TCP, vì vậy cần có trình hỗ trợ. Chỉ cần cài một lần (tải trình cài đặt về và chạy); sau đó Chrome tự động khởi động và dừng nó cho mỗi kết nối trò chơi."
     },
     "timffle_note_public": {
         "message": "Trình hỗ trợ chỉ kết nối tới các địa chỉ internet công cộng, không bao giờ tới mạng cục bộ của bạn hay máy tính này, và không ghi lại lưu lượng."

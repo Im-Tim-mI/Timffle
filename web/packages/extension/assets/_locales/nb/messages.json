@@ -120,7 +120,7 @@
         "message": "Inkompatibel versjon: installer hjelperen som hører til denne utvidelsen."
     },
     "timffle_helper_missing": {
-        "message": "Ikke installert: kjør installasjonsprogrammet for systemet ditt i mappen helper i nedlastingen, og sjekk deretter på nytt."
+        "message": "Ikke installert: last ned og kjør installasjonsprogrammet for systemet ditt, og sjekk deretter på nytt."
     },
     "timffle_helper_unavailable": {
         "message": "Hjelperen er utilgjengelig: sjekk installasjonen og sikkerhetsmeldingene fra operativsystemet, og prøv deretter igjen."
@@ -129,10 +129,25 @@
         "message": "Socket-hjelperen er ikke installert, så nettspill kan ikke koble til."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Socket-hjelperen passer ikke til denne utvidelsen. Installer den på nytt fra samme nedlasting."
+        "message": "Socket-hjelperen passer ikke til denne utvidelsen. Last ned og kjør installasjonsprogrammet på nytt."
     },
     "timffle_helper_notice_button": {
-        "message": "Installer hjelperen"
+        "message": "Last ned installasjonsprogrammet"
+    },
+    "timffle_helper_download_for": {
+        "message": "For $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Andre systemer og veiledning"
+    },
+    "timffle_helper_download_started": {
+        "message": "Nedlastingen har startet. Når den er ferdig, kjører du installasjonsprogrammet du lastet ned, og laster deretter spillsiden på nytt."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: installer Socket-hjelperen"
@@ -143,14 +158,23 @@
     "timffle_helper_page_intro": {
         "message": "Nettspill trenger TCP-tilkoblinger, som Chrome-utvidelser ikke kan åpne, så Timffle bruker et lite hjelpeprogram. Installer det én gang; etter det starter Chrome det selv hver gang et spill kobler til, og lukker det igjen."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Last ned installasjonsprogrammet for systemet ditt:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: Åpne mappen helper i Timffle-nedlastingen (den ligger ved siden av mappen du lastet inn i Chrome), og dobbeltklikk på <1>install-windows.cmd</1>. Hvis Windows advarer om at filen ikke gjenkjennes, kontroller at det er riktig fil før du lar den kjøre."
+        "message": "Windows: åpne filen du lastet ned. Hvis Windows advarer om at filen ikke gjenkjennes, sjekker du at det er filen du mente før du lar den kjøre."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: Åpne mappen helper i Timffle-nedlastingen (den ligger ved siden av mappen du lastet inn i Chrome), og dobbeltklikk på <1>install-macos.command</1>. Hvis macOS blokkerer den, tillat den i Systeminnstillinger → Personvern og sikkerhet, og dobbeltklikk igjen."
+        "message": "macOS: åpne zip-filen du lastet ned, og dobbeltklikk på programmet i den. Hvis macOS blokkerer det, tillater du det i Systeminnstillinger → Personvern og sikkerhet og dobbeltklikker på nytt."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: Åpne et terminalvindu i mappen helper i Timffle-nedlastingen (den ligger ved siden av mappen du lastet inn i Chrome), og kjør <1>sh install-linux.sh</1>"
+        "message": "Linux: åpne en terminal i mappen med nedlastingen og kjør <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Sjekk deretter på nytt. Hvis det fortsatt står at hjelperen ikke er installert, avslutter du Chrome helt (også bakgrunnsprosessene), starter det på nytt og sjekker én gang til."
@@ -159,7 +183,7 @@
         "message": "Installasjonsprogrammet fungerer bare for din egen brukerkonto: det trenger ikke administratorrettigheter, installerer ingen bakgrunnstjeneste og endrer ingen sikkerhetsinnstillinger."
     },
     "timffle_helper_page_download": {
-        "message": "Har du ikke nedlastingsmappen? Hent pakken fra <1>Releases-siden</1>."
+        "message": "Vil du heller se på filene selv? De ligger på <1>Releases-siden</1>."
     },
     "timffle_options_url": {
         "message": "URL-mal (med token, skjult)"
@@ -192,7 +216,7 @@
         "message": "Et nettsted som ikke står på noen av listene, blir spurt første gang det prøver å åpne en socket: «Tillat», «Tillat alltid», «Avslå» eller «Avslå alltid». Vi anbefaler å avslå – bare nettspill bør tillates. Du kan også angi nettstedet i den gjeldende fanen fra Timffles hurtigvindu uten å skrive inn adressen, og når som helst sette det tilbake til «Spør ved hvert besøk». (Bare i modusen socket-hjelper; en egen WebSocket-proxy spør aldri og avviser nettsteder som ikke står på listen.)"
     },
     "timffle_note_helper": {
-        "message": "Chrome-utvidelser kan ikke åpne TCP-sockets, derfor hjelperen. Installer den én gang (kjør installasjonsprogrammet i mappen helper i nedlastingen); deretter starter og stopper Chrome den automatisk for hver spilltilkobling."
+        "message": "Chrome-utvidelser kan ikke åpne TCP-sockets, derfor hjelperen. Installer den én gang (last ned installasjonsprogrammet og kjør det); deretter starter og stopper Chrome den automatisk for hver spilltilkobling."
     },
     "timffle_note_public": {
         "message": "Hjelperen kobler bare til offentlige internettadresser, aldri til ditt lokale nettverk eller denne datamaskinen, og registrerer ingen trafikk."

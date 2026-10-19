@@ -17,7 +17,7 @@ import {
     queryHelper,
     statusMessage,
 } from "./helper-status";
-import { openHelperPage } from "./utils";
+import { bindHelperDownload } from "./helper-download";
 
 const VALIDATION_KEYS: Record<ProxyValidationError, string> = {
     invalid_settings: "timffle_error_invalid_settings",
@@ -74,6 +74,18 @@ export async function bindProxyOptions(): Promise<void> {
     const helperInstall = document.getElementById(
         "socket-helper-install",
     )! as HTMLButtonElement;
+    const helperDownload = document.getElementById("socket-helper-download")!;
+    const helperFor = document.getElementById("socket-helper-for")!;
+    // Which installer belongs to this computer is worked out while the page
+    // loads, so the button knows what it downloads before anyone clicks it.
+    const installerForThisComputer = bindHelperDownload({
+        button: helperInstall,
+        label: helperFor,
+        started: () => {
+            helperStatus.textContent = text("timffle_helper_download_started");
+            helperStatus.dataset["state"] = "info";
+        },
+    });
 
     const modeTexts =
         document.querySelectorAll<HTMLElement>("[data-mode-text]");
@@ -140,12 +152,17 @@ export async function bindProxyOptions(): Promise<void> {
         helperStatus.textContent = text("timffle_helper_checking");
         helperStatus.dataset["state"] = "info";
         helperInstall.hidden = true;
+        helperDownload.hidden = true;
         const verdict = helperVerdict(await queryHelper());
         helperStatus.textContent = statusMessage(verdict);
         helperStatus.dataset["state"] =
             verdict.kind === "installed" ? "info" : "error";
         // Running the installer is the fix for a missing or mismatched helper.
-        helperInstall.hidden = !needsInstaller(verdict);
+        // The button needs to know the system; the link to all installers does not.
+        const installer = await installerForThisComputer;
+        helperInstall.hidden =
+            !needsInstaller(verdict) || installer === undefined;
+        helperDownload.hidden = !needsInstaller(verdict);
         helperCheck.disabled = false;
     }
 
@@ -161,11 +178,6 @@ export async function bindProxyOptions(): Promise<void> {
     }
 
     helperCheck.addEventListener("click", () => void checkHelper());
-    helperInstall.addEventListener("click", (event) => {
-        if (event.isTrusted) {
-            void openHelperPage();
-        }
-    });
     void checkHelper();
 
     // The popup and the question windows change the same settings while this

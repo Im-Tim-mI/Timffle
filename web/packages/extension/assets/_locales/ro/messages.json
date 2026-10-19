@@ -258,7 +258,7 @@
         "message": "Versiune incompatibilă: instalează asistentul care corespunde acestei extensii."
     },
     "timffle_helper_missing": {
-        "message": "Neinstalat: rulează programul de instalare pentru sistemul tău din folderul helper al descărcării, apoi verifică din nou."
+        "message": "Neinstalat: descarcă și rulează programul de instalare pentru sistemul tău, apoi verifică din nou."
     },
     "timffle_helper_unavailable": {
         "message": "Asistent indisponibil: verifică instalarea și avertismentele de securitate ale sistemului de operare, apoi încearcă din nou."
@@ -267,10 +267,25 @@
         "message": "Asistentul pentru socketuri nu este instalat, așa că jocurile online nu se pot conecta."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Asistentul pentru socketuri nu corespunde acestei extensii. Instalează-l din nou din aceeași descărcare."
+        "message": "Asistentul pentru socketuri nu corespunde acestei extensii. Descarcă și rulează din nou programul de instalare."
     },
     "timffle_helper_notice_button": {
-        "message": "Instalează asistentul"
+        "message": "Descarcă programul de instalare"
+    },
+    "timffle_helper_download_for": {
+        "message": "Pentru $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Alte sisteme și instrucțiuni"
+    },
+    "timffle_helper_download_started": {
+        "message": "Descărcarea a început. Când se termină, rulează programul de instalare descărcat, apoi reîncarcă pagina jocului."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: instalarea asistentului pentru socketuri"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "Jocurile online au nevoie de conexiuni TCP, pe care extensiile Chrome nu le pot deschide, așa că Timffle folosește un mic program ajutător. Instalează-l o singură dată; după aceea Chrome îl pornește singur de fiecare dată când un joc se conectează și îl închide la loc."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Descarcă programul de instalare pentru sistemul tău:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: în descărcarea Timffle, deschide folderul helper (se află lângă folderul pe care l-ai încărcat în Chrome) și dă dublu clic pe <1>install-windows.cmd</1>. Dacă Windows avertizează că fișierul nu este recunoscut, verifică dacă este fișierul dorit înainte să-l lași să ruleze."
+        "message": "Windows: deschide fișierul descărcat. Dacă Windows avertizează că fișierul nu este recunoscut, verifică dacă este fișierul dorit înainte de a-l lăsa să ruleze."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: în descărcarea Timffle, deschide folderul helper (se află lângă folderul pe care l-ai încărcat în Chrome) și dă dublu clic pe <1>install-macos.command</1>. Dacă macOS îl blochează, permite-l din Setări de sistem → Confidențialitate și securitate, apoi dă din nou dublu clic."
+        "message": "macOS: deschide fișierul zip descărcat, apoi dă dublu clic pe programul din el. Dacă macOS îl blochează, permite-l din Setări de sistem → Confidențialitate și securitate, apoi dă din nou dublu clic."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: în descărcarea Timffle, deschide un terminal în folderul helper (se află lângă folderul pe care l-ai încărcat în Chrome) și rulează <1>sh install-linux.sh</1>"
+        "message": "Linux: deschide un terminal în folderul cu descărcarea și rulează <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Apoi verifică din nou. Dacă tot scrie că asistentul nu este instalat, închide complet Chrome (inclusiv procesele din fundal), pornește-l din nou și verifică încă o dată."
@@ -297,7 +321,7 @@
         "message": "Programul de instalare funcționează doar pentru contul tău de utilizator: nu cere drepturi de administrator, nu instalează niciun serviciu în fundal și nu schimbă nicio setare de securitate."
     },
     "timffle_helper_page_download": {
-        "message": "Nu ai folderul descărcării? Ia pachetul de pe <1>pagina Releases</1>."
+        "message": "Preferi să te uiți singur la fișiere? Sunt pe <1>pagina Releases</1>."
     },
     "timffle_options_url": {
         "message": "Șablon URL (inclusiv tokenul, ascuns)"
@@ -330,7 +354,7 @@
         "message": "Pentru un site care nu este în niciuna dintre cele două liste se întreabă prima dată când încearcă să deschidă un socket: „Permite”, „Permite întotdeauna”, „Refuză” sau „Refuză întotdeauna”. Recomandăm refuzul – doar jocurile online ar trebui permise. Poți seta site-ul filei curente și din fereastra pop-up Timffle, fără să-i scrii adresa, și îl poți readuce oricând la „Întreabă la fiecare vizită”. (Doar în modul asistent pentru socketuri; un proxy WebSocket personalizat nu întreabă niciodată și refuză site-urile care nu sunt în listă.)"
     },
     "timffle_note_helper": {
-        "message": "Extensiile Chrome nu pot deschide socketuri TCP, de aceea există asistentul. Instalează-l o singură dată (rulează programul de instalare din folderul helper al descărcării); apoi Chrome îl pornește și îl oprește automat la fiecare conexiune de joc."
+        "message": "Extensiile Chrome nu pot deschide socketuri TCP, de aceea există asistentul. Instalează-l o singură dată (descarcă programul de instalare și rulează-l); apoi Chrome îl pornește și îl oprește automat la fiecare conexiune de joc."
     },
     "timffle_note_public": {
         "message": "Asistentul se conectează doar la adrese publice de internet, niciodată la rețeaua ta locală sau la acest computer, și nu înregistrează traficul."

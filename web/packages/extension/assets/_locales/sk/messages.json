@@ -243,7 +243,7 @@
         "message": "Nekompatibilná verzia: nainštalujte pomocníka, ktorý zodpovedá tomuto rozšíreniu."
     },
     "timffle_helper_missing": {
-        "message": "Nie je nainštalované: spustite inštalačný program pre svoj systém v priečinku helper stiahnutého balíka a potom skontrolujte znova."
+        "message": "Nie je nainštalované: stiahnite a spustite inštalačný program pre svoj systém a potom skontrolujte znova."
     },
     "timffle_helper_unavailable": {
         "message": "Pomocník nie je dostupný: skontrolujte inštaláciu a bezpečnostné upozornenia operačného systému a skúste to znova."
@@ -252,10 +252,25 @@
         "message": "Pomocník pre sokety nie je nainštalovaný, preto sa online hry nemôžu pripojiť."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Pomocník pre sokety nezodpovedá tomuto rozšíreniu. Nainštalujte ho znova zo stiahnutého balíka."
+        "message": "Pomocník pre sokety nezodpovedá tomuto rozšíreniu. Stiahnite inštalačný program a spustite ho znova."
     },
     "timffle_helper_notice_button": {
-        "message": "Nainštalovať pomocníka"
+        "message": "Stiahnuť inštalačný program"
+    },
+    "timffle_helper_download_for": {
+        "message": "Pre $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Iné systémy a pokyny"
+    },
+    "timffle_helper_download_started": {
+        "message": "Sťahovanie sa začalo. Keď skončí, spustite stiahnutý inštalačný program a potom znova načítajte stránku hry."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: inštalácia pomocníka pre sokety"
@@ -266,14 +281,23 @@
     "timffle_helper_page_intro": {
         "message": "Online hry potrebujú spojenia TCP, ktoré rozšírenia Chrome nevedia otvoriť, preto Timffle používa malý pomocný program. Nainštalujte ho raz; potom ho Chrome sám spustí vždy, keď sa hra pripája, a znova ukončí."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Stiahnite si inštalačný program pre svoj systém:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: v stiahnutom balíku Timffle otvorte priečinok helper (je vedľa priečinka, ktorý ste načítali do Chromu) a dvakrát kliknite na <1>install-windows.cmd</1>. Ak Windows upozorní, že súbor nepozná, overte, že je to súbor, ktorý ste chceli, a až potom ho nechajte spustiť."
+        "message": "Windows: otvorte stiahnutý súbor. Ak Windows varuje, že súbor nepozná, overte, že je to súbor, ktorý ste chceli, a až potom ho nechajte spustiť."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: v stiahnutom balíku Timffle otvorte priečinok helper (je vedľa priečinka, ktorý ste načítali do Chromu) a dvakrát kliknite na <1>install-macos.command</1>. Ak ho macOS zablokuje, povoľte ho v Nastavenia systému → Súkromie a zabezpečenie a znova naň dvakrát kliknite."
+        "message": "macOS: otvorte stiahnutý súbor zip a dvakrát kliknite na program v ňom. Ak ho macOS zablokuje, povoľte ho v Nastavenia systému → Súkromie a zabezpečenie a kliknite naň znova dvakrát."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: v stiahnutom balíku Timffle otvorte terminál v priečinku helper (je vedľa priečinka, ktorý ste načítali do Chromu) a spustite <1>sh install-linux.sh</1>"
+        "message": "Linux: otvorte terminál v priečinku so stiahnutým súborom a spustite <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Potom skontrolujte znova. Ak stále hlási, že pomocník nie je nainštalovaný, úplne zavrite Chrome (vrátane procesov na pozadí), spustite ho znova a skontrolujte ešte raz."
@@ -282,7 +306,7 @@
         "message": "Inštalačný program pracuje len pre váš používateľský účet: nepotrebuje práva správcu, neinštaluje službu na pozadí a nemení žiadne nastavenie zabezpečenia."
     },
     "timffle_helper_page_download": {
-        "message": "Nemáte stiahnutý priečinok? Získajte balík na <1>stránke Releases</1>."
+        "message": "Chcete si súbory pozrieť sami? Nájdete ich na <1>stránke Releases</1>."
     },
     "timffle_options_url": {
         "message": "Šablóna URL (vrátane tokenu, skrytá)"
@@ -315,7 +339,7 @@
         "message": "Lokalita, ktorá nie je v žiadnom z dvoch zoznamov, sa pri prvom pokuse o otvorenie soketu opýta: „Povoliť“, „Vždy povoliť“, „Zamietnuť“ alebo „Vždy zamietnuť“. Odporúčame zamietnuť – povoliť by sa mali iba online hry. Lokalitu aktuálnej karty môžete nastaviť aj vo vyskakovacom okne Timffle bez písania jej adresy a kedykoľvek ju vrátiť na „Opýtať sa pri každej návšteve“. (Iba v režime pomocníka pre sokety; vlastné proxy WebSocket sa nikdy nepýta a lokality mimo zoznamu odmieta.)"
     },
     "timffle_note_helper": {
-        "message": "Rozšírenia Chrome nemôžu otvárať sokety TCP, preto je tu pomocník. Nainštalujte ho raz (spustite inštalačný program v priečinku helper stiahnutého balíka); Chrome ho potom automaticky spúšťa a ukončuje pri každom pripojení k hre."
+        "message": "Rozšírenia Chrome nemôžu otvárať sokety TCP, preto je tu pomocník. Nainštalujte ho raz (stiahnite inštalačný program a spustite ho); Chrome ho potom automaticky spúšťa a ukončuje pri každom pripojení k hre."
     },
     "timffle_note_public": {
         "message": "Pomocník sa pripája iba k verejným internetovým adresám, nikdy k vašej lokálnej sieti ani k tomuto počítaču, a nezaznamenáva žiadnu prevádzku."

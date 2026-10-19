@@ -258,7 +258,7 @@
         "message": "Niezgodna wersja: zainstaluj pomocnika pasującego do tego rozszerzenia."
     },
     "timffle_helper_missing": {
-        "message": "Nie zainstalowano: uruchom instalator dla swojego systemu w folderze helper pobranego pakietu, a potem sprawdź ponownie."
+        "message": "Nie zainstalowano: pobierz i uruchom instalator dla swojego systemu, a potem sprawdź ponownie."
     },
     "timffle_helper_unavailable": {
         "message": "Pomocnik niedostępny: sprawdź instalację i komunikaty bezpieczeństwa systemu operacyjnego, a potem spróbuj ponownie."
@@ -267,10 +267,25 @@
         "message": "Pomocnik socketów nie jest zainstalowany, więc gry online nie mogą się połączyć."
     },
     "timffle_helper_notice_incompatible": {
-        "message": "Pomocnik socketów nie pasuje do tego rozszerzenia. Zainstaluj go ponownie z tego samego pobranego pakietu."
+        "message": "Pomocnik socketów nie pasuje do tego rozszerzenia. Pobierz instalator i uruchom go ponownie."
     },
     "timffle_helper_notice_button": {
-        "message": "Zainstaluj pomocnika"
+        "message": "Pobierz instalator"
+    },
+    "timffle_helper_download_for": {
+        "message": "Dla: $SYSTEM$",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "Inne systemy i instrukcje"
+    },
+    "timffle_helper_download_started": {
+        "message": "Pobieranie się rozpoczęło. Gdy się zakończy, uruchom pobrany instalator, a potem odśwież stronę gry."
     },
     "timffle_helper_page_title": {
         "message": "Timffle: instalacja pomocnika socketów"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "Gry online potrzebują połączeń TCP, których rozszerzenia Chrome nie mogą otwierać, dlatego Timffle używa małego programu pomocniczego. Zainstaluj go raz; potem Chrome sam go uruchamia za każdym razem, gdy gra się łączy, i znów zamyka."
     },
+    "timffle_helper_page_downloads": {
+        "message": "Pobierz instalator dla swojego systemu:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: w pobranym pakiecie Timffle otwórz folder helper (leży obok folderu załadowanego do Chrome) i kliknij dwukrotnie <1>install-windows.cmd</1>. Jeśli Windows ostrzeże, że plik nie jest rozpoznany, sprawdź, czy to na pewno właściwy plik, zanim pozwolisz go uruchomić."
+        "message": "Windows: otwórz pobrany plik. Jeśli Windows ostrzeże, że plik nie jest rozpoznawany, upewnij się, że to właściwy plik, zanim pozwolisz go uruchomić."
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: w pobranym pakiecie Timffle otwórz folder helper (leży obok folderu załadowanego do Chrome) i kliknij dwukrotnie <1>install-macos.command</1>. Jeśli macOS go zablokuje, zezwól na niego w Ustawienia systemowe → Prywatność i ochrona, a potem kliknij dwukrotnie jeszcze raz."
+        "message": "macOS: otwórz pobrany plik zip, a następnie kliknij dwukrotnie program w środku. Jeśli macOS go zablokuje, zezwól na niego w Ustawienia systemowe → Prywatność i ochrona, a potem kliknij dwukrotnie jeszcze raz."
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: w pobranym pakiecie Timffle otwórz terminal w folderze helper (leży obok folderu załadowanego do Chrome) i uruchom <1>sh install-linux.sh</1>"
+        "message": "Linux: otwórz terminal w folderze z pobranym plikiem i uruchom <1>$COMMAND$</1>",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "Potem sprawdź ponownie. Jeśli nadal widać, że pomocnik nie jest zainstalowany, całkowicie zamknij Chrome (także procesy w tle), uruchom go ponownie i sprawdź jeszcze raz."
@@ -297,7 +321,7 @@
         "message": "Instalator działa tylko dla Twojego konta użytkownika: nie wymaga uprawnień administratora, nie instaluje usługi w tle i nie zmienia żadnego ustawienia zabezpieczeń."
     },
     "timffle_helper_page_download": {
-        "message": "Nie masz pobranego folderu? Pobierz pakiet ze <1>strony Releases</1>."
+        "message": "Wolisz sam obejrzeć pliki? Znajdziesz je na <1>stronie Releases</1>."
     },
     "timffle_options_url": {
         "message": "Szablon adresu URL (z tokenem, ukryty)"
@@ -330,7 +354,7 @@
         "message": "Witryna, której nie ma na żadnej z dwóch list, jest pytana przy pierwszej próbie otwarcia socketu: „Zezwól”, „Zawsze zezwalaj”, „Odmów” lub „Zawsze odmawiaj”. Zalecamy odmowę — zezwalać powinno się tylko grom online. Witrynę bieżącej karty możesz też ustawić w oknie podręcznym Timffle bez wpisywania jej adresu i w każdej chwili przywrócić „Pytaj przy każdej wizycie”. (Tylko w trybie pomocnika socketów; własny serwer proxy WebSocket nigdy nie pyta i odrzuca witryny spoza listy.)"
     },
     "timffle_note_helper": {
-        "message": "Rozszerzenia Chrome nie mogą otwierać gniazd TCP, stąd pomocnik. Zainstaluj go raz (uruchom instalator w folderze helper pobranego pakietu); potem Chrome uruchamia go i zatrzymuje automatycznie przy każdym połączeniu z grą."
+        "message": "Rozszerzenia Chrome nie mogą otwierać gniazd TCP, stąd pomocnik. Zainstaluj go raz (pobierz instalator i uruchom go); potem Chrome uruchamia go i zatrzymuje automatycznie przy każdym połączeniu z grą."
     },
     "timffle_note_public": {
         "message": "Pomocnik łączy się tylko z publicznymi adresami internetowymi, nigdy z Twoją siecią lokalną ani z tym komputerem, i nie zapisuje ruchu."

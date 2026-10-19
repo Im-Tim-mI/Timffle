@@ -258,7 +258,7 @@
         "message": "バージョンが合いません。この拡張機能に対応したヘルパーをインストールしてください。"
     },
     "timffle_helper_missing": {
-        "message": "インストールされていません。ダウンロードした helper フォルダー内の、お使いのシステム用インストーラーを実行してから、再確認してください。"
+        "message": "インストールされていません。お使いのシステム用のインストーラーをダウンロードして実行してから、再確認してください。"
     },
     "timffle_helper_unavailable": {
         "message": "ヘルパーを利用できません。インストールと OS のセキュリティ警告を確認してから、もう一度お試しください。"
@@ -267,10 +267,25 @@
         "message": "ソケットヘルパーがインストールされていないため、オンラインゲームに接続できません。"
     },
     "timffle_helper_notice_incompatible": {
-        "message": "ソケットヘルパーがこの拡張機能と合っていません。同じダウンロードからもう一度インストールしてください。"
+        "message": "ソケットヘルパーがこの拡張機能と合っていません。インストーラーをダウンロードして、もう一度実行してください。"
     },
     "timffle_helper_notice_button": {
-        "message": "ヘルパーをインストール"
+        "message": "インストーラーをダウンロード"
+    },
+    "timffle_helper_download_for": {
+        "message": "$SYSTEM$ 用",
+        "placeholders": {
+            "system": {
+                "content": "$1",
+                "example": "Windows 64-bit"
+            }
+        }
+    },
+    "timffle_helper_download_more": {
+        "message": "他のシステムと手順"
+    },
+    "timffle_helper_download_started": {
+        "message": "ダウンロードを開始しました。完了したら、ダウンロードしたインストーラーを実行し、ゲームのページを再読み込みしてください。"
     },
     "timffle_helper_page_title": {
         "message": "Timffle: ソケットヘルパーのインストール"
@@ -281,14 +296,23 @@
     "timffle_helper_page_intro": {
         "message": "オンラインゲームには TCP 接続が必要ですが、Chrome の拡張機能は TCP 接続を開けないため、Timffle は小さなヘルパープログラムを使います。インストールは 1 回だけです。その後は、ゲームが接続するたびに Chrome が自動的に起動し、終わると閉じます。"
     },
+    "timffle_helper_page_downloads": {
+        "message": "お使いのシステム用のインストーラーをダウンロードしてください:"
+    },
     "timffle_helper_step_windows": {
-        "message": "Windows: ダウンロードした Timffle の helper フォルダー（Chrome に読み込んだフォルダーの隣にあります）を開き、<1>install-windows.cmd</1> をダブルクリックします。ファイルが認識されないと Windows に警告された場合は、目的のファイルであることを確認してから実行を許可してください。"
+        "message": "Windows: ダウンロードしたファイルを開きます。ファイルが認識されないと Windows に警告された場合は、目的のファイルであることを確認してから実行を許可してください。"
     },
     "timffle_helper_step_macos": {
-        "message": "macOS: ダウンロードした Timffle の helper フォルダー（Chrome に読み込んだフォルダーの隣にあります）を開き、<1>install-macos.command</1> をダブルクリックします。macOS にブロックされたら、システム設定 → プライバシーとセキュリティ で許可してから、もう一度ダブルクリックしてください。"
+        "message": "macOS: ダウンロードした zip ファイルを開き、中のプログラムをダブルクリックします。macOS にブロックされたら、システム設定 → プライバシーとセキュリティ で許可してから、もう一度ダブルクリックしてください。"
     },
     "timffle_helper_step_linux": {
-        "message": "Linux: ダウンロードした Timffle の helper フォルダー（Chrome に読み込んだフォルダーの隣にあります）でターミナルを開き、<1>sh install-linux.sh</1> を実行します。"
+        "message": "Linux: ダウンロードしたファイルがあるフォルダーでターミナルを開き、<1>$COMMAND$</1> を実行します",
+        "placeholders": {
+            "command": {
+                "content": "$1",
+                "example": "tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64"
+            }
+        }
     },
     "timffle_helper_step_after": {
         "message": "その後、再確認してください。それでもヘルパーがインストールされていないと表示される場合は、Chrome をバックグラウンドのプロセスを含めて完全に終了し、起動し直してからもう一度確認してください。"
@@ -297,7 +321,7 @@
         "message": "インストーラーは自分のユーザーアカウントでのみ動作します。管理者権限は不要で、バックグラウンドサービスもインストールせず、セキュリティ設定も一切変更しません。"
     },
     "timffle_helper_page_download": {
-        "message": "ダウンロードしたフォルダーがありませんか？ <1>Releases ページ</1>からパッケージを入手してください。"
+        "message": "ファイルを自分で確認したい場合は、<1>Releases ページ</1>にあります。"
     },
     "timffle_options_url": {
         "message": "URL テンプレート（token を含む、非表示）"
@@ -330,7 +354,7 @@
         "message": "どちらのリストにもないウェブサイトは、初めてソケットを開こうとしたときに確認されます。選択肢は「許可する」「常に許可する」「拒否」「常に拒否する」です。拒否をおすすめします。許可するのはオンラインゲームだけにしてください。現在のタブのウェブサイトは、アドレスを入力せずに Timffle のポップアップから設定でき、いつでも「訪問のたびに確認する」に戻せます。（ソケットヘルパーモードのみ。カスタム WebSocket プロキシは確認せず、リストにないウェブサイトを拒否します。）"
     },
     "timffle_note_helper": {
-        "message": "Chrome の拡張機能は TCP ソケットを開けないため、ヘルパーが必要です。インストールは 1 回だけです（ダウンロードした helper フォルダー内のインストーラーを実行）。その後は、ゲームの接続のたびに Chrome が自動的に起動・終了します。"
+        "message": "Chrome の拡張機能は TCP ソケットを開けないため、ヘルパーが必要です。インストールは 1 回だけです（インストーラーをダウンロードして実行）。その後は、ゲームの接続のたびに Chrome が自動的に起動・終了します。"
     },
     "timffle_note_public": {
         "message": "ヘルパーはインターネット上の公開アドレスにだけ接続し、ローカルネットワークやこのコンピューターには接続しません。通信内容も記録しません。"
