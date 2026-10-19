@@ -788,6 +788,11 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                     return;
                 }
                 badge.show(tabId);
+                // A browser without native messaging has no helper to install:
+                // a window that asks for one could only mislead.
+                if (typeof browser.runtime.connectNative !== "function") {
+                    return;
+                }
                 // The game needs TCP and the helper is not there: say so now,
                 // in a window of the extension's own, as the first-use question does.
                 const top = topOrigin(page.sender);

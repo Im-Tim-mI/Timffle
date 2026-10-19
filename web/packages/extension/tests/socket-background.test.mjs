@@ -472,6 +472,15 @@ test("no other failure asks for the install window", async (t) => {
     assert.deepEqual(notice.calls.shown, []);
 });
 
+test("a browser without native messaging gets no install window: there is no helper it could install", async (t) => {
+    const notice = helperWindow();
+    const h = setup(t, { badge: badge(), helperPrompts: notice });
+    h.browser.runtime.connectNative = undefined;
+    const page = await h.open(content({ tab: { id: 6 } }));
+    assert.ok(page.sent.some((x) => x.code === "helper_missing"));
+    assert.deepEqual(notice.calls.shown, []);
+});
+
 test("the install window is told about closed tabs and windows and a player that was turned off, and is closed with the bridge", async (t) => {
     const notice = helperWindow();
     const h = setup(t, { badge: badge(), helperPrompts: notice });
