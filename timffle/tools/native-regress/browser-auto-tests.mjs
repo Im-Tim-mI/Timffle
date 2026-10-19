@@ -50,6 +50,8 @@ const installedHelper=path.join(work,'data','timffle-socket-helper','timffle-soc
 const userDataDir=realHelper?path.join(work,'config','google-chrome'):path.join(work,'profile');
 const runningHelper=realHelper?installedHelper:path.resolve(helper);
 const countHelpers=()=>{const prefix=['delayed','incompatible'].includes(mode)?'mock-host.mjs '+mode:runningHelper;try{return execFileSync('pgrep',['-f',prefix+' chrome-extension://'+ID+'/'],{encoding:'utf8'}).trim().split(/\s+/).filter(Boolean).length;}catch{return 0;}};
+// Filled in below, where the systems and the downloads are known; used by the game-tab part at the end.
+let noticeApi;
 try{
  if(realHelper){
   await fs.mkdir(installEnv.HOME,{recursive:true,mode:0o700});
@@ -237,6 +239,70 @@ try{
    add('options-link-opens-the-install-page',!!openedFromOptions);
    if(openedFromOptions)await chrome.send('Target.closeTarget',{targetId:openedFromOptions.targetId});
   }
+  // "Install the socket helper first": the window that opens when a page needs a TCP connection and the helper is not there (src/helper-prompt.ts).
+  const noticeWindows=async()=>(await chrome.send('Target.getTargets')).targetInfos.filter(t=>t.type==='page'&&t.url.startsWith('chrome-extension://'+ID+'/prompt.html?id='));
+  const noticeRead='(()=>{const shown=e=>!!e&&!e.hidden&&getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;const q=s=>document.querySelector(s);const b=q("#helper-download"),o=q("#helper-more"),c=q("#helper-close"),f=q("#helper-for");if(document.readyState!=="complete"||!shown(q("#helper"))||!shown(b))return false;const r=document.documentElement;return {title:q("#helper-title").textContent,origin:q("#helper-origin").textContent,embedded:shown(q("#helper-embedded")),text:q("#helper-text").textContent,intro:q("#helper .what").textContent,safe:q("#helper .detail").textContent,question:shown(q("#prompt")),expired:shown(q("#expired")),download:b.textContent,label:{shown:shown(f),text:f.textContent},more:{shown:shown(o),text:o.textContent},close:{shown:shown(c),text:c.textContent},focused:document.activeElement&&document.activeElement.id,pageTitle:document.title,dir:r.dir}})()';
+  const attach=async(target)=>{const {sessionId}=await chrome.send('Target.attachToTarget',{targetId:target.targetId,flatten:true});for(const method of ['Page.enable','Runtime.enable'])await chrome.send(method,{},sessionId);return sessionId;};
+  const installPageTabs=async()=>(await chrome.send('Target.getTargets')).targetInfos.filter(t=>t.type==='page'&&t.url==='chrome-extension://'+ID+'/helper.html');
+  noticeApi={
+   windows:noticeWindows,
+   // The window that is open for a page of `site`: what it says, and each of its buttons, ending with the window closed by its own button.
+   async exercise(site){
+    const target=await until(async()=>(await noticeWindows())[0],10000);
+    add('notice-window-opens-when-a-page-needs-tcp-and-the-helper-is-missing',!!target&&(await noticeWindows()).length===1,{windows:(await noticeWindows()).map(w=>w.url.slice(0,70))});
+    const sessionId=await attach(target);
+    const view=await chrome.wait(sessionId,noticeRead,12000);
+    const wantText=T(mode==='incompatible'?'timffle_helper_notice_incompatible':'timffle_helper_notice_missing');
+    add('notice-window-says-what-is-wrong-and-for-whom',view.title===T('timffle_helper_prompt_title')&&view.origin===site&&!view.embedded&&view.text===wantText&&view.intro===T('timffle_helper_page_intro')&&view.safe===T('timffle_helper_page_safe')&&!view.question&&!view.expired&&view.pageTitle===T('timffle_prompt_page_title'),{view});
+    add('notice-window-offers-the-installer-for-this-system',view.download===T('timffle_helper_notice_button')&&view.label.shown&&view.label.text===T('timffle_helper_download_for',[own.label])&&view.more.shown&&view.more.text===T('timffle_helper_download_more')&&view.close.shown&&view.close.text===T('timffle_close'),{view});
+    add('notice-window-has-the-safe-button-focused',view.focused==='helper-close',{focused:view.focused});
+    // With a real window (CHROME_HEADED=1 CHROME_WINDOW_SIZE=none, e.g. under xvfb-run) the size it was opened with decides; headless Chrome forces its own.
+    const fit=await chrome.eval(sessionId,'({innerWidth,innerHeight,scrollHeight:document.documentElement.scrollHeight,outerWidth,outerHeight})');
+    if(process.env.CHROME_HEADED&&process.env.CHROME_WINDOW_SIZE==='none')add('notice-window-fits-its-window-without-scrolling',fit.scrollHeight<=fit.innerHeight,{fit});else console.log(JSON.stringify({info:'notice-window',fit}));
+    const shot=await chrome.send('Page.captureScreenshot',{format:'png'},sessionId);await fs.writeFile(path.join(output,'notice-window.png'),Buffer.from(shot.data,'base64'));
+    // Nothing happens before the moment the window ignores input has passed, and a script's click never counts.
+    await delay(1000);
+    const requestsBefore=github.requests.length,savedBefore=saved().length;
+    await chrome.eval(sessionId,'document.querySelector("#helper-download").click()');
+    await delay(900);
+    add('notice-window-script-click-ignored',github.requests.length===requestsBefore&&saved().length===savedBefore,{requests:github.requests.length-requestsBefore,saved:saved().length-savedBefore});
+    const asked=requested().length;
+    add('notice-window-button-downloads-the-installer',await clickAndWaitForFile(sessionId,'#helper-download',own.file)&&JSON.stringify(requested().slice(asked))===JSON.stringify(['/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/'+own.file]),{requested:requested().slice(asked),saved:saved().map(f=>path.basename(f))});
+    add('notice-window-download-is-the-file-of-the-release',await fs.readFile(path.join(downloads,own.file),'utf8').catch(()=>null)==='fake installer '+own.file);
+    add('notice-window-says-the-download-started',await until(async()=>await chrome.eval(sessionId,'document.querySelector("#helper-text").textContent')===T('timffle_helper_download_started')),{text:await chrome.eval(sessionId,'document.querySelector("#helper-text").textContent')});
+    // The tab that fetched the file closes by itself; the window stays, and the install page was not opened.
+    await until(async()=>(await pagesOnGitHub()).length===0,5000);
+    add('notice-window-leaves-no-tab-behind',(await pagesOnGitHub()).length===0&&(await installPageTabs()).length===0&&(await noticeWindows()).length===1);
+    // A double click is one download.
+    await forget(own.file);await delay(2300);const before=requested().length;
+    await realClick(sessionId,'#helper-download');await realClick(sessionId,'#helper-download');await delay(1500);
+    add('notice-window-double-click-is-one-download',requested().length-before===1,{extra:requested().length-before});
+    await forget(own.file);
+    // The way to the other installers opens the install page in a tab of the browser, and the window stays.
+    await realClick(sessionId,'#helper-more');
+    const opened=await until(async()=>(await installPageTabs())[0]);
+    add('notice-window-link-opens-the-install-page',!!opened&&(await noticeWindows()).length===1);
+    if(opened)await chrome.send('Target.closeTarget',{targetId:opened.targetId});
+    // Its own button closes it.
+    await realClick(sessionId,'#helper-close');
+    add('notice-window-closes-with-its-button',!!await until(async()=>(await noticeWindows()).length===0,5000));
+   },
+   // A page load is told once: the window of the game tab (opened when its page connected) is closed, the same page tries again, and nothing opens; a reload is a new page load.
+   async pageLoads(game,site,port){
+    const target=await until(async()=>(await noticeWindows())[0],10000);
+    add('notice-window-opens-again-for-another-page',!!target);
+    if(target)await chrome.send('Target.closeTarget',{targetId:target.targetId});
+    await until(async()=>(await noticeWindows()).length===0,5000);
+    await chrome.eval(game.sessionId,'new Promise(resolve=>{const s=new WebSocket("ws://timffle-socket.invalid/connect?host=127.0.0.1&port='+port+'");s.onerror=()=>resolve("error");s.onopen=()=>resolve("open");setTimeout(()=>resolve("timeout"),4000)})');
+    await delay(1500);
+    add('notice-window-not-again-for-the-same-page-load',(await noticeWindows()).length===0);
+    await chrome.send('Page.reload',{},game.sessionId);await chrome.wait(game.sessionId,'window.__probe',15000);
+    const again=await until(async()=>(await noticeWindows())[0],10000);
+    add('notice-window-again-after-the-page-was-reloaded',!!again);
+    if(again)await chrome.send('Target.closeTarget',{targetId:again.targetId});
+    await until(async()=>(await noticeWindows()).length===0,5000);
+   },
+  };
   const page=await chrome.tab('chrome-extension://'+ID+'/helper.html');
   const pageStatusJs='(()=>{const s=document.querySelector("#helper-page-status");return s&&s.dataset.state&&s.textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'?{text:s.textContent,state:s.dataset.state}:false})()';
   const shown=await chrome.wait(page.sessionId,pageStatusJs,12000);
@@ -314,6 +380,9 @@ try{
   add('cancel-before-open-stops-native',JSON.stringify(cancelled.events)==='["error","close"]'&&cancelled.state===3&&countHelpers()===0,{cancelled});await chrome.send('Target.closeTarget',{targetId:cancelPage.targetId});
  }else{
   const before=small.stat.connections;await fixture(mode+'-no-fake-connect',{},noConnect);add(mode+'-no-tcp',small.stat.connections===before);
+  const wantsWindow=['missing','incompatible'].includes(mode);
+  // That page needed a TCP connection and the helper is not there: the window that says so opens (and is checked, then closed).
+  if(wantsWindow)await noticeApi.exercise(origin);
   // The toolbar icon: a game that needed the helper and could not get it marks the tab it is in, until the page is left.
   const marked=()=>chrome.eval(opts.sessionId,'(async()=>{const out=[];for(const t of await chrome.tabs.query({})){const text=await chrome.action.getBadgeText({tabId:t.id});if(text)out.push({text,color:await chrome.action.getBadgeBackgroundColor({tabId:t.id})})}return out})()');
   const game=await chrome.tab(origin+'/?'+new URLSearchParams({host:'127.0.0.1',port:small.port,size:6,timeout:1800,cancel:-1}));
@@ -322,6 +391,7 @@ try{
   const badge=needsInstall?await until(async()=>{const m=await marked();return m.length?m:false},5000):await marked();
   add(mode+'-badge-on-the-game-tab',needsInstall?badge.length===1&&badge[0].text==='!'&&JSON.stringify(badge[0].color)==='[217,48,37,255]':badge.length===0,{badge});
   if(needsInstall){
+   await noticeApi.pageLoads(game,origin,small.port);
    await chrome.send('Page.navigate',{url:'about:blank'},game.sessionId);
    const cleared=await until(async()=>(await marked()).length===0,5000);
    add(mode+'-badge-ends-with-the-page',!!cleared);

@@ -145,6 +145,26 @@ for(const language of todo){
   await picture(q,'question');
   await chrome.send('Target.closeTarget',{targetId:q.targetId});
 
+  // ---- "install the socket helper first" window (the same page; shown by hand like the question, because it needs a page that
+  // has just tried to connect). The longest system name goes under the button, a long website above it.
+  const n=await open('chrome-extension://'+ID+'/prompt.html?id=00000000-0000-4000-8000-000000000000',540,620);
+  await chrome.wait(n.sessionId,'!document.getElementById("expired").hidden',20000);
+  await chrome.eval(n.sessionId,`(()=>{document.getElementById('helper-origin').textContent='https://a-long-example-website.example:8443';document.getElementById('helper-embedded-origin').textContent='https://another-long-example-website.example';document.getElementById('helper-embedded').hidden=false;document.getElementById('helper-text').textContent=${JSON.stringify(T('timffle_helper_notice_incompatible'))};const f=document.getElementById('helper-for');f.textContent=${JSON.stringify(T('timffle_helper_download_for',['macOS Apple silicon']))};f.hidden=false;document.getElementById('helper-download').hidden=false;document.getElementById('expired').hidden=true;document.getElementById('helper').hidden=false;})()`);
+  await delay(150);
+  const w=await chrome.eval(n.sessionId,`(()=>{
+   const box=(e)=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
+   const ids=['helper-download','helper-more','helper-close'];
+   const controls=ids.map(id=>{const e=document.getElementById(id);return {id,...box(e),clipped:e.scrollWidth>e.clientWidth+1||[...e.children].some(c=>c.scrollWidth>c.clientWidth+1)}});
+   const e=document.documentElement;
+   return {overflowX:e.scrollWidth-e.clientWidth,height:Math.ceil(document.getElementById('helper').getBoundingClientRect().bottom),controls,title:document.getElementById('helper-title').textContent,embedded:document.getElementById('helper-embedded').textContent.replace(/\\s+/g,' ').trim(),text:document.getElementById('helper-text').textContent,dir:e.dir,order:controls.map(c=>c.id+':'+Math.round(c.y))};
+  })()`);
+  // A real window has Chrome's title bar above it: what is shown has to fit with that much to spare.
+  add(language+':helper-window-fits-its-window',w.overflowX<=0&&w.controls.every(c=>!c.clipped&&c.right<=541&&c.x>=0)&&w.height<=580,{overflowX:w.overflowX,height:w.height,controls:w.controls.filter(c=>c.clipped||c.right>541)});
+  add(language+':helper-window-heading-and-embedded-line',w.title===T('timffle_helper_prompt_title')&&w.embedded===norm(T('timffle_prompt_embedded')+' https://another-long-example-website.example')&&w.dir===(RTL.has(language)?'rtl':'ltr'),{title:w.title,embedded:w.embedded,dir:w.dir});
+  add(language+':helper-window-buttons-are-one-below-the-other',w.controls[0].y<w.controls[1].y&&w.controls[1].y<w.controls[2].y,{order:w.order});
+  await picture(n,'helper-window');
+  await chrome.send('Target.closeTarget',{targetId:n.targetId});
+
   // ---- install page (no helper is installed in this run, so it says so)
   const hp=await open('chrome-extension://'+ID+'/helper.html',760,900);
   await chrome.wait(hp.sessionId,`(()=>{const s=document.getElementById('helper-page-status');return s&&s.dataset.state&&s.textContent!==${JSON.stringify(T('timffle_helper_checking'))}})()`,20000);
