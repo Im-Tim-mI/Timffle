@@ -57,6 +57,12 @@ test("the install window offers a download only once it knows what it would down
     assert.match(tag("helper-download"), /\bhidden\b/u);
     assert.match(tag("helper-for"), /\bhidden\b/u);
     assert.match(tag("helper-embedded"), /\bhidden\b/u);
+    // The sentence that turns into "Download started" is announced to screen readers; the window has a title of its own.
+    assert.match(tag("helper-text"), /\brole="status"/u);
+    assert.match(
+        script,
+        /document\.title = text\("timffle_helper_prompt_title"\)/u,
+    );
     for (const id of ["helper-download", "helper-more", "helper-close"]) {
         assert.match(tag(id), /<button\b[^>]*\btype="button"/u, id);
     }

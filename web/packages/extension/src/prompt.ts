@@ -94,9 +94,15 @@ function keepBackgroundAlive() {
  * input is ignored when the window gets the focus back after it has been in
  * front for that long once: the question keeps the whole moment (its answers
  * decide what a website may do), the install window does not make a visitor
- * who has just come back from the install page click twice.
+ * who has just come back from the install page click twice. Escape closes
+ * the question at once (that refuses); `escapeWaits` makes it wait for the
+ * moment too, for a window that is shown once per page and must not be lost
+ * to a key meant for the game.
  */
-function guardInput(refocusMs = IGNORE_INPUT_MS): {
+function guardInput({
+    refocusMs = IGNORE_INPUT_MS,
+    escapeWaits = false,
+}: { refocusMs?: number; escapeWaits?: boolean } = {}): {
     guard: InputGuard;
     watch: (el: HTMLElement) => void;
 } {
@@ -127,7 +133,10 @@ function guardInput(refocusMs = IGNORE_INPUT_MS): {
     window.addEventListener("focus", arm);
     window.addEventListener("blur", disarm);
     document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
+        if (
+            event.key === "Escape" &&
+            (!escapeWaits || guard.ready(Date.now()))
+        ) {
             // Closing the window refuses (the question) or does nothing (the helper notice).
             window.close();
         }
@@ -183,6 +192,8 @@ async function runHelperNotice(view: HelperPromptView) {
             ? "timffle_helper_notice_incompatible"
             : "timffle_helper_notice_missing",
     );
+    // This window asks nothing: its title bar and the task switcher say what it is.
+    document.title = text("timffle_helper_prompt_title");
     const download = document.getElementById("helper-download")!;
     const label = document.getElementById("helper-for")!;
     const more = document.getElementById("helper-more")!;
@@ -191,7 +202,7 @@ async function runHelperNotice(view: HelperPromptView) {
     download.hidden = true;
     show("helper");
     keepBackgroundAlive();
-    const { guard, watch } = guardInput(0);
+    const { guard, watch } = guardInput({ refocusMs: 0, escapeWaits: true });
     const counts = (control: HTMLElement, event: MouseEvent) =>
         guard.accepts(
             "action",
