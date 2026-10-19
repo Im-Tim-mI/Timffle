@@ -173,83 +173,108 @@ export function createHelperPromptManager(
     told: ToldDocuments,
     now: () => number = Date.now,
 ): HelperPromptManager {
-    /** The window that is open, or being opened: claimed before anything is awaited. */
+    /** The window that is open, or being opened. */
     let current: Opening | undefined;
+    /** A request is being decided or its window opened: others wait for their next failure. */
+    let busy = false;
+    /** Bumped by dispose(): what was under way is dropped. */
+    let epoch = 0;
     /** When the recent windows were opened. */
     let opened: number[] = [];
     const earlyRemovals = new Set<number>();
+    /** Windows this manager closed itself: their removal needs no handling. */
+    const closing = new Set<number>();
 
     const closeWindow = (windowId: number) => {
+        closing.add(windowId);
+        if (closing.size > MAX_EARLY_REMOVALS) {
+            const oldest = closing.values().next().value;
+            if (oldest !== undefined) {
+                closing.delete(oldest);
+            }
+        }
         host.close(windowId).catch(() => {
             /* Already closed. */
         });
+    };
+    /** Takes the open window away, whether it is still opening or not. */
+    const dropCurrent = () => {
+        const windowId = current?.windowId;
+        current = undefined;
+        if (windowId !== undefined) {
+            closeWindow(windowId);
+        }
     };
 
     return {
         async show(request) {
             // Sockets that fail together (a game opens several at once) share
             // the window of the first.
-            if (current) {
+            if (busy) {
                 return false;
             }
-            const claim: Opening = {
-                id: crypto.randomUUID(),
-                tabId: request.tabId,
-                view: {
-                    helper: request.problem,
-                    origin: request.origin,
-                    ...(request.frameId !== 0 &&
-                    request.top !== undefined &&
-                    request.top !== request.origin
-                        ? { embeddedIn: request.top }
-                        : {}),
-                },
-                near: request.windowId,
-                windowId: undefined,
-            };
-            current = claim;
-            const release = () => {
-                if (current === claim) {
-                    current = undefined;
-                }
-            };
+            busy = true;
+            const started = epoch;
             try {
                 await told.ready;
                 const pageLoad =
                     request.documentId ??
                     `${request.frameId}|${request.origin}`;
-                if (told.has(request.tabId, pageLoad)) {
-                    release();
+                if (epoch !== started || told.has(request.tabId, pageLoad)) {
                     return false;
                 }
                 const time = now();
                 opened = opened.filter((at) => time - at < MINUTE_MS);
                 if (opened.length >= MAX_HELPER_PROMPTS_PER_MINUTE) {
-                    release();
                     return false;
                 }
                 opened.push(time);
                 // Remembered before the window opens, so that a browser that
                 // cannot open one is not asked again by every failing socket.
                 await told.add(request.tabId, pageLoad);
-                if (current !== claim) {
+                if (epoch !== started) {
                     return false;
                 }
+                // A window that is still open (it may be behind the browser's
+                // own, or belong to a page that is gone) makes way for the one
+                // of this page load: it must not keep every later one away.
+                dropCurrent();
+                const claim: Opening = {
+                    id: crypto.randomUUID(),
+                    tabId: request.tabId,
+                    view: {
+                        helper: request.problem,
+                        origin: request.origin,
+                        ...(request.frameId !== 0 &&
+                        request.top !== undefined &&
+                        request.top !== request.origin
+                            ? { embeddedIn: request.top }
+                            : {}),
+                    },
+                    near: request.windowId,
+                    windowId: undefined,
+                };
+                current = claim;
                 const windowId = await host.open(claim.id, claim.near);
                 claim.windowId = windowId;
                 if (current !== claim) {
-                    // Disposed while the window was opening.
+                    // Disposed, or its tab closed, while the window was opening.
                     closeWindow(windowId);
                     return false;
                 }
                 if (earlyRemovals.delete(windowId)) {
                     // Closed before the browser told us its id: nobody will say so again.
-                    release();
+                    current = undefined;
                 }
                 return true;
             } catch {
-                release();
+                // A window that failed to open leaves nothing behind.
+                if (current !== undefined && current.windowId === undefined) {
+                    current = undefined;
+                }
                 return false;
+            } finally {
+                busy = false;
             }
         },
 
@@ -266,7 +291,7 @@ export function createHelperPromptManager(
         },
 
         windowRemoved(windowId) {
-            if (!current) {
+            if (closing.delete(windowId) || !current) {
                 return;
             }
             if (current.windowId === windowId) {
@@ -285,15 +310,16 @@ export function createHelperPromptManager(
 
         tabGone(tabId) {
             void told.forgetTab(tabId);
+            // The page the window is about is gone with its tab.
+            if (current?.tabId === tabId) {
+                dropCurrent();
+            }
         },
 
         dispose() {
-            const windowId = current?.windowId;
-            current = undefined;
+            epoch++;
             earlyRemovals.clear();
-            if (windowId !== undefined) {
-                closeWindow(windowId);
-            }
+            dropCurrent();
         },
     };
 }

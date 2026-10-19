@@ -223,16 +223,101 @@ test("a window that is closed before the browser says which window it is does no
     assert.equal(await manager.show(request({ documentId: "doc-2" })), true);
 });
 
-test("a window that is open blocks others until it is closed", async () => {
+test("a window that is still open makes way for the window of the next page load, and its own page load keeps it", async () => {
     const { fake, manager } = setup();
     await manager.show(request());
-    assert.equal(await manager.show(request({ documentId: "doc-2" })), false);
-    // A removal that is not ours changes nothing.
-    manager.windowRemoved(12345);
-    assert.equal(await manager.show(request({ documentId: "doc-3" })), false);
+    const first = fake.state.opened[0].id;
+    assert.equal(await manager.show(request()), false, "the same page load");
+    assert.deepEqual(fake.state.closed, []);
+    // Another page load (a reload, another tab): the window may be behind the browser's own, so it is replaced.
+    assert.equal(await manager.show(request({ documentId: "doc-2" })), true);
+    assert.deepEqual(fake.state.closed, [700]);
+    const second = fake.state.opened[1].id;
+    assert.equal(manager.view(first, 700), undefined);
+    assert.deepEqual(manager.view(second, 701), {
+        helper: "missing",
+        origin: MOLE,
+    });
+    // The browser reports the old window gone, and some other window: the new one is not taken for either.
     manager.windowRemoved(700);
-    assert.equal(await manager.show(request({ documentId: "doc-4" })), true);
-    assert.equal(fake.state.opened.length, 2);
+    manager.windowRemoved(12345);
+    assert.ok(manager.view(second, 701));
+    manager.windowRemoved(701);
+    assert.equal(manager.view(second, 701), undefined);
+    assert.equal(await manager.show(request({ documentId: "doc-3" })), true);
+    assert.equal(fake.state.opened.length, 3);
+});
+
+test("the view can be read while the window is still being opened, and only by the window the browser says it is", async () => {
+    const { fake, manager } = setup();
+    fake.state.hold = true;
+    const opening = manager.show(request());
+    await tick();
+    await tick();
+    const { id } = fake.state.opened[0];
+    assert.equal(
+        manager.view(id, 700)?.origin,
+        MOLE,
+        "the page loaded before the browser replied",
+    );
+    assert.equal(manager.view(id, undefined), undefined);
+    fake.state.release();
+    assert.equal(await opening, true);
+    assert.equal(manager.view(id, 700)?.origin, MOLE);
+    assert.equal(manager.view(id, 701), undefined);
+});
+
+test("the window of a closed tab goes with it; the window of another tab stays", async () => {
+    const { fake, manager } = setup();
+    await manager.show(request());
+    const { id } = fake.state.opened[0];
+    manager.tabGone(2);
+    assert.deepEqual(fake.state.closed, []);
+    assert.ok(manager.view(id, 700));
+    manager.tabGone(1);
+    assert.deepEqual(fake.state.closed, [700]);
+    assert.equal(manager.view(id, 700), undefined);
+    // Its removal event (ours) is not taken for a window the next request opens.
+    manager.windowRemoved(700);
+    assert.equal(await manager.show(request({ documentId: "doc-2" })), true);
+    assert.ok(manager.view(fake.state.opened[1].id, 701));
+});
+
+test("a window whose tab closes while it is still opening is closed as soon as it exists", async () => {
+    const { fake, manager } = setup();
+    fake.state.hold = true;
+    const opening = manager.show(request());
+    await tick();
+    await tick();
+    manager.tabGone(1);
+    fake.state.release();
+    assert.equal(await opening, false);
+    assert.deepEqual(fake.state.closed, [700]);
+});
+
+test("turning the player off while the page load is still being written down opens nothing", async () => {
+    const fake = host();
+    let release;
+    const slow = {
+        ready: Promise.resolve(),
+        has: () => false,
+        add: () => new Promise((resolve) => (release = resolve)),
+        forgetTab: async () => {},
+    };
+    const manager = createHelperPromptManager(fake, slow, () => 1_000_000);
+    const showing = manager.show(request());
+    await tick();
+    await tick();
+    manager.dispose();
+    release();
+    assert.equal(await showing, false);
+    assert.equal(fake.state.opened.length, 0);
+    // The manager is usable again afterwards.
+    const again = manager.show(request({ documentId: "doc-2" }));
+    await tick();
+    await tick();
+    release();
+    assert.equal(await again, true);
 });
 
 test("turning the player off closes the window; one that was still opening is closed as soon as it exists", async () => {

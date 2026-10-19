@@ -1229,14 +1229,47 @@ test("a window of a closed tab or of a player that was turned off is not left fo
     h.setPlayer(false);
     await settle();
     assert.deepEqual(h.windows.removed, [500]);
-    // The tab closes: the same tab number and document id are a stranger next time.
+    // The tab closes with its window open: the window goes with it, and the same tab number and document id are a stranger next time.
     h.setPlayer(true);
-    h.browser.tabs.onRemoved.emit(1);
-    await settle();
-    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    await h.open(frame({ origin: MOLE, documentId: "d2" }));
     helperMissing(h);
     await settle();
     assert.equal(h.windows.created.length, 2);
+    h.browser.tabs.onRemoved.emit(1);
+    await settle();
+    assert.deepEqual(h.windows.removed, [500, 501]);
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 3);
+});
+
+test("a notice that is still open is replaced by the next page load's, so it cannot keep later ones away", async (t) => {
+    const h = setup(t);
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(h);
+    await settle();
+    const first = h.promptId(0);
+    // The same page load again: nothing changes.
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 1);
+    assert.deepEqual(h.windows.removed, []);
+    // The page is reloaded, the old window forgotten somewhere behind the browser: one window, the new one.
+    await h.open(frame({ origin: MOLE, documentId: "d2" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 2);
+    assert.deepEqual(h.windows.removed, [500]);
+    assert.notEqual(h.promptId(1), first);
+    assert.equal(
+        h.send({ type: PROMPT_GET_REQUEST, id: first }, promptUI(500)).reply,
+        null,
+    );
+    assert.deepEqual(helperView(h, 501), { helper: "missing", origin: MOLE });
+    // The browser's report that the old window is gone does not take the new one away.
+    assert.deepEqual(helperView(h, 501), { helper: "missing", origin: MOLE });
 });
 
 test("at most three notices a minute whichever tabs need the helper (the clock is the manager unit tests')", async (t) => {
