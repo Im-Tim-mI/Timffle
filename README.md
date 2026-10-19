@@ -58,7 +58,7 @@ Everything ships as **one Chrome extension package**: download it, install it, o
 ## Quick start
 
 1. Download `timffle-chrome-<version>.zip` (**the Chrome extension package**) from [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) and unzip it somewhere permanent.
-2. Run the installer in the `helper` folder: Windows `install-windows.cmd`, macOS `install-macos.command`, Linux `sh install-linux.sh`. **Once.**
+2. Install the connection helper **once**: run the installer in the `helper` folder (Windows `install-windows.cmd`, macOS `install-macos.command`, Linux `sh install-linux.sh`), or, after step 3, press **Download the installer** in the extension's toolbar popup, which downloads the right file for your system.
 3. Open `chrome://extensions` → turn on **Developer mode** → **Load unpacked** → pick the `extension` folder.
 4. Open a game site and log in. For Taomee Taiwan's games, for example https://mole.61.com.tw/ , press the player's play button and log in as usual. For any other Flash online game, open its page: the first time the game opens a socket, Timffle asks you (see [The first-use question](#the-first-use-question)), and you can allow online games you trust.
 
@@ -119,12 +119,14 @@ The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/D
 
    The installer is per-user: it puts the helper into the user's folder and registers Native Messaging for Chrome (the `HKCU` registry on Windows, the user's `NativeMessagingHosts` folder on macOS/Linux). No service, no autostart, no administrator rights, and it never removes download flags or turns off a security feature.
 
+   **Or download just the installer**: when the helper is missing, the toolbar popup (and the options page) shows a **Download the installer** button. It works out your system (Windows 64-bit, ARM64 or 32-bit; macOS Apple silicon or Intel; Linux x64 or ARM64), says so under the button ("For Windows 64-bit") and starts downloading the matching file at once from the releases of [Timffle-Helper](https://github.com/Im-Tim-mI/Timffle-Helper/releases), a repository that holds the installers only. Then run the file: on Windows double-click the `.exe`; on macOS open the zip and double-click the program inside; on Linux `tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64`. The link beside the button, "Other systems and instructions", opens the install page with every file. The extension only asks the browser to download the file (it needs no extra permission); running it stays your click. More: [`timffle/docs/HELPER-DOWNLOADS.md`](timffle/docs/HELPER-DOWNLOADS.md).
+
 3. **Load the extension**:
    1. Open `chrome://extensions` and turn on **Developer mode** (top right).
    2. Click **Load unpacked** and pick the unzipped `extension` folder.
    3. If the official Ruffle extension is installed, disable or remove it first so the two do not fight over the same pages.
 
-4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.2.0)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it. You do not have to go looking for this: while the helper is missing, the toolbar popup says so, with an **Install the helper** button that opens a page with these steps for each system (a Chrome extension cannot start the installer itself, so running it stays your click); and a game that needed the helper but could not reach it puts a red **!** on the Timffle icon of its tab.
+4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.3.0)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it. You do not have to go looking for this: while the helper is missing, the toolbar popup says so, with a **Download the installer** button that downloads the installer for your system (a Chrome extension cannot start the installer itself, so running it stays your click); and a game that needed the helper but could not reach it puts a red **!** on the Timffle icon of its tab.
 
 5. **Play**: open a game site (for example https://mole.61.com.tw/ ), press the player's play button and log in as usual; no proxy needed. 賽爾號, 小花仙 and 彈彈堂 work the same way from their own sites; any other site is asked about the first time it wants a socket ([The first-use question](#the-first-use-question)). After loading the extension for the first time, reload any game page that was already open; if it still shows the "download Flash" message, wait a few seconds and reload once more.
 
@@ -145,7 +147,7 @@ The extension's options page has a section "**Socket connections (game servers)*
 
 <p align="center"><img src="timffle/docs/images/options-socket.png" alt="The socket section of the extension's options page: the connection helper is shown as installed, followed by the list of allowed website origins" width="560"></p>
 
-- **The helper's status** (under "Socket helper"): "Installed (version …)", or why it is not. When the helper is missing or does not match this extension, an **Install the helper** button next to it opens the install page, the same page the popup's notice opens.
+- **The helper's status** (under "Socket helper"): "Installed (version …)", or why it is not. When the helper is missing or does not match this extension, a **Download the installer** button next to it downloads the installer for your system (the same button the popup's notice has), and **Other systems and instructions** opens the install page with every installer.
 - **Connection method**: "Socket helper" is the default and recommended. Advanced users can switch to "Custom WebSocket proxy" and run the local WebSocket↔TCP proxy in [`timffle/relay/`](timffle/relay/) themselves (needs Node.js 22+; Chrome may ask for local network access).
 - **Always-allowed website origins (one per line)**: the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets directly, without being asked. The default is Taomee Taiwan's four game sites, `mole`, `seer`, `hua` and `ddt` `.61.com.tw`, each with `http://` and `https://`. You do **not have to type** other sites: use "The first-use question" or "Setting a site from the popup" below. **Allow only online games you trust**, because an allowed site can reach any TCP address on the public internet through the helper.
 - **Always-denied website origins (one per line)**: these sites are never asked about and never get sockets (with either connection method). A site cannot be on both the allowed and the denied list (saving warns you; if it is in both anyway, refusing wins).
@@ -200,7 +202,7 @@ Timffle's pages (settings, popup, install page, question window) follow the brow
 
 | Symptom | What to do |
 |---|---|
-| The popup says the helper is not installed, or the options page cannot find it | Run the installer in `helper` (the **Install the helper** button shows the steps), then **fully quit Chrome** (including background processes) and start it. Chrome reads Native Messaging registrations only at start-up. |
+| The popup says the helper is not installed, or the options page cannot find it | Press **Download the installer** and run the file (or run the installer in `helper`), then **fully quit Chrome** (including background processes) and start it. Chrome reads Native Messaging registrations only at start-up. |
 | The game still shows "download Flash" | Make sure the extension is enabled and the official Ruffle extension is not; reload, wait a few seconds and reload once more. |
 | A game cannot connect | Check that its site is allowed (the toolbar popup shows the current state); if the game already timed out before you answered the question, try again in the game. Reload the page after changing a setting. |
 | The first click (play button or the game's "start") does nothing | Click again. In automated tests the first click occasionally had no effect; the cause was not found. |
