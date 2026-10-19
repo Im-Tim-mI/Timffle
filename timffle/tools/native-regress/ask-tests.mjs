@@ -36,7 +36,7 @@ const pageHtml=(u)=>{
   +(u.searchParams.has('bare')?'<p>no flash here</p>':('<embed src="/NativeProbe.swf" type="application/x-shockwave-flash" width="400" height="300" allowScriptAccess="always" flashvars="'+vars.replaceAll('&','&amp;')+'">'));};
 const web=http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost');
  if(u.pathname==='/NativeProbe.swf'){res.setHeader('Content-Type','application/x-shockwave-flash');res.end(swf);return;}
- if(u.pathname==='/framed'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8">'+['popup.html','options.html','onboard.html','prompt.html?id=00000000-0000-4000-8000-000000000000','player.html'].map(p=>'<iframe src="chrome-extension://'+ID+'/'+p+'"></iframe>').join(''));return;}
+ if(u.pathname==='/framed'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8">'+['popup.html','options.html','onboard.html','prompt.html?id=00000000-0000-4000-8000-000000000000','helper.html','player.html'].map(p=>'<iframe src="chrome-extension://'+ID+'/'+p+'"></iframe>').join(''));return;}
  if(u.pathname==='/swf-link'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8"><a id="link" href="/NativeProbe.swf">a SWF</a>');return;}
  res.setHeader('Content-Type','text/html');res.end(pageHtml(u));});
 const pagePort=await listen(web),origin='http://127.0.0.1:'+pagePort;
@@ -324,7 +324,7 @@ try{
 
  }
  if(runs('framing')){
- // ---- 4. a website cannot frame the extension's own pages (popup, settings, question, welcome) and get them clicked
+ // ---- 4. a website cannot frame the extension's own pages (popup, settings, question, welcome, install) and get them clicked
  const framedTab=await chrome.tab(origin+'/framed');
  await chrome.wait(framedTab.sessionId,'document.readyState==="complete"');await delay(1500);
  const tree=(await chrome.send('Page.getFrameTree',{},framedTab.sessionId)).frameTree;
@@ -334,10 +334,10 @@ try{
  // A frame that does load is a process of its own (an extension page in a website's frame), so it is a target.
  const loadedFrames=(await targets()).filter(t=>t.type==='iframe'&&t.url.startsWith('chrome-extension://'+ID+'/')).map(t=>new URL(t.url).pathname);
  // Positive control: the page that is exposed (player.html) does load in a frame, so a refusal is the manifest's doing.
- add('extension-pages-cannot-be-framed-by-a-website',errorFrames===4&&loadedFrames.join()==='/player.html',{errorFrames,loadedFrames});
+ add('extension-pages-cannot-be-framed-by-a-website',errorFrames===5&&loadedFrames.join()==='/player.html',{errorFrames,loadedFrames});
  // What a website does need stays reachable: Ruffle itself and the standalone player (SWF links are redirected to it).
- const reach=await chrome.eval(framedTab.sessionId,'(async()=>{const get=async p=>{try{return (await fetch("chrome-extension://'+ID+'/"+p)).status}catch{return "blocked"}};return {ruffle:await get("dist/ruffle.js"),wasm:await get("dist/ruffle_web_bg.wasm"),player:await get("player.html"),options:await get("options.html"),popup:await get("popup.html"),prompt:await get("prompt.html"),background:await get("dist/background.js")}})()');
- add('a-website-reaches-only-ruffle-and-the-player',reach.ruffle===200&&reach.wasm===200&&reach.player===200&&reach.options==='blocked'&&reach.popup==='blocked'&&reach.prompt==='blocked'&&reach.background===200,{reach});
+ const reach=await chrome.eval(framedTab.sessionId,'(async()=>{const get=async p=>{try{return (await fetch("chrome-extension://'+ID+'/"+p)).status}catch{return "blocked"}};return {ruffle:await get("dist/ruffle.js"),wasm:await get("dist/ruffle_web_bg.wasm"),player:await get("player.html"),options:await get("options.html"),popup:await get("popup.html"),prompt:await get("prompt.html"),helper:await get("helper.html"),background:await get("dist/background.js")}})()');
+ add('a-website-reaches-only-ruffle-and-the-player',reach.ruffle===200&&reach.wasm===200&&reach.player===200&&reach.options==='blocked'&&reach.popup==='blocked'&&reach.prompt==='blocked'&&reach.helper==='blocked'&&reach.background===200,{reach});
  await close(framedTab.targetId);
  // The one page a website's links do lead to stays reachable: a SWF address (typed, or followed from a page) is redirected to the standalone player.
  await until(async()=>(await chrome.eval(opts.sessionId,'chrome.declarativeNetRequest.getDynamicRules().then(r=>r.length)'))>0,15000);
@@ -353,8 +353,8 @@ try{
  add('a-link-to-a-swf-opens-the-standalone-player',!!linkedPlayer,{linkedPlayer});
  await close(linkPage.targetId);
  // Defence in depth: should a browser ever let a page frame them, they offer nothing. Frame them from an extension page, which can.
- const inner=await chrome.eval(opts.sessionId,'(async()=>{const out={};for(const p of ["options.html","popup.html","prompt.html?id=00000000-0000-4000-8000-000000000000"]){const f=document.createElement("iframe");f.src=chrome.runtime.getURL(p);document.body.append(f);await new Promise(r=>f.addEventListener("load",r));await new Promise(r=>setTimeout(r,1200));const d=f.contentDocument;out[p.split("?")[0]]={bodyChildren:d.body.children.length,sites:d.querySelectorAll(".socket-site").length,socketHidden:d.getElementById("socket-container")?.classList.contains("hidden")??null,buttons:d.querySelectorAll("button[data-choice]").length,inputs:d.querySelectorAll("input,textarea,select").length};f.remove();}return out})()');
- add('framed-pages-offer-nothing',inner['options.html'].bodyChildren===0&&inner['options.html'].inputs===0&&inner['prompt.html'].bodyChildren===0&&inner['prompt.html'].buttons===0&&inner['popup.html'].sites===0&&inner['popup.html'].socketHidden===true,{inner});
+ const inner=await chrome.eval(opts.sessionId,'(async()=>{const out={};for(const p of ["options.html","popup.html","helper.html","prompt.html?id=00000000-0000-4000-8000-000000000000"]){const f=document.createElement("iframe");f.src=chrome.runtime.getURL(p);document.body.append(f);await new Promise(r=>f.addEventListener("load",r));await new Promise(r=>setTimeout(r,1200));const d=f.contentDocument;out[p.split("?")[0]]={bodyChildren:d.body.children.length,sites:d.querySelectorAll(".socket-site").length,socketHidden:d.getElementById("socket-container")?.classList.contains("hidden")??null,buttons:d.querySelectorAll("button[data-choice]").length,inputs:d.querySelectorAll("input,textarea,select").length};f.remove();}return out})()');
+ add('framed-pages-offer-nothing',inner['helper.html'].bodyChildren===0&&inner['options.html'].bodyChildren===0&&inner['options.html'].inputs===0&&inner['prompt.html'].bodyChildren===0&&inner['prompt.html'].buttons===0&&inner['popup.html'].sites===0&&inner['popup.html'].socketHidden===true,{inner});
 
  }
  if(runs('guard')){

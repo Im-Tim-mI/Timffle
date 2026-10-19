@@ -102,6 +102,9 @@ for(const language of todo){
   const helperText=await chrome.eval(probe.sessionId,'document.querySelector("#socket-helper-status").textContent');
   // No helper is installed in this run: the status is the "not installed" one (or the "unavailable" one), never blank or the key.
   add(language+':helper-status-is-a-catalog-text',[T('timffle_helper_missing'),T('timffle_helper_unavailable'),T('timffle_helper_incompatible')].includes(helperText),{helperText});
+  // The helper is missing, so the button that opens the install page is shown, in the language, and inside the page.
+  const installButton=await chrome.eval(probe.sessionId,'(()=>{const b=document.querySelector("#socket-helper-install"),r=b.getBoundingClientRect();return {hidden:b.hidden,text:b.textContent,visible:r.width>0&&r.height>0,right:r.right,page:document.documentElement.clientWidth}})()');
+  add(language+':settings-page-install-button-follows-the-missing-helper',installButton.hidden===false&&installButton.visible&&installButton.text===T('timffle_helper_notice_button')&&installButton.right<=installButton.page,{installButton});
   // The discount box: shown in English and Chinese only (texts of the language, the banner of the language loaded at its real size, both links exact); out of sight in every other language.
   if(SHOWS_PROMO.has(language)){
   const promo=await chrome.eval(probe.sessionId,`(()=>{const section=document.getElementById('promo'),img=section.querySelector('img'),links=[...section.querySelectorAll('a')];
@@ -142,12 +145,40 @@ for(const language of todo){
   await picture(q,'question');
   await chrome.send('Target.closeTarget',{targetId:q.targetId});
 
+  // ---- install page (no helper is installed in this run, so it says so)
+  const hp=await open('chrome-extension://'+ID+'/helper.html',760,900);
+  await chrome.wait(hp.sessionId,`(()=>{const s=document.getElementById('helper-page-status');return s&&s.dataset.state&&s.textContent!==${JSON.stringify(T('timffle_helper_checking'))}})()`,20000);
+  const h=await chrome.eval(hp.sessionId,READ);
+  add(language+':install-page-language-and-direction',h.lang===expectLang&&h.dir===(RTL.has(language)?'rtl':'ltr'),{lang:h.lang,dir:h.dir});
+  add(language+':install-page-title-is-translated',h.title===T('timffle_helper_page_title'),{title:h.title});
+  // The status line is rewritten by the page itself once it has asked the helper.
+  const hwrong=h.marked.filter(x=>x.text!==T(x.key)&&x.key!=='timffle_helper_checking');
+  const hstatus=await chrome.eval(hp.sessionId,'document.getElementById("helper-page-status").textContent');
+  add(language+':install-page-shows-its-catalog',h.marked.length>=6&&hwrong.length===0&&[T('timffle_helper_missing'),T('timffle_helper_unavailable')].includes(hstatus),{count:h.marked.length,wrong:hwrong.slice(0,3),hstatus});
+  const steps=await chrome.eval(hp.sessionId,`[...document.querySelectorAll('.helper-steps li')].map(li=>({text:li.textContent,code:li.querySelector('code')?.textContent,dir:li.querySelector('code')?.dir}))`);
+  add(language+':install-page-lines-keep-their-file-names',steps.length===3&&['windows','macos','linux'].every((system,i)=>norm(steps[i].text)===T.plain('timffle_helper_step_'+system)&&steps[i].dir==='ltr')&&steps.map(x=>x.code).join('|')==='install-windows.cmd|install-macos.command|sh install-linux.sh',{steps});
+  const download=h.rich.find(r=>r.key==='timffle_helper_page_download');
+  add(language+':install-page-link-goes-to-the-releases-page',!!download&&download.links.length===1&&download.links[0].href==='https://github.com/Im-Tim-mI/Timffle/releases/latest'&&norm(download.text)===T.plain('timffle_helper_page_download'),{download});
+  add(language+':install-page-fits-its-width',h.overflowX<=0,{overflowX:h.overflowX});
+  // A narrow window (a phone-sized one) too.
+  await chrome.send('Emulation.setDeviceMetricsOverride',{width:360,height:900,deviceScaleFactor:1,mobile:false},hp.sessionId);
+  await delay(200);
+  const narrow=await chrome.eval(hp.sessionId,'document.documentElement.scrollWidth-document.documentElement.clientWidth');
+  add(language+':install-page-fits-a-narrow-window',narrow<=0,{narrow});
+  await chrome.send('Emulation.setDeviceMetricsOverride',{width:760,height:900,deviceScaleFactor:1,mobile:false},hp.sessionId);
+  await picture(hp,'install');
+  await chrome.send('Target.closeTarget',{targetId:hp.targetId});
+
   // ---- popup page (as a tab: the socket section stays hidden without a website tab, but its texts are in place)
   const pop=await open('chrome-extension://'+ID+'/popup.html',320,600);
   await chrome.wait(pop.sessionId,'document.documentElement.lang!==""&&!!document.querySelector(".socket-title")?.textContent',20000);
   const pp=await chrome.eval(pop.sessionId,READ);
   add(language+':popup-shows-its-catalog',pp.marked.length>=2&&pp.marked.every(x=>x.text===T(x.key)),{marked:pp.marked.map(x=>x.key)});
   add(language+':popup-language-and-direction',pp.lang===expectLang&&pp.dir===(RTL.has(language)?'rtl':'ltr'),{lang:pp.lang,dir:pp.dir});
+  // No helper is installed in this run, so the popup tells the visitor to install it: in the language, inside the popup, with the accent border on the side the text starts. The popup is 340 px wide whatever the window of this test.
+  const notice=await chrome.wait(pop.sessionId,`(()=>{const n=document.getElementById('helper-notice');if(!n||document.readyState!=='complete'||getComputedStyle(n).display==='none'||n.getBoundingClientRect().height===0)return false;const button=document.getElementById('helper-notice-button'),body=document.body.getBoundingClientRect(),r=n.getBoundingClientRect(),b=button.getBoundingClientRect(),css=getComputedStyle(n);return {text:document.getElementById('helper-notice-text').textContent,button:button.textContent,inside:r.left>=body.left-1&&r.right<=body.right+1&&b.left>=r.left-1&&b.right<=r.right+1,spills:n.scrollWidth>n.clientWidth+1,clipped:button.scrollWidth>button.clientWidth+1,left:css.borderLeftWidth,right:css.borderRightWidth,height:Math.round(r.height)}})()`,15000);
+  add(language+':popup-notice-says-the-helper-is-missing',notice.text===T('timffle_helper_notice_missing')&&notice.button===T('timffle_helper_notice_button'),{notice});
+  add(language+':popup-notice-fits-and-follows-the-reading-direction',notice.inside&&!notice.spills&&!notice.clipped&&(RTL.has(language)?notice.right==='4px'&&notice.left==='0px':notice.left==='4px'&&notice.right==='0px'),{notice});
   // The discount box (English and Chinese only) is open when the popup opens (the popup then scrolls); it shows the texts of the language and can be folded, which gives the room back. Out of sight in every other language.
   if(SHOWS_PROMO.has(language)){
   await picture(pop,'popup-discount');
