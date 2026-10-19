@@ -28,6 +28,8 @@
   - `locale-tests.mjs`：36 種語言 **1064** 項全過（原 968；每種有 Chrome 介面的語言多 3 項：視窗放得進 540 × 620 的視窗［內容高度不超過 580 px］、標題與「嵌入在…」那一行、三個控制項由上而下）。
   - 肉眼看過截圖：英文、阿拉伯文（由右到左）、日文、德文、繁體中文、泰文的視窗。
   - **沒有驗證**：Windows 與 macOS 實機（視窗的位置、標題列的高度、HTML 全螢幕的遊戲裡新視窗會不會讓它離開全螢幕）；真的 GitHub 下載；機器翻譯的 33 種語言的語意；Firefox（沒有原生訊息，不會開這個視窗）。
+- **發行包**：`timffle-chrome-0.8.0.26305.zip`（16,374,892 位元組，SHA-256 `ba9d39e0fc29f0c5b7d48c70744409de89579f852ce5edbdc9d1ee5ef5413557`），從乾淨的提交 `8dd6956d8` 建置；ZIP 內嵌的 commit 編號就是它，之後的提交只改這份 CHANGELOG。**未打標籤、未建立 GitHub release、未推送。**打包前後的路徑檢查通過（78 與 99 個檔案，沒有家目錄或使用者名稱），另以獨立腳本掃描整個 ZIP（沒有使用者名稱或家目錄路徑）。與 0.8.0.26304 相比：99 個檔案中 52 個逐位元組相同（含 `ruffle_web_bg.wasm`，Ruffle 核心沒有動，以及七個小幫手執行檔，小幫手仍是 1.3.0）；不同的 47 個是 36 個語言檔（多了視窗標題那一句）、`prompt.html`、`prompt.css`、七個 JS（背景、頁面、彈出視窗與選項頁等，其中也有建置時間與 commit 編號）、`README.txt`（多提一句新視窗）與 `manifest.json`（只有版本號不同，權限與主機權限都沒變）。未簽章、未公證。
+- **對這個 ZIP 重跑的驗證**（解開後的擴充功能；Chrome 155 無頭模式、Linux x64，機器負載約 45～50）：localtest 36（第一次跑在 `local-close-no-remote-close-event` 失敗——上面說的已知負載計時檢查——單獨重跑全過）、production 22（用 ZIP 裡的正式版 Linux x64 小幫手）、missing 80、delayed 21、incompatible 53、manual 8（第一次 8 項都過、程式結束時清理 `browser-manual/profile` 回報 ENOTEMPTY 而回傳 1，單獨重跑回傳 0）、ask 67、`locale-tests.mjs` 1064，其餘第一次就全部通過；另外有畫面的（xvfb）`missing` 81 項全過、`TEST_LOCALE=zh_TW` 的 `missing` 80 項全過；封裝測試 24、路徑檢查 13；小幫手 `go vet`、`gofmt -l` 乾淨，`go test -count=1`（預設與 `-tags localtest`）全過。**沒有重跑**：Wine 下的安裝／移除測試（小幫手原始碼與執行檔和 0.8.0.26304 相同，封裝腳本只有用法說明裡的版本號不同）。肉眼看過這個版本的視窗截圖：英文（真實 540 × 620 視窗）與繁體中文（無頭模式）。
 
 ## 0.8.0.26304 — 2026-10-19
 
