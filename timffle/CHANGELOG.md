@@ -26,7 +26,7 @@
   - **沒有驗證**：Windows 與 macOS 實機（按鈕、雙擊安裝、SmartScreen／Gatekeeper 的實際畫面都沒看到過；Windows 的安裝程式只在 Wine 測過）；有畫面的（非無頭）Chrome；Chrome 在真的使用者手上對 `.exe` 的「不常被下載」警告長什麼樣；機器翻譯的 33 種語言的語意；Firefox（沒有原生訊息，提示與按鈕都不出現）。
 - **發行包**：`timffle-chrome-0.8.0.26304.zip`（16,370,505 位元組，SHA-256 `5cf21c99ca4e75175ae499b4c5b3006301f5c55ce8adf17e019245bfd07a8c8a`），從乾淨的提交 `6cda32bbf` 建置；ZIP 內嵌的 commit 編號就是它，之後的提交只改這份 CHANGELOG。**未打標籤、未建立 GitHub release、未推送。**打包前後的路徑檢查通過（78 與 99 個檔案，沒有家目錄或使用者名稱），另以獨立腳本掃描整個 ZIP（沒有使用者名稱或家目錄路徑）。與 0.8.0.26303 相比：99 個檔案中 41 個逐位元組相同（含 `ruffle_web_bg.wasm`，Ruffle 核心沒有動）；新增 `helper.html`、`css/helper.css`、`dist/helper.js`（它們在 0.8.0.26303 裡還沒有）；其餘是 36 個語言檔、彈出視窗與設定頁的頁面和樣式、背景與頁面的 JS、七個小幫手執行檔（1.3.0）與 `README.txt`；`manifest.json` 只有版本號不同（權限與主機權限都沒變）。ZIP 裡的小幫手與 Timffle-Helper `v1.3.0` 的安裝檔是同一個程式（Windows 三個 `.exe`、Linux x64 與 macOS Apple silicon 逐位元組相同；Linux ARM64 與 macOS Intel 沒有逐一比對）。未簽章、未公證。
 - **對這個 ZIP 重跑的驗證**（解開後的擴充功能；Chrome 155 無頭模式、Linux x64）：上面的整套測試（單元測試除外，它在建置時跑）數字相同、全部通過——localtest 36、production 22（用 ZIP 裡的正式版 Linux x64 小幫手）、missing 61、delayed 21、incompatible 34、manual 8、ask 66、`locale-tests.mjs` 968；封裝測試 24、安裝檔封裝與真的建置＋解開＋執行（含 Wine 下的下載情境，沒有跳過）24、路徑檢查 13；Wine 下對 ZIP 裡 Windows x64 小幫手的安裝／移除回歸（2 組）也通過。
-- **獨立審查（2026-10-19，對這一版的程式；沒有高風險問題）留下、尚未處理的項目**——所以這一版是**測試版**，審查者建議（1）到（3）修好之前不要公開發行：
+- **獨立審查（2026-10-19，對這一版的程式；沒有高風險問題）留下、尚未處理的項目**——所以這一版是**測試版**；審查者建議（2）到（4）修好之前不要公開發行，（1）是前提（倉庫公開、`v1.3.0` 存在），不是程式的問題：
   1. 按鈕只有在 `Im-Tim-mI/Timffle-Helper` 公開、且 `v1.3.0` 的七個檔名都存在時，對作者以外的人才有效（倉庫目前是私人的）。
   2. 「已開始下載」在知道結果之前就顯示（`helper-download.ts`），下載失敗時只有一個背景分頁停在 GitHub 的錯誤頁；建議改成等 `tabs.onRemoved`，逾時就把那個分頁帶到前景並換成失敗的句子。
   3. 安裝檔沒有雜湊檢查，而 GitHub release 的檔案可以被有寫入權限的人換掉；建議開啟不可變 release（或至少標籤保護），並把每個檔案的 SHA-256 放進 `HELPER_INSTALLERS` 與安裝頁。
