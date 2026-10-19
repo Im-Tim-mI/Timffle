@@ -41,6 +41,8 @@ const github=await startFakeGitHub(path.join(output,'tls'));cleanup.push(()=>git
 const downloads=path.join(output,'downloads');await fs.mkdir(downloads,{recursive:true});
 const realClick=async(sessionId,selector)=>{const r=await chrome.eval(sessionId,'(()=>{const e=document.querySelector('+JSON.stringify(selector)+');e.scrollIntoView({block:"center"});const b=e.getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2}})()');for(const type of ['mousePressed','mouseReleased'])await chrome.send('Input.dispatchMouseEvent',{type,x:r.x,y:r.y,button:'left',clickCount:1},sessionId);};
 const until=async(fn,ms=5000)=>{const end=Date.now()+ms;while(Date.now()<end){const v=await fn();if(v)return v;await delay(80);}return false;};
+// How long a download (or the error page of a failed one) may take: Chrome needed more than 8 s to finish a 48-byte file on a busy machine. The wait ends as soon as the file is there.
+const DOWNLOAD_WAIT_MS=30000;
 // Real helpers are installed by their own --install into a disposable HOME,
 // and Chrome uses that HOME's default Google Chrome user data directory.
 const work=path.join(output,'chrome');
@@ -114,7 +116,7 @@ try{
   const saved=()=>chrome.events.filter(e=>e.method==='Browser.downloadProgress'&&e.params.state==='completed').map(e=>e.params.filePath);
   // The release files only: a tab opened on github.com also asks for the site's icon.
   const requested=()=>github.requests.filter(r=>r.host==='github.com'&&r.url.startsWith('/Im-Tim-mI/')).map(r=>r.url);
-  const waitSaved=async(file,count)=>!!await until(()=>saved().filter(f=>path.basename(f)===file).length>=count,8000);
+  const waitSaved=async(file,count)=>!!await until(()=>saved().filter(f=>path.basename(f)===file).length>=count,DOWNLOAD_WAIT_MS);
   // What the install page shows, read the same way for every system.
   const INSTALL_PAGE_JS='({title:document.title,heading:document.querySelector("h1").textContent,lead:document.querySelector(".helper-state").nextElementSibling.textContent,groups:[...document.querySelectorAll(".helper-systems > li")].map(li=>({family:li.dataset.family,links:[...li.querySelectorAll(".helper-files li")].map(item=>{const a=item.querySelector("a");return {label:a.textContent,href:a.href,target:a.target,rel:a.rel,current:a.getAttribute("aria-current"),file:item.querySelector("code").textContent,fileDir:item.querySelector("code").dir}}),text:li.querySelector("p").textContent,code:li.querySelector("p code")?.textContent,codeDir:li.querySelector("p code")?.dir})),after:document.querySelector(".helper-systems").nextElementSibling.textContent,link:(()=>{const a=document.querySelector("#helper-releases");return {href:a.href,text:a.textContent,target:a.target,rel:a.rel}})(),dir:document.documentElement.dir,lang:document.documentElement.lang})';
   // The installers in the order the page lists them for a visitor on `ownId`: each group starts with that visitor's own, which is marked.
@@ -218,7 +220,7 @@ try{
      await chrome.wait(tab.sessionId,noticeJs,12000);
      const had=saved().length;
      await realClick(tab.sessionId,'#helper-notice-button');
-     const page404=await until(async()=>(await pagesOnGitHub())[0],8000);
+     const page404=await until(async()=>(await pagesOnGitHub())[0],DOWNLOAD_WAIT_MS);
      await delay(500);
      add('popup-release-not-found-saves-nothing-and-shows-githubs-page',!!page404&&saved().length===had&&/github\.com/.test(page404.url),{page:page404&&page404.url,saved:saved().length-had});
      if(page404)await chrome.send('Target.closeTarget',{targetId:page404.targetId});
