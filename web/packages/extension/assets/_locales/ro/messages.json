@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "Descărcarea a început. Când se termină, rulează programul de instalare descărcat, apoi reîncarcă pagina jocului."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Instalați mai întâi asistentul pentru socketuri"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: instalarea asistentului pentru socketuri"
     },

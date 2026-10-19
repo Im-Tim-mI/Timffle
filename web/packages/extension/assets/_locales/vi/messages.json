@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "Đã bắt đầu tải về. Khi xong, hãy chạy trình cài đặt đã tải về, rồi tải lại trang trò chơi."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Hãy cài đặt trình hỗ trợ socket trước"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: cài đặt trình hỗ trợ socket"
     },

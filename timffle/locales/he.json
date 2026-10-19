@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "עבור $SYSTEM$",
     "timffle_helper_download_more": "מערכות אחרות והוראות",
     "timffle_helper_download_started": "ההורדה החלה. בסיומה, הפעל את המתקין שהורדת ואז טען מחדש את דף המשחק.",
+    "timffle_helper_prompt_title": "יש להתקין קודם את עוזר Socket",
     "timffle_helper_page_title": "Timffle: התקנת עוזר Socket",
     "timffle_helper_page_heading": "התקנת עוזר Socket",
     "timffle_helper_page_intro": "משחקים מקוונים זקוקים לחיבורי TCP, שהרחבות Chrome אינן יכולות לפתוח, ולכן Timffle משתמש בתוכנית עזר קטנה. התקן אותה פעם אחת; לאחר מכן Chrome מפעיל אותה בעצמו בכל פעם שמשחק מתחבר, וסוגר אותה שוב.",

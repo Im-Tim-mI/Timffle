@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "$SYSTEM$ için",
     "timffle_helper_download_more": "Diğer sistemler ve yönergeler",
     "timffle_helper_download_started": "İndirme başladı. Bittiğinde indirdiğiniz yükleyiciyi çalıştırın, sonra oyun sayfasını yeniden yükleyin.",
+    "timffle_helper_prompt_title": "Önce soket yardımcısını yükleyin",
     "timffle_helper_page_title": "Timffle: soket yardımcısını yükleme",
     "timffle_helper_page_heading": "Soket yardımcısını yükleme",
     "timffle_helper_page_intro": "Çevrimiçi oyunlar, Chrome uzantılarının açamadığı TCP bağlantılarına ihtiyaç duyar; bu yüzden Timffle küçük bir yardımcı program kullanır. Bir kez yükleyin; sonrasında Chrome onu bir oyun her bağlandığında kendiliğinden başlatır ve yeniden kapatır.",

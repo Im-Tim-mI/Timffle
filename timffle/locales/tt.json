@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "$SYSTEM$ өчен",
     "timffle_helper_download_more": "Башка системалар һәм күрсәтмәләр",
     "timffle_helper_download_started": "Йөкләү башланды. Ул тәмамлангач, йөкләнгән урнаштыргычны эшләтегез, аннары уен битен яңадан йөкләгез.",
+    "timffle_helper_prompt_title": "Башта сокет булышчысын урнаштырыгыз",
     "timffle_helper_page_title": "Timffle: сокет булышчысын урнаштыру",
     "timffle_helper_page_heading": "Сокет булышчысын урнаштыру",
     "timffle_helper_page_intro": "Онлайн уеннарга TCP тоташулары кирәк, аларны Chrome киңәйтүләре ача алмый, шуңа күрә Timffle кечкенә булышчы программа куллана. Аны бер тапкыр урнаштырыгыз; аннан соң уен тоташкан саен Chrome аны үзе эшләтә һәм кабат ябый.",

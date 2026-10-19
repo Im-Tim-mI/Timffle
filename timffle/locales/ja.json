@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "$SYSTEM$ 用",
     "timffle_helper_download_more": "他のシステムと手順",
     "timffle_helper_download_started": "ダウンロードを開始しました。完了したら、ダウンロードしたインストーラーを実行し、ゲームのページを再読み込みしてください。",
+    "timffle_helper_prompt_title": "先にソケットヘルパーをインストールしてください",
     "timffle_helper_page_title": "Timffle: ソケットヘルパーのインストール",
     "timffle_helper_page_heading": "ソケットヘルパーのインストール",
     "timffle_helper_page_intro": "オンラインゲームには TCP 接続が必要ですが、Chrome の拡張機能は TCP 接続を開けないため、Timffle は小さなヘルパープログラムを使います。インストールは 1 回だけです。その後は、ゲームが接続するたびに Chrome が自動的に起動し、終わると閉じます。",

@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "Le téléchargement a commencé. Une fois terminé, lancez le programme d'installation téléchargé, puis rechargez la page du jeu."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Installez d'abord l'assistant socket"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle : installer l'assistant socket"
     },

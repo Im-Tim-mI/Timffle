@@ -257,6 +257,9 @@
     "timffle_helper_download_started": {
         "message": "La baixada ha començat. Quan acabi, executa l'instal·lador baixat i torna a carregar la pàgina del joc."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Primer instal·leu l'assistent de sockets"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: instal·lació de l'assistent de sockets"
     },

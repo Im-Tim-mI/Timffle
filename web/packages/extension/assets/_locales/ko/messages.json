@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "다운로드를 시작했습니다. 완료되면 다운로드한 설치 프로그램을 실행한 다음 게임 페이지를 새로고침하세요."
     },
+    "timffle_helper_prompt_title": {
+        "message": "먼저 소켓 도우미를 설치하세요"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: 소켓 도우미 설치"
     },

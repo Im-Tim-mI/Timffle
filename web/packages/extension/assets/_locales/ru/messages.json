@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "Скачивание началось. Когда оно завершится, запустите скачанный установщик, затем перезагрузите страницу игры."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Сначала установите сокет-помощника"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: установка сокет-помощника"
     },

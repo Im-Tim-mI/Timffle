@@ -185,6 +185,9 @@
     "timffle_helper_download_started": {
         "message": "เริ่มดาวน์โหลดแล้ว เมื่อเสร็จแล้ว ให้เรียกใช้ตัวติดตั้งที่ดาวน์โหลด แล้วโหลดหน้าเกมใหม่"
     },
+    "timffle_helper_prompt_title": {
+        "message": "ติดตั้งตัวช่วย Socket ก่อน"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: ติดตั้งตัวช่วย Socket"
     },

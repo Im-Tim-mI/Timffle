@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Pro $SYSTEM$",
     "timffle_helper_download_more": "Jiné systémy a pokyny",
     "timffle_helper_download_started": "Stahování začalo. Až skončí, spusťte stažený instalační program a pak znovu načtěte stránku hry.",
+    "timffle_helper_prompt_title": "Nejprve nainstalujte pomocníka pro sockety",
     "timffle_helper_page_title": "Timffle: instalace pomocníka pro sockety",
     "timffle_helper_page_heading": "Instalace pomocníka pro sockety",
     "timffle_helper_page_intro": "Online hry potřebují spojení TCP, která rozšíření Chrome otevřít neumí, proto Timffle používá malý pomocný program. Nainstalujte ho jednou; poté ho Chrome sám spustí, kdykoli se hra připojuje, a znovu ukončí.",

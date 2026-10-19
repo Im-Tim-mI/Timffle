@@ -187,6 +187,10 @@
         "message": "Download started. When it has finished, run the downloaded installer, then reload the game page.",
         "description": "Shown in the popup notice (or next to the helper status on the settings page) after the download button was pressed. The popup is narrow: keep it short."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Install the socket helper first",
+        "description": "Heading of the window that opens when a website has just tried to open a TCP (socket) connection and the socket helper is not installed (or does not match this extension). Below it come the website's name, what is wrong and a button that downloads the installer. It is an instruction to the user: use the imperative, and say that the helper has to be installed before the game can connect. Keep it short; it is a heading."
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: install the socket helper",
         "description": "Title of the browser tab of the page that explains how to install the socket helper. Timffle is the product name."

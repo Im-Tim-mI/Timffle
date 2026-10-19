@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Para $SYSTEM$",
     "timffle_helper_download_more": "Outros sistemas e instruções",
     "timffle_helper_download_started": "A transferência começou. Quando terminar, execute o instalador transferido e depois recarregue a página do jogo.",
+    "timffle_helper_prompt_title": "Instale primeiro o assistente de sockets",
     "timffle_helper_page_title": "Timffle: instalar o assistente de sockets",
     "timffle_helper_page_heading": "Instalar o assistente de sockets",
     "timffle_helper_page_intro": "Os jogos online precisam de ligações TCP, que as extensões do Chrome não conseguem abrir, por isso o Timffle usa um pequeno programa assistente. Instale-o uma única vez; depois disso o Chrome inicia-o sozinho sempre que um jogo se liga e volta a fechá-lo.",

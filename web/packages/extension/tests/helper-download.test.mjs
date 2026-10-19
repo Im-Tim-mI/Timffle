@@ -382,3 +382,44 @@ test("without an installer for the system nothing is shown and nothing is wired"
         delete globalThis.browser;
     }
 });
+
+test("a click the window does not accept starts nothing and does not use up the two seconds", async () => {
+    globalThis.browser = { i18n: fakeI18n("en") };
+    try {
+        let clock = 10_000;
+        let accepted = false;
+        const listeners = [];
+        const button = {
+            addEventListener: (type, listener) =>
+                type === "click" && listeners.push(listener),
+        };
+        const downloads = [];
+        await bindHelperDownload({
+            button,
+            label: { textContent: "", hidden: true },
+            started: () => {},
+            accepts: () => accepted,
+            detect: async () => HELPER_INSTALLERS[0],
+            download: async (chosen) => {
+                downloads.push(chosen.id);
+            },
+            now: () => clock,
+        });
+        const click = async () => {
+            listeners.forEach((listener) => listener({ isTrusted: true }));
+            await new Promise((resolve) => setImmediate(resolve));
+        };
+        await click();
+        assert.deepEqual(downloads, [], "the window ignored it");
+        accepted = true;
+        clock += 1;
+        await click();
+        assert.deepEqual(
+            downloads,
+            ["windows-x64"],
+            "the next click was not taken for a double click",
+        );
+    } finally {
+        delete globalThis.browser;
+    }
+});

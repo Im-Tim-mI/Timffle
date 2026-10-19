@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "İndirme başladı. Bittiğinde indirdiğiniz yükleyiciyi çalıştırın, sonra oyun sayfasını yeniden yükleyin."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Önce soket yardımcısını yükleyin"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: soket yardımcısını yükleme"
     },

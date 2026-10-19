@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Voor $SYSTEM$",
     "timffle_helper_download_more": "Andere systemen en instructies",
     "timffle_helper_download_started": "De download is gestart. Voer na afloop het gedownloade installatieprogramma uit en laad daarna de gamepagina opnieuw.",
+    "timffle_helper_prompt_title": "Installeer eerst de sockethelper",
     "timffle_helper_page_title": "Timffle: de sockethelper installeren",
     "timffle_helper_page_heading": "De sockethelper installeren",
     "timffle_helper_page_intro": "Onlinegames hebben TCP-verbindingen nodig, die Chrome-extensies niet kunnen openen, daarom gebruikt Timffle een klein hulpprogramma. Installeer het één keer; daarna start Chrome het zelf wanneer een game verbinding maakt en sluit het weer af.",

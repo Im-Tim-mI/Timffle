@@ -272,6 +272,9 @@
     "timffle_helper_download_started": {
         "message": "Завантаження почалося. Коли воно завершиться, запустіть завантажений інсталятор, потім перезавантажте сторінку гри."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Спочатку встановіть сокет-помічника"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: встановлення сокет-помічника"
     },

@@ -64,12 +64,19 @@ function port(sender, name = SOCKET_PORT_NAME) {
     };
 }
 /** A frame of a web page, as the browser reports it. */
-const frame = ({ origin = NEW, tab = 1, frameId = 0, top = origin } = {}) => ({
+const frame = ({
+    origin = NEW,
+    tab = 1,
+    frameId = 0,
+    top = origin,
+    documentId,
+} = {}) => ({
     id: ID,
     url: origin + "/game",
     origin,
     tab: { id: tab, windowId: 10 + tab, url: top + "/" },
     frameId,
+    ...(documentId === undefined ? {} : { documentId }),
 });
 const promptUI = (windowId, overrides = {}) => ({
     id: ID,
@@ -1054,4 +1061,253 @@ test("a settings change that arrives before earlier answers are loaded still tak
     await tick();
     assert.deepEqual(errors(p), ["not_allowed"]);
     assert.equal(h.natives.length, 0);
+});
+
+// ---- "Install the socket helper first": the window for a game that needs TCP and finds no helper ----
+
+/** Chrome knows no native messaging host of that name: the installer was never run. */
+function helperMissing(h) {
+    h.browser.runtime.lastError = {
+        message: "Specified native messaging host not found.",
+    };
+    h.natives.at(-1).disconnect();
+    h.browser.runtime.lastError = undefined;
+}
+/** A helper of another protocol version answers hello. */
+function helperIncompatible(h) {
+    h.natives
+        .at(-1)
+        .onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
+}
+const settle = async () => {
+    for (let i = 0; i < 8; i++) {
+        await tick();
+    }
+};
+/** What the install window shows, asked as its own page would. */
+const helperView = (h, windowId, index = h.windows.created.length - 1) =>
+    h.send(
+        { type: PROMPT_GET_REQUEST, id: h.promptId(index) },
+        promptUI(windowId),
+    ).reply;
+
+test("a game that needs TCP and finds no helper gets a window next to its own, which names the site and what is missing", async (t) => {
+    const h = setup(t);
+    const p = await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    assert.equal(
+        h.windows.created.length,
+        0,
+        "the helper is only found missing when the socket starts",
+    );
+    helperMissing(h);
+    await settle();
+    assert.deepEqual(errors(p), ["helper_missing"]);
+    assert.equal(h.windows.created.length, 1);
+    const window = h.windows.created[0];
+    assert.match(
+        window.url,
+        /^chrome-extension:\/\/[a-p]{32}\/prompt\.html\?id=[0-9a-f-]{36}$/u,
+    );
+    assert.equal(window.type, "popup");
+    assert.equal(window.focused, true);
+    assert.deepEqual([window.width, window.height], [540, 620]);
+    // Centered over the window of the page that needed the helper.
+    assert.equal(window.left, Math.round(100 + (1280 - 540) / 2));
+    assert.equal(window.top, Math.round(50 + (900 - 620) / 2));
+    assert.deepEqual(helperView(h, 500), { helper: "missing", origin: MOLE });
+    // The window belongs to the window the browser opened for it.
+    assert.equal(helperView(h, 501), null);
+});
+
+test("a helper that does not match is a different notice", async (t) => {
+    const h = setup(t);
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperIncompatible(h);
+    await settle();
+    assert.equal(h.windows.created.length, 1);
+    assert.deepEqual(helperView(h, 500), {
+        helper: "incompatible",
+        origin: MOLE,
+    });
+});
+
+test("a frame inside another site's page says whose page it is", async (t) => {
+    const h = setup(t, { settings: base({ allowedOrigins: [MOLE] }) });
+    await h.open(
+        frame({ origin: MOLE, frameId: 4, top: OTHER, documentId: "d1" }),
+    );
+    helperMissing(h);
+    await settle();
+    assert.deepEqual(helperView(h, 500), {
+        helper: "missing",
+        origin: MOLE,
+        embeddedIn: OTHER,
+    });
+});
+
+test("sockets that fail together share the window, and the same page load is not told again after it was closed", async (t) => {
+    const h = setup(t);
+    const sender = frame({ origin: MOLE, documentId: "d1" });
+    await h.open(sender);
+    await h.open(sender);
+    await h.open(sender);
+    for (const native of h.natives) {
+        h.browser.runtime.lastError = {
+            message: "Specified native messaging host not found.",
+        };
+        native.disconnect();
+    }
+    h.browser.runtime.lastError = undefined;
+    await settle();
+    assert.equal(h.windows.created.length, 1, "three sockets, one window");
+    // The visitor closes it; the game tries again.
+    await h.browser.windows.remove(500);
+    await h.open(sender);
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 1, "this page load was told");
+    // Reloading the game is a new page load.
+    await h.open(frame({ origin: MOLE, documentId: "d2" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 2);
+});
+
+test("a site that is asked about first is asked first, then told about the helper", async (t) => {
+    const h = setup(t);
+    const p = await h.open(frame({ documentId: "d1" }));
+    assert.equal(h.windows.created.length, 1, "the question");
+    assert.equal(
+        h.send({ type: PROMPT_GET_REQUEST, id: h.promptId(0) }, promptUI(500))
+            .reply.origin,
+        NEW,
+    );
+    await h.answer("allow-once");
+    assert.equal(h.natives.length, 1);
+    helperMissing(h);
+    await settle();
+    assert.deepEqual(errors(p), ["helper_missing"]);
+    assert.equal(h.windows.created.length, 2, "the notice");
+    assert.deepEqual(helperView(h, 501), { helper: "missing", origin: NEW });
+    // The question window is gone and its page cannot read the notice's view as its own.
+    assert.deepEqual(h.windows.removed, [500]);
+});
+
+test("a site that was refused is not told about the helper, and neither is a failure that has nothing to do with it", async (t) => {
+    const h = setup(t);
+    const refused = await h.open(frame({ documentId: "d1" }));
+    await h.answer("deny-once");
+    assert.deepEqual(errors(refused), ["not_allowed"]);
+    const game = frame({ origin: MOLE, tab: 2, documentId: "d2" });
+    await h.open(game);
+    // The server said no, the helper is there.
+    h.natives
+        .at(-1)
+        .onMessage.emit({ type: "hello", version: "1.2.0", protocol: 2 });
+    h.natives.at(-1).onMessage.emit({ type: "closed" });
+    // The helper crashed after it had said hello.
+    await h.open(game);
+    h.natives
+        .at(-1)
+        .onMessage.emit({ type: "hello", version: "1.2.0", protocol: 2 });
+    h.browser.runtime.lastError = { message: "Native host has exited." };
+    h.natives.at(-1).disconnect();
+    h.browser.runtime.lastError = undefined;
+    // The page left.
+    const leaving = await h.open(game);
+    leaving.disconnect();
+    await settle();
+    assert.equal(h.windows.created.length, 1, "only the first question");
+});
+
+test("a window of a closed tab or of a player that was turned off is not left for a page that is gone", async (t) => {
+    const h = setup(t);
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 1);
+    h.setPlayer(false);
+    await settle();
+    assert.deepEqual(h.windows.removed, [500]);
+    // The tab closes: the same tab number and document id are a stranger next time.
+    h.setPlayer(true);
+    h.browser.tabs.onRemoved.emit(1);
+    await settle();
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 2);
+});
+
+test("at most three notices a minute whichever tabs need the helper (the clock is the manager unit tests')", async (t) => {
+    const h = setup(t);
+    for (let tab = 1; tab <= 3; tab++) {
+        await h.open(frame({ origin: MOLE, tab, documentId: `d${tab}` }));
+        helperMissing(h);
+        await settle();
+        await h.browser.windows.remove(499 + tab);
+    }
+    assert.equal(h.windows.created.length, 3);
+    await h.open(frame({ origin: MOLE, tab: 4, documentId: "d4" }));
+    helperMissing(h);
+    await settle();
+    assert.equal(h.windows.created.length, 3, "a fourth within the minute");
+});
+
+test("a window that cannot be opened leaves the game with the error it always had", async (t) => {
+    const noWindows = setup(t, { noWindows: true });
+    const p = await noWindows.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(noWindows);
+    await settle();
+    assert.deepEqual(errors(p), ["helper_missing"]);
+    const failing = setup(t);
+    failing.windows.failNext = true;
+    const q = await failing.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(failing);
+    await settle();
+    assert.deepEqual(errors(q), ["helper_missing"]);
+    assert.equal(failing.windows.created.length, 0);
+});
+
+test("a restarted service worker still knows which page loads were told", async (t) => {
+    const first = setup(t);
+    await first.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(first);
+    await settle();
+    assert.equal(first.windows.created.length, 1);
+    assert.deepEqual(first.sessionData.helperToldDocuments, [[1, "d1"]]);
+    const restarted = setup(t, { session: structuredClone(first.sessionData) });
+    await restarted.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(restarted);
+    await settle();
+    assert.equal(restarted.windows.created.length, 0);
+});
+
+test("a web page cannot read or answer the notice, and only the notice's own window gets its view", async (t) => {
+    const h = setup(t);
+    await h.open(frame({ origin: MOLE, documentId: "d1" }));
+    helperMissing(h);
+    await settle();
+    const id = h.promptId(0);
+    // Not an extension page, a frame of one, or another page of the extension.
+    for (const sender of [
+        frame({ origin: MOLE }),
+        promptUI(500, { frameId: 2 }),
+        promptUI(500, { url: "https://evil.example/prompt.html" }),
+        popupUI(),
+    ]) {
+        assert.equal(
+            h.send({ type: PROMPT_GET_REQUEST, id }, sender).returned,
+            undefined,
+        );
+    }
+    // The notice cannot be "answered": there is nothing to decide.
+    const answered = h.send(
+        { type: PROMPT_ANSWER_REQUEST, id, choice: "allow-always" },
+        promptUI(500),
+    );
+    await tick();
+    assert.equal(answered.reply, false);
+    assert.deepEqual(h.stored.allowedOrigins, [MOLE]);
+    assert.equal(h.windows.removed.length, 0, "and the window stays open");
 });

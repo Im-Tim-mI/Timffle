@@ -283,6 +283,8 @@ export interface HelperDownloadControls {
     label: HTMLElement;
     /** Called after the browser was asked for the download. */
     started: (installer: HelperInstaller) => void;
+    /** Whether this click counts (a window that can pop up under the visitor's fingers ignores the first moments). */
+    accepts?: (event: MouseEvent) => boolean;
     /** Replaceable for tests. */
     detect?: () => Promise<HelperInstaller | undefined>;
     download?: (installer: HelperInstaller) => Promise<void>;
@@ -302,6 +304,7 @@ export async function bindHelperDownload({
     button,
     label,
     started,
+    accepts = () => true,
     detect = () => detectInstaller(),
     download = (installer) => startHelperDownload(installer),
     now = () => Date.now(),
@@ -315,7 +318,11 @@ export async function bindHelperDownload({
     let last = -Infinity;
     button.addEventListener("click", (event) => {
         // Only a person's click: a web page cannot script the popup, but a script click is still not a decision.
-        if (!event.isTrusted || now() - last < DOUBLE_CLICK_MS) {
+        if (
+            !event.isTrusted ||
+            !accepts(event) ||
+            now() - last < DOUBLE_CLICK_MS
+        ) {
             return;
         }
         last = now();

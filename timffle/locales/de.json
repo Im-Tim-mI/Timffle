@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Für $SYSTEM$",
     "timffle_helper_download_more": "Andere Systeme und Anleitung",
     "timffle_helper_download_started": "Der Download hat begonnen. Führen Sie danach das heruntergeladene Installationsprogramm aus und laden Sie dann die Spielseite neu.",
+    "timffle_helper_prompt_title": "Installieren Sie zuerst das Socket-Hilfsprogramm",
     "timffle_helper_page_title": "Timffle: Socket-Hilfsprogramm installieren",
     "timffle_helper_page_heading": "Socket-Hilfsprogramm installieren",
     "timffle_helper_page_intro": "Online-Spiele brauchen TCP-Verbindungen, die Chrome-Erweiterungen nicht öffnen können; deshalb nutzt Timffle ein kleines Hilfsprogramm. Installieren Sie es einmal; danach startet Chrome es selbst, sobald ein Spiel eine Verbindung aufbaut, und beendet es wieder.",

@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Ehhez: $SYSTEM$",
     "timffle_helper_download_more": "Más rendszerek és útmutató",
     "timffle_helper_download_started": "A letöltés elindult. Amikor végzett, futtasd a letöltött telepítőt, majd töltsd újra a játék oldalát.",
+    "timffle_helper_prompt_title": "Először telepítse a Socket-segédet",
     "timffle_helper_page_title": "Timffle: a Socket-segéd telepítése",
     "timffle_helper_page_heading": "A Socket-segéd telepítése",
     "timffle_helper_page_intro": "Az online játékoknak TCP-kapcsolatokra van szükségük, amelyeket a Chrome-bővítmények nem tudnak megnyitni, ezért a Timffle egy kis segédprogramot használ. Egyszer telepítsd; utána a Chrome magától elindítja, valahányszor egy játék csatlakozik, és újra bezárja.",

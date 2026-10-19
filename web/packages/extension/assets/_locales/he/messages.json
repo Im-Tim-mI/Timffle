@@ -266,6 +266,9 @@
     "timffle_helper_download_started": {
         "message": "ההורדה החלה. בסיומה, הפעל את המתקין שהורדת ואז טען מחדש את דף המשחק."
     },
+    "timffle_helper_prompt_title": {
+        "message": "יש להתקין קודם את עוזר Socket"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: התקנת עוזר Socket"
     },

@@ -88,6 +88,7 @@ function setup(t, deps = {}) {
             onChanged: event(),
         },
         tabs: { onRemoved: event(), onUpdated: event() },
+        windows: { onRemoved: event() },
     };
     globalThis.browser = browser;
     const cleanup = registerSocketBridge(deps);
@@ -403,4 +404,120 @@ test("without a badge dependency the browser's action API is used, and a browser
     const other = await h.open(content({ tab: { id: 6 } }));
     h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
     assert.ok(other.sent.some((x) => x.code === "helper_incompatible"));
+});
+
+/** A stand-in for the "install the helper" window: remembers what it was asked. */
+function helperWindow() {
+    const calls = { shown: [], removed: [], gone: [], disposed: 0 };
+    return {
+        calls,
+        show: async (request) => {
+            calls.shown.push(request);
+            return true;
+        },
+        view: () => undefined,
+        windowRemoved: (windowId) => calls.removed.push(windowId),
+        tabGone: (tabId) => calls.gone.push(tabId),
+        dispose: () => calls.disposed++,
+    };
+}
+
+test("a socket that fails because the helper is missing or not the right one asks for the install window, with what the browser reported about the frame", async (t) => {
+    const notice = helperWindow();
+    const h = setup(t, { badge: badge(), helperPrompts: notice });
+    const sender = content({
+        tab: { id: 7, windowId: 70, url: "https://portal.example/page" },
+        frameId: 3,
+        documentId: "doc-9",
+    });
+    const missing = await h.open(sender);
+    h.browser.runtime.lastError = { message: "Specified native messaging host not found." };
+    h.natives.at(-1).disconnect();
+    h.browser.runtime.lastError = undefined;
+    assert.ok(missing.sent.some((x) => x.code === "helper_missing"));
+    const old = await h.open(content({ tab: { id: 8 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
+    assert.ok(old.sent.some((x) => x.code === "helper_incompatible"));
+    assert.deepEqual(notice.calls.shown, [
+        {
+            problem: "missing",
+            origin: ORIGIN,
+            tabId: 7,
+            frameId: 3,
+            documentId: "doc-9",
+            top: "https://portal.example",
+            windowId: 70,
+        },
+        { problem: "incompatible", origin: ORIGIN, tabId: 8, frameId: 0 },
+    ]);
+});
+
+test("no other failure asks for the install window", async (t) => {
+    const notice = helperWindow();
+    const h = setup(t, { badge: badge(), helperPrompts: notice });
+    // The server refused.
+    await h.open(content({ tab: { id: 10 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.2.0", protocol: 2 });
+    h.natives.at(-1).onMessage.emit({ type: "closed" });
+    // The helper crashed after it said hello.
+    await h.open(content({ tab: { id: 11 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.2.0", protocol: 2 });
+    h.browser.runtime.lastError = { message: "Native host has exited." };
+    h.natives.at(-1).disconnect();
+    h.browser.runtime.lastError = undefined;
+    // The page left; the site is not allowed.
+    const leaving = await h.open(content({ tab: { id: 12 } }));
+    leaving.disconnect();
+    await h.open(content({ url: "https://evil.example/x", origin: "https://evil.example", tab: { id: 13 } }));
+    assert.deepEqual(notice.calls.shown, []);
+});
+
+test("the install window is told about closed tabs and windows and a player that was turned off, and is closed with the bridge", async (t) => {
+    const notice = helperWindow();
+    const h = setup(t, { badge: badge(), helperPrompts: notice });
+    h.browser.tabs.onRemoved.emit(5);
+    h.browser.windows.onRemoved.emit(77);
+    h.disable();
+    assert.deepEqual(notice.calls.gone, [5]);
+    assert.deepEqual(notice.calls.removed, [77]);
+    assert.equal(notice.calls.disposed, 1);
+});
+
+test("the prompt page gets the install window's text when the question has none, and the question wins when it has", async (t) => {
+    const notice = helperWindow();
+    notice.view = (id, windowId) =>
+        id === "notice" && windowId === 5
+            ? { helper: "missing", origin: ORIGIN }
+            : undefined;
+    const prompts = {
+        view: (id) => (id === "question" ? { origin: "https://asked.example" } : undefined),
+        ask: async () => "dismissed",
+        answer: async () => false,
+        windowRemoved() {},
+        tabGone() {},
+        settingsChanged() {},
+        dispose() {},
+    };
+    const h = setup(t, { badge: badge(), helperPrompts: notice, prompts });
+    const promptPage = (windowId) => ({
+        id: ID,
+        url: "chrome-extension://" + ID + "/prompt.html?id=x",
+        origin: "chrome-extension://" + ID,
+        frameId: 0,
+        tab: { id: 900, windowId },
+    });
+    const ask = (id, sender) => {
+        let reply;
+        const returned = h.browser.runtime.onMessage
+            .emit({ type: "socket_prompt_get", id }, sender, (r) => (reply = r))
+            .find((r) => r !== undefined);
+        return { reply, returned };
+    };
+    assert.deepEqual(ask("notice", promptPage(5)).reply, { helper: "missing", origin: ORIGIN });
+    assert.equal(ask("notice", promptPage(6)).reply, null);
+    assert.deepEqual(ask("question", promptPage(5)).reply, { origin: "https://asked.example" });
+    assert.equal(ask("nothing", promptPage(5)).reply, null);
+    // A web page, or a frame of the prompt page, is not the prompt page.
+    assert.equal(ask("notice", content()).returned, undefined);
+    assert.equal(ask("notice", { ...promptPage(5), frameId: 1 }).returned, undefined);
 });

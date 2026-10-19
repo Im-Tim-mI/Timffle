@@ -209,6 +209,9 @@
     "timffle_helper_download_started": {
         "message": "Йөкләү башланды. Ул тәмамлангач, йөкләнгән урнаштыргычны эшләтегез, аннары уен битен яңадан йөкләгез."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Башта сокет булышчысын урнаштырыгыз"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: сокет булышчысын урнаштыру"
     },

@@ -145,3 +145,32 @@ test("the window never armed counts nothing", () => {
     guard.pressed("a", "mouse", 10_000);
     assert.equal(guard.accepts("deny-once", "a", pointer, 10_010), false);
 });
+
+test("a plain action (the install window's buttons) counts after the moment with any trusted input, keys included", () => {
+    assert.equal(isAllow("action"), false);
+    const guard = window();
+    // Before the moment, and a press that began before it: no.
+    assert.equal(mouseClick(guard, "action", "b", MS - 1), false);
+    guard.pressed("b", "mouse", MS - 100);
+    assert.equal(guard.accepts("action", "b", pointer, MS + 50), false);
+    // A mouse click that never moved over the button (a pointer resting where the window appeared) still counts: nothing is being allowed.
+    guard.pressed("b", "mouse", MS + 10);
+    assert.equal(guard.accepts("action", "b", pointer, MS + 20), true);
+    // A key pressed on the focused button.
+    guard.pressed("b", "key", MS + 30);
+    assert.equal(guard.accepts("action", "b", keyboard, MS + 40), true);
+    // A script's click, and a window that lost the focus, never.
+    guard.pressed("b", "mouse", MS + 50);
+    assert.equal(
+        guard.accepts("action", "b", { isTrusted: false, detail: 1 }, MS + 60),
+        false,
+    );
+    guard.disarm();
+    guard.pressed("b", "mouse", MS + 70);
+    assert.equal(guard.accepts("action", "b", pointer, MS + 80), false);
+    // The press is used up like any other.
+    guard.arm(1000);
+    guard.pressed("b", "mouse", 1000 + MS + 10);
+    assert.equal(guard.accepts("action", "b", pointer, 1000 + MS + 20), true);
+    assert.equal(guard.accepts("action", "b", pointer, 1000 + MS + 30), false);
+});

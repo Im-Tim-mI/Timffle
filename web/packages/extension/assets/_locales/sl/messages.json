@@ -284,6 +284,9 @@
     "timffle_helper_download_started": {
         "message": "Prenos se je začel. Ko se konča, zaženite preneseni namestitveni program in nato znova naložite stran igre."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Najprej namestite pomočnika za socket"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: namestitev pomočnika za socket"
     },

@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "已開始下載。下載完成後請執行安裝程式，再重新整理遊戲頁面。"
     },
+    "timffle_helper_prompt_title": {
+        "message": "請先安裝連線小幫手"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle：安裝連線小幫手"
     },

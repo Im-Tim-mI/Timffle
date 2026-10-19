@@ -272,6 +272,9 @@
     "timffle_helper_download_started": {
         "message": "Sťahovanie sa začalo. Keď skončí, spustite stiahnutý inštalačný program a potom znova načítajte stránku hry."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Najprv nainštalujte pomocníka pre sokety"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: inštalácia pomocníka pre sokety"
     },

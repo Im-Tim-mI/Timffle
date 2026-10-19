@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "已开始下载。下载完成后请运行安装程序，然后刷新游戏页面。"
     },
+    "timffle_helper_prompt_title": {
+        "message": "请先安装连接助手"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle：安装连接助手"
     },

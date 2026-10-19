@@ -1,4 +1,9 @@
 /** One authorized content port per native process. No payloads are logged. */
+import {
+    createHelperPromptManager,
+    createToldDocuments,
+} from "./helper-prompt";
+import type { HelperPromptManager } from "./helper-prompt";
 import { getProxySettings, updateProxySettings } from "./proxy-settings";
 import {
     defaultProxySettings,
@@ -214,8 +219,8 @@ function handleSocketPort(
     authorize: (signal: AbortSignal, asking: () => void) => Promise<boolean>,
     release: () => void,
     limits: SocketLimits,
-    /** Called when the socket failed because the helper has to be installed. */
-    helperProblem: () => void,
+    /** Called with the code ("helper_missing", "helper_incompatible") when the socket failed because the helper has to be installed. */
+    helperProblem: (code: string) => void,
 ): SocketHandle {
     const abort = new AbortController();
     let native: chrome.runtime.Port | null = null;
@@ -246,7 +251,7 @@ function handleSocketPort(
         abort.abort();
         release();
         if (reply?.type === "error" && NEEDS_INSTALLER.has(reply.code)) {
-            helperProblem();
+            helperProblem(reply.code);
         }
         if (reply) {
             try {
@@ -507,13 +512,16 @@ function probeHelper(): { result: Promise<HelperStatus>; cancel: () => void } {
 export interface SocketBridgeDeps {
     visits?: VisitStore;
     prompts?: PromptManager;
+    helperPrompts?: HelperPromptManager;
     badge?: HelperBadge;
 }
 
 const PROMPT_SIZE = { width: 540, height: 680 };
+/** The "install the helper" window has less to say than the question. */
+const HELPER_PROMPT_SIZE = { width: 540, height: 620 };
 
-/** The question window, opened next to the window of the page that asks. */
-function browserPromptHost(): PromptHost {
+/** A window of prompt.html, opened next to the window of the page that causes it. */
+function browserPromptHost(size = PROMPT_SIZE): PromptHost {
     return {
         async open(id, near) {
             const url = `${browser.runtime.getURL(`/${PROMPT_PAGE}`)}?id=${encodeURIComponent(id)}`;
@@ -532,15 +540,14 @@ function browserPromptHost(): PromptHost {
                                 0,
                                 Math.round(
                                     anchor.left +
-                                        (anchor.width - PROMPT_SIZE.width) / 2,
+                                        (anchor.width - size.width) / 2,
                                 ),
                             ),
                             top: Math.max(
                                 0,
                                 Math.round(
                                     anchor.top +
-                                        (anchor.height - PROMPT_SIZE.height) /
-                                            2,
+                                        (anchor.height - size.height) / 2,
                                 ),
                             ),
                         };
@@ -553,7 +560,7 @@ function browserPromptHost(): PromptHost {
                 url,
                 type: "popup",
                 focused: true,
-                ...PROMPT_SIZE,
+                ...size,
                 ...position,
             });
             if (created?.id === undefined) {
@@ -607,6 +614,14 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
     const prompts =
         deps.prompts ??
         createPromptManager(browserPromptHost(), browserPromptEffects(visits));
+    const helperPrompts =
+        deps.helperPrompts ??
+        createHelperPromptManager(
+            browserPromptHost(HELPER_PROMPT_SIZE),
+            createToldDocuments(
+                browser.storage.session as SessionArea | undefined,
+            ),
+        );
     const badge = deps.badge ?? browserHelperBadge();
     const active = new Set<SocketHandle>();
     let epoch = 0;
@@ -768,10 +783,28 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 },
                 mayConnect: () => hasFreeSlot(page.sender, handle),
             },
-            () => {
-                if (tabId !== undefined) {
-                    badge.show(tabId);
+            (code) => {
+                if (tabId === undefined) {
+                    return;
                 }
+                badge.show(tabId);
+                // The game needs TCP and the helper is not there: say so now,
+                // in a window of the extension's own, as the first-use question does.
+                const top = topOrigin(page.sender);
+                const windowId = page.sender?.tab?.windowId;
+                const documentId = page.sender?.documentId;
+                void helperPrompts.show({
+                    problem:
+                        code === "helper_incompatible"
+                            ? "incompatible"
+                            : "missing",
+                    origin,
+                    tabId,
+                    frameId: page.sender?.frameId ?? 0,
+                    ...(documentId === undefined ? {} : { documentId }),
+                    ...(top === undefined ? {} : { top }),
+                    ...(windowId === undefined ? {} : { windowId }),
+                });
             },
         );
         active.add(handle);
@@ -806,9 +839,11 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                     return undefined;
                 }
                 const id = message["id"];
+                // The window shows either the first-use question or the "install the helper" notice.
                 sendResponse(
                     (typeof id === "string"
-                        ? prompts.view(id, sender.tab?.windowId)
+                        ? (prompts.view(id, sender.tab?.windowId) ??
+                          helperPrompts.view(id, sender.tab?.windowId))
                         : undefined) ?? null,
                 );
                 return false;
@@ -918,6 +953,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 }
                 // With the player off there is nothing left to ask about.
                 prompts.dispose();
+                helperPrompts.dispose();
             }
         }
     };
@@ -928,6 +964,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
             }
         }
         prompts.tabGone(tabId);
+        helperPrompts.tabGone(tabId);
         void visits.forget(tabId);
     };
     // Chrome already disconnects a frame's ports when its document goes away.
@@ -959,8 +996,10 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
             }
         });
     };
-    const onWindowRemoved = (windowId: number) =>
+    const onWindowRemoved = (windowId: number) => {
         prompts.windowRemoved(windowId);
+        helperPrompts.windowRemoved(windowId);
+    };
     // A tab swapped for another (a prerendered page taking over) is gone as
     // far as its sockets and questions are concerned.
     const onReplaced = (_addedTabId: number, removedTabId: number) =>
@@ -985,6 +1024,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
             handle.stop("bridge_closed");
         }
         prompts.dispose();
+        helperPrompts.dispose();
         probe?.cancel();
     };
 }

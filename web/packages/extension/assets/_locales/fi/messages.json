@@ -260,6 +260,9 @@
     "timffle_helper_download_started": {
         "message": "Lataus on alkanut. Kun se on valmis, suorita ladattu asennusohjelma ja lataa sitten pelin sivu uudelleen."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Asenna ensin Socket-apuohjelma"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: Socket-apuohjelman asennus"
     },

@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Por $SYSTEM$",
     "timffle_helper_download_more": "Aliaj sistemoj kaj instrukcioj",
     "timffle_helper_download_started": "La elŝuto komenciĝis. Kiam ĝi finiĝos, rulu la elŝutitan instalilon, poste reŝargu la ludan paĝon.",
+    "timffle_helper_prompt_title": "Unue instalu la socket-helpilon",
     "timffle_helper_page_title": "Timffle: instali la socket-helpilon",
     "timffle_helper_page_heading": "Instali la socket-helpilon",
     "timffle_helper_page_intro": "Interretaj ludoj bezonas TCP-konektojn, kiujn etendaĵoj de Chrome ne povas malfermi, tial Timffle uzas malgrandan helpprogramon. Instalu ĝin unufoje; poste Chrome mem startigas ĝin kiam ajn ludo konektiĝas kaj denove fermas ĝin.",

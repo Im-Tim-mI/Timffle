@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Per $SYSTEM$",
     "timffle_helper_download_more": "Altri sistemi e istruzioni",
     "timffle_helper_download_started": "Download avviato. Al termine, esegui il programma di installazione scaricato, poi ricarica la pagina del gioco.",
+    "timffle_helper_prompt_title": "Installa prima il programma di supporto socket",
     "timffle_helper_page_title": "Timffle: installare il programma di supporto socket",
     "timffle_helper_page_heading": "Installare il programma di supporto socket",
     "timffle_helper_page_intro": "I giochi online richiedono connessioni TCP, che le estensioni di Chrome non possono aprire, quindi Timffle usa un piccolo programma di supporto. Installalo una volta sola; poi Chrome lo avvia da solo ogni volta che un gioco si connette e lo richiude.",

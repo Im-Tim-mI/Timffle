@@ -149,6 +149,9 @@
     "timffle_helper_download_started": {
         "message": "La elŝuto komenciĝis. Kiam ĝi finiĝos, rulu la elŝutitan instalilon, poste reŝargu la ludan paĝon."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Unue instalu la socket-helpilon"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: instali la socket-helpilon"
     },

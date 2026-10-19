@@ -149,6 +149,9 @@
     "timffle_helper_download_started": {
         "message": "Nedlastingen har startet. Når den er ferdig, kjører du installasjonsprogrammet du lastet ned, og laster deretter spillsiden på nytt."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Installer Socket-hjelperen først"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: installer Socket-hjelperen"
     },

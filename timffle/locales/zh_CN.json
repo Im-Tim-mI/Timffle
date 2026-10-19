@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "适用于 $SYSTEM$",
     "timffle_helper_download_more": "其他系统与安装说明",
     "timffle_helper_download_started": "已开始下载。下载完成后请运行安装程序，然后刷新游戏页面。",
+    "timffle_helper_prompt_title": "请先安装连接助手",
     "timffle_helper_page_title": "Timffle：安装连接助手",
     "timffle_helper_page_heading": "安装连接助手",
     "timffle_helper_page_intro": "在线游戏需要 TCP 连接，而 Chrome 的扩展程序无法自己建立，所以 Timffle 使用一个小程序作为助手。只需安装一次；之后每当游戏连接，Chrome 会自动启动它，用完再关闭。",

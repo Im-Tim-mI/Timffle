@@ -105,17 +105,75 @@ p {
     text-shadow: none;
 }
 
+/* "Install the socket helper first": the button that downloads, the way to the other installers, and a way out. */
+.helper-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.helper-actions [hidden] {
+    display: none;
+}
+
+.helper-actions button {
+    padding: 10px 8px;
+    font-size: 14px;
+}
+
+.helper-actions .recommended {
+    background: var(--ruffle-orange);
+    border-color: var(--ruffle-dark-orange);
+    color: var(--ruffle-dark-blue);
+    font-weight: bold;
+    text-shadow: none;
+}
+
+/* Which system the button downloads for, then the way to the other systems. */
+.helper-small {
+    font-size: 12px;
+    text-align: center;
+}
+
+.helper-small #helper-for {
+    unicode-bidi: plaintext;
+}
+
+/* A button that reads as a link. */
+.helper-actions button.link {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--ruffle-orange);
+    font: inherit;
+    text-decoration: underline;
+    text-shadow: none;
+    cursor: pointer;
+}
+
+/* The name of the system, then a dot, then the link; the dot is not underlined. */
+.helper-small #helper-for:not([hidden]) + #helper-more::before {
+    content: "·";
+    display: inline-block;
+    margin-inline: 0.5em;
+    text-decoration: none;
+}
+
 button:disabled {
     cursor: default;
     opacity: 0.45;
 }
 
-.buttons button:focus-visible {
+.buttons button:focus-visible,
+.helper-actions button:focus-visible {
     outline: 3px solid white;
     outline-offset: 2px;
 }
 
-body[data-wait] .buttons button {
+body[data-wait] .buttons button,
+body[data-wait] .helper-actions button {
     cursor: default;
     opacity: 0.45;
 }

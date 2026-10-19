@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "لنظام $SYSTEM$",
     "timffle_helper_download_more": "أنظمة أخرى وتعليمات",
     "timffle_helper_download_started": "بدأ التنزيل. عند اكتماله، شغّل المثبّت الذي نزّلته، ثم أعد تحميل صفحة اللعبة.",
+    "timffle_helper_prompt_title": "ثبّت مساعد Socket أولًا",
     "timffle_helper_page_title": "Timffle: تثبيت مساعد Socket",
     "timffle_helper_page_heading": "تثبيت مساعد Socket",
     "timffle_helper_page_intro": "تحتاج الألعاب عبر الإنترنت إلى اتصالات TCP لا تستطيع إضافات Chrome فتحها، لذلك يستخدم Timffle برنامجًا مساعدًا صغيرًا. ثبّته مرة واحدة؛ بعد ذلك يشغّله Chrome تلقائيًا كلما اتصلت لعبة ثم يغلقه.",

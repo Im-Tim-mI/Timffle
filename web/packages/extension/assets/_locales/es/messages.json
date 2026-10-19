@@ -287,6 +287,9 @@
     "timffle_helper_download_started": {
         "message": "La descarga ha empezado. Cuando termine, ejecuta el instalador descargado y vuelve a cargar la página del juego."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Instala primero el asistente de sockets"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: instalar el asistente de sockets"
     },

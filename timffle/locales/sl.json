@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Za $SYSTEM$",
     "timffle_helper_download_more": "Drugi sistemi in navodila",
     "timffle_helper_download_started": "Prenos se je začel. Ko se konča, zaženite preneseni namestitveni program in nato znova naložite stran igre.",
+    "timffle_helper_prompt_title": "Najprej namestite pomočnika za socket",
     "timffle_helper_page_title": "Timffle: namestitev pomočnika za socket",
     "timffle_helper_page_heading": "Namestitev pomočnika za socket",
     "timffle_helper_page_intro": "Spletne igre potrebujejo povezave TCP, ki jih razširitve za Chrome ne morejo odpreti, zato Timffle uporablja majhen pomožni program. Namestite ga enkrat; potem ga Chrome zažene sam, ko se igra poveže, in ga spet zapre.",

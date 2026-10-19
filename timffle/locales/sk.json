@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Pre $SYSTEM$",
     "timffle_helper_download_more": "Iné systémy a pokyny",
     "timffle_helper_download_started": "Sťahovanie sa začalo. Keď skončí, spustite stiahnutý inštalačný program a potom znova načítajte stránku hry.",
+    "timffle_helper_prompt_title": "Najprv nainštalujte pomocníka pre sokety",
     "timffle_helper_page_title": "Timffle: inštalácia pomocníka pre sokety",
     "timffle_helper_page_heading": "Inštalácia pomocníka pre sokety",
     "timffle_helper_page_intro": "Online hry potrebujú spojenia TCP, ktoré rozšírenia Chrome nevedia otvoriť, preto Timffle používa malý pomocný program. Nainštalujte ho raz; potom ho Chrome sám spustí vždy, keď sa hra pripája, a znova ukončí.",

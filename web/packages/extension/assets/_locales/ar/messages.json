@@ -284,6 +284,9 @@
     "timffle_helper_download_started": {
         "message": "بدأ التنزيل. عند اكتماله، شغّل المثبّت الذي نزّلته، ثم أعد تحميل صفحة اللعبة."
     },
+    "timffle_helper_prompt_title": {
+        "message": "ثبّت مساعد Socket أولًا"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: تثبيت مساعد Socket"
     },

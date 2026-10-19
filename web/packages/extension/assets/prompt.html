@@ -43,6 +43,25 @@
             <p class="detail" data-i18n="timffle_prompt_detail"></p>
             <p id="prompt-error" class="error" role="alert" hidden></p>
         </main>
+        <main id="helper" role="alertdialog" aria-labelledby="helper-title" aria-describedby="helper-text" hidden>
+            <img src="images/logo.svg" alt="Timffle" class="logo" />
+            <h1 id="helper-title" data-i18n="timffle_helper_prompt_title"></h1>
+            <p id="helper-origin" class="origin" translate="no" dir="ltr"></p>
+            <p id="helper-embedded" class="embedded" hidden>
+                <span data-i18n="timffle_prompt_embedded"></span>
+                <bdi id="helper-embedded-origin" translate="no"></bdi>
+            </p>
+            <div class="warning">
+                <p id="helper-text"></p>
+            </div>
+            <p class="what" data-i18n="timffle_helper_page_intro"></p>
+            <div class="helper-actions">
+                <button type="button" id="helper-download" class="recommended" data-i18n="timffle_helper_notice_button" hidden></button>
+                <p class="helper-small"><span id="helper-for" hidden></span><button type="button" id="helper-more" class="link" data-i18n="timffle_helper_download_more"></button></p>
+                <button type="button" id="helper-close" data-i18n="timffle_close"></button>
+            </div>
+            <p class="detail" data-i18n="timffle_helper_page_safe"></p>
+        </main>
         <main id="expired" hidden>
             <p data-i18n="timffle_prompt_expired"></p>
             <button type="button" id="close-window" data-i18n="timffle_close"></button>

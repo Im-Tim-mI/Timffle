@@ -278,6 +278,9 @@
     "timffle_helper_download_started": {
         "message": "Stahování začalo. Až skončí, spusťte stažený instalační program a pak znovu načtěte stránku hry."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Nejprve nainstalujte pomocníka pro sockety"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: instalace pomocníka pro sockety"
     },

@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Pentru $SYSTEM$",
     "timffle_helper_download_more": "Alte sisteme și instrucțiuni",
     "timffle_helper_download_started": "Descărcarea a început. Când se termină, rulează programul de instalare descărcat, apoi reîncarcă pagina jocului.",
+    "timffle_helper_prompt_title": "Instalați mai întâi asistentul pentru socketuri",
     "timffle_helper_page_title": "Timffle: instalarea asistentului pentru socketuri",
     "timffle_helper_page_heading": "Instalarea asistentului pentru socketuri",
     "timffle_helper_page_intro": "Jocurile online au nevoie de conexiuni TCP, pe care extensiile Chrome nu le pot deschide, așa că Timffle folosește un mic program ajutător. Instalează-l o singură dată; după aceea Chrome îl pornește singur de fiecare dată când un joc se conectează și îl închide la loc.",

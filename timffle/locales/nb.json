@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "For $SYSTEM$",
     "timffle_helper_download_more": "Andre systemer og veiledning",
     "timffle_helper_download_started": "Nedlastingen har startet. Når den er ferdig, kjører du installasjonsprogrammet du lastet ned, og laster deretter spillsiden på nytt.",
+    "timffle_helper_prompt_title": "Installer Socket-hjelperen først",
     "timffle_helper_page_title": "Timffle: installer Socket-hjelperen",
     "timffle_helper_page_heading": "Installer Socket-hjelperen",
     "timffle_helper_page_intro": "Nettspill trenger TCP-tilkoblinger, som Chrome-utvidelser ikke kan åpne, så Timffle bruker et lite hjelpeprogram. Installer det én gang; etter det starter Chrome det selv hver gang et spill kobler til, og lukker det igjen.",

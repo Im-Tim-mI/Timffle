@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "適用於 $SYSTEM$",
     "timffle_helper_download_more": "其他系統與安裝說明",
     "timffle_helper_download_started": "已開始下載。下載完成後請執行安裝程式，再重新整理遊戲頁面。",
+    "timffle_helper_prompt_title": "請先安裝連線小幫手",
     "timffle_helper_page_title": "Timffle：安裝連線小幫手",
     "timffle_helper_page_heading": "安裝連線小幫手",
     "timffle_helper_page_intro": "線上遊戲需要 TCP 連線，Chrome 的擴充功能無法自己開啟，所以 Timffle 使用一個小程式當小幫手。只要安裝一次；之後每當遊戲連線，Chrome 會自動啟動它，用完再關閉。",

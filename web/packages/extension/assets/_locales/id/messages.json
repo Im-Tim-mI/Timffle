@@ -281,6 +281,9 @@
     "timffle_helper_download_started": {
         "message": "Unduhan dimulai. Setelah selesai, jalankan pemasang yang diunduh, lalu muat ulang halaman game."
     },
+    "timffle_helper_prompt_title": {
+        "message": "Pasang pembantu socket terlebih dahulu"
+    },
     "timffle_helper_page_title": {
         "message": "Timffle: memasang pembantu socket"
     },

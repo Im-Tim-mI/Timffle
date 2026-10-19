@@ -45,6 +45,7 @@
     "timffle_helper_download_for": "Järjestelmälle $SYSTEM$",
     "timffle_helper_download_more": "Muut järjestelmät ja ohjeet",
     "timffle_helper_download_started": "Lataus on alkanut. Kun se on valmis, suorita ladattu asennusohjelma ja lataa sitten pelin sivu uudelleen.",
+    "timffle_helper_prompt_title": "Asenna ensin Socket-apuohjelma",
     "timffle_helper_page_title": "Timffle: Socket-apuohjelman asennus",
     "timffle_helper_page_heading": "Asenna Socket-apuohjelma",
     "timffle_helper_page_intro": "Verkkopelit tarvitsevat TCP-yhteyksiä, joita Chrome-laajennukset eivät voi avata, joten Timffle käyttää pientä apuohjelmaa. Asenna se kerran; sen jälkeen Chrome käynnistää sen itse aina, kun peli yhdistää, ja sulkee sen taas.",

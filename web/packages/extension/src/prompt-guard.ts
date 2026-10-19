@@ -1,5 +1,6 @@
 /**
- * When a click or key press in the question window counts as an answer.
+ * When a click or key press in the question window counts as an answer (and in
+ * the "install the helper" window, which has no answer to give, as a choice).
  *
  * The question can pop up while the visitor is clicking or typing in the game,
  * and a page can guess where the buttons will land (the window opens centred
@@ -16,6 +17,10 @@
  *  - with a mouse or pen the pointer must have moved over that button after
  *    the moment passed; a pointer that merely rests where the button appeared
  *    does not count.
+ *
+ * The "install the helper" window decides nothing about the visitor's
+ * security, so its buttons are plain actions: the first two rules apply, any
+ * input will do after them.
  */
 import type { PromptChoice } from "./socket-prompt";
 
@@ -42,14 +47,14 @@ export interface InputGuard {
     pressed(button: string, kind: PressKind, now: number): void;
     /** Whether the click that has just happened on this button is a deliberate answer. */
     accepts(
-        choice: PromptChoice,
+        choice: PromptChoice | "action",
         button: string,
         click: ClickEvidence,
         now: number,
     ): boolean;
 }
 
-export function isAllow(choice: PromptChoice): boolean {
+export function isAllow(choice: PromptChoice | "action"): boolean {
     return choice === "allow-once" || choice === "allow-always";
 }
 
