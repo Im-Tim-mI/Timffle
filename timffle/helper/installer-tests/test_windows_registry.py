@@ -1,27 +1,37 @@
-"""Windows registry ownership regression in a fresh, disposable Wine prefix.
+"""Windows install regressions, each in a fresh, disposable Wine prefix.
 
 Usage: python3 -B installer-tests/test_windows_registry.py /path/to/helper.exe
        python3 -B -m unittest discover -s installer-tests -p 'test_windows_registry.py' -v
 
 The first command runs the supplied, already-built helper; this script never
-builds it. The unittest command runs only mocks (no Wine, helper, or registry).
+builds it. It runs two scenarios: the downloaded file run without arguments
+(a double-click), then the registry ownership regression. The unittest command
+runs only mocks (no Wine, helper, or registry).
 No existing WINEPREFIX is accepted or reused. Every Wine subprocess gets the
 same temporary prefix and isolated HOME. The real user registry is untouched.
+The prefixes are made under the system temporary directory (TMPDIR).
 Wine is not a sandbox for an untrusted executable: supply your own helper.
 """
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
+import select
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from unittest import mock
 
 
 HOST_NAME = "timffle_socket_helper"
+EXTENSION_ORIGIN = "chrome-extension://eandddnbchclalbjkhfelhjhpijifcog/"
+DOWNLOAD_NAME = "timffle-helper-windows-x64.exe"
+ENTER_PROMPT = "Press Enter to close."
+CONSOLE_ESCAPES = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 CHROMIUM_KEY = r"HKCU\Software\Chromium"
 HOST_KEYS = (
     r"HKCU\Software\Google\Chrome\NativeMessagingHosts" + "\\" + HOST_NAME,
@@ -90,6 +100,13 @@ def same_windows_path(left, right):
     return left.replace("/", "\\").casefold() == right.replace("/", "\\").casefold()
 
 
+def helper_version(output):
+    match = re.fullmatch(r"timffle-socket-helper (\S+)\n?", output)
+    if match is None:
+        raise AssertionError("unexpected --version output: " + repr(output))
+    return match.group(1)
+
+
 class WineRegistryRegression:
     def __init__(self, wine, helper, env, cwd, timeout):
         self.wine = wine
@@ -98,10 +115,12 @@ class WineRegistryRegression:
         self.cwd = str(cwd)
         self.timeout = timeout
 
-    def command(self, *args, check=True):
+    def command(self, *args, check=True, input=None):
+        # input=b"" gives the program a pipe (not a console) that is at its end.
+        stdin = {"stdin": subprocess.DEVNULL} if input is None else {"input": input}
         result = subprocess.run(
             [self.wine, *map(str, args)],
-            cwd=self.cwd, env=self.env, stdin=subprocess.DEVNULL,
+            cwd=self.cwd, env=self.env, **stdin,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=self.timeout, check=False,
         )
@@ -194,8 +213,116 @@ class WineRegistryRegression:
             else:
                 self.assert_no_default(key)
 
+    def console(self, *args):
+        """Run as in a console window (Wine turns a pseudo-terminal into the
+        program's console). Waits for the Enter prompt, checks that the program
+        keeps waiting, then presses Enter. Returns (exit code, output)."""
+        master, slave = os.openpty()
+        try:
+            process = subprocess.Popen(
+                [self.wine, *map(str, args)], cwd=self.cwd, env=self.env,
+                stdin=slave, stdout=slave, stderr=slave,
+            )
+        except BaseException:
+            os.close(master)
+            raise
+        finally:
+            os.close(slave)
+        output = b""
 
-def run_in_temporary_prefix(helper, wine, wineserver, timeout):
+        def text():
+            return CONSOLE_ESCAPES.sub("", output.decode("utf-8", errors="replace")).replace("\r", "")
+
+        try:
+            deadline = time.monotonic() + self.timeout
+            while ENTER_PROMPT not in text():
+                if time.monotonic() > deadline:
+                    raise AssertionError("no Enter prompt in the console:\n" + text())
+                if select.select([master], [], [], 0.2)[0]:
+                    try:
+                        chunk = os.read(master, 65536)
+                    except OSError:  # EIO: every console handle is closed
+                        chunk = b""
+                    if not chunk:
+                        raise AssertionError("console closed before the Enter prompt:\n" + text())
+                    output += chunk
+                elif process.poll() is not None:
+                    raise AssertionError("exited without the Enter prompt:\n" + text())
+            time.sleep(1)
+            if process.poll() is not None:
+                raise AssertionError("closed without waiting for Enter:\n" + text())
+            os.write(master, b"\r")
+            code = process.wait(timeout=self.timeout)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            os.close(master)
+        return code, text()
+
+    def exercise_download(self):
+        """The downloaded file run without arguments (a double-click) installs
+        exactly as --install does, and a copy of it with --uninstall removes it."""
+        download = Path(self.cwd) / "Downloads" / DOWNLOAD_NAME
+        download.parent.mkdir()
+        shutil.copyfile(self.helper, download)
+        version = helper_version(completed_output(self.command(download, "--version")))
+
+        # stdin a pipe, not a console: result and hint, no prompt, no waiting.
+        output = completed_output(self.command(download, input=b""))
+        for expected in ("Timffle socket helper " + version, "Socket helper " + version + " installed:", "with --uninstall"):
+            if expected not in output:
+                raise AssertionError("missing {0!r} in:\n{1}".format(expected, output))
+        if ENTER_PROMPT in output:
+            raise AssertionError("Enter prompt without a console:\n" + output)
+
+        local = completed_output(self.command("cmd.exe", "/c", "echo %LOCALAPPDATA%")).strip()
+        folder = local + "\\TimffleSocketHelper"
+        if not same_windows_path(self.value(HOST_KEYS[0]), folder + "\\" + HOST_NAME + ".json"):
+            raise AssertionError("registration does not name the installed manifest: " + self.value(HOST_KEYS[0]))
+        if self.reg("query", HOST_KEYS[1], check=False).returncode == 0:
+            raise AssertionError("registered for Chromium, which this prefix does not have")
+        unix_folder = Path(completed_output(self.command("winepath.exe", "-u", folder)).strip())
+        if not unix_folder.is_relative_to(Path(self.env["WINEPREFIX"])):
+            raise AssertionError("install folder outside the temporary prefix: " + str(unix_folder))
+        names = sorted(p.name for p in unix_folder.iterdir())
+        if names != sorted(["install.json", "timffle-socket-helper.exe", HOST_NAME + ".json"]):
+            raise AssertionError("unexpected install folder contents: {0}".format(names))
+        installed = unix_folder / "timffle-socket-helper.exe"
+        if installed.read_bytes() != download.read_bytes():
+            raise AssertionError("installed copy differs from the download")
+        manifest = json.loads((unix_folder / (HOST_NAME + ".json")).read_text(encoding="utf-8"))
+        if (manifest.get("name"), manifest.get("type"), manifest.get("allowed_origins")) != (HOST_NAME, "stdio", [EXTENSION_ORIGIN]) \
+                or not same_windows_path(manifest.get("path", ""), folder + "\\timffle-socket-helper.exe"):
+            raise AssertionError("unexpected manifest: {0}".format(manifest))
+        receipt = json.loads((unix_folder / "install.json").read_text(encoding="utf-8"))
+        if receipt.get("version") != version or receipt.get("host") != HOST_NAME:
+            raise AssertionError("unexpected receipt: {0}".format(receipt))
+
+        # The installed copy (run by its Windows path, as Chrome does) cannot
+        # remove itself on Windows; nothing changes.
+        result = self.command(folder + "\\timffle-socket-helper.exe", "--uninstall", check=False)
+        if result.returncode != 1 or "--uninstall" not in completed_output(result) or not installed.exists():
+            raise AssertionError("installed copy did not refuse to uninstall itself:\n" + completed_output(result))
+        if not same_windows_path(self.value(HOST_KEYS[0]), folder + "\\" + HOST_NAME + ".json"):
+            raise AssertionError("refused uninstall changed the registration")
+
+        # A console (double-click): reinstall, then the window waits for Enter.
+        code, output = self.console(download)
+        if code != 0 or "Socket helper " + version + " installed:" not in output:
+            raise AssertionError("console install failed ({0}):\n{1}".format(code, output))
+
+        # Any copy of the download removes the helper again.
+        again = Path(self.cwd) / "Downloads (2)" / DOWNLOAD_NAME
+        again.parent.mkdir()
+        shutil.copyfile(download, again)
+        output = completed_output(self.command(again, "--uninstall"))
+        if "removed" not in output or unix_folder.exists():
+            raise AssertionError("download --uninstall left files:\n" + output)
+        self.assert_no_default(HOST_KEYS[0])
+
+
+def run_in_temporary_prefix(helper, wine, wineserver, timeout, scenario=WineRegistryRegression.exercise):
     with tempfile.TemporaryDirectory(prefix="socket-windows-registry-") as temporary:
         root = Path(temporary)
         env = isolated_environment(root)
@@ -208,7 +335,7 @@ def run_in_temporary_prefix(helper, wine, wineserver, timeout):
             # Wine automatically initializes the brand-new prefix on first
             # launch. Avoid wineboot here: it may be a mismatched launcher.
             case.reg("query", "HKCU\\Software")
-            case.exercise()
+            scenario(case)
         finally:
             # Target only this prefix's server. Stop it before deleting the
             # directory so delayed registry flushes cannot recreate it.
@@ -280,6 +407,23 @@ class OfflineScriptTests(unittest.TestCase):
         reg.assert_called_once_with("query", HOST_KEYS[0])
         exported.assert_called_once_with(HOST_KEYS[0])
 
+    def test_pipe_input_replaces_the_null_device(self):
+        case = WineRegistryRegression("/wine", "/helper.exe", {}, "/tmp", 12)
+        with mock.patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0, b"")) as run:
+            case.command("/helper.exe")
+            self.assertIs(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+            self.assertNotIn("input", run.call_args.kwargs)
+            case.command("/helper.exe", input=b"")
+            self.assertEqual(run.call_args.kwargs["input"], b"")
+            self.assertNotIn("stdin", run.call_args.kwargs)
+
+    def test_version_and_console_output_parsing(self):
+        self.assertEqual(helper_version("timffle-socket-helper 1.3.0\n"), "1.3.0")
+        for output in ("", "timffle-socket-helper\n", "other 1.3.0\n", "timffle-socket-helper 1.3.0 extra\n"):
+            with self.assertRaises(AssertionError):
+                helper_version(output)
+        self.assertEqual(CONSOLE_ESCAPES.sub("", "\x1b[?25l按 Enter 關閉 / " + ENTER_PROMPT + "\x1b[K\x1b[1C\x1b[?25h"), "按 Enter 關閉 / " + ENTER_PROMPT)
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -299,7 +443,10 @@ def main(argv=None):
         parser.error("Wine and its matching wineserver are required for the integration run")
     if os.name != "posix":
         parser.error("run under Wine on a POSIX host, not against a native Windows registry")
-    run_in_temporary_prefix(helper, str(Path(wine).resolve()), str(Path(wineserver).resolve()), args.timeout)
+    wine, wineserver = str(Path(wine).resolve()), str(Path(wineserver).resolve())
+    run_in_temporary_prefix(helper, wine, wineserver, args.timeout, WineRegistryRegression.exercise_download)
+    print("PASS: downloaded file without arguments installs (pipe: no prompt; console: waits for Enter), installed copy refuses to remove itself, a copy of the download uninstalls (temporary Wine prefix)")
+    run_in_temporary_prefix(helper, wine, wineserver, args.timeout)
     print("PASS: default-only uninstall, named value/subkey preservation, reinstall, foreign default preservation (temporary Wine prefix)")
 
 

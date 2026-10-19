@@ -458,7 +458,7 @@ func (in *installer) uninstall() error {
 		return err
 	}
 	if dirExists && runtime.GOOS == "windows" && sameFile(in.self, l.binary) {
-		return errors.New("請改用下載包 helper 資料夾裡的 uninstall-windows.cmd / run uninstall-windows.cmd from the download's helper folder instead")
+		return errors.New("請改用下載的檔案加 --uninstall（或下載包 helper 資料夾裡的 uninstall-windows.cmd）/ run the downloaded file with --uninstall (or uninstall-windows.cmd from the download's helper folder) instead")
 	}
 	manifests := l.manifests
 	var keys []string

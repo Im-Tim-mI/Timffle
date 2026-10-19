@@ -1,4 +1,4 @@
-# 擴充功能 ↔ 連線小幫手 通訊協定（protocol 2，小幫手 1.2.0）
+# 擴充功能 ↔ 連線小幫手 通訊協定（protocol 2，小幫手 1.3.0）
 
 這是 Chrome 背景服務與 `timffle-socket-helper` 之間的 Native Messaging 協定。**一個小幫手程序只負責一條 TCP 連線。**原始碼：小幫手 [`helper/bridge.go`](../helper/bridge.go)、[`helper/connect.go`](../helper/connect.go)；擴充功能 `socket-bridge-protocol.ts`（在 [`web/packages/extension/src/`](../../web/packages/extension/src/) 內）。
 
@@ -7,7 +7,7 @@
 - Native Messaging 主機名稱：`timffle_socket_helper`。
 - 每則訊息 = **4 位元組長度（小端）＋ UTF-8 JSON**，經由 stdin／stdout。擴充功能 → 小幫手的單則訊息上限 1 MiB。
 - Chrome 啟動小幫手時，第一個命令列引數是呼叫者來源 `chrome-extension://<擴充功能 ID>/`（Windows 另有 `--parent-window=<數字>`）。小幫手要求它**完全等於**內建的來源，否則在讀 stdin、解析名稱或寫任何訊息之前就結束。
-- 非 Chrome 叫用時只有三個旗標：`--version`（印出 `timffle-socket-helper 1.2.0`）、`--install`、`--uninstall`。
+- 非 Chrome 叫用時只有三個旗標：`--version`（印出 `timffle-socket-helper 1.3.0`）、`--install`、`--uninstall`；另外，**不帶任何引數**執行（雙擊下載的檔案）等於互動式的 `--install`：先印出說明、安裝，若 stdin 是主控台（終端機視窗）就等使用者按 Enter 才結束。Chrome 一定會把呼叫者來源當第一個引數，所以不帶引數的叫用不可能來自 Chrome。其他任何引數組合都在讀 stdin 之前以代碼 1 結束，不印任何東西。
 
 ## 2. 訊息
 
@@ -25,7 +25,7 @@
 
 | `type` | 欄位 | 說明 |
 |---|---|---|
-| `hello` | `version`（`"1.2.0"`）、`protocol`（`2`） | 擴充功能要求 `protocol === 2`，否則回報「不相容」 |
+| `hello` | `version`（`"1.3.0"`）、`protocol`（`2`） | 擴充功能要求 `protocol === 2`，否則回報「不相容」 |
 | `opened` | — | **TCP 已連上之後**才送 |
 | `sent` | — | 上一個 `send` 已完整寫入 TCP |
 | `data` | `data`（base64，解碼後 ≤ 32768 位元組） | 從 TCP 讀到的資料。同時只有一個 `data` 在飛，等 `ack` |
@@ -37,7 +37,7 @@
 ```
 擴充功能                          小幫手
    │── hello ─────────────────────▶│
-   │◀───────────────── hello(1.2.0, 2)
+   │◀───────────────── hello(1.3.0, 2)
    │── open(host, port) ───────────▶│   解析 DNS → 檢查所有位址 → 連線
    │◀──────────────────────── opened │
    │── send(≤64KiB) ───────────────▶│
@@ -74,5 +74,5 @@
 ## 6. 版本相容
 
 - `protocol` 是整數，不相容的變更才會加一。擴充功能只接受它認得的版本。
-- `version` 是小幫手本身的版本，供選項頁顯示（「已安裝（版本 1.2.0）」）和除錯。
+- `version` 是小幫手本身的版本，供選項頁顯示（「已安裝（版本 1.3.0）」）和除錯。
 - 更新擴充功能時，只要 `protocol` 沒變，**不需要重新執行安裝程式**。
