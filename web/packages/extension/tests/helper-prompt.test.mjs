@@ -295,6 +295,24 @@ test("which page loads were told survives a restarted service worker, newest las
     assert.deepEqual(session.data.helperToldDocuments, []);
 });
 
+test("a stored list that grew beyond the limit is cut to the newest entries when it is read", async () => {
+    const stored = Array.from({ length: MAX_TOLD_DOCUMENTS * 3 }, (_, n) => [
+        1,
+        `d${n}`,
+    ]);
+    const session = area({ helperToldDocuments: stored });
+    const store = createToldDocuments(session);
+    await store.ready;
+    assert.equal(store.has(1, `d${stored.length - 1}`), true);
+    assert.equal(store.has(1, `d${stored.length - MAX_TOLD_DOCUMENTS}`), true);
+    assert.equal(
+        store.has(1, `d${stored.length - MAX_TOLD_DOCUMENTS - 1}`),
+        false,
+    );
+    await store.add(2, "new");
+    assert.equal(session.data.helperToldDocuments.length, MAX_TOLD_DOCUMENTS);
+});
+
 test("damaged or unreadable storage means nothing was told yet, and nothing breaks", async () => {
     const damaged = area({
         helperToldDocuments: [

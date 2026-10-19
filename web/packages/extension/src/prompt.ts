@@ -89,17 +89,30 @@ function keepBackgroundAlive() {
  * has the focus) but do nothing for a moment, and while the window has no
  * focus; the dimming tells the visitor why. `watch` makes a control report
  * its pointer and key presses to the guard.
+ *
+ * The moment is for a window that has just appeared. `refocusMs` is how long
+ * input is ignored when the window gets the focus back after it has been in
+ * front for that long once: the question keeps the whole moment (its answers
+ * decide what a website may do), the install window does not make a visitor
+ * who has just come back from the install page click twice.
  */
-function guardInput(): { guard: InputGuard; watch: (el: HTMLElement) => void } {
+function guardInput(refocusMs = IGNORE_INPUT_MS): {
+    guard: InputGuard;
+    watch: (el: HTMLElement) => void;
+} {
     const guard = createInputGuard(IGNORE_INPUT_MS);
     let waiting: ReturnType<typeof setTimeout> | undefined;
+    /** The window has been in front, with the visitor able to see it, for the whole moment once. */
+    let seen = false;
     const arm = () => {
-        guard.arm(Date.now());
+        const wait = seen ? refocusMs : IGNORE_INPUT_MS;
+        guard.arm(Date.now() - (IGNORE_INPUT_MS - wait));
         document.body.dataset["wait"] = "1";
         clearTimeout(waiting);
         waiting = setTimeout(() => {
+            seen = true;
             delete document.body.dataset["wait"];
-        }, IGNORE_INPUT_MS);
+        }, wait);
     };
     const disarm = () => {
         guard.disarm();
@@ -178,7 +191,7 @@ async function runHelperNotice(view: HelperPromptView) {
     download.hidden = true;
     show("helper");
     keepBackgroundAlive();
-    const { guard, watch } = guardInput();
+    const { guard, watch } = guardInput(0);
     const counts = (control: HTMLElement, event: MouseEvent) =>
         guard.accepts(
             "action",
