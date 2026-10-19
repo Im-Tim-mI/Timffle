@@ -263,6 +263,42 @@
     "timffle_helper_unavailable": {
         "message": "Programma di supporto non disponibile: controlla l'installazione e gli avvisi di sicurezza del sistema operativo, poi riprova."
     },
+    "timffle_helper_notice_missing": {
+        "message": "Il programma di supporto socket non è installato, quindi i giochi online non possono connettersi."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "Il programma di supporto socket non corrisponde a questa estensione. Reinstallalo dallo stesso download."
+    },
+    "timffle_helper_notice_button": {
+        "message": "Installa il programma di supporto"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: installare il programma di supporto socket"
+    },
+    "timffle_helper_page_heading": {
+        "message": "Installare il programma di supporto socket"
+    },
+    "timffle_helper_page_intro": {
+        "message": "I giochi online richiedono connessioni TCP, che le estensioni di Chrome non possono aprire, quindi Timffle usa un piccolo programma di supporto. Installalo una volta sola; poi Chrome lo avvia da solo ogni volta che un gioco si connette e lo richiude."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: nel download di Timffle apri la cartella helper (si trova accanto alla cartella che hai caricato in Chrome) e fai doppio clic su <1>install-windows.cmd</1>. Se Windows avvisa che il file non è riconosciuto, controlla che sia il file giusto prima di consentirne l'esecuzione."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: nel download di Timffle apri la cartella helper (si trova accanto alla cartella che hai caricato in Chrome) e fai doppio clic su <1>install-macos.command</1>. Se macOS lo blocca, consentilo in Impostazioni di Sistema → Privacy e sicurezza, poi fai di nuovo doppio clic."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: nel download di Timffle apri un terminale nella cartella helper (si trova accanto alla cartella che hai caricato in Chrome) ed esegui <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "Poi controlla di nuovo. Se continua a dire che il programma di supporto non è installato, chiudi completamente Chrome (anche i processi in background), riavvialo e controlla ancora una volta."
+    },
+    "timffle_helper_page_safe": {
+        "message": "Il programma di installazione funziona solo per il tuo account utente: non richiede diritti di amministratore, non installa servizi in background e non modifica alcuna impostazione di sicurezza."
+    },
+    "timffle_helper_page_download": {
+        "message": "Non hai la cartella del download? Scarica il pacchetto dalla <1>pagina Releases</1>."
+    },
     "timffle_options_url": {
         "message": "Modello di URL (con token, nascosto)"
     },

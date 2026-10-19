@@ -263,6 +263,42 @@
     "timffle_helper_unavailable": {
         "message": "无法启动或响应超时：请确认安装是否完成，并查看操作系统的安全提示后再检查。"
     },
+    "timffle_helper_notice_missing": {
+        "message": "尚未安装连接助手，在线游戏无法连接。"
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "连接助手与这个扩展程序不匹配。请从同一个下载包重新安装。"
+    },
+    "timffle_helper_notice_button": {
+        "message": "安装助手"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle：安装连接助手"
+    },
+    "timffle_helper_page_heading": {
+        "message": "安装连接助手"
+    },
+    "timffle_helper_page_intro": {
+        "message": "在线游戏需要 TCP 连接，而 Chrome 的扩展程序无法自己建立，所以 Timffle 使用一个小程序作为助手。只需安装一次；之后每当游戏连接，Chrome 会自动启动它，用完再关闭。"
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows：在 Timffle 下载包里打开 helper 文件夹（就在你加载到 Chrome 的那个文件夹旁边），双击 <1>install-windows.cmd</1>。如果 Windows 警告无法识别这个文件，请先确认它就是你要的文件，再允许运行。"
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS：在 Timffle 下载包里打开 helper 文件夹（就在你加载到 Chrome 的那个文件夹旁边），双击 <1>install-macos.command</1>。如果 macOS 拦截了它，请在系统设置 → 隐私与安全性中允许，然后再双击一次。"
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux：在 Timffle 下载包里的 helper 文件夹（就在你加载到 Chrome 的那个文件夹旁边）打开终端，运行 <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "然后重新检查。如果仍显示尚未安装助手，请完全退出 Chrome（包括后台进程），重新启动后再检查一次。"
+    },
+    "timffle_helper_page_safe": {
+        "message": "安装程序只为你的用户账户安装：不需要管理员权限，不安装后台服务，也不更改任何安全设置。"
+    },
+    "timffle_helper_page_download": {
+        "message": "没有下载包文件夹？请到 <1>Releases 页面</1>获取。"
+    },
     "timffle_options_url": {
         "message": "WebSocket URL 模板（含 token，隐藏显示）"
     },

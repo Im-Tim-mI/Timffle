@@ -1,0 +1,69 @@
+.logo {
+    max-width: 224px;
+}
+
+.container {
+    max-width: 640px;
+    margin: auto;
+    padding: 12px 28px 32px;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+h1 {
+    margin: 8px 0 12px;
+    font-size: 22px;
+    color: var(--ruffle-orange);
+}
+
+p {
+    margin: 0 0 12px;
+}
+
+/* The state of the helper, and the button that looks again. */
+.helper-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 16px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--ruffle-dark-blue);
+}
+
+.helper-state p {
+    flex: 1 1 260px;
+    margin: 0;
+}
+
+#helper-page-status[data-state="error"] {
+    color: var(--ruffle-orange);
+}
+
+.helper-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0 16px;
+    padding-inline-start: 22px;
+}
+
+/* File names and commands read left to right in every language. */
+code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--ruffle-dark-blue);
+    font: 13px monospace;
+    unicode-bidi: isolate;
+    overflow-wrap: anywhere;
+}
+
+.helper-small {
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+a {
+    color: var(--ruffle-orange);
+}

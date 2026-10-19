@@ -161,6 +161,42 @@
     "timffle_helper_unavailable": {
         "message": "ตัวช่วยใช้งานไม่ได้: ตรวจสอบการติดตั้งและคำเตือนด้านความปลอดภัยของระบบปฏิบัติการ แล้วลองอีกครั้ง"
     },
+    "timffle_helper_notice_missing": {
+        "message": "ยังไม่ได้ติดตั้งตัวช่วย Socket เกมออนไลน์จึงเชื่อมต่อไม่ได้"
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "ตัวช่วย Socket ไม่ตรงกับส่วนขยายนี้ โปรดติดตั้งใหม่จากไฟล์ที่ดาวน์โหลดชุดเดียวกัน"
+    },
+    "timffle_helper_notice_button": {
+        "message": "ติดตั้งตัวช่วย"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: ติดตั้งตัวช่วย Socket"
+    },
+    "timffle_helper_page_heading": {
+        "message": "ติดตั้งตัวช่วย Socket"
+    },
+    "timffle_helper_page_intro": {
+        "message": "เกมออนไลน์ต้องใช้การเชื่อมต่อ TCP ซึ่งส่วนขยายของ Chrome เปิดเองไม่ได้ Timffle จึงใช้โปรแกรมตัวช่วยขนาดเล็ก ติดตั้งเพียงครั้งเดียว หลังจากนั้น Chrome จะเปิดตัวช่วยให้เองทุกครั้งที่เกมเชื่อมต่อ และปิดเมื่อเสร็จ"
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: ในไฟล์ Timffle ที่ดาวน์โหลด ให้เปิดโฟลเดอร์ helper (อยู่ข้างโฟลเดอร์ที่คุณโหลดเข้า Chrome) แล้วดับเบิลคลิก <1>install-windows.cmd</1> หาก Windows เตือนว่าไม่รู้จักไฟล์ ให้ตรวจสอบก่อนว่าเป็นไฟล์ที่คุณต้องการ แล้วจึงอนุญาตให้ทำงาน"
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: ในไฟล์ Timffle ที่ดาวน์โหลด ให้เปิดโฟลเดอร์ helper (อยู่ข้างโฟลเดอร์ที่คุณโหลดเข้า Chrome) แล้วดับเบิลคลิก <1>install-macos.command</1> หาก macOS บล็อก ให้อนุญาตที่ การตั้งค่าระบบ → ความเป็นส่วนตัวและความปลอดภัย แล้วดับเบิลคลิกอีกครั้ง"
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: ในไฟล์ Timffle ที่ดาวน์โหลด ให้เปิดเทอร์มินัลในโฟลเดอร์ helper (อยู่ข้างโฟลเดอร์ที่คุณโหลดเข้า Chrome) แล้วรัน <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "จากนั้นตรวจสอบอีกครั้ง หากยังแจ้งว่าไม่ได้ติดตั้งตัวช่วย ให้ปิด Chrome ให้หมด (รวมถึงกระบวนการเบื้องหลัง) เปิดใหม่ แล้วตรวจสอบอีกครั้ง"
+    },
+    "timffle_helper_page_safe": {
+        "message": "ตัวติดตั้งทำงานเฉพาะกับบัญชีผู้ใช้ของคุณ ไม่ต้องใช้สิทธิ์ผู้ดูแลระบบ ไม่ติดตั้งบริการเบื้องหลัง และไม่เปลี่ยนการตั้งค่าความปลอดภัยใด ๆ"
+    },
+    "timffle_helper_page_download": {
+        "message": "ไม่มีโฟลเดอร์ที่ดาวน์โหลด? รับแพ็กเกจได้จาก<1>หน้า Releases</1>"
+    },
     "timffle_options_url": {
         "message": "เทมเพลต URL (รวม token ซ่อนอยู่)"
     },

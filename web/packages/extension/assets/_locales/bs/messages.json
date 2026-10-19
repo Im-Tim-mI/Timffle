@@ -251,6 +251,42 @@
     "timffle_helper_unavailable": {
         "message": "Pomoćnik nije dostupan: provjerite instalaciju i sigurnosna upozorenja operativnog sistema, a zatim pokušajte ponovo."
     },
+    "timffle_helper_notice_missing": {
+        "message": "Socket pomoćnik nije instaliran, pa se online igre ne mogu povezati."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "Socket pomoćnik ne odgovara ovom proširenju. Instalirajte ga ponovo iz istog preuzetog paketa."
+    },
+    "timffle_helper_notice_button": {
+        "message": "Instaliraj pomoćnika"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: instalacija Socket pomoćnika"
+    },
+    "timffle_helper_page_heading": {
+        "message": "Instalacija Socket pomoćnika"
+    },
+    "timffle_helper_page_intro": {
+        "message": "Online igre trebaju TCP veze, koje proširenja za Chrome ne mogu otvoriti, pa Timffle koristi mali pomoćni program. Instalirajte ga jednom; poslije toga ga Chrome sam pokreće kad god se igra povezuje i ponovo ga zatvara."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: u preuzetom Timffle paketu otvorite folder helper (nalazi se pored foldera koji ste učitali u Chrome) i dvaput kliknite <1>install-windows.cmd</1>. Ako Windows upozori da datoteka nije prepoznata, provjerite da li je to datoteka koju ste željeli prije nego što je dozvolite."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: u preuzetom Timffle paketu otvorite folder helper (nalazi se pored foldera koji ste učitali u Chrome) i dvaput kliknite <1>install-macos.command</1>. Ako ga macOS blokira, dozvolite ga u Postavke sistema → Privatnost i sigurnost, pa ponovo dvaput kliknite."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: u preuzetom Timffle paketu otvorite terminal u folderu helper (nalazi se pored foldera koji ste učitali u Chrome) i pokrenite <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "Zatim ponovo provjerite. Ako i dalje piše da pomoćnik nije instaliran, potpuno zatvorite Chrome (uključujući procese u pozadini), pokrenite ga ponovo i provjerite još jednom."
+    },
+    "timffle_helper_page_safe": {
+        "message": "Instalacijski program radi samo za vaš korisnički račun: ne traži administratorska prava, ne instalira pozadinsku uslugu i ne mijenja nijednu sigurnosnu postavku."
+    },
+    "timffle_helper_page_download": {
+        "message": "Nemate preuzeti folder? Preuzmite paket sa <1>stranice Releases</1>."
+    },
     "timffle_options_url": {
         "message": "Šablon URL-a (uključujući token, skriven)"
     },

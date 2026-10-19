@@ -165,6 +165,7 @@ await esbuild.build({
     entryPoints: {
         popup: "./src/popup.ts",
         prompt: "./src/prompt.ts",
+        helper: "./src/helper.ts",
         options: "./src/options.ts",
         onboard: "./src/onboard.ts",
         content: "./src/content.ts",

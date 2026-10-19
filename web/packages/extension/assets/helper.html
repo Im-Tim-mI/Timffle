@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Timffle</title>
+        <link rel="icon" type="image/png" href="images/icon32.png" />
+        <link rel="stylesheet" href="css/common.css" />
+        <link rel="stylesheet" href="css/helper.css" />
+    </head>
+    <body>
+        <div class="header">
+            <a href="https://github.com/Im-Tim-mI/Timffle" target="_blank">
+                <img src="images/logo.svg" alt="Timffle" data-canonical-src="images/logo.svg" class="logo" />
+            </a>
+        </div>
+        <main class="container">
+            <h1 data-i18n="timffle_helper_page_heading"></h1>
+            <p data-i18n="timffle_helper_page_intro"></p>
+            <div class="helper-state">
+                <p id="helper-page-status" role="status" aria-live="polite" data-i18n="timffle_helper_checking"></p>
+                <button type="button" id="helper-page-check" data-i18n="timffle_helper_check"></button>
+            </div>
+            <ul class="helper-steps">
+                <li data-i18n-rich="timffle_helper_step_windows"><code dir="ltr" translate="no"></code></li>
+                <li data-i18n-rich="timffle_helper_step_macos"><code dir="ltr" translate="no"></code></li>
+                <li data-i18n-rich="timffle_helper_step_linux"><code dir="ltr" translate="no"></code></li>
+            </ul>
+            <p data-i18n="timffle_helper_step_after"></p>
+            <p class="helper-small" data-i18n="timffle_helper_page_safe"></p>
+            <p class="helper-small" data-i18n-rich="timffle_helper_page_download"><a href="https://github.com/Im-Tim-mI/Timffle/releases/latest" target="_blank" rel="noopener noreferrer"></a></p>
+        </main>
+        <script src="dist/helper.js"></script>
+    </body>
+</html>

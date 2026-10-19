@@ -242,6 +242,42 @@
     "timffle_helper_unavailable": {
         "message": "העוזר אינו זמין: בדוק את ההתקנה ואת אזהרות האבטחה של מערכת ההפעלה ואז נסה שוב."
     },
+    "timffle_helper_notice_missing": {
+        "message": "עוזר ה-Socket אינו מותקן, ולכן משחקים מקוונים לא יכולים להתחבר."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "עוזר ה-Socket אינו תואם להרחבה הזו. התקן אותו שוב מאותה הורדה."
+    },
+    "timffle_helper_notice_button": {
+        "message": "התקן את העוזר"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: התקנת עוזר Socket"
+    },
+    "timffle_helper_page_heading": {
+        "message": "התקנת עוזר Socket"
+    },
+    "timffle_helper_page_intro": {
+        "message": "משחקים מקוונים זקוקים לחיבורי TCP, שהרחבות Chrome אינן יכולות לפתוח, ולכן Timffle משתמש בתוכנית עזר קטנה. התקן אותה פעם אחת; לאחר מכן Chrome מפעיל אותה בעצמו בכל פעם שמשחק מתחבר, וסוגר אותה שוב."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: בהורדה של Timffle, פתח את התיקייה helper (היא נמצאת לצד התיקייה שטענת ל-Chrome) ולחץ לחיצה כפולה על <1>install-windows.cmd</1>. אם Windows מזהיר שהקובץ אינו מוכר, ודא שזה הקובץ שהתכוונת אליו לפני שתאפשר לו לפעול."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: בהורדה של Timffle, פתח את התיקייה helper (היא נמצאת לצד התיקייה שטענת ל-Chrome) ולחץ לחיצה כפולה על <1>install-macos.command</1>. אם macOS חוסם אותו, אפשר אותו דרך הגדרות מערכת ← פרטיות ואבטחה, ולחץ עליו שוב לחיצה כפולה."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: בהורדה של Timffle, פתח חלון טרמינל בתיקייה helper (היא נמצאת לצד התיקייה שטענת ל-Chrome) והרץ <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "אחר כך בדוק שוב. אם עדיין כתוב שהעוזר אינו מותקן, סגור את Chrome לגמרי (כולל תהליכי הרקע שלו), הפעל אותו מחדש ובדוק פעם נוספת."
+    },
+    "timffle_helper_page_safe": {
+        "message": "תוכנית ההתקנה פועלת עבור חשבון המשתמש שלך בלבד: היא אינה דורשת הרשאות מנהל, אינה מתקינה שירות רקע ואינה משנה שום הגדרת אבטחה."
+    },
+    "timffle_helper_page_download": {
+        "message": "אין לך את תיקיית ההורדה? הורד את החבילה מ-<1>דף Releases</1>."
+    },
     "timffle_options_url": {
         "message": "תבנית URL (כולל token, מוסתרת)"
     },

@@ -263,6 +263,42 @@
     "timffle_helper_unavailable": {
         "message": "Asistente no disponible: revisa la instalación y los avisos de seguridad del sistema operativo y vuelve a intentarlo."
     },
+    "timffle_helper_notice_missing": {
+        "message": "El asistente de sockets no está instalado, así que los juegos en línea no pueden conectarse."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "El asistente de sockets no corresponde a esta extensión. Vuelve a instalarlo desde la misma descarga."
+    },
+    "timffle_helper_notice_button": {
+        "message": "Instalar el asistente"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: instalar el asistente de sockets"
+    },
+    "timffle_helper_page_heading": {
+        "message": "Instalar el asistente de sockets"
+    },
+    "timffle_helper_page_intro": {
+        "message": "Los juegos en línea necesitan conexiones TCP, que las extensiones de Chrome no pueden abrir, así que Timffle usa un pequeño programa asistente. Instálalo una sola vez; después Chrome lo inicia solo cuando un juego se conecta y lo cierra de nuevo."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: en la descarga de Timffle, abre la carpeta helper (está junto a la carpeta que cargaste en Chrome) y haz doble clic en <1>install-windows.cmd</1>. Si Windows avisa de que no reconoce el archivo, comprueba que es el que querías antes de dejar que se ejecute."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: en la descarga de Timffle, abre la carpeta helper (está junto a la carpeta que cargaste en Chrome) y haz doble clic en <1>install-macos.command</1>. Si macOS lo bloquea, permítelo en Ajustes del Sistema → Privacidad y seguridad y vuelve a hacer doble clic."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: en la descarga de Timffle, abre una terminal en la carpeta helper (está junto a la carpeta que cargaste en Chrome) y ejecuta <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "Después vuelve a comprobar. Si sigue diciendo que el asistente no está instalado, cierra Chrome por completo (incluidos sus procesos en segundo plano), ábrelo de nuevo y comprueba una vez más."
+    },
+    "timffle_helper_page_safe": {
+        "message": "El instalador funciona solo para tu cuenta de usuario: no necesita derechos de administrador, no instala ningún servicio en segundo plano y no cambia ningún ajuste de seguridad."
+    },
+    "timffle_helper_page_download": {
+        "message": "¿No tienes la carpeta de la descarga? Consigue el paquete en <1>la página Releases</1>."
+    },
     "timffle_options_url": {
         "message": "Plantilla de URL (con token, oculta)"
     },

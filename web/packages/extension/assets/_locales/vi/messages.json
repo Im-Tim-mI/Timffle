@@ -263,6 +263,42 @@
     "timffle_helper_unavailable": {
         "message": "Trình hỗ trợ không khả dụng: hãy kiểm tra việc cài đặt và các cảnh báo bảo mật của hệ điều hành, rồi thử lại."
     },
+    "timffle_helper_notice_missing": {
+        "message": "Trình hỗ trợ socket chưa được cài đặt nên game trực tuyến không thể kết nối."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "Trình hỗ trợ socket không khớp với tiện ích này. Hãy cài lại từ cùng bản tải về."
+    },
+    "timffle_helper_notice_button": {
+        "message": "Cài đặt trình hỗ trợ"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: cài đặt trình hỗ trợ socket"
+    },
+    "timffle_helper_page_heading": {
+        "message": "Cài đặt trình hỗ trợ socket"
+    },
+    "timffle_helper_page_intro": {
+        "message": "Game trực tuyến cần kết nối TCP mà tiện ích Chrome không thể mở, nên Timffle dùng một chương trình hỗ trợ nhỏ. Chỉ cần cài đặt một lần; sau đó Chrome tự khởi động nó mỗi khi game kết nối và đóng lại."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: trong bản tải về của Timffle, hãy mở thư mục helper (nằm cạnh thư mục bạn đã nạp vào Chrome) rồi nhấp đúp <1>install-windows.cmd</1>. Nếu Windows cảnh báo không nhận ra tệp, hãy kiểm tra đó đúng là tệp bạn muốn trước khi cho phép chạy."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: trong bản tải về của Timffle, hãy mở thư mục helper (nằm cạnh thư mục bạn đã nạp vào Chrome) rồi nhấp đúp <1>install-macos.command</1>. Nếu macOS chặn, hãy cho phép trong Cài đặt hệ thống → Quyền riêng tư & Bảo mật, rồi nhấp đúp lại."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: trong bản tải về của Timffle, hãy mở terminal trong thư mục helper (nằm cạnh thư mục bạn đã nạp vào Chrome) rồi chạy <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "Sau đó kiểm tra lại. Nếu vẫn báo chưa cài trình hỗ trợ, hãy thoát hoàn toàn Chrome (kể cả các tiến trình chạy nền), mở lại và kiểm tra thêm một lần."
+    },
+    "timffle_helper_page_safe": {
+        "message": "Trình cài đặt chỉ hoạt động cho tài khoản người dùng của bạn: không cần quyền quản trị, không cài dịch vụ chạy nền và không thay đổi bất kỳ cài đặt bảo mật nào."
+    },
+    "timffle_helper_page_download": {
+        "message": "Bạn không có thư mục tải về? Hãy lấy gói tại <1>trang Releases</1>."
+    },
     "timffle_options_url": {
         "message": "Mẫu URL (gồm token, được ẩn)"
     },

@@ -1,12 +1,14 @@
 import {
     enableBrowserOnOutdatedChromium,
     hasHostPermissionForActiveTab,
+    openHelperPage,
     openOptionsPage,
     openPlayerPage,
     setPageLanguage,
 } from "./utils";
 import type { Options } from "./common";
 import { bindOptions } from "./common";
+import { bindHelperNotice } from "./popup-helper";
 import { bindSocketSection } from "./popup-socket";
 import { localizePage } from "./i18n";
 import { buildInfo } from "ruffle-core";
@@ -230,6 +232,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     reloadButton.addEventListener("click", async () => {
         await browser.tabs.reload(activeTab.id!);
         window.close();
+    });
+
+    // Starts the helper for a moment to see whether it is there, so it runs
+    // beside the rest of the popup's start-up instead of holding it up.
+    void bindHelperNotice({
+        install: () => {
+            void openHelperPage().then(() => window.close());
+        },
     });
 
     await displayTabStatus();

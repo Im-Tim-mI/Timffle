@@ -11,8 +11,13 @@ import type {
     ProxySettings,
     ProxyValidationError,
 } from "./socket-proxy";
-import { HELPER_STATUS_REQUEST } from "./socket-bridge-protocol";
-import type { HelperStatus } from "./socket-bridge-protocol";
+import {
+    helperVerdict,
+    needsInstaller,
+    queryHelper,
+    statusMessage,
+} from "./helper-status";
+import { openHelperPage } from "./utils";
 
 const VALIDATION_KEYS: Record<ProxyValidationError, string> = {
     invalid_settings: "timffle_error_invalid_settings",
@@ -25,17 +30,6 @@ const VALIDATION_KEYS: Record<ProxyValidationError, string> = {
     invalid_origin: "timffle_error_invalid_origin",
     origins_required: "timffle_error_origins_required",
 };
-
-async function queryHelper(): Promise<HelperStatus> {
-    try {
-        const status = (await browser.runtime.sendMessage({
-            type: HELPER_STATUS_REQUEST,
-        })) as HelperStatus | undefined;
-        return status ?? { installed: false, error: "no_response" };
-    } catch {
-        return { installed: false, error: "no_response" };
-    }
-}
 
 export async function bindProxyOptions(): Promise<void> {
     // A web page can frame an extension page unless the browser refuses it,
@@ -76,6 +70,9 @@ export async function bindProxyOptions(): Promise<void> {
     const helperStatus = document.getElementById("socket-helper-status")!;
     const helperCheck = document.getElementById(
         "socket-helper-check",
+    )! as HTMLButtonElement;
+    const helperInstall = document.getElementById(
+        "socket-helper-install",
     )! as HTMLButtonElement;
 
     const modeTexts =
@@ -142,23 +139,13 @@ export async function bindProxyOptions(): Promise<void> {
         helperCheck.disabled = true;
         helperStatus.textContent = text("timffle_helper_checking");
         helperStatus.dataset["state"] = "info";
-        const result = await queryHelper();
-        if (result.installed) {
-            const version = result.version ?? "?";
-            helperStatus.textContent = text("timffle_helper_installed", [
-                version,
-            ]);
-            helperStatus.dataset["state"] = "info";
-        } else {
-            helperStatus.textContent = text(
-                result.error === "helper_incompatible"
-                    ? "timffle_helper_incompatible"
-                    : result.error === "helper_missing"
-                      ? "timffle_helper_missing"
-                      : "timffle_helper_unavailable",
-            );
-            helperStatus.dataset["state"] = "error";
-        }
+        helperInstall.hidden = true;
+        const verdict = helperVerdict(await queryHelper());
+        helperStatus.textContent = statusMessage(verdict);
+        helperStatus.dataset["state"] =
+            verdict.kind === "installed" ? "info" : "error";
+        // Running the installer is the fix for a missing or mismatched helper.
+        helperInstall.hidden = !needsInstaller(verdict);
         helperCheck.disabled = false;
     }
 
@@ -174,6 +161,11 @@ export async function bindProxyOptions(): Promise<void> {
     }
 
     helperCheck.addEventListener("click", () => void checkHelper());
+    helperInstall.addEventListener("click", (event) => {
+        if (event.isTrusted) {
+            void openHelperPage();
+        }
+    });
     void checkHelper();
 
     // The popup and the question windows change the same settings while this

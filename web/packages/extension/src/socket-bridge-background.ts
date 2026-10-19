@@ -98,6 +98,49 @@ export function topOrigin(sender: Sender): string | undefined {
 }
 
 const SETTINGS_PAGES = ["/options.html", "/popup.html"];
+/** The pages that may ask whether the helper is installed: the install page checks it too. */
+const HELPER_STATUS_PAGES = [...SETTINGS_PAGES, "/helper.html"];
+
+/** The toolbar icon of a tab whose game could not reach the helper: a red "!". */
+const HELPER_BADGE_TEXT = "!";
+const HELPER_BADGE_COLOR = "#d93025";
+
+/**
+ * Tells the visitor, on the toolbar icon, that the page in a tab needed the
+ * socket helper and could not get it; the popup then says what to do. The
+ * mark belongs to the tab, so it is gone when the page is.
+ */
+export interface HelperBadge {
+    show(tabId: number): void;
+}
+
+function browserHelperBadge(): HelperBadge {
+    return {
+        show(tabId) {
+            const action = browser.action as typeof chrome.action | undefined;
+            if (!action) {
+                return;
+            }
+            const ignore = () => {};
+            try {
+                void Promise.resolve(
+                    action.setBadgeText({ tabId, text: HELPER_BADGE_TEXT }),
+                ).catch(ignore);
+                void Promise.resolve(
+                    action.setBadgeBackgroundColor({
+                        tabId,
+                        color: HELPER_BADGE_COLOR,
+                    }),
+                ).catch(ignore);
+            } catch {
+                /* No such tab any more, or no badge in this browser. */
+            }
+        },
+    };
+}
+
+/** The answers that mean "run the installer": the helper is not there, or not the right one. */
+const NEEDS_INSTALLER = new Set(["helper_missing", "helper_incompatible"]);
 
 /**
  * Only our own top-level pages may ask about the helper or the prompt. A
@@ -171,6 +214,8 @@ function handleSocketPort(
     authorize: (signal: AbortSignal, asking: () => void) => Promise<boolean>,
     release: () => void,
     limits: SocketLimits,
+    /** Called when the socket failed because the helper has to be installed. */
+    helperProblem: () => void,
 ): SocketHandle {
     const abort = new AbortController();
     let native: chrome.runtime.Port | null = null;
@@ -200,6 +245,9 @@ function handleSocketPort(
         // Withdraws a pending question's waiter, so no window stays for a gone page.
         abort.abort();
         release();
+        if (reply?.type === "error" && NEEDS_INSTALLER.has(reply.code)) {
+            helperProblem();
+        }
         if (reply) {
             try {
                 page.postMessage(reply);
@@ -459,6 +507,7 @@ function probeHelper(): { result: Promise<HelperStatus>; cancel: () => void } {
 export interface SocketBridgeDeps {
     visits?: VisitStore;
     prompts?: PromptManager;
+    badge?: HelperBadge;
 }
 
 const PROMPT_SIZE = { width: 540, height: 680 };
@@ -558,6 +607,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
     const prompts =
         deps.prompts ??
         createPromptManager(browserPromptHost(), browserPromptEffects(visits));
+    const badge = deps.badge ?? browserHelperBadge();
     const active = new Set<SocketHandle>();
     let epoch = 0;
     let probe: ReturnType<typeof probeHelper> | undefined;
@@ -718,6 +768,11 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 },
                 mayConnect: () => hasFreeSlot(page.sender, handle),
             },
+            () => {
+                if (tabId !== undefined) {
+                    badge.show(tabId);
+                }
+            },
         );
         active.add(handle);
     };
@@ -731,7 +786,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
         }
         switch (message["type"]) {
             case HELPER_STATUS_REQUEST:
-                if (!isExtensionUI(sender)) {
+                if (!isExtensionUI(sender, HELPER_STATUS_PAGES)) {
                     return undefined;
                 }
                 if (!probe && holdingSlots().length >= MAX_GLOBAL_SOCKETS) {

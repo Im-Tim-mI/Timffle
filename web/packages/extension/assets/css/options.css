@@ -111,6 +111,15 @@
     padding-inline-start: 28px;
 }
 
+/* Shown only when the helper has to be installed. */
+#socket-helper-install {
+    background: var(--ruffle-orange);
+    border-color: var(--ruffle-dark-orange);
+    color: var(--ruffle-dark-blue);
+    font-weight: bold;
+    text-shadow: none;
+}
+
 #socket-proxy-websocket-fields {
     display: flex;
     flex-direction: column;

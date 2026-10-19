@@ -101,7 +101,7 @@ test("pages and sources use exactly the texts that exist", () => {
 
 test("no page keeps text of its own for what the catalog provides", () => {
     for (const [name, source] of Object.entries(readSources("assets", ".html"))) {
-        if (!["options.html", "popup.html", "prompt.html"].includes(name)) {
+        if (!["helper.html", "options.html", "popup.html", "prompt.html"].includes(name)) {
             continue;
         }
         assert.doesNotMatch(source, /[㐀-鿿]/u, `${name} has Chinese text outside the catalog`);
@@ -123,6 +123,14 @@ const MUST_CONTAIN = {
     timffle_note_helper: ["TCP", "Chrome", "helper"],
     timffle_note_proxy: ["WebSocket", "Chrome", "URL", "token"],
     timffle_helper_missing: ["helper"],
+    // The install page: the folder and the files the reader looks for, and the names of the systems.
+    timffle_helper_page_title: ["Timffle"],
+    timffle_helper_page_intro: ["TCP", "Chrome"],
+    timffle_helper_step_windows: ["Windows", "helper", "<1>install-windows.cmd</1>"],
+    timffle_helper_step_macos: ["macOS", "helper", "<1>install-macos.command</1>"],
+    timffle_helper_step_linux: ["Linux", "helper", "<1>sh install-linux.sh</1>"],
+    timffle_helper_step_after: ["Chrome"],
+    timffle_helper_page_download: ["Releases"],
     timffle_popup_allow_site_proxy: ["token"],
     timffle_error_url_required: ["URL", "WebSocket"],
     timffle_error_invalid_url: ["ws://", "wss://"],
@@ -304,5 +312,47 @@ test("the discount box links to Logitech's store and to nothing else, loads noth
     }
     for (const [name, source] of Object.entries(readSources("src", ".ts"))) {
         assert.doesNotMatch(source, /logitech/iu, `${name} must not know about the store`);
+    }
+});
+
+test("the install page names installers that the release ZIP really has", () => {
+    const installers = path.join(packageDir, "..", "..", "..", "timffle", "helper", "installers");
+    if (!fs.existsSync(installers)) {
+        return; // The extension sources without the rest of the repository.
+    }
+    for (const [key, file] of [
+        ["timffle_helper_step_windows", "install-windows.cmd"],
+        ["timffle_helper_step_macos", "install-macos.command"],
+        ["timffle_helper_step_linux", "install-linux.sh"],
+    ]) {
+        assert.ok(fs.existsSync(path.join(installers, file)), `${file} is not an installer any more`);
+        for (const language of languages) {
+            assert.ok(message(language, key).includes(file), `${language}/${key} does not name ${file}`);
+        }
+    }
+});
+
+test("the install page has a code element for each file name and a link to the Releases page, and every text fills exactly those", () => {
+    const page = readSources("assets", ".html")["helper.html"];
+    for (const system of ["windows", "macos", "linux"]) {
+        assert.match(
+            page,
+            new RegExp(`<li data-i18n-rich="timffle_helper_step_${system}"><code dir="ltr" translate="no"></code></li>`, "u"),
+            system,
+        );
+    }
+    assert.match(
+        page,
+        /<p [^>]*data-i18n-rich="timffle_helper_page_download"><a href="https:\/\/github\.com\/Im-Tim-mI\/Timffle\/releases\/latest" target="_blank" rel="noopener noreferrer"><\/a><\/p>/u,
+    );
+    for (const language of languages) {
+        for (const key of [
+            "timffle_helper_step_windows",
+            "timffle_helper_step_macos",
+            "timffle_helper_step_linux",
+            "timffle_helper_page_download",
+        ]) {
+            assert.deepEqual(message(language, key).match(/<\/?\d>/gu), ["<1>", "</1>"], `${language}/${key}`);
+        }
     }
 });

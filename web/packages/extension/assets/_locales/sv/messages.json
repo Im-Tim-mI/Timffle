@@ -263,6 +263,42 @@
     "timffle_helper_unavailable": {
         "message": "Hjälparen är inte tillgänglig: kontrollera installationen och operativsystemets säkerhetsmeddelanden och försök sedan igen."
     },
+    "timffle_helper_notice_missing": {
+        "message": "Sockethjälparen är inte installerad, så onlinespel kan inte ansluta."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "Sockethjälparen passar inte det här tillägget. Installera den igen från samma nedladdning."
+    },
+    "timffle_helper_notice_button": {
+        "message": "Installera hjälparen"
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: installera sockethjälparen"
+    },
+    "timffle_helper_page_heading": {
+        "message": "Installera sockethjälparen"
+    },
+    "timffle_helper_page_intro": {
+        "message": "Onlinespel behöver TCP-anslutningar, som Chrome-tillägg inte kan öppna, så Timffle använder ett litet hjälpprogram. Installera det en gång; därefter startar Chrome det själv varje gång ett spel ansluter och stänger det igen."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: öppna mappen helper i Timffle-nedladdningen (den ligger bredvid mappen du har läst in i Chrome) och dubbelklicka på <1>install-windows.cmd</1>. Om Windows varnar för att filen inte känns igen, kontrollera att det är rätt fil innan du låter den köras."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: öppna mappen helper i Timffle-nedladdningen (den ligger bredvid mappen du har läst in i Chrome) och dubbelklicka på <1>install-macos.command</1>. Om macOS blockerar den, tillåt den i Systeminställningar → Integritet och säkerhet och dubbelklicka igen."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: öppna en terminal i mappen helper i Timffle-nedladdningen (den ligger bredvid mappen du har läst in i Chrome) och kör <1>sh install-linux.sh</1>"
+    },
+    "timffle_helper_step_after": {
+        "message": "Kontrollera sedan igen. Om det fortfarande står att hjälparen inte är installerad, avsluta Chrome helt (även bakgrundsprocesserna), starta det på nytt och kontrollera en gång till."
+    },
+    "timffle_helper_page_safe": {
+        "message": "Installationsprogrammet fungerar bara för ditt eget användarkonto: det kräver inga administratörsrättigheter, installerar ingen bakgrundstjänst och ändrar ingen säkerhetsinställning."
+    },
+    "timffle_helper_page_download": {
+        "message": "Har du inte nedladdningsmappen? Hämta paketet från <1>sidan Releases</1>."
+    },
     "timffle_options_url": {
         "message": "URL-mall (med token, dold)"
     },

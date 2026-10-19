@@ -295,6 +295,54 @@
         "message": "Helper unavailable: check installation and operating-system security prompts, then retry.",
         "description": "Status of the socket helper."
     },
+    "timffle_helper_notice_missing": {
+        "message": "The socket helper is not installed, so online games cannot connect.",
+        "description": "Notice at the top of the toolbar popup when the socket helper (a small program the extension needs for online games) is not installed. The popup is narrow: keep it short."
+    },
+    "timffle_helper_notice_incompatible": {
+        "message": "The socket helper does not match this extension. Install it again from the same download.",
+        "description": "Notice at the top of the toolbar popup when a socket helper is installed but is not the one this extension needs. “The same download” is the Timffle download (a ZIP) that contains both the extension and the helper."
+    },
+    "timffle_helper_notice_button": {
+        "message": "Install the helper",
+        "description": "Button in the popup notice and next to the helper status on the settings page. It opens the page that explains how to install the socket helper. Keep it short."
+    },
+    "timffle_helper_page_title": {
+        "message": "Timffle: install the socket helper",
+        "description": "Title of the browser tab of the page that explains how to install the socket helper. Timffle is the product name."
+    },
+    "timffle_helper_page_heading": {
+        "message": "Install the socket helper",
+        "description": "Heading of the page that explains how to install the socket helper."
+    },
+    "timffle_helper_page_intro": {
+        "message": "Online games need TCP connections, which Chrome extensions cannot open, so Timffle uses a small helper program. Install it once; after that Chrome starts it by itself whenever a game connects and closes it again.",
+        "description": "First paragraph of the install page. TCP and Chrome stay in Latin letters."
+    },
+    "timffle_helper_step_windows": {
+        "message": "Windows: in the Timffle download, open the helper folder (it sits next to the folder you loaded into Chrome) and double-click <1>install-windows.cmd</1>. If Windows warns that the file is not recognized, check that it is the file you meant before you let it run.",
+        "description": "One line of the install page, for Windows. <1>…</1> is the installer's file name, shown in a code font: keep the tags and keep the file name exactly. The folder is literally named “helper”; keep that name in Latin letters so the reader can find it. Start the line with the system name (Windows)."
+    },
+    "timffle_helper_step_macos": {
+        "message": "macOS: in the Timffle download, open the helper folder (it sits next to the folder you loaded into Chrome) and double-click <1>install-macos.command</1>. If macOS blocks it, allow it in System Settings → Privacy & Security, then double-click it again.",
+        "description": "One line of the install page, for macOS. <1>…</1> is the installer's file name, shown in a code font: keep the tags and keep the file name exactly. The folder is literally named “helper”; keep that name in Latin letters. “System Settings → Privacy & Security” is where macOS lets the user allow a blocked file: use the names macOS shows in your language."
+    },
+    "timffle_helper_step_linux": {
+        "message": "Linux: in the Timffle download, open a terminal in the helper folder (it sits next to the folder you loaded into Chrome) and run <1>sh install-linux.sh</1>",
+        "description": "One line of the install page, for Linux. <1>…</1> is the command to type, shown in a code font: keep the tags and keep the command exactly. The folder is literally named “helper”; keep that name in Latin letters."
+    },
+    "timffle_helper_step_after": {
+        "message": "Then check again. If it still says the helper is not installed, fully quit Chrome (including its background processes), start it again and check once more.",
+        "description": "Last step of the install page, after the three lines for the three systems. It refers to the “Check again” button next to the status (timffle_helper_check) without quoting it."
+    },
+    "timffle_helper_page_safe": {
+        "message": "The installer works for your user account only: it needs no administrator rights, installs no background service and changes no security setting.",
+        "description": "A reassurance on the install page: the installer is per user and needs no special rights."
+    },
+    "timffle_helper_page_download": {
+        "message": "Do not have the download folder? Get the package from <1>the Releases page</1>.",
+        "description": "Line at the bottom of the install page. <1>…</1> is a link to the project's Releases page, where the download is published: keep the tags and keep the word Releases in Latin letters."
+    },
     "timffle_options_url": {
         "message": "URL template (including token, concealed)",
         "description": "Label of a password-style field that holds the address of the custom WebSocket proxy."

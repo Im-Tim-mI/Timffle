@@ -49,6 +49,11 @@ export const openOnboardPage: () => Promise<void> = () =>
     promisify((cb: () => void) =>
         browser.tabs.create({ url: "/onboard.html" }, cb),
     );
+/** The page that walks through installing the socket helper. */
+export const openHelperPage: () => Promise<void> = () =>
+    promisify((cb: () => void) =>
+        browser.tabs.create({ url: "/helper.html" }, cb),
+    );
 
 export async function getOptions(origin?: string): Promise<Options> {
     const [synced, proxySettings] = await Promise.all([

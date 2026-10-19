@@ -58,7 +58,7 @@ const ui = () => ({
     origin: "chrome-extension://" + ID,
     frameId: 0,
 });
-function setup(t) {
+function setup(t, deps = {}) {
     t.mock.timers.enable({ apis: ["setTimeout"] });
     let settings = {
             enabled: true,
@@ -90,7 +90,7 @@ function setup(t) {
         tabs: { onRemoved: event(), onUpdated: event() },
     };
     globalThis.browser = browser;
-    const cleanup = registerSocketBridge();
+    const cleanup = registerSocketBridge(deps);
     t.after(() => {
         cleanup();
         globalThis.browser = prior;
@@ -280,4 +280,127 @@ test("content cannot probe helper status; concurrent UI checks share one process
     assert.equal(h.natives[0].disconnected, true);
     assert.equal(replies.length, 2);
     assert.ok(replies.every((x) => x.installed && x.protocol === 2));
+});
+
+/** The pages of the extension, as a message sender: only the settings, the popup and the install page may ask about the helper. */
+const pageAt = (path, overrides = {}) => ({
+    id: ID,
+    url: "chrome-extension://" + ID + path,
+    origin: "chrome-extension://" + ID,
+    frameId: 0,
+    ...overrides,
+});
+
+test("the install page, the popup and the settings page may ask whether the helper is installed; no other page may", async (t) => {
+    const h = setup(t);
+    const ask = async (sender) => {
+        const before = h.natives.length;
+        h.browser.runtime.onMessage.emit({ type: HELPER_STATUS_REQUEST }, sender, () => {});
+        const started = h.natives.length - before;
+        if (started > 0) {
+            // The probe is shared: let the one that is running finish before the next sender asks.
+            h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.2.0", protocol: 2 });
+            await tick();
+        }
+        return started;
+    };
+    for (const path of ["/helper.html", "/popup.html", "/options.html"]) {
+        assert.equal(await ask(pageAt(path)), 1, path);
+    }
+    for (const sender of [
+        pageAt("/prompt.html"),
+        pageAt("/onboard.html"),
+        pageAt("/player.html"),
+        pageAt("/helper.html", { frameId: 2 }),
+        pageAt("/helper.html", { id: "other" }),
+        pageAt("/helper.html", { origin: "https://evil.example" }),
+        content(),
+    ]) {
+        assert.equal(await ask(sender), 0, JSON.stringify(sender));
+    }
+});
+
+/** A stand-in for the toolbar icon: remembers which tabs were marked. */
+function badge() {
+    const marked = [];
+    return { marked, show: (tabId) => marked.push(tabId) };
+}
+
+test("a socket that fails because the helper is missing or is not the right one marks its tab, and no other failure does", async (t) => {
+    const mark = badge();
+    const h = setup(t, { badge: mark });
+    // Chrome knows no such native messaging host.
+    const missing = await h.open(content({ tab: { id: 7 } }));
+    h.browser.runtime.lastError = { message: "Specified native messaging host not found." };
+    h.natives.at(-1).disconnect();
+    h.browser.runtime.lastError = undefined;
+    assert.ok(missing.sent.some((x) => x.code === "helper_missing"));
+    assert.deepEqual(mark.marked, [7]);
+    // connectNative itself refuses.
+    const connectNative = h.browser.runtime.connectNative;
+    h.browser.runtime.connectNative = () => {
+        throw new Error("no native messaging");
+    };
+    const refused = await h.open(content({ tab: { id: 8 } }));
+    h.browser.runtime.connectNative = connectNative;
+    assert.ok(refused.sent.some((x) => x.code === "helper_missing"));
+    assert.deepEqual(mark.marked, [7, 8]);
+    // A helper of another protocol version.
+    const old = await h.open(content({ tab: { id: 9 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
+    assert.ok(old.sent.some((x) => x.code === "helper_incompatible"));
+    assert.deepEqual(mark.marked, [7, 8, 9]);
+    // Everything else leaves the icon alone: the server refused, the helper crashed after it said hello, the page left.
+    const refusedByServer = await h.open(content({ tab: { id: 10 } }));
+    const native = h.natives.at(-1);
+    native.onMessage.emit({ type: "hello", version: "1.2.0", protocol: 2 });
+    native.onMessage.emit({ type: "closed" });
+    assert.ok(refusedByServer.sent.some((x) => x.code === "connect_failed"));
+    const leaving = await h.open(content({ tab: { id: 11 } }));
+    leaving.disconnect();
+    assert.deepEqual(mark.marked, [7, 8, 9]);
+});
+
+test("a tab is marked once per failed socket, whichever frame asked, and the badge needs no browser support", async (t) => {
+    const mark = badge();
+    const h = setup(t, { badge: mark });
+    for (const frameId of [0, 3]) {
+        const page = await h.open(content({ tab: { id: 5 }, frameId }));
+        h.natives.at(-1).onMessage.emit({ type: "hello", version: "0.9.0", protocol: 1 });
+        assert.ok(page.sent.some((x) => x.code === "helper_incompatible"), String(frameId));
+    }
+    assert.deepEqual(mark.marked, [5, 5]);
+});
+
+test("without a badge dependency the browser's action API is used, and a browser without it is fine", async (t) => {
+    const h = setup(t);
+    const calls = [];
+    h.browser.action = {
+        setBadgeText: async (details) => calls.push(["text", details]),
+        setBadgeBackgroundColor: async (details) => calls.push(["color", details]),
+    };
+    const page = await h.open(content({ tab: { id: 4 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
+    assert.ok(page.sent.some((x) => x.code === "helper_incompatible"));
+    assert.deepEqual(calls, [
+        ["text", { tabId: 4, text: "!" }],
+        ["color", { tabId: 4, color: "#d93025" }],
+    ]);
+    // A tab that is already gone makes the browser refuse: nothing breaks.
+    h.browser.action = {
+        setBadgeText: async () => {
+            throw new Error("No tab with id: 4");
+        },
+        setBadgeBackgroundColor: () => {
+            throw new Error("No tab with id: 4");
+        },
+    };
+    const gone = await h.open(content({ tab: { id: 4 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
+    assert.ok(gone.sent.some((x) => x.code === "helper_incompatible"));
+    // Firefox has no such API in this shape.
+    delete h.browser.action;
+    const other = await h.open(content({ tab: { id: 6 } }));
+    h.natives.at(-1).onMessage.emit({ type: "hello", version: "1.0.0", protocol: 1 });
+    assert.ok(other.sent.some((x) => x.code === "helper_incompatible"));
 });

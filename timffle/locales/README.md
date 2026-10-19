@@ -4,7 +4,7 @@ Chrome 擴充功能的介面文字，和 Ruffle 一樣用 Chrome 的訊息目錄
 
 `ar bs ca cs de en eo es fi fr gl he hr hu id it ja ko nb nl pl pt_BR pt_PT ro ru sk sl sr sv th tr tt uk vi zh_CN zh_TW`
 
-Ruffle 原有的文字（一般選項、播放器訊息）由上游的 Crowdin 翻譯，跟進上游時整份取用上游版本。**Timffle 自己新增的文字**（Socket 設定、彈出視窗的 Socket 區塊、詢問視窗、頁尾聲明）放在這個資料夾，每種語言一個檔案：
+Ruffle 原有的文字（一般選項、播放器訊息）由上游的 Crowdin 翻譯，跟進上游時整份取用上游版本。**Timffle 自己新增的文字**（Socket 設定、彈出視窗的 Socket 區塊與小幫手提示、安裝頁、詢問視窗、頁尾聲明）放在這個資料夾，每種語言一個檔案：
 
 | 檔案 | 內容 |
 |---|---|
