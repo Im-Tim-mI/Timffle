@@ -530,3 +530,110 @@ test("the prompt page gets the install window's text when the question has none,
     assert.equal(ask("notice", content()).returned, undefined);
     assert.equal(ask("notice", { ...promptPage(5), frameId: 1 }).returned, undefined);
 });
+
+// The "own address" exception (socket-lan.ts): a website served from a private address may connect back to it.
+const LAN = "http://192.168.0.163",
+    ULA = "http://[fd00::1]:8080",
+    NAMED = "http://localhost:8080";
+const lanSettings = {
+    enabled: true,
+    mode: "helper",
+    proxyUrl: "",
+    allowedOrigins: [ORIGIN, LAN, ULA, NAMED],
+};
+const servedFrom = (origin, overrides = {}) =>
+    content({ url: origin + "/game/", origin, ...overrides });
+
+/** Sends the page's request through a helper that says hello as `version`; returns the page, the helper and what the helper was asked to open. */
+async function openThrough(h, sender, request, version = "1.4.0") {
+    const before = h.natives.length;
+    const p = port(sender);
+    h.browser.runtime.onConnect.emit(p);
+    p.onMessage.emit(request);
+    await tick();
+    assert.equal(h.natives.length, before + 1, "the helper was started");
+    const n = h.natives.at(-1);
+    n.onMessage.emit({ type: "hello", version, protocol: 2 });
+    return { p, n, opened: n.sent.find((m) => m.type === "open") };
+}
+const errorCodes = (p) => p.sent.filter((m) => m.type === "error").map((m) => m.code);
+
+test("a website served from a private address gives the helper that address, from the browser's sender and never from the page", async (t) => {
+    const h = setup(t);
+    h.settings(lanSettings);
+    for (const [sender, request, lanHost] of [
+        [servedFrom(LAN), { type: "open", host: "192.168.0.163", port: 1863 }, "192.168.0.163"],
+        [servedFrom(LAN), { type: "open", host: "public.example", port: 443 }, "192.168.0.163"],
+        [servedFrom(ULA), { type: "open", host: "fd00::1", port: 843 }, "fd00::1"],
+        // Whatever else the page puts in its request stays behind; the address is still the sender's.
+        [
+            servedFrom(LAN),
+            { type: "open", host: "10.0.0.9", port: 80, lanHost: "10.0.0.9", allowPrivate: true },
+            "192.168.0.163",
+        ],
+    ]) {
+        const { p, opened } = await openThrough(h, sender, request);
+        assert.deepEqual(opened, { type: "open", host: request.host, port: request.port, lanHost }, JSON.stringify(request));
+        p.disconnect();
+    }
+    // No exception for a public website, a website reached by a name, or a public frame in a page that is on the local network.
+    for (const [sender, request] of [
+        [content(), { type: "open", host: "192.168.0.163", port: 1863 }],
+        [content(), { type: "open", host: "10.0.0.9", port: 80, lanHost: "10.0.0.9" }],
+        [servedFrom(NAMED), { type: "open", host: "192.168.0.163", port: 1863, lanHost: "192.168.0.163" }],
+        [content({ tab: { id: 1, url: LAN + "/" } }), { type: "open", host: "192.168.0.163", port: 1863 }],
+    ]) {
+        const { p, opened } = await openThrough(h, sender, request);
+        assert.deepEqual(opened, { type: "open", host: request.host, port: request.port }, JSON.stringify(request));
+        p.disconnect();
+    }
+});
+
+test("a helper from before 1.4.0 that refuses the website's own address asks for the new helper; every other refusal reaches the page", async (t) => {
+    const mark = badge();
+    const notice = helperWindow();
+    const h = setup(t, { badge: mark, helperPrompts: notice });
+    h.settings(lanSettings);
+    const refused = async (sender, host, version, code = "blocked") => {
+        const { p, n } = await openThrough(h, sender, { type: "open", host, port: 1863 }, version);
+        n.onMessage.emit({ type: "error", code });
+        assert.equal(p.disconnected, true);
+        return errorCodes(p);
+    };
+    assert.deepEqual(await refused(servedFrom(LAN, { tab: { id: 7 } }), "192.168.0.163", "1.3.0"), ["helper_incompatible"]);
+    // Brackets and letter case do not hide the address.
+    assert.deepEqual(await refused(servedFrom(ULA, { tab: { id: 8 } }), "[FD00::1]", "1.2.9"), ["helper_incompatible"]);
+    assert.deepEqual(mark.marked, [7, 8]);
+    assert.deepEqual(
+        notice.calls.shown.map((x) => [x.problem, x.origin, x.tabId]),
+        [
+            ["incompatible", LAN, 7],
+            ["incompatible", ULA, 8],
+        ],
+    );
+    // A helper that knows the exception refused for a reason of its own.
+    assert.deepEqual(await refused(servedFrom(LAN, { tab: { id: 9 } }), "192.168.0.163", "1.4.0"), ["blocked"]);
+    assert.deepEqual(await refused(servedFrom(LAN, { tab: { id: 9 } }), "192.168.0.163", "1.10.0"), ["blocked"]);
+    // Other addresses a new helper refuses as well: another device, this computer, a name.
+    for (const host of ["192.168.0.99", "127.0.0.1", "nas.local"]) {
+        assert.deepEqual(await refused(servedFrom(LAN, { tab: { id: 10 } }), host, "1.3.0"), ["blocked"], host);
+    }
+    // A public website has no exception for an old helper to lack; other failures of the own address are not about the version.
+    assert.deepEqual(await refused(content({ tab: { id: 11 } }), "192.168.0.163", "1.3.0"), ["blocked"]);
+    assert.deepEqual(await refused(servedFrom(LAN, { tab: { id: 12 } }), "192.168.0.163", "1.3.0", "refused"), ["refused"]);
+    assert.deepEqual(mark.marked, [7, 8]);
+    assert.equal(notice.calls.shown.length, 2);
+});
+
+test("an old helper still connects a website on the local network to public servers", async (t) => {
+    const mark = badge();
+    const h = setup(t, { badge: mark, helperPrompts: helperWindow() });
+    h.settings(lanSettings);
+    const { p, n, opened } = await openThrough(h, servedFrom(LAN), { type: "open", host: "public.example", port: 443 }, "1.3.0");
+    // Sent all the same: an old helper ignores what it does not know.
+    assert.equal(opened.lanHost, "192.168.0.163");
+    n.onMessage.emit({ type: "opened" });
+    assert.deepEqual(p.sent, [{ type: "opened" }]);
+    assert.equal(p.disconnected, false);
+    assert.deepEqual(mark.marked, []);
+});

@@ -52,6 +52,12 @@ import {
     isSendRequest,
 } from "./socket-bridge-protocol";
 import type { HelperStatus, OpenRequest } from "./socket-bridge-protocol";
+import {
+    MIN_LAN_HELPER_VERSION,
+    isLanDestination,
+    lanHostOf,
+    versionAtLeast,
+} from "./socket-lan";
 
 type Sender = chrome.runtime.MessageSender | undefined;
 type FinalReply = { type: "closed" } | { type: "error"; code: string };
@@ -221,9 +227,12 @@ function handleSocketPort(
     limits: SocketLimits,
     /** Called with the code ("helper_missing", "helper_incompatible") when the socket failed because the helper has to be installed. */
     helperProblem: (code: string) => void,
+    /** The private address the frame is served from (lanHostOf of the browser's sender origin): the helper may connect back to it. */
+    lan: string | undefined,
 ): SocketHandle {
     const abort = new AbortController();
     let native: chrome.runtime.Port | null = null;
+    let helperVersion: string | undefined;
     let state:
         | "idle"
         | "checking"
@@ -283,6 +292,17 @@ function handleSocketPort(
             fail("helper_failed");
         }
     };
+    /**
+     * A helper from before the "own address" exception (socket-lan.ts) refuses
+     * the website's own address: installing the new one is what fixes that.
+     * Every other refusal is the page's to see, and an old helper keeps
+     * working for public destinations.
+     */
+    const refusedAsOutdated = (host: string, code: string) =>
+        code === "blocked" &&
+        lan !== undefined &&
+        isLanDestination(host, lan) &&
+        !versionAtLeast(helperVersion, MIN_LAN_HELPER_VERSION);
     const connectHelper = (open: OpenRequest) => {
         state = "hello";
         arm(HELLO_TIMEOUT_MS, "helper_timeout");
@@ -302,18 +322,32 @@ function handleSocketPort(
             }
             // A protocol 2 helper always answers hello; an older one may reject it.
             if (reply.type === "error") {
-                fail(state === "hello" ? "helper_incompatible" : reply.code);
+                fail(
+                    state === "hello" ||
+                        (state === "connecting" &&
+                            refusedAsOutdated(open.host, reply.code))
+                        ? "helper_incompatible"
+                        : reply.code,
+                );
                 return;
             }
             if (state === "hello") {
-                if (!isCompatibleHello(reply)) {
+                if (reply.type !== "hello" || !isCompatibleHello(reply)) {
                     fail("helper_incompatible");
                     return;
                 }
+                helperVersion = reply.version;
                 state = "connecting";
                 arm(STALL_TIMEOUT_MS, "connect_timeout");
-                // Do not forward arbitrary page properties (e.g. private-network overrides).
-                toNative({ type: "open", host: open.host, port: open.port });
+                // Only the host and port of the page's request: no page property is
+                // forwarded. lanHost comes from the browser's sender, and the helper
+                // checks it again.
+                toNative({
+                    type: "open",
+                    host: open.host,
+                    port: open.port,
+                    ...(lan === undefined ? {} : { lanHost: lan }),
+                });
                 return;
             }
             switch (reply.type) {
@@ -765,6 +799,8 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
             return;
         }
         const tabId = page.sender?.tab?.id;
+        // From the browser's sender, like the origin: a page cannot name another address.
+        const lan = lanHostOf(origin);
         const handle = handleSocketPort(
             page,
             (signal, asking) => authorize(origin, page.sender, signal, asking),
@@ -811,6 +847,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                     ...(windowId === undefined ? {} : { windowId }),
                 });
             },
+            lan,
         );
         active.add(handle);
     };
