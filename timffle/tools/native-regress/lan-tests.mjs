@@ -67,6 +67,7 @@ const listen=async(server,host)=>{await new Promise((resolve,reject)=>{server.on
 const SIZE=6,PAYLOAD='lan-ok';
 const echo=async(host)=>{const stat={connections:0};const port=await listen(net.createServer(s=>{stat.connections++;tcpSockets.add(s);s.on('error',()=>{});s.on('close',()=>tcpSockets.delete(s));let n=0;s.on('data',d=>{n+=d.length;s.write(d);if(n>=SIZE)s.end();});}),host);return {host,port,stat};};
 const lanEcho=await echo(priv),loopEcho=await echo('127.0.0.1'),otherEcho=other?await echo(other):null;
+let loop6=null;try{loop6=await echo('::1');}catch{}
 const elsewhere=otherEcho??{host:NOWHERE,port:9,stat:{connections:0}};
 const swf=await fs.readFile(path.join(root,'NativeProbe.swf'));
 // The Host headers the page servers saw: the name of scenario D must reach the very server that the address reaches.
@@ -171,6 +172,8 @@ const QUESTION_JS='({origin:document.getElementById("prompt-origin").textContent
 // The "install the helper first" window, read once it shows its download button.
 const NOTICE_JS='(()=>{const q=s=>document.querySelector(s),shown=e=>!!e&&!e.hidden&&getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;if(document.readyState!=="complete"||!shown(q("#helper"))||!shown(q("#helper-download")))return false;return {origin:q("#helper-origin").textContent,text:q("#helper-text").textContent,download:q("#helper-download").textContent,question:shown(q("#prompt"))}})()';
 const text=(key,subs)=>{try{return T.plain(key,subs);}catch{return null;}};
+// The result of fn, and how many connections the echo server got meanwhile (a socket that opened has reached it by then).
+const counted=async(server,fn)=>{const before=server.stat.connections,result=await fn();return [result,server.stat.connections-before];};
 const badges=()=>chrome.eval(opts.sessionId,'(async()=>{const out=[];for(const t of await chrome.tabs.query({})){const text=await chrome.action.getBadgeText({tabId:t.id});if(text)out.push({text,url:t.url})}return out})()');
 const scenario=async(letter,fn)=>{if(!runs(letter))return;try{await fn();}catch(e){add(letter+'-harness-error',false,{error:e.message});console.error(e.stack);}finally{if(chrome)await closeTabs();}};
 
@@ -180,23 +183,28 @@ try{
  // only with the lanHost of that very address; nothing relaxes the policy otherwise (not even the localtest switch).
  await scenario('H',async()=>{
   const own={host:priv,port:lanEcho.port};
-  let c=lanEcho.stat.connections;
-  const plain=await openOnce(helper,own);helperHello=plain.hello;
+  const [plain,n1]=await counted(lanEcho,()=>openOnce(helper,own));helperHello=plain.hello;
   add('helper-speaks-protocol-2-and-is-'+LAN_HELPER+'-or-newer',plain.hello?.type==='hello'&&plain.hello.protocol===2&&atLeast(plain.hello.version,LAN_HELPER),{hello:plain.hello});
-  add('helper-without-lanhost-refuses-a-private-address',same(plain.replies,BLOCKED)&&lanEcho.stat.connections===c,{replies:plain.replies});
-  const switched=await openOnce(helper,own,{...process.env,TIMFFLE_SOCKET_HELPER_ALLOW_PRIVATE:'1'});
-  add('production-helper-ignores-the-localtest-switch',same(switched.replies,BLOCKED)&&lanEcho.stat.connections===c,{replies:switched.replies});
-  const mine=await openOnce(helper,{...own,lanHost:priv});
-  add('helper-with-lanhost-reaches-that-address',same(mine.replies,ECHOED)&&lanEcho.stat.connections===c+1,{replies:mine.replies});
-  c=lanEcho.stat.connections;
+  add('helper-without-lanhost-refuses-a-private-address',same(plain.replies,BLOCKED)&&n1===0,{replies:plain.replies});
+  const [switched,n2]=await counted(lanEcho,()=>openOnce(helper,own,{...process.env,TIMFFLE_SOCKET_HELPER_ALLOW_PRIVATE:'1'}));
+  add('production-helper-ignores-the-localtest-switch',same(switched.replies,BLOCKED)&&n2===0,{replies:switched.replies});
+  const [mine,n3]=await counted(lanEcho,()=>openOnce(helper,{...own,lanHost:priv}));
+  add('helper-with-lanhost-reaches-that-address',same(mine.replies,ECHOED)&&n3===1,{replies:mine.replies});
   for(const [label,host,target] of [['another-lan-address',elsewhere.host,elsewhere],['this-computer','127.0.0.1',loopEcho],['this-computer-by-name','localhost',loopEcho]]){
-   const before=target.stat.connections,r=await openOnce(helper,{host,port:target.port,lanHost:priv});
-   add('helper-with-lanhost-still-refuses-'+label,same(r.replies,BLOCKED)&&target.stat.connections===before,{host,replies:r.replies});
+   const [r,n]=await counted(target,()=>openOnce(helper,{host,port:target.port,lanHost:priv}));
+   add('helper-with-lanhost-still-refuses-'+label,same(r.replies,BLOCKED)&&n===0,{host,replies:r.replies});
   }
   // A lanHost that is not one private LAN address is refused as a whole (the socket ends), not taken as "no lanHost".
   for(const [label,lanHost] of [['loopback','127.0.0.1'],['public','8.8.8.8'],['link-local','169.254.1.1'],['cgnat','100.64.0.1'],['multicast','224.0.0.1'],['v4-mapped','::ffff:'+priv],['brackets','['+ULA6+']'],['zone',ULA6+'%2'],['port',priv+':80'],['leading-zero',priv.replace(/\.(\d+)$/,'.0$1')],['name','localhost'],['url','http://'+priv+'/']]){
-   const r=await openOnce(helper,{...own,lanHost});
-   add('helper-refuses-lanhost-'+label,same(r.replies,['error:invalid','closed'])&&lanEcho.stat.connections===c,{lanHost,replies:r.replies});
+   const [r,n]=await counted(lanEcho,()=>openOnce(helper,{...own,lanHost}));
+   add('helper-refuses-lanhost-'+label,same(r.replies,['error:invalid','closed'])&&n===0,{lanHost,replies:r.replies});
+  }
+  // lanHost belongs to open only: on another message the frame is invalid.
+  {
+   const h=native(helper,process.env);h.send({type:'hello',lanHost:priv});
+   const replies=[];for(let m=await h.next();m!==null&&m!=='timeout';m=await h.next())replies.push(m.type==='error'?'error:'+m.code:m.type);
+   await h.end();
+   add('helper-refuses-lanhost-on-another-message',same(replies,['error:invalid','closed']),{replies});
   }
   if(ipv6Offline){
    // No IPv6 route here: "unreachable" means the helper dialed, "blocked" that the policy refused.
@@ -208,8 +216,8 @@ try{
    add('helper-with-lanhost-still-dials-public-addresses',same(pub.replies,['error:unreachable','closed']),{replies:pub.replies});
   }else console.log(JSON.stringify({info:'this machine has IPv6 routes: the IPv6 dial checks are skipped (they would send packets)'}));
   if(oldHelper){
-   const old=await openOnce(oldHelper,{...own,lanHost:priv});
-   add('old-helper-ignores-lanhost-and-keeps-refusing',old.hello?.type==='hello'&&!atLeast(old.hello.version,LAN_HELPER)&&same(old.replies,BLOCKED)&&lanEcho.stat.connections===c,{hello:old.hello,replies:old.replies});
+   const [old,n]=await counted(lanEcho,()=>openOnce(oldHelper,{...own,lanHost:priv}));
+   add('old-helper-ignores-lanhost-and-keeps-refusing',old.hello?.type==='hello'&&!atLeast(old.hello.version,LAN_HELPER)&&same(old.replies,BLOCKED)&&n===0,{hello:old.hello,replies:old.replies});
   }
  });
 
@@ -232,13 +240,11 @@ try{
 
  // ---- A. the LAN website, always allowed, reaches its own address: the game's Flash socket and the page's socket echo.
  await scenario('A',async()=>{
-  const c=lanEcho.stat.connections;
-  const game=await flashPage(lanOrigin,priv,lanEcho.port);
-  const r=await probe(game);
-  add('lan-website-flash-socket-reaches-its-own-address',good(r)&&lanEcho.stat.connections===c+1,{r,connections:lanEcho.stat.connections-c});
+  const [r,n1]=await counted(lanEcho,async()=>probe(await flashPage(lanOrigin,priv,lanEcho.port)));
+  add('lan-website-flash-socket-reaches-its-own-address',good(r)&&n1===1,{r,connections:n1});
   const page=await barePage(lanOrigin);
-  const s=await viaPage(page,priv,lanEcho.port);
-  add('lan-website-socket-echoes-through-its-own-address',echoed(s)&&lanEcho.stat.connections===c+2,{s});
+  const [s,n2]=await counted(lanEcho,()=>viaPage(page,priv,lanEcho.port));
+  add('lan-website-socket-echoes-through-its-own-address',echoed(s)&&n2===1,{s,connections:n2});
   if(ipv6Offline){
    // Public addresses stay reachable alongside the exception ("unreachable": the helper dialed; there is no route here).
    const p=await viaPage(page,PUBLIC6,9);
@@ -249,9 +255,9 @@ try{
  // ---- B. ... but not this computer: loopback is refused by address and by name, and nothing connects.
  await scenario('B',async()=>{
   const page=await barePage(lanOrigin);
-  for(const host of ['127.0.0.1','localhost']){
-   const c=loopEcho.stat.connections,r=await viaPage(page,host,loopEcho.port);
-   add('lan-website-cannot-reach-this-computer-'+(host==='localhost'?'by-name':'by-address'),blocked(r)&&loopEcho.stat.connections===c,{host,r});
+  for(const [label,host,target] of [['by-address','127.0.0.1',loopEcho],['by-name','localhost',loopEcho],...(loop6?[['by-ipv6-address','[::1]',loop6]]:[])]){
+   const [r,n]=await counted(target,()=>viaPage(page,host,target.port));
+   add('lan-website-cannot-reach-this-computer-'+label,blocked(r)&&n===0,{host,r});
   }
  });
 
@@ -259,8 +265,8 @@ try{
  // one), nor link-local (cloud metadata) or shared (CGNAT) addresses: refused at once, by the policy, before any dial.
  await scenario('C',async()=>{
   const page=await barePage(lanOrigin);
-  const c=elsewhere.stat.connections,r=await viaPage(page,elsewhere.host,elsewhere.port);
-  add('lan-website-cannot-reach-another-lan-address',blocked(r)&&elsewhere.stat.connections===c,{host:elsewhere.host,live:!!otherEcho,r});
+  const [r,n]=await counted(elsewhere,()=>viaPage(page,elsewhere.host,elsewhere.port));
+  add('lan-website-cannot-reach-another-lan-address',blocked(r)&&n===0,{host:elsewhere.host,live:!!otherEcho,r});
   for(const [label,host] of [['an-address-that-need-not-exist',NOWHERE],['link-local','169.254.169.254'],['cgnat','100.64.0.1']]){
    const x=await viaPage(page,host,9);
    add('lan-website-refused-at-once-for-'+label,blocked(x)&&x.ms<8000,{host,x});
@@ -269,36 +275,30 @@ try{
 
  // ---- D. the same server, always allowed but opened by a name that resolves to the LAN address: no exception for names.
  await scenario('D',async()=>{
-  const c=lanEcho.stat.connections;
   const page=await barePage(nameOrigin);
   const where=await chrome.eval(page.sessionId,'location.origin');
   add('the-name-reaches-the-same-server',where===nameOrigin&&hostsSeen.includes(NAME+':'+listedPort),{where});
-  const s=await viaPage(page,priv,lanEcho.port);
-  add('website-opened-by-a-name-gets-no-exception',blocked(s)&&lanEcho.stat.connections===c,{s});
-  const game=await flashPage(nameOrigin,priv,lanEcho.port,1800);
-  const r=await probe(game);
-  add('website-opened-by-a-name-flash-socket-does-not-connect',noConnect(r)&&lanEcho.stat.connections===c,{r});
+  const [s,n1]=await counted(lanEcho,()=>viaPage(page,priv,lanEcho.port));
+  add('website-opened-by-a-name-gets-no-exception',blocked(s)&&n1===0,{s});
+  const [r,n2]=await counted(lanEcho,async()=>probe(await flashPage(nameOrigin,priv,lanEcho.port,1800)));
+  add('website-opened-by-a-name-flash-socket-does-not-connect',noConnect(r)&&n2===0,{r});
  });
 
  // ---- E. the page cannot supply the exception: a lanHost added to the page's own bridge messages changes nothing.
  await scenario('E',async()=>{
   const lan=await barePage(lanOrigin);await forge(lan,elsewhere.host);
-  let c=elsewhere.stat.connections;
-  const r1=await viaPage(lan,elsewhere.host,elsewhere.port);
-  add('lan-website-cannot-claim-another-lan-address',blocked(r1)&&elsewhere.stat.connections===c,{host:elsewhere.host,r1});
+  const [r1,n1]=await counted(elsewhere,()=>viaPage(lan,elsewhere.host,elsewhere.port));
+  add('lan-website-cannot-claim-another-lan-address',blocked(r1)&&n1===0,{host:elsewhere.host,r1});
   // The claimed address changes nothing for the site's own address either.
-  c=lanEcho.stat.connections;
-  const r2=await viaPage(lan,priv,lanEcho.port);
-  add('a-claimed-lanhost-changes-nothing-for-the-own-address',echoed(r2)&&lanEcho.stat.connections===c+1,{r2});
+  const [r2,n2]=await counted(lanEcho,()=>viaPage(lan,priv,lanEcho.port));
+  add('a-claimed-lanhost-changes-nothing-for-the-own-address',echoed(r2)&&n2===1,{r2});
   // Had the page's field reached the helper, it would answer "invalid" (no lanHost may be this computer), not "blocked".
   const loop=await barePage(lanOrigin);await forge(loop,'127.0.0.1');
-  c=loopEcho.stat.connections;
-  const r3=await viaPage(loop,'127.0.0.1',loopEcho.port);
-  add('lan-website-cannot-claim-this-computer',blocked(r3)&&loopEcho.stat.connections===c,{r3});
+  const [r3,n3]=await counted(loopEcho,()=>viaPage(loop,'127.0.0.1',loopEcho.port));
+  add('lan-website-cannot-claim-this-computer',blocked(r3)&&n3===0,{r3});
   const named=await barePage(nameOrigin);await forge(named,priv);
-  c=lanEcho.stat.connections;
-  const r4=await viaPage(named,priv,lanEcho.port);
-  add('website-opened-by-a-name-cannot-claim-the-lan-address',blocked(r4)&&lanEcho.stat.connections===c,{r4});
+  const [r4,n4]=await counted(lanEcho,()=>viaPage(named,priv,lanEcho.port));
+  add('website-opened-by-a-name-cannot-claim-the-lan-address',blocked(r4)&&n4===0,{r4});
   // Positive control: the claims were really sent with the page's open messages.
   const sent=[...await forged(lan),...await forged(loop),...await forged(named)];
   add('the-claims-were-sent-by-the-page',sent.length===4&&sent.every(m=>m.op==='open'&&typeof m.lanHost==='string'),{sent});
@@ -308,16 +308,18 @@ try{
  // a website opened by a name, or one on this computer, gets the old text (and no exception once allowed).
  await scenario('F',async()=>{
   const ask=async(site,choice)=>{
-   const c=lanEcho.stat.connections;
-   const game=await flashPage(site,priv,lanEcho.port);
-   const q=await question();
-   if(!q)return {view:null,r:null,connections:lanEcho.stat.connections-c};
-   const view=await chrome.eval(q.sessionId,QUESTION_JS);
-   await shot(q.sessionId,'question-'+new URL(site).hostname.replace(/[^0-9a-z]+/gi,'-')+'.png');
-   await click(q.sessionId,'#'+choice);
-   const r=await probe(game).catch(()=>null);
-   await until(async()=>(await promptWindows()).length===0,5000);
-   return {view,r,connections:lanEcho.stat.connections-c};
+   const [result,connections]=await counted(lanEcho,async()=>{
+    const game=await flashPage(site,priv,lanEcho.port);
+    const q=await question();
+    if(!q)return {view:null,r:null};
+    const view=await chrome.eval(q.sessionId,QUESTION_JS);
+    await shot(q.sessionId,'question-'+new URL(site).hostname.replace(/[^0-9a-z]+/gi,'-')+'.png');
+    await click(q.sessionId,'#'+choice);
+    const r=await probe(game).catch(()=>null);
+    await until(async()=>(await promptWindows()).length===0,5000);
+    return {view,r};
+   });
+   return {...result,connections};
   };
   const lanText=text('timffle_prompt_what_lan',[priv]),oldText=text('timffle_prompt_what');
   const lan=await ask(askOrigin,'allow-once');
@@ -339,10 +341,9 @@ try{
   const out=execFileSync(path.resolve(oldHelper),['--install'],{env:installEnv,encoding:'utf8'});
   const installed=execFileSync(installedHelper,['--version'],{encoding:'utf8'}).trim();
   add('old-helper-installed-instead',out.includes('installed')&&!atLeast(installed.split(' ').pop(),LAN_HELPER),{installed});
-  const c=lanEcho.stat.connections;
   const page=await barePage(lanOrigin);
-  const r=await viaPage(page,priv,lanEcho.port);
-  add('old-helper-lan-website-is-told-to-update-the-helper',r.reason==='helper_incompatible'&&lanEcho.stat.connections===c,{r});
+  const [r,n]=await counted(lanEcho,()=>viaPage(page,priv,lanEcho.port));
+  add('old-helper-lan-website-is-told-to-update-the-helper',r.reason==='helper_incompatible'&&n===0,{r});
   const w=await until(async()=>(await promptWindows())[0],10000);
   const notice=w?await attach(w.targetId):null;
   const view=notice?await chrome.wait(notice,NOTICE_JS,12000).catch(()=>null):null;
@@ -351,11 +352,11 @@ try{
   const marks=await badges();
   add('old-helper-badge-on-the-lan-website-tab',marks.length===1&&marks[0].text==='!'&&marks[0].url.startsWith(lanOrigin+'/'),{marks});
   // Other refusals reach the page as "blocked", as before: no update is asked for and no window opens.
-  const r2=await viaPage(page,elsewhere.host,elsewhere.port);
+  const [r2,n2]=await counted(elsewhere,()=>viaPage(page,elsewhere.host,elsewhere.port));
   const named=await barePage(nameOrigin);
-  const r3=await viaPage(named,priv,lanEcho.port);
+  const [r3,n3]=await counted(lanEcho,()=>viaPage(named,priv,lanEcho.port));
   await delay(1500);
-  add('old-helper-other-refusals-stay-blocked',blocked(r2)&&blocked(r3)&&lanEcho.stat.connections===c&&(await promptWindows()).length===0,{r2,r3});
+  add('old-helper-other-refusals-stay-blocked',blocked(r2)&&blocked(r3)&&n2+n3===0&&(await promptWindows()).length===0,{r2,r3});
   if(ipv6Offline){
    const p=await viaPage(page,PUBLIC6,9);
    add('old-helper-lan-website-still-dials-public-addresses',p.reason==='unreachable',{p});
