@@ -418,8 +418,8 @@ class OfflineScriptTests(unittest.TestCase):
             self.assertNotIn("stdin", run.call_args.kwargs)
 
     def test_version_and_console_output_parsing(self):
-        self.assertEqual(helper_version("timffle-socket-helper 1.3.0\n"), "1.3.0")
-        for output in ("", "timffle-socket-helper\n", "other 1.3.0\n", "timffle-socket-helper 1.3.0 extra\n"):
+        self.assertEqual(helper_version("timffle-socket-helper 1.4.0\n"), "1.4.0")
+        for output in ("", "timffle-socket-helper\n", "other 1.4.0\n", "timffle-socket-helper 1.4.0 extra\n"):
             with self.assertRaises(AssertionError):
                 helper_version(output)
         self.assertEqual(CONSOLE_ESCAPES.sub("", "\x1b[?25l按 Enter 關閉 / " + ENTER_PROMPT + "\x1b[K\x1b[1C\x1b[?25h"), "按 Enter 關閉 / " + ENTER_PROMPT)
