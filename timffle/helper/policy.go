@@ -61,10 +61,10 @@ var lanV4 = mustPrefixes("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 var lanV6 = netip.MustParsePrefix("fc00::/7")
 
 // parseLANHost validates open's optional lanHost: the private IP literal that
-// the extension derived from the website's own origin. Only a bare canonical
-// literal is accepted (netip.ParseAddr is strict: no brackets, port, leading
-// zeros or names); a zone or an IPv4-mapped form fails rather than being
-// normalized, so the exception can never name anything but that one address.
+// the extension derived from the website's own origin. Only a bare IP literal
+// is accepted (netip.ParseAddr is strict: no brackets, port, leading zeros or
+// names); a zone or an IPv4-mapped form fails rather than being normalized,
+// so the exception can never name anything but that one address.
 func parseLANHost(s string) (netip.Addr, bool) {
 	if len(s) > 64 {
 		return netip.Addr{}, false
