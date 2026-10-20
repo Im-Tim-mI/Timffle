@@ -76,7 +76,8 @@ const pages=(req,res)=>{hostsSeen.push(req.headers.host);const u=new URL(req.url
  if(u.pathname==='/NativeProbe.swf'){res.setHeader('Content-Type','application/x-shockwave-flash');res.end(swf);return;}
  const vars=new URLSearchParams({host:u.searchParams.get('host')??priv,port:u.searchParams.get('port')??String(lanEcho.port),timeout:u.searchParams.get('timeout')??'20000',size:String(SIZE),cancel:'-1'}).toString();
  res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta charset="utf-8"><title>LAN regression</title><script>window.__probe=null;window.nativeProbeDone=s=>window.__probe=JSON.parse(s);window.RufflePlayer={config:{autoplay:"on",unmuteOverlay:"hidden",allowScriptAccess:true,preferredRenderer:"canvas",logLevel:"error"}};</script>'
-  +(u.searchParams.has('bare')?'<p>no flash here</p>':'<embed src="/NativeProbe.swf" type="application/x-shockwave-flash" width="400" height="300" allowScriptAccess="always" flashvars="'+vars.replaceAll('&','&amp;')+'">'));};
+  +(u.searchParams.has('bare')?'<p>no flash here</p>':'<embed src="/NativeProbe.swf" type="application/x-shockwave-flash" width="400" height="300" allowScriptAccess="always" flashvars="'+vars.replaceAll('&','&amp;')+'">')
+  +(u.searchParams.has('frame')?'<iframe src="'+u.searchParams.get('frame').replaceAll('&','&amp;').replaceAll('"','&quot;')+'" width="420" height="320"></iframe>':''));};
 // Two websites on the LAN address (one always allowed, one nobody has decided about), the same two by a name that the
 // test browser maps to that address, and one on this computer.
 const listedPort=await listen(http.createServer(pages),priv),askedPort=await listen(http.createServer(pages),priv),loopPort=await listen(http.createServer(pages),'127.0.0.1');
@@ -282,6 +283,23 @@ try{
   add('website-opened-by-a-name-gets-no-exception',blocked(s)&&n1===0,{s});
   const [r,n2]=await counted(lanEcho,async()=>probe(await flashPage(nameOrigin,priv,lanEcho.port,1800)));
   add('website-opened-by-a-name-flash-socket-does-not-connect',noConnect(r)&&n2===0,{r});
+  // A frame counts as the website it comes from, not as the page around it: a frame by name inside the LAN website gets
+  // no exception, and the LAN website framed by a page by name keeps its own. (The two are different sites, so each frame
+  // is a target of its own.)
+  const inFrame=async(top,inner)=>{
+   await tab(top+'/?'+new URLSearchParams({bare:'1',frame:inner+'/?bare=1'}));
+   const f=await until(async()=>(await targets()).find(x=>x.type==='iframe'&&x.url.startsWith(inner+'/')),15000);
+   if(!f)return null;
+   const sessionId=await attach(f.targetId,['Runtime.enable']);
+   await chrome.wait(sessionId,'window.RufflePlayer?.config?.socketProxy?.length>0',20000);
+   return {sessionId};
+  };
+  const byName=await inFrame(lanOrigin,nameOrigin);
+  const [s2,n3]=byName?await counted(lanEcho,()=>viaPage(byName,priv,lanEcho.port)):[null,0];
+  add('a-frame-by-name-in-the-lan-website-gets-no-exception',blocked(s2)&&n3===0,{s2});
+  const framed=await inFrame(nameOrigin,lanOrigin);
+  const [s3,n4]=framed?await counted(lanEcho,()=>viaPage(framed,priv,lanEcho.port)):[null,0];
+  add('the-lan-website-in-a-frame-keeps-its-exception',echoed(s3)&&n4===1,{s3});
  });
 
  // ---- E. the page cannot supply the exception: a lanHost added to the page's own bridge messages changes nothing.
