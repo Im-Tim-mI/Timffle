@@ -109,9 +109,14 @@ test("every placeholder a text uses is defined, with the same content in every l
     for (const language of languages) {
         const catalog = readCatalog(language);
         for (const key of keysOf(language)) {
-            const used = all(PLACEHOLDER, catalog[key].message).map((token) =>
-                token.slice(1, -1),
-            );
+            // A text may use a placeholder more than once ($ADDRESS$ twice); how often is the test above's.
+            const used = [
+                ...new Set(
+                    all(PLACEHOLDER, catalog[key].message).map((token) =>
+                        token.slice(1, -1),
+                    ),
+                ),
+            ];
             const defined = Object.keys(catalog[key].placeholders ?? {}).map(
                 (name) => name.toLowerCase(),
             );
