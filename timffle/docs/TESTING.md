@@ -169,6 +169,8 @@ node timffle/tools/native-regress/lan-tests.mjs "$PACKAGE_DIR/extension" "$PACKA
 
 **對照實驗**：用 0.8.0.26305 的擴充功能與 1.3.0 的小幫手跑，「該連得上」的項目全部失敗（`blocked`），「該被拒絕」的全部通過。再把正確的實作各改壞一處，每一種都有項目失敗：小幫手在有 `lanHost` 時放行任何私網位址（C、E、H 共 5 項）；把 `localtest` 版當正式版（`production-helper-ignores-the-localtest-switch`）；擴充功能轉送頁面給的 `lanHost`（E 的 4 項）；名稱網站也得到例外（D、E、F 共 4 項）；例外依分頁最上層的網址而不是頁框自己的來源（D 的 2 項頁框檢查）；區網網站的每個 `blocked` 都當成舊版小幫手（B、C、E、G 共 11 項）。
 
+最近一次（小幫手 1.4.0、擴充功能 0.8.0.26306 測試建置、舊版小幫手 1.3.0，Chrome 155）：61 項全部通過，連跑三次都通過；`TEST_LOCALE=zh_TW`、`ar`、`ja` 的 F 與 G 各 17 項也全部通過。
+
 ## 5. 真實帳號冒煙測試（`timffle/tools/real-login/`，手動）
 
 用你**自己的帳號**驗證登入與基本遊戲流程。`rl-driver.mjs` 啟動無頭 Chrome（載入擴充功能、在拋棄式的 HOME 裡安裝小幫手），提供一個只聽 127.0.0.1 的小型控制 API（截圖、點擊、輸入、讀取主控台、導覽…），由你的步驟檔驅動。
