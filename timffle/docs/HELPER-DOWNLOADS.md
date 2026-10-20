@@ -7,7 +7,7 @@
 | 項目 | 內容 |
 |---|---|
 | GitHub 倉庫 | [`Im-Tim-mI/Timffle-Helper`](https://github.com/Im-Tim-mI/Timffle-Helper)：**只放安裝檔**（release 的檔案），不放原始碼；README 與授權檔的樣本在 [`../helper/downloads-repo/`](../helper/downloads-repo/) |
-| release 標籤 | `v<小幫手版本>`，例如 `v1.3.0`（小幫手的版本是 `timffle/helper/main.go` 的 `version`）。每個小幫手版本一個 release |
+| release 標籤 | `v<小幫手版本>`，例如 `v1.4.0`（小幫手的版本是 `timffle/helper/main.go` 的 `version`）。每個小幫手版本一個 release |
 | 下載網址 | `https://github.com/Im-Tim-mI/Timffle-Helper/releases/download/<標籤>/<檔名>`；GitHub 會轉址到它的檔案伺服器，並把檔案當成附件（`Content-Disposition: attachment`）回應 |
 | 要讓別人點得開 | 倉庫必須是**公開**的。私人倉庫的 release 檔案只有登入且有權限的人拿得到：其他人的下載會得到 GitHub 的「找不到頁面」 |
 
@@ -58,7 +58,7 @@ GO=/path/to/go timffle/scripts/package-helper-installers.sh timffle/build
    把 [`../helper/downloads-repo/README.md`](../helper/downloads-repo/README.md) 放成倉庫的 `README.md`。
 4. 建立 release 並上傳（標籤 `v<版本>`，附上 `SHA256SUMS.txt` 與 `LICENSES.txt`）：
    ```sh
-   gh release create v1.3.0 timffle/build/installers/* --repo Im-Tim-mI/Timffle-Helper --title "Timffle helper 1.3.0" --notes-file <說明檔>
+   gh release create v1.4.0 timffle/build/installers/* --repo Im-Tim-mI/Timffle-Helper --title "Timffle helper 1.4.0" --notes-file <說明檔>
    ```
 5. **下載回來驗證**：在一個全新的空資料夾，用沒有登入的方式（`curl -L`，不帶 token）把七個檔案抓下來，`sha256sum -c SHA256SUMS.txt`，再用 `python3 -I timffle/scripts/check-no-build-paths.py` 掃一遍（GitHub 上的那一份，不是本機的那一份）。倉庫還是私人時這一步會得到 404，這是預期的。
 6. 用真的 Chrome 按一次按鈕（或 `timffle/tools/native-regress/browser-auto-tests.mjs`，它用假的 GitHub 驗證流程）。

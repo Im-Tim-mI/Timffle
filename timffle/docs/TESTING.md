@@ -99,7 +99,7 @@ TEST_FONTCONFIG=<選用：給無頭 Chrome 的 fontconfig 檔，用來顯示中�
 
 - **假的 GitHub**（`fake-github.mjs`）：測試瀏覽器用 `--host-resolver-rules` 把 `github.com` 與 `release-assets.githubusercontent.com` 導到本機的 TLS 伺服器（自簽憑證，加 `--ignore-certificate-errors`），伺服器照真的 GitHub 的方式回應：release 網址轉址（302），檔案伺服器以附件（`Content-Disposition: attachment`）回應。**測試從來不連真的 GitHub**；沒有這兩個旗標的瀏覽器不會跑到這裡。下載用 CDP 的 `Browser.setDownloadBehavior` 存到測試資料夾，並以 `Browser.downloadProgress` 事件確認「存好了」與檔名。
 - **按鈕**：設定頁的「直接下載安裝程式」真的畫在頁面上（不只是沒有 `hidden`）或真的不在；按鈕下面那一行（「適用於 Linux x64」）與「其他系統與安裝說明」連結（`target=_blank`、`rel=noopener noreferrer`、指向 `helper.html`）；彈出視窗的提示文字與按鈕（等頁面與樣式表載完才讀，並且用計算後的 `display` 與高度判斷，因為單靠 `hidden` 類別看不出樣式是否蓋掉它）。
-- **點擊**：腳本產生的點擊什麼都不做（假 GitHub 沒收到任何請求、沒有檔案被存下來）；真的滑鼠點擊（`Input.dispatchMouseEvent`）立刻開始下載——假 GitHub 收到對的路徑（`/Im-Tim-mI/Timffle-Helper/releases/download/v1.3.0/<檔名>`）、檔案存好且內容正確、提示換成「已開始下載…」、開去抓檔案的分頁自己關掉（沒有 GitHub 的分頁、也沒有開安裝頁）；連點兩下只下載一次；連結開安裝頁。
+- **點擊**：腳本產生的點擊什麼都不做（假 GitHub 沒收到任何請求、沒有檔案被存下來）；真的滑鼠點擊（`Input.dispatchMouseEvent`）立刻開始下載——假 GitHub 收到對的路徑（`/Im-Tim-mI/Timffle-Helper/releases/download/v1.4.0/<檔名>`）、檔案存好且內容正確、提示換成「已開始下載…」、開去抓檔案的分頁自己關掉（沒有 GitHub 的分頁、也沒有開安裝頁）；連點兩下只下載一次；連結開安裝頁。
 - **每一種系統**（`missing` 情境）：用 `Emulation.setUserAgentOverride` 的 `userAgentMetadata` 讓 Chrome 以為自己在 Windows 64-bit／ARM64／32-bit、macOS Apple silicon／Intel、Linux x64／ARM64 上，各按一次真的按鈕，檢查按鈕下面的標籤、存下來的檔名與向 GitHub 要的路徑；Chrome OS、Android、處理器不明的 Mac 沒有按鈕、不下載、仍有「其他系統與安裝說明」。**release 不存在**（假 GitHub 回 404）時沒有存任何檔案，開出來的分頁停在 GitHub 的「找不到頁面」。
 - **安裝頁**：狀態、標題、每個系統一組（每個安裝檔的直接下載連結：網址、順序、**這台電腦的排最前並標記**、檔名在由左到右的 `code` 裡）、Linux 那行指令與它的 `code`、連結（`target=_blank`、`rel=noopener noreferrer`）、「重新檢查」，真的點一個連結會下載那個檔案，以及分頁回到前景時自動再檢查一次（狀態句子先變「檢查中」再回到原來的結果）；遊戲分頁因找不到小幫手而得到紅色「!」（顏色 `[217,48,37,255]`），分頁導覽走之後徽章消失；小幫手正常的情境裡沒有任何分頁有徽章。
 
