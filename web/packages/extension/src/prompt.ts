@@ -18,8 +18,8 @@ import { isHelperPromptView } from "./helper-prompt";
 import type { HelperPromptView } from "./helper-prompt";
 import { bindHelperDownload } from "./helper-download";
 import { createInputGuard } from "./prompt-guard";
-import { lanHostOf } from "./socket-lan";
 import type { InputGuard, PressKind } from "./prompt-guard";
+import { lanHostOf } from "./socket-lan";
 
 /**
  * Clicks and keys in this long after the window appeared (or got focus) are
