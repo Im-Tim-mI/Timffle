@@ -197,6 +197,15 @@
     "timffle_prompt_what": {
         "message": "Flash sadržaj na ovom web-mjestu želi otvoriti TCP veze (socketove) prema poslužiteljima na internetu. To trebaju samo online igre. Ako dopustite, može doći do bilo kojeg poslužitelja na internetu (nikad do vaše lokalne mreže ni do ovog računala)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash sadržaj na ovom web-mjestu želi otvoriti TCP veze (socketove). Ovo web-mjesto nalazi se na vašoj lokalnoj mreži ($ADDRESS$). To trebaju samo online igre. Ako dopustite, može doći do $ADDRESS$ (računala s kojeg dolazi ovo web-mjesto) i do bilo kojeg poslužitelja na internetu. Ostali uređaji na vašoj lokalnoj mreži ostaju nedostupni.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Preporučujemo odbijanje. Dopustiti bi trebalo samo online igre.</1> Ako niste sigurni, odaberite „Odbij”."
     },
@@ -354,7 +363,7 @@
         "message": "Chromeova proširenja ne mogu otvarati TCP socketove, otuda pomoćnik. Instalirajte ga jednom (preuzmite instalacijski program i pokrenite ga); Chrome ga zatim automatski pokreće i zaustavlja pri svakoj vezi s igrom."
     },
     "timffle_note_public": {
-        "message": "Pomoćnik se povezuje samo na javne internetske adrese, nikad na vašu lokalnu mrežu ni na ovo računalo, i ne bilježi promet."
+        "message": "Pomoćnik se povezuje samo na javne internetske adrese, nikad na vašu lokalnu mrežu ni na ovo računalo, i ne bilježi promet. Jedina je iznimka adresa s koje se poslužuje web-mjesto koje ste dopustili, kada je ta adresa na vašoj lokalnoj mreži (na primjer http://192.168.0.5/): to se web-mjesto smije povezati natrag na tu jednu adresu."
     },
     "timffle_note_proxy": {
         "message": "Vlastiti WebSocket proxy morate pokrenuti sami, a Chrome može zatražiti pristup lokalnoj mreži; URL proxyja zajedno s tokenom mogu čitati samo web-mjesta s popisa ovog načina."

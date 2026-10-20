@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "El contenido Flash de este sitio web quiere abrir conexiones TCP (sockets) con servidores de internet. Solo los juegos en línea lo necesitan. Si lo permites, podrá comunicarse con cualquier servidor de internet (nunca con tu red local ni con este equipo)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "El contenido Flash de este sitio web quiere abrir conexiones TCP (sockets). El sitio web está en tu red local ($ADDRESS$). Solo los juegos en línea lo necesitan. Si lo permites, podrá comunicarse con $ADDRESS$ (el equipo del que procede este sitio web) y con cualquier servidor de internet. Los demás dispositivos de tu red local seguirán fuera de su alcance.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Recomendamos denegar. Solo los juegos en línea deberían permitirse.</1> Si no estás seguro, elige “Denegar”."
     },
@@ -360,7 +369,7 @@
         "message": "Las extensiones de Chrome no pueden abrir sockets TCP, de ahí el asistente. Instálalo una sola vez (descarga el instalador y ejecútalo); después Chrome lo inicia y lo cierra automáticamente en cada conexión de juego."
     },
     "timffle_note_public": {
-        "message": "El asistente solo se conecta a direcciones públicas de internet, nunca a tu red local ni a este equipo, y no registra el tráfico."
+        "message": "El asistente solo se conecta a direcciones públicas de internet, nunca a tu red local ni a este equipo, y no registra el tráfico. La única excepción es la dirección desde la que se sirve un sitio web que hayas permitido, cuando esa dirección está en tu red local (por ejemplo, http://192.168.0.5/): ese sitio web puede conectarse a esa única dirección."
     },
     "timffle_note_proxy": {
         "message": "Tienes que iniciar tú mismo un proxy WebSocket personalizado, y Chrome puede pedir acceso a la red local; solo los sitios de la lista propia de este método pueden leer la URL del proxy, incluido su token."

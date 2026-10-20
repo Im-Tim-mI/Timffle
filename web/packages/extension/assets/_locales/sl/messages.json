@@ -200,6 +200,15 @@
     "timffle_prompt_what": {
         "message": "Vsebina Flash na tem spletnem mestu želi odpreti povezave TCP (socket) do strežnikov na internetu. To potrebujejo samo spletne igre. Če dovolite, lahko doseže kateri koli strežnik na internetu (nikoli vašega lokalnega omrežja ali tega računalnika)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Vsebina Flash na tem spletnem mestu želi odpreti povezave TCP (socket). To spletno mesto je v vašem lokalnem omrežju ($ADDRESS$). To potrebujejo samo spletne igre. Če dovolite, lahko doseže $ADDRESS$ (računalnik, s katerega prihaja to spletno mesto) in kateri koli strežnik na internetu. Druge naprave v vašem lokalnem omrežju ostanejo nedosegljive.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Priporočamo zavrnitev. Dovoliti bi bilo treba samo spletne igre.</1> Če niste prepričani, izberite »Zavrni«."
     },
@@ -357,7 +366,7 @@
         "message": "Razširitve Chrome ne morejo odpirati socketov TCP, zato pomočnik. Namestite ga enkrat (prenesite namestitveni program in ga zaženite); Chrome ga nato samodejno zažene in ustavi ob vsaki povezavi z igro."
     },
     "timffle_note_public": {
-        "message": "Pomočnik se povezuje samo z javnimi internetnimi naslovi, nikoli z vašim lokalnim omrežjem ali tem računalnikom, in ne beleži prometa."
+        "message": "Pomočnik se povezuje samo z javnimi internetnimi naslovi, nikoli z vašim lokalnim omrežjem ali tem računalnikom, in ne beleži prometa. Edina izjema je naslov, s katerega se naloži spletno mesto, ki ste ga dovolili, kadar je ta naslov v vašem lokalnem omrežju (na primer http://192.168.0.5/): to spletno mesto se lahko poveže nazaj na ta en naslov."
     },
     "timffle_note_proxy": {
         "message": "Lasten proxy WebSocket morate zagnati sami, Chrome pa lahko zahteva dostop do lokalnega omrežja; URL proxyja skupaj s tokenom lahko berejo samo spletna mesta na seznamu tega načina."

@@ -194,6 +194,15 @@
     "timffle_prompt_what": {
         "message": "Obsah Flash na tomto webu chce otevírat připojení TCP (sockety) k serverům na internetu. Potřebují to jen online hry. Pokud to povolíte, může se připojit k jakémukoli serveru na internetu (nikdy ne k vaší místní síti ani k tomuto počítači)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Obsah Flash na tomto webu chce otevírat připojení TCP (sockety). Tento web je ve vaší místní síti ($ADDRESS$). Potřebují to jen online hry. Pokud to povolíte, může se připojit k $ADDRESS$ (počítači, ze kterého tento web pochází) a k jakémukoli serveru na internetu. Ostatní zařízení ve vaší místní síti zůstanou mimo jeho dosah.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Doporučujeme zamítnout. Povolit by se měly pouze online hry.</1> Pokud si nejste jisti, zvolte „Zamítnout“."
     },
@@ -351,7 +360,7 @@
         "message": "Rozšíření Chrome nemohou otevírat sockety TCP, proto je tu pomocník. Nainstalujte jej jednou (stáhněte instalační program a spusťte ho); Chrome jej pak automaticky spouští a ukončuje při každém připojení ke hře."
     },
     "timffle_note_public": {
-        "message": "Pomocník se připojuje jen k veřejným internetovým adresám, nikdy k vaší místní síti ani k tomuto počítači, a nezaznamenává žádný provoz."
+        "message": "Pomocník se připojuje jen k veřejným internetovým adresám, nikdy k vaší místní síti ani k tomuto počítači, a nezaznamenává žádný provoz. Jedinou výjimkou je adresa, ze které se načítá web, který jste povolili, pokud je tato adresa ve vaší místní síti (například http://192.168.0.5/): tento web se smí připojit zpět k této jediné adrese."
     },
     "timffle_note_proxy": {
         "message": "Vlastní proxy WebSocket musíte spustit sami a Chrome může požádat o přístup k místní síti; adresu URL proxy včetně tokenu mohou číst jen weby ze seznamu tohoto způsobu."

@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Conținutul Flash de pe acest site vrea să deschidă conexiuni TCP (socketuri) către servere de pe internet. Doar jocurile online au nevoie de asta. Dacă permiți, poate ajunge la orice server de pe internet (niciodată la rețeaua ta locală sau la acest computer)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Conținutul Flash de pe acest site vrea să deschidă conexiuni TCP (socketuri). Site-ul se află în rețeaua ta locală ($ADDRESS$). Doar jocurile online au nevoie de asta. Dacă permiți, poate ajunge la $ADDRESS$ (computerul de pe care provine acest site) și la orice server de pe internet. Celelalte dispozitive din rețeaua ta locală rămân inaccesibile.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Recomandăm refuzul. Doar jocurile online ar trebui permise.</1> Dacă nu ești sigur, alege „Refuză”."
     },
@@ -360,7 +369,7 @@
         "message": "Extensiile Chrome nu pot deschide socketuri TCP, de aceea există asistentul. Instalează-l o singură dată (descarcă programul de instalare și rulează-l); apoi Chrome îl pornește și îl oprește automat la fiecare conexiune de joc."
     },
     "timffle_note_public": {
-        "message": "Asistentul se conectează doar la adrese publice de internet, niciodată la rețeaua ta locală sau la acest computer, și nu înregistrează traficul."
+        "message": "Asistentul se conectează doar la adrese publice de internet, niciodată la rețeaua ta locală sau la acest computer, și nu înregistrează traficul. Singura excepție este adresa de pe care este servit chiar site-ul pe care l-ai permis, atunci când această adresă se află în rețeaua ta locală (de exemplu http://192.168.0.5/): acel site se poate conecta înapoi la acea singură adresă."
     },
     "timffle_note_proxy": {
         "message": "Un proxy WebSocket personalizat trebuie pornit de tine, iar Chrome poate cere acces la rețeaua locală; doar site-urile din lista proprie a acestei metode pot citi URL-ul proxy-ului, inclusiv tokenul."

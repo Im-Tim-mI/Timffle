@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Nội dung Flash trên trang web này muốn mở các kết nối TCP (socket) tới máy chủ trên internet. Chỉ các trò chơi trực tuyến mới cần điều này. Nếu bạn cho phép, nội dung đó có thể truy cập bất kỳ máy chủ nào trên internet (không bao giờ là mạng cục bộ của bạn hay máy tính này)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Nội dung Flash trên trang web này muốn mở các kết nối TCP (socket). Trang web này nằm trong mạng cục bộ của bạn ($ADDRESS$). Chỉ các trò chơi trực tuyến mới cần điều này. Nếu bạn cho phép, nội dung đó có thể truy cập $ADDRESS$ (máy tính đang phục vụ trang web này) và bất kỳ máy chủ nào trên internet. Các thiết bị khác trong mạng cục bộ của bạn vẫn nằm ngoài tầm truy cập.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Chúng tôi khuyên bạn nên từ chối. Chỉ nên cho phép các trò chơi trực tuyến.</1> Nếu không chắc chắn, hãy chọn “Từ chối”."
     },
@@ -360,7 +369,7 @@
         "message": "Tiện ích mở rộng của Chrome không thể mở socket TCP, vì vậy cần có trình hỗ trợ. Chỉ cần cài một lần (tải trình cài đặt về và chạy); sau đó Chrome tự động khởi động và dừng nó cho mỗi kết nối trò chơi."
     },
     "timffle_note_public": {
-        "message": "Trình hỗ trợ chỉ kết nối tới các địa chỉ internet công cộng, không bao giờ tới mạng cục bộ của bạn hay máy tính này, và không ghi lại lưu lượng."
+        "message": "Trình hỗ trợ chỉ kết nối tới các địa chỉ internet công cộng, không bao giờ tới mạng cục bộ của bạn hay máy tính này, và không ghi lại lưu lượng. Ngoại lệ duy nhất: nếu một trang web bạn đã cho phép được phục vụ từ một địa chỉ trong mạng cục bộ của bạn (ví dụ http://192.168.0.5/), trang web đó có thể kết nối ngược lại tới chính địa chỉ đó."
     },
     "timffle_note_proxy": {
         "message": "Bạn phải tự khởi động proxy WebSocket tùy chỉnh, và Chrome có thể yêu cầu quyền truy cập mạng cục bộ; chỉ các trang web trong danh sách riêng của phương thức này mới đọc được URL proxy, kể cả token."

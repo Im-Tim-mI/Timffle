@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Flash-innehållet på den här webbplatsen vill öppna TCP-anslutningar (sockets) till servrar på internet. Bara onlinespel behöver det. Om du tillåter det kan webbplatsen nå vilken server som helst på internet (aldrig ditt lokala nätverk eller den här datorn)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash-innehållet på den här webbplatsen vill öppna TCP-anslutningar (sockets). Webbplatsen finns på ditt lokala nätverk ($ADDRESS$). Bara onlinespel behöver det. Om du tillåter det kan webbplatsen nå $ADDRESS$ (datorn som webbplatsen kommer från) och vilken server som helst på internet. Andra enheter på ditt lokala nätverk förblir utom räckhåll.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Vi rekommenderar att du nekar. Bara onlinespel bör tillåtas.</1> Om du är osäker, välj ”Neka”."
     },
@@ -360,7 +369,7 @@
         "message": "Chrome-tillägg kan inte öppna TCP-sockets, därför hjälparen. Installera den en gång (ladda ner installationsprogrammet och kör det); därefter startar och stoppar Chrome den automatiskt för varje spelanslutning."
     },
     "timffle_note_public": {
-        "message": "Hjälparen ansluter bara till offentliga internetadresser, aldrig till ditt lokala nätverk eller den här datorn, och loggar ingen trafik."
+        "message": "Hjälparen ansluter bara till offentliga internetadresser, aldrig till ditt lokala nätverk eller den här datorn, och loggar ingen trafik. Det enda undantaget är adressen som en webbplats du har tillåtit själv hämtas från, när den adressen finns på ditt lokala nätverk (till exempel http://192.168.0.5/): den webbplatsen får ansluta tillbaka till just den adressen."
     },
     "timffle_note_proxy": {
         "message": "En egen WebSocket-proxy måste du starta själv, och Chrome kan be om åtkomst till det lokala nätverket; bara webbplatserna i den här metodens egen lista kan läsa proxyns URL, inklusive token."

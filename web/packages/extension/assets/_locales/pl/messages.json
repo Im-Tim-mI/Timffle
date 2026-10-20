@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Zawartość Flash w tej witrynie chce otwierać połączenia TCP (sockety) z serwerami w internecie. Potrzebują tego tylko gry online. Jeśli na to zezwolisz, będzie mogła połączyć się z dowolnym serwerem w internecie (nigdy z Twoją siecią lokalną ani z tym komputerem)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Zawartość Flash w tej witrynie chce otwierać połączenia TCP (sockety). Ta witryna znajduje się w Twojej sieci lokalnej ($ADDRESS$). Potrzebują tego tylko gry online. Jeśli na to zezwolisz, będzie mogła połączyć się z adresem $ADDRESS$ (komputerem, z którego pochodzi ta witryna) i z dowolnym serwerem w internecie. Inne urządzenia w Twojej sieci lokalnej pozostaną poza jej zasięgiem.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Zalecamy odmowę. Zezwalać powinno się tylko grom online.</1> Jeśli nie masz pewności, wybierz „Odmów”."
     },
@@ -360,7 +369,7 @@
         "message": "Rozszerzenia Chrome nie mogą otwierać gniazd TCP, stąd pomocnik. Zainstaluj go raz (pobierz instalator i uruchom go); potem Chrome uruchamia go i zatrzymuje automatycznie przy każdym połączeniu z grą."
     },
     "timffle_note_public": {
-        "message": "Pomocnik łączy się tylko z publicznymi adresami internetowymi, nigdy z Twoją siecią lokalną ani z tym komputerem, i nie zapisuje ruchu."
+        "message": "Pomocnik łączy się tylko z publicznymi adresami internetowymi, nigdy z Twoją siecią lokalną ani z tym komputerem, i nie zapisuje ruchu. Jedynym wyjątkiem jest adres, z którego wczytywana jest witryna, na którą zezwolono, jeśli ten adres znajduje się w Twojej sieci lokalnej (na przykład http://192.168.0.5/): ta witryna może połączyć się z powrotem z tym jednym adresem."
     },
     "timffle_note_proxy": {
         "message": "Własny serwer proxy WebSocket musisz uruchomić samodzielnie, a Chrome może poprosić o dostęp do sieci lokalnej; adres URL serwera proxy wraz z tokenem mogą odczytać tylko witryny z własnej listy tej metody."

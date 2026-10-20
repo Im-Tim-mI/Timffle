@@ -65,6 +65,15 @@
     "timffle_prompt_what": {
         "message": "Flash-enhavo en ĉi tiu retejo volas malfermi TCP-konektojn (sockets) al serviloj en la interreto. Nur interretaj ludoj bezonas tion. Se vi permesas, ĝi povas atingi ajnan servilon en la interreto (neniam vian lokan reton aŭ ĉi tiun komputilon)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash-enhavo en ĉi tiu retejo volas malfermi TCP-konektojn (sockets). La retejo estas en via loka reto ($ADDRESS$). Nur interretaj ludoj bezonas tion. Se vi permesas, ĝi povas atingi $ADDRESS$ (la komputilon, el kiu venas ĉi tiu retejo) kaj ajnan servilon en la interreto. Aliaj aparatoj en via loka reto restas neatingeblaj.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Ni rekomendas malpermesi. Nur interretaj ludoj estu permesataj.</1> Se vi ne certas, elektu „Malpermesi“."
     },
@@ -222,7 +231,7 @@
         "message": "Etendaĵoj de Chrome ne povas malfermi TCP-sockets, tial la helpilo. Instalu ĝin unufoje (elŝutu la instalilon kaj rulu ĝin); poste Chrome aŭtomate startigas kaj haltigas ĝin por ĉiu luda konekto."
     },
     "timffle_note_public": {
-        "message": "La helpilo konektiĝas nur al publikaj interretaj adresoj, neniam al via loka reto aŭ ĉi tiu komputilo, kaj ne registras trafikon."
+        "message": "La helpilo konektiĝas nur al publikaj interretaj adresoj, neniam al via loka reto aŭ ĉi tiu komputilo, kaj ne registras trafikon. La sola escepto estas la adreso, de kiu venas retejo, kiun vi permesis, kiam tiu adreso estas en via loka reto (ekzemple http://192.168.0.5/): tiu retejo rajtas konektiĝi reen al tiu sola adreso."
     },
     "timffle_note_proxy": {
         "message": "Propran WebSocket-proxy vi mem startigu, kaj Chrome povas peti aliron al la loka reto; nur la retejoj en la propra listo de ĉi tiu metodo povas legi la URL de la proxy, inkluzive de la token."

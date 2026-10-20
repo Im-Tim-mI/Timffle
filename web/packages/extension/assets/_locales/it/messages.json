@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Il contenuto Flash di questo sito web vuole aprire connessioni TCP (socket) verso server su internet. Solo i giochi online ne hanno bisogno. Se consenti, potrà raggiungere qualsiasi server su internet (mai la tua rete locale né questo computer)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Il contenuto Flash di questo sito web vuole aprire connessioni TCP (socket). Il sito web si trova sulla tua rete locale ($ADDRESS$). Solo i giochi online ne hanno bisogno. Se consenti, potrà raggiungere $ADDRESS$ (il computer da cui proviene questo sito web) e qualsiasi server su internet. Gli altri dispositivi della tua rete locale restano irraggiungibili.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Consigliamo di rifiutare. Solo i giochi online dovrebbero essere consentiti.</1> Se non sei sicuro, scegli “Rifiuta”."
     },
@@ -360,7 +369,7 @@
         "message": "Le estensioni di Chrome non possono aprire socket TCP, da qui il programma di supporto. Installalo una sola volta (scarica il programma di installazione ed eseguilo); in seguito Chrome lo avvia e lo chiude automaticamente a ogni connessione di gioco."
     },
     "timffle_note_public": {
-        "message": "Il programma di supporto si connette solo a indirizzi internet pubblici, mai alla tua rete locale né a questo computer, e non registra il traffico."
+        "message": "Il programma di supporto si connette solo a indirizzi internet pubblici, mai alla tua rete locale né a questo computer, e non registra il traffico. L'unica eccezione è l'indirizzo da cui viene servito un sito web che hai consentito, quando tale indirizzo si trova sulla tua rete locale (per esempio http://192.168.0.5/): quel sito web può connettersi a quell'unico indirizzo."
     },
     "timffle_note_proxy": {
         "message": "Un proxy WebSocket personalizzato va avviato da te, e Chrome potrebbe chiedere l'accesso alla rete locale; solo i siti nell'elenco di questo metodo possono leggere l'URL del proxy, token incluso."

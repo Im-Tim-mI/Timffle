@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Flash-inhoud op deze website wil TCP-verbindingen (sockets) openen naar servers op internet. Alleen onlinegames hebben dit nodig. Als je het toestaat, kan de website elke server op internet bereiken (nooit je lokale netwerk of deze computer)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash-inhoud op deze website wil TCP-verbindingen (sockets) openen. De website staat op je lokale netwerk ($ADDRESS$). Alleen onlinegames hebben dit nodig. Als je het toestaat, kan de website $ADDRESS$ (de computer waar deze website vandaan komt) en elke server op internet bereiken. Andere apparaten op je lokale netwerk blijven onbereikbaar.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Wij raden aan te weigeren. Alleen onlinegames zouden toegestaan moeten worden.</1> Als je het niet zeker weet, kies dan “Weigeren”."
     },
@@ -360,7 +369,7 @@
         "message": "Chrome-extensies kunnen geen TCP-sockets openen, vandaar de helper. Installeer hem één keer (download het installatieprogramma en voer het uit); daarna start en stopt Chrome hem automatisch bij elke gameverbinding."
     },
     "timffle_note_public": {
-        "message": "De helper maakt alleen verbinding met openbare internetadressen, nooit met je lokale netwerk of deze computer, en legt geen verkeer vast."
+        "message": "De helper maakt alleen verbinding met openbare internetadressen, nooit met je lokale netwerk of deze computer, en legt geen verkeer vast. De enige uitzondering is het adres waarvandaan een website die je hebt toegestaan zelf wordt geladen, als dat adres op je lokale netwerk ligt (bijvoorbeeld http://192.168.0.5/): die website mag verbinding maken met dat ene adres."
     },
     "timffle_note_proxy": {
         "message": "Een eigen WebSocket-proxy moet je zelf starten, en Chrome kan om toegang tot het lokale netwerk vragen; alleen de websites op de eigen lijst van deze methode kunnen de proxy-URL lezen, inclusief het token."

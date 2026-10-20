@@ -65,6 +65,15 @@
     "timffle_prompt_what": {
         "message": "O contido Flash deste sitio web quere abrir conexións TCP (sockets) con servidores de internet. Só os xogos en liña o necesitan. Se o permites, poderá chegar a calquera servidor de internet (nunca á túa rede local nin a este equipo)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "O contido Flash deste sitio web quere abrir conexións TCP (sockets). O sitio web está na túa rede local ($ADDRESS$). Só os xogos en liña o necesitan. Se o permites, poderá chegar a $ADDRESS$ (o equipo do que procede este sitio web) e a calquera servidor de internet. Os demais dispositivos da túa rede local seguirán fóra do seu alcance.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Recomendamos denegar. Só deberían permitirse os xogos en liña.</1> Se non estás seguro, escolle «Denegar»."
     },
@@ -222,7 +231,7 @@
         "message": "As extensións de Chrome non poden abrir sockets TCP, de aí o asistente. Instálao unha soa vez (descarga o instalador e execútao); despois Chrome iníciao e pécharo automaticamente en cada conexión de xogo."
     },
     "timffle_note_public": {
-        "message": "O asistente só se conecta a enderezos públicos de internet, nunca á túa rede local nin a este equipo, e non rexistra o tráfico."
+        "message": "O asistente só se conecta a enderezos públicos de internet, nunca á túa rede local nin a este equipo, e non rexistra o tráfico. A única excepción é o enderezo desde o que se serve un sitio web que permitiches, cando ese enderezo está na túa rede local (por exemplo http://192.168.0.5/): ese sitio web pode conectarse a ese único enderezo."
     },
     "timffle_note_proxy": {
         "message": "Un proxy WebSocket personalizado tes que iniciao ti, e Chrome pode pedir acceso á rede local; só os sitios da lista propia deste método poden ler o URL do proxy, incluído o token."

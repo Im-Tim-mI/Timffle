@@ -188,6 +188,15 @@
     "timffle_prompt_what": {
         "message": "Obsah Flash na tejto lokalite chce otvárať pripojenia TCP (sokety) k serverom na internete. Potrebujú to iba online hry. Ak to povolíte, môže sa pripojiť k ľubovoľnému serveru na internete (nikdy nie k vašej lokálnej sieti ani k tomuto počítaču)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Obsah Flash na tejto lokalite chce otvárať pripojenia TCP (sokety). Táto lokalita je vo vašej lokálnej sieti ($ADDRESS$). Potrebujú to iba online hry. Ak to povolíte, môže sa pripojiť k $ADDRESS$ (počítaču, z ktorého táto lokalita pochádza) a k ľubovoľnému serveru na internete. Ostatné zariadenia vo vašej lokálnej sieti zostanú mimo jeho dosahu.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Odporúčame zamietnuť. Povoliť by sa mali iba online hry.</1> Ak si nie ste istí, vyberte „Zamietnuť“."
     },
@@ -345,7 +354,7 @@
         "message": "Rozšírenia Chrome nemôžu otvárať sokety TCP, preto je tu pomocník. Nainštalujte ho raz (stiahnite inštalačný program a spustite ho); Chrome ho potom automaticky spúšťa a ukončuje pri každom pripojení k hre."
     },
     "timffle_note_public": {
-        "message": "Pomocník sa pripája iba k verejným internetovým adresám, nikdy k vašej lokálnej sieti ani k tomuto počítaču, a nezaznamenáva žiadnu prevádzku."
+        "message": "Pomocník sa pripája iba k verejným internetovým adresám, nikdy k vašej lokálnej sieti ani k tomuto počítaču, a nezaznamenáva žiadnu prevádzku. Jedinou výnimkou je adresa, z ktorej sa načítava samotná lokalita, ktorú ste povolili, ak je táto adresa vo vašej lokálnej sieti (napríklad http://192.168.0.5/): táto lokalita sa smie pripojiť späť k tejto jedinej adrese."
     },
     "timffle_note_proxy": {
         "message": "Vlastné proxy WebSocket musíte spustiť sami a Chrome môže požiadať o prístup k lokálnej sieti; adresu URL proxy vrátane tokenu môžu čítať iba lokality zo zoznamu tohto spôsobu."

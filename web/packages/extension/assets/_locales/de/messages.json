@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Flash-Inhalte auf dieser Website möchten TCP-Verbindungen (Sockets) zu Servern im Internet öffnen. Das brauchen nur Online-Spiele. Wenn Sie es erlauben, kann die Website jeden Server im Internet erreichen (nie Ihr lokales Netzwerk oder diesen Computer)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash-Inhalte auf dieser Website möchten TCP-Verbindungen (Sockets) öffnen. Die Website befindet sich in Ihrem lokalen Netzwerk ($ADDRESS$). Das brauchen nur Online-Spiele. Wenn Sie es erlauben, kann die Website $ADDRESS$ (den Computer, von dem diese Website stammt) und jeden Server im Internet erreichen. Andere Geräte in Ihrem lokalen Netzwerk bleiben unerreichbar.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Wir empfehlen, abzulehnen. Nur Online-Spiele sollten erlaubt werden.</1> Wenn Sie unsicher sind, wählen Sie „Ablehnen“."
     },
@@ -360,7 +369,7 @@
         "message": "Chrome-Erweiterungen können keine TCP-Sockets öffnen – deshalb das Hilfsprogramm. Installieren Sie es einmal (laden Sie das Installationsprogramm herunter und führen Sie es aus); Chrome startet und beendet es danach bei jeder Spielverbindung automatisch."
     },
     "timffle_note_public": {
-        "message": "Das Hilfsprogramm verbindet sich nur mit öffentlichen Internetadressen, nie mit Ihrem lokalen Netzwerk oder diesem Computer, und zeichnet keinen Datenverkehr auf."
+        "message": "Das Hilfsprogramm verbindet sich nur mit öffentlichen Internetadressen, nie mit Ihrem lokalen Netzwerk oder diesem Computer, und zeichnet keinen Datenverkehr auf. Die einzige Ausnahme ist die Adresse, von der eine Website, die Sie erlaubt haben, selbst geladen wird, wenn diese Adresse in Ihrem lokalen Netzwerk liegt (zum Beispiel http://192.168.0.5/): Diese Website darf sich mit genau dieser einen Adresse verbinden."
     },
     "timffle_note_proxy": {
         "message": "Einen eigenen WebSocket-Proxy müssen Sie selbst starten, und Chrome fragt möglicherweise nach dem Zugriff auf das lokale Netzwerk; nur die Websites auf der eigenen Liste dieser Methode können die Proxy-URL samt Token lesen."

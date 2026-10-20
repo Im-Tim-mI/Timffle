@@ -191,6 +191,15 @@
     "timffle_prompt_what": {
         "message": "Flash sadržaj na ovom veb-sajtu želi da otvori TCP veze (socketove) ka serverima na internetu. To su potrebne samo onlajn igrama. Ako dozvolite, može da dosegne bilo koji server na internetu (nikad vašu lokalnu mrežu ni ovaj računar)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash sadržaj na ovom veb-sajtu želi da otvori TCP veze (socketove). Ovaj veb-sajt je na vašoj lokalnoj mreži ($ADDRESS$). To je potrebno samo onlajn igrama. Ako dozvolite, može da dosegne $ADDRESS$ (računar sa kog dolazi ovaj veb-sajt) i bilo koji server na internetu. Ostali uređaji na vašoj lokalnoj mreži ostaju nedostupni.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Preporučujemo odbijanje. Dozvoliti treba samo onlajn igre.</1> Ako niste sigurni, izaberite „Odbij“."
     },
@@ -348,7 +357,7 @@
         "message": "Chrome proširenja ne mogu da otvaraju TCP socketove, otuda pomoćnik. Instalirajte ga jednom (preuzmite instalacioni program i pokrenite ga); Chrome ga zatim automatski pokreće i zaustavlja pri svakoj vezi sa igrom."
     },
     "timffle_note_public": {
-        "message": "Pomoćnik se povezuje samo na javne internet adrese, nikad na vašu lokalnu mrežu ni na ovaj računar, i ne beleži saobraćaj."
+        "message": "Pomoćnik se povezuje samo na javne internet adrese, nikad na vašu lokalnu mrežu ni na ovaj računar, i ne beleži saobraćaj. Jedini izuzetak je adresa sa koje se učitava sam veb-sajt koji ste dozvolili, kada je ta adresa na vašoj lokalnoj mreži (na primer http://192.168.0.5/): taj veb-sajt sme da se poveže nazad na tu jednu adresu."
     },
     "timffle_note_proxy": {
         "message": "Sopstveni WebSocket proxy morate pokrenuti sami, a Chrome može da zatraži pristup lokalnoj mreži; URL proxyja zajedno sa tokenom mogu da čitaju samo veb-sajtovi sa liste ovog načina."

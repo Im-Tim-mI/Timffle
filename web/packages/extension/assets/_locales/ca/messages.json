@@ -173,6 +173,15 @@
     "timffle_prompt_what": {
         "message": "El contingut Flash d'aquest lloc web vol obrir connexions TCP (sockets) amb servidors d'internet. Només els jocs en línia ho necessiten. Si ho permets, podrà arribar a qualsevol servidor d'internet (mai a la teva xarxa local ni a aquest ordinador)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "El contingut Flash d'aquest lloc web vol obrir connexions TCP (sockets). El lloc web és a la teva xarxa local ($ADDRESS$). Només els jocs en línia ho necessiten. Si ho permets, podrà arribar a $ADDRESS$ (l'ordinador d'on prové aquest lloc web) i a qualsevol servidor d'internet. Els altres dispositius de la teva xarxa local continuaran fora del seu abast.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Recomanem denegar. Només s'haurien de permetre els jocs en línia.</1> Si no n'estàs segur, tria «Denega»."
     },
@@ -330,7 +339,7 @@
         "message": "Les extensions de Chrome no poden obrir sockets TCP, d'aquí l'assistent. Instal·la'l una sola vegada (baixa l'instal·lador i executa'l); després Chrome l'inicia i l'atura automàticament a cada connexió de joc."
     },
     "timffle_note_public": {
-        "message": "L'assistent només es connecta a adreces públiques d'internet, mai a la teva xarxa local ni a aquest ordinador, i no registra el trànsit."
+        "message": "L'assistent només es connecta a adreces públiques d'internet, mai a la teva xarxa local ni a aquest ordinador, i no registra el trànsit. L'única excepció és l'adreça des de la qual se serveix un lloc web que has permès, quan aquesta adreça és a la teva xarxa local (per exemple http://192.168.0.5/): aquest lloc web pot connectar-se a aquesta única adreça."
     },
     "timffle_note_proxy": {
         "message": "Un proxy WebSocket personalitzat l'has d'iniciar tu, i Chrome pot demanar accés a la xarxa local; només els llocs de la llista pròpia d'aquest mètode poden llegir l'URL del proxy, inclòs el token."

@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Bu web sitesindeki Flash içeriği, internetteki sunuculara TCP (soket) bağlantıları açmak istiyor. Buna yalnızca çevrimiçi oyunların ihtiyacı vardır. İzin verirseniz internetteki herhangi bir sunucuya ulaşabilir (yerel ağınıza veya bu bilgisayara asla)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Bu web sitesindeki Flash içeriği TCP (soket) bağlantıları açmak istiyor. Bu web sitesi yerel ağınızda bulunuyor ($ADDRESS$). Buna yalnızca çevrimiçi oyunların ihtiyacı vardır. İzin verirseniz $ADDRESS$ adresine (bu web sitesinin geldiği bilgisayar) ve internetteki herhangi bir sunucuya ulaşabilir. Yerel ağınızdaki diğer cihazlara yine ulaşamaz.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Reddetmenizi öneririz. Yalnızca çevrimiçi oyunlara izin verilmelidir.</1> Emin değilseniz “Reddet” seçeneğini seçin."
     },
@@ -360,7 +369,7 @@
         "message": "Chrome uzantıları TCP soketi açamaz, yardımcı bu yüzden var. Bir kez yükleyin (yükleyiciyi indirip çalıştırın); sonrasında Chrome onu her oyun bağlantısı için otomatik olarak başlatır ve durdurur."
     },
     "timffle_note_public": {
-        "message": "Yardımcı yalnızca genel internet adreslerine bağlanır, yerel ağınıza veya bu bilgisayara asla bağlanmaz ve trafiği kaydetmez."
+        "message": "Yardımcı yalnızca genel internet adreslerine bağlanır, yerel ağınıza veya bu bilgisayara asla bağlanmaz ve trafiği kaydetmez. Tek istisna, izin verdiğiniz bir web sitesinin kendisinin sunulduğu adrestir: bu adres yerel ağınızdaysa (örneğin http://192.168.0.5/) o web sitesi bu tek adrese de geri bağlanabilir."
     },
     "timffle_note_proxy": {
         "message": "Özel bir WebSocket proxy'yi kendiniz başlatmalısınız ve Chrome yerel ağa erişim isteyebilir; proxy URL'sini token dahil yalnızca bu yöntemin kendi listesindeki siteler okuyabilir."

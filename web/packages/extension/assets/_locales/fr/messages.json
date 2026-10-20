@@ -203,6 +203,15 @@
     "timffle_prompt_what": {
         "message": "Le contenu Flash de ce site veut ouvrir des connexions TCP (sockets) vers des serveurs sur Internet. Seuls les jeux en ligne en ont besoin. Si vous autorisez, il pourra joindre n'importe quel serveur sur Internet (jamais votre réseau local ni cet ordinateur)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Le contenu Flash de ce site veut ouvrir des connexions TCP (sockets). Ce site se trouve sur votre réseau local ($ADDRESS$). Seuls les jeux en ligne en ont besoin. Si vous autorisez, il pourra joindre $ADDRESS$ (l'ordinateur d'où provient ce site) et n'importe quel serveur sur Internet. Les autres appareils de votre réseau local restent hors de sa portée.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Nous recommandons de refuser. Seuls les jeux en ligne devraient être autorisés.</1> Si vous n'êtes pas sûr, choisissez « Refuser »."
     },
@@ -360,7 +369,7 @@
         "message": "Les extensions Chrome ne peuvent pas ouvrir de sockets TCP, d'où l'assistant. Installez-le une seule fois (téléchargez le programme d'installation et lancez-le) ; Chrome le démarre et l'arrête ensuite automatiquement pour chaque connexion de jeu."
     },
     "timffle_note_public": {
-        "message": "L'assistant se connecte uniquement à des adresses Internet publiques, jamais à votre réseau local ni à cet ordinateur, et n'enregistre aucun trafic."
+        "message": "L'assistant se connecte uniquement à des adresses Internet publiques, jamais à votre réseau local ni à cet ordinateur, et n'enregistre aucun trafic. La seule exception est l'adresse depuis laquelle est servi un site que vous avez autorisé, lorsque cette adresse se trouve sur votre réseau local (par exemple http://192.168.0.5/) : ce site peut se connecter à cette seule adresse."
     },
     "timffle_note_proxy": {
         "message": "Un proxy WebSocket personnalisé doit être démarré par vous, et Chrome peut demander l'accès au réseau local ; seuls les sites de la liste propre à cette méthode peuvent lire l'URL du proxy, token compris."

@@ -197,6 +197,15 @@
     "timffle_prompt_what": {
         "message": "Konten Flash di situs web ini ingin membuka koneksi TCP (socket) ke server di internet. Hanya game online yang membutuhkannya. Jika diizinkan, konten itu dapat menjangkau server mana pun di internet (tidak pernah jaringan lokal Anda atau komputer ini)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Konten Flash di situs web ini ingin membuka koneksi TCP (socket). Situs web ini berada di jaringan lokal Anda ($ADDRESS$). Hanya game online yang membutuhkannya. Jika diizinkan, konten itu dapat menjangkau $ADDRESS$ (komputer asal situs web ini) dan server mana pun di internet. Perangkat lain di jaringan lokal Anda tetap tidak dapat dijangkau.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Kami menyarankan untuk menolak. Hanya game online yang sebaiknya diizinkan.</1> Jika Anda tidak yakin, pilih “Tolak”."
     },
@@ -354,7 +363,7 @@
         "message": "Ekstensi Chrome tidak dapat membuka socket TCP, karena itu ada pembantu. Pasang sekali saja (unduh pemasang lalu jalankan); setelah itu Chrome memulai dan menghentikannya secara otomatis untuk setiap koneksi game."
     },
     "timffle_note_public": {
-        "message": "Pembantu hanya terhubung ke alamat internet publik, tidak pernah ke jaringan lokal Anda atau komputer ini, dan tidak merekam lalu lintas."
+        "message": "Pembantu hanya terhubung ke alamat internet publik, tidak pernah ke jaringan lokal Anda atau komputer ini, dan tidak merekam lalu lintas. Satu-satunya pengecualian adalah alamat tempat situs web yang Anda izinkan itu sendiri disajikan, jika alamat tersebut berada di jaringan lokal Anda (misalnya http://192.168.0.5/): situs web itu boleh terhubung kembali ke satu alamat tersebut."
     },
     "timffle_note_proxy": {
         "message": "Proxy WebSocket kustom harus Anda jalankan sendiri, dan Chrome mungkin meminta akses jaringan lokal; hanya situs pada daftar tersendiri metode ini yang dapat membaca URL proxy, termasuk token-nya."

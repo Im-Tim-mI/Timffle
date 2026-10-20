@@ -191,6 +191,15 @@
     "timffle_prompt_what": {
         "message": "Flash sadržaj na ovoj web-stranici želi otvoriti TCP veze (socketove) prema serverima na internetu. To trebaju samo online igre. Ako dozvolite, može doći do bilo kojeg servera na internetu (nikad do vaše lokalne mreže ni do ovog računara)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash sadržaj na ovoj web-stranici želi otvoriti TCP veze (socketove). Ova web-stranica je na vašoj lokalnoj mreži ($ADDRESS$). To trebaju samo online igre. Ako dozvolite, može doći do $ADDRESS$ (računara s kojeg dolazi ova web-stranica) i do bilo kojeg servera na internetu. Ostali uređaji na vašoj lokalnoj mreži ostaju nedostupni.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>Preporučujemo odbijanje. Dozvoliti treba samo online igre.</1> Ako niste sigurni, odaberite „Odbij“."
     },
@@ -348,7 +357,7 @@
         "message": "Chromeova proširenja ne mogu otvarati TCP socketove, otuda pomoćnik. Instalirajte ga jednom (preuzmite instalacijski program i pokrenite ga); Chrome ga zatim automatski pokreće i zaustavlja pri svakoj vezi s igrom."
     },
     "timffle_note_public": {
-        "message": "Pomoćnik se povezuje samo na javne internetske adrese, nikad na vašu lokalnu mrežu ni na ovaj računar, i ne bilježi promet."
+        "message": "Pomoćnik se povezuje samo na javne internetske adrese, nikad na vašu lokalnu mrežu ni na ovaj računar, i ne bilježi promet. Jedini izuzetak je adresa s koje se poslužuje web-stranica koju ste dozvolili, kada je ta adresa na vašoj lokalnoj mreži (na primjer http://192.168.0.5/): ta web-stranica se smije povezati nazad na tu jednu adresu."
     },
     "timffle_note_proxy": {
         "message": "Vlastiti WebSocket proxy morate pokrenuti sami, a Chrome može zatražiti pristup lokalnoj mreži; URL proxyja zajedno s tokenom mogu čitati samo web-stranice s liste ovog načina."
