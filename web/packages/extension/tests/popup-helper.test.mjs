@@ -230,6 +230,8 @@ test("a helper that does not match says so, in the language of the browser", asy
 
 test("a helper that works, or that failed for another reason, shows nothing", async () => {
     for (const status of [
+        { installed: true, version: "1.4.0", protocol: 2 },
+        // An older helper still works (it only cannot reach a LAN website's own address).
         { installed: true, version: "1.3.0", protocol: 2 },
         { installed: false, error: "helper_timeout" },
         { installed: false, error: "helper_failed" },

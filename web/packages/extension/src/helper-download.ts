@@ -20,7 +20,7 @@ export const HELPER_REPOSITORY = "https://github.com/Im-Tim-mI/Timffle-Helper";
  * that this extension installs the helper it was made for even after a newer,
  * different helper is published for newer extensions.
  */
-export const HELPER_RELEASE = "v1.3.0";
+export const HELPER_RELEASE = "v1.4.0";
 
 export type HelperFamily = "windows" | "macos" | "linux";
 

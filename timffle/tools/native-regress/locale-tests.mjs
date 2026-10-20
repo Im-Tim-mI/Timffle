@@ -180,7 +180,7 @@ for(const language of todo){
   const linuxCommand='tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64';
   add(language+':install-page-lines-keep-their-commands-and-file-names',groups.length===3&&norm(groups[0].text)===T.plain('timffle_helper_step_windows')&&norm(groups[1].text)===T.plain('timffle_helper_step_macos')&&norm(groups[2].text)===T.plain('timffle_helper_step_linux',[linuxCommand])&&groups[2].code===linuxCommand&&groups[2].codeDir==='ltr'&&groups.flatMap(g=>g.links).length===7&&groups.flatMap(g=>g.links).every(l=>l.dir==='ltr'&&/^timffle-helper-(windows|macos|linux)-[a-z0-9]+\.(exe|zip|tar\.gz)$/.test(l.file)),{groups});
   const download=h.rich.find(r=>r.key==='timffle_helper_page_download');
-  add(language+':install-page-link-goes-to-the-releases-page',!!download&&download.links.length===1&&download.links[0].href==='https://github.com/Im-Tim-mI/Timffle-Helper/releases/tag/v1.3.0'&&norm(download.text)===T.plain('timffle_helper_page_download'),{download});
+  add(language+':install-page-link-goes-to-the-releases-page',!!download&&download.links.length===1&&download.links[0].href==='https://github.com/Im-Tim-mI/Timffle-Helper/releases/tag/v1.4.0'&&norm(download.text)===T.plain('timffle_helper_page_download'),{download});
   add(language+':install-page-fits-its-width',h.overflowX<=0,{overflowX:h.overflowX});
   // A narrow window (a phone-sized one) too.
   await chrome.send('Emulation.setDeviceMetricsOverride',{width:360,height:900,deviceScaleFactor:1,mobile:false},hp.sessionId);
