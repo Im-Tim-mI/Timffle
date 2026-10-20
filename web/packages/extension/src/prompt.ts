@@ -18,6 +18,7 @@ import { isHelperPromptView } from "./helper-prompt";
 import type { HelperPromptView } from "./helper-prompt";
 import { bindHelperDownload } from "./helper-download";
 import { createInputGuard } from "./prompt-guard";
+import { lanHostOf } from "./socket-lan";
 import type { InputGuard, PressKind } from "./prompt-guard";
 
 /**
@@ -254,6 +255,15 @@ function runQuestion(id: string, view: PromptView) {
         embedded: "prompt-embedded",
         embeddedOrigin: "prompt-embedded-origin",
     });
+    // A website served from an address on the local network may also connect
+    // back to that address: the usual text says the local network is out of reach.
+    const lan = lanHostOf(view.origin);
+    if (lan !== undefined) {
+        document.getElementById("prompt-what")!.textContent = text(
+            "timffle_prompt_what_lan",
+            lan,
+        );
+    }
     show("prompt");
     keepBackgroundAlive();
 

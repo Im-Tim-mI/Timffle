@@ -82,6 +82,16 @@
     "timffle_prompt_what": {
         "message": "Flash content on this website wants to open TCP (socket) connections to servers on the internet. Only online games need this. If allowed, it can reach any server on the internet (never your local network or this computer)."
     },
+    "timffle_prompt_what_lan": {
+        "message": "Flash content on this website wants to open TCP (socket) connections. The website is on your local network ($ADDRESS$). Only online games need this. If allowed, it can reach $ADDRESS$ (the computer this website comes from) and any server on the internet. Other devices on your local network stay out of reach.",
+        "description": "Question window: replaces timffle_prompt_what when the website's own address is on the local network (for example http://192.168.0.5/). $ADDRESS$ is that address, such as 192.168.0.5; it appears twice: keep both placeholders as they are. Keep TCP and Flash.",
+        "placeholders": {
+            "address": {
+                "content": "$1",
+                "example": "192.168.0.5"
+            }
+        }
+    },
     "timffle_prompt_warning": {
         "message": "<1>We recommend denying. Only online games should be allowed.</1> If you are not sure, choose “Deny”.",
         "description": "<1>…</1> is shown in bold; keep the tags. “Deny” is the word on the recommended button (timffle_prompt_deny_once)."
@@ -280,7 +290,8 @@
         "description": "Explains the socket helper on the settings page."
     },
     "timffle_note_public": {
-        "message": "The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic."
+        "message": "The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic. The one exception is the address a website you have allowed is itself served from, when that address is on your local network (for example http://192.168.0.5/): that website may connect back to that one address.",
+        "description": "Settings page note about the socket helper. Keep the example address http://192.168.0.5/ exactly as it is (Arabic and Hebrew: put U+200E right after http://)."
     },
     "timffle_note_proxy": {
         "message": "A custom WebSocket proxy must be started by you, and Chrome may ask for local network access; only the websites on this method's own list can read the proxy URL, including its token."

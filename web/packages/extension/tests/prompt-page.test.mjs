@@ -2,7 +2,12 @@
 // page have to agree, and the install window has to start with nothing offered that cannot work yet.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { languages, readCatalog, readSources } from "./catalog-support.mjs";
+import {
+    fakeI18n,
+    languages,
+    readCatalog,
+    readSources,
+} from "./catalog-support.mjs";
 
 const html = readSources("assets", ".html")["prompt.html"];
 const script = readSources("src", ".ts")["prompt.ts"];
@@ -108,4 +113,30 @@ test("the install window has a heading in every language, and it is not the inst
             assert.notEqual(heading, english, `${language} is still English`);
         }
     }
+});
+
+test("a website on the local network is told what it may reach: the address it comes from, twice, in every language", () => {
+    // The page has the usual text; for such a website the script puts the other one in its place before the question is shown.
+    assert.match(tag("prompt-what"), /\bclass="what"[^>]*\bdata-i18n="timffle_prompt_what"/u);
+    assert.match(script, /const lan = lanHostOf\(view\.origin\);/u);
+    assert.match(
+        script,
+        /getElementById\("prompt-what"\)!\.textContent = text\(\s*"timffle_prompt_what_lan",\s*lan,\s*\)/u,
+    );
+    const question = script.slice(script.indexOf("function runQuestion"));
+    assert.ok(
+        question.indexOf('"timffle_prompt_what_lan"') <
+            question.indexOf('show("prompt")'),
+    );
+    for (const language of languages) {
+        const i18n = fakeI18n(language);
+        const what = i18n.getMessage("timffle_prompt_what_lan", "192.168.0.5");
+        assert.equal(what.split("192.168.0.5").length, 3, `${language}: ${what}`);
+        assert.doesNotMatch(what, /\$/u, language);
+        assert.notEqual(what, i18n.getMessage("timffle_prompt_what"), language);
+    }
+    assert.equal(
+        fakeI18n("en").getMessage("timffle_prompt_what_lan", "fd00::1"),
+        "Flash content on this website wants to open TCP (socket) connections. The website is on your local network (fd00::1). Only online games need this. If allowed, it can reach fd00::1 (the computer this website comes from) and any server on the internet. Other devices on your local network stay out of reach.",
+    );
 });
