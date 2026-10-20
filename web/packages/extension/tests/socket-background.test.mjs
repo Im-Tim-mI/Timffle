@@ -621,6 +621,11 @@ test("a helper from before 1.4.0 that refuses the website's own address asks for
     // A public website has no exception for an old helper to lack; other failures of the own address are not about the version.
     assert.deepEqual(await refused(content({ tab: { id: 11 } }), "192.168.0.163", "1.3.0"), ["blocked"]);
     assert.deepEqual(await refused(servedFrom(LAN, { tab: { id: 12 } }), "192.168.0.163", "1.3.0", "refused"), ["refused"]);
+    // Only the answer to the open says that: a connection that is open already (no helper ends one with "blocked") does not.
+    const { p, n } = await openThrough(h, servedFrom(LAN, { tab: { id: 13 } }), { type: "open", host: "192.168.0.163", port: 1863 }, "1.3.0");
+    n.onMessage.emit({ type: "opened" });
+    n.onMessage.emit({ type: "error", code: "blocked" });
+    assert.deepEqual(errorCodes(p), ["blocked"]);
     assert.deepEqual(mark.marked, [7, 8]);
     assert.equal(notice.calls.shown.length, 2);
 });
