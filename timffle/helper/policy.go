@@ -55,6 +55,30 @@ func isPublicIP(ip net.IP) bool {
 	return globalV6.Contains(addr) && !containsAny(blockedV6, addr)
 }
 
+// The only ranges a website's own LAN address may come from: RFC 1918 and
+// IPv6 ULA. Loopback (this computer), link-local and CGNAT never qualify.
+var lanV4 = mustPrefixes("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+var lanV6 = netip.MustParsePrefix("fc00::/7")
+
+// parseLANHost validates open's optional lanHost: the private IP literal that
+// the extension derived from the website's own origin. Only a bare canonical
+// literal is accepted (netip.ParseAddr is strict: no brackets, port, leading
+// zeros or names); a zone or an IPv4-mapped form fails rather than being
+// normalized, so the exception can never name anything but that one address.
+func parseLANHost(s string) (netip.Addr, bool) {
+	if len(s) > 64 {
+		return netip.Addr{}, false
+	}
+	addr, err := netip.ParseAddr(s)
+	if err != nil || addr.Zone() != "" || addr.Is4In6() {
+		return netip.Addr{}, false
+	}
+	if addr.Is4() && containsAny(lanV4, addr) || addr.Is6() && lanV6.Contains(addr) {
+		return addr, true
+	}
+	return netip.Addr{}, false
+}
+
 // normalizeHost accepts an IP literal (IPv6 optionally bracketed) or an ASCII
 // DNS name. It never accepts a zone, URL, port suffix, userinfo or whitespace.
 func normalizeHost(host string) string {

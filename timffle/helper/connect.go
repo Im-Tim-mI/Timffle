@@ -84,6 +84,15 @@ func openTCP(parent context.Context, req request, opt options) (net.Conn, string
 	if host == "" || req.Port < 1 || req.Port > 65535 || req.TimeoutMs < 0 {
 		return nil, "invalid"
 	}
+	// The website's own LAN address, if any. A malformed one fails closed
+	// instead of being ignored.
+	var lan netip.Addr
+	if req.LanHost != nil {
+		var ok bool
+		if lan, ok = parseLANHost(*req.LanHost); !ok {
+			return nil, "invalid"
+		}
+	}
 	if parent.Err() != nil {
 		return nil, "timeout"
 	}
@@ -113,6 +122,8 @@ func openTCP(parent context.Context, req request, opt options) (net.Conn, string
 	// Validate ALL answers before truncation/deduplication. A private answer
 	// after the candidate cap still poisons the entire DNS response. Pin copies
 	// of the validated addresses and never pass a hostname to DialContext.
+	// The website's own LAN address is the one exception: an exact match, so
+	// no other LAN device, loopback or rebound name gains anything from it.
 	ips := make([]netip.Addr, 0, min(len(addrs), maxDialCandidates))
 	seen := make(map[netip.Addr]bool, maxDialCandidates)
 	for _, a := range addrs {
@@ -124,7 +135,7 @@ func openTCP(parent context.Context, req request, opt options) (net.Conn, string
 			return nil, "blocked"
 		}
 		ip = ip.Unmap()
-		if !opt.allowPrivate && !isPublicIP(net.IP(ip.AsSlice())) {
+		if !opt.allowPrivate && !isPublicIP(net.IP(ip.AsSlice())) && !(lan.IsValid() && ip == lan) {
 			return nil, "blocked"
 		}
 		if !seen[ip] && len(ips) < maxDialCandidates {

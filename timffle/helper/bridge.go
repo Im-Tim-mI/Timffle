@@ -37,6 +37,9 @@ type request struct {
 	Port      int    `json:"port"`
 	TimeoutMs int64  `json:"timeoutMs"`
 	Data      string `json:"data"`
+	// open only. A pointer, so that a present but empty value fails instead of
+	// reading as absent.
+	LanHost *string `json:"lanHost,omitempty"`
 }
 
 type options struct {
@@ -204,7 +207,7 @@ func inputLoop(in io.Reader, requests chan<- inputEvent, ended chan<- inputEnd, 
 			finish(inputEnd{err: errInvalidFrame, code: "invalid"})
 			return
 		}
-		if len(req.Host) > 255 || (req.Type != "open" && (req.Host != "" || req.Port != 0 || req.TimeoutMs != 0)) || (req.Type != "send" && req.Data != "") {
+		if len(req.Host) > 255 || (req.Type != "open" && (req.Host != "" || req.Port != 0 || req.TimeoutMs != 0 || req.LanHost != nil)) || (req.Type != "send" && req.Data != "") {
 			finish(inputEnd{err: errInvalidFrame, code: "invalid"})
 			return
 		}
