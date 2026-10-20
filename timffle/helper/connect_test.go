@@ -7,6 +7,7 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -59,25 +60,203 @@ func TestFirstCandidateTimeoutFallsBackAndPins(t *testing.T) {
 }
 
 func TestAllDNSAnswersValidatedBeforeCandidateCap(t *testing.T) {
-	for _, bad := range []net.IPAddr{
-		{IP: net.ParseIP("192.168.0.1")}, {IP: net.ParseIP("::ffff:10.0.0.1")},
-		{IP: net.ParseIP("2606:4700::1111"), Zone: "eth0"}, {IP: nil},
+	// The website's own LAN address excuses only itself, never another answer,
+	// nor itself with a zone.
+	lan := "192.168.0.163"
+	for _, lanHost := range []*string{nil, &lan} {
+		for _, bad := range []net.IPAddr{
+			{IP: net.ParseIP("192.168.0.1")}, {IP: net.ParseIP("::ffff:10.0.0.1")},
+			{IP: net.ParseIP("2606:4700::1111"), Zone: "eth0"}, {IP: nil},
+			{IP: net.ParseIP("127.0.0.1")}, {IP: net.ParseIP(lan), Zone: "eth0"},
+		} {
+			opt := options{
+				lookup: func(context.Context, string) ([]net.IPAddr, error) {
+					var addrs []net.IPAddr
+					if lanHost != nil {
+						addrs = append(addrs, net.IPAddr{IP: net.ParseIP(lan)})
+					}
+					for i := 0; i < maxDialCandidates+5; i++ {
+						addrs = append(addrs, net.IPAddr{IP: net.ParseIP("8.8.8." + strconv.Itoa(i+1))})
+					}
+					return append(addrs, bad), nil
+				},
+				dial: func(context.Context, string, string) (net.Conn, error) {
+					t.Error("dialed mixed private DNS")
+					return nil, io.EOF
+				},
+			}
+			if conn, code := openTCP(context.Background(), request{Host: "mixed.example", Port: 80, LanHost: lanHost}, opt); conn != nil || code != "blocked" {
+				t.Fatalf("mixed DNS accepted (lanHost %v): %v %q", lanHost != nil, conn, code)
+			}
+		}
+	}
+}
+
+// answer turns a resolver answer into the form the system resolver returns:
+// 4 bytes for IPv4, 16 for IPv6, so an IPv4-mapped answer stays mapped.
+func answer(s string) net.IPAddr {
+	ip := net.ParseIP(s)
+	if !strings.Contains(s, ":") {
+		ip = ip.To4()
+	}
+	return net.IPAddr{IP: ip}
+}
+
+// openLAN runs openTCP with the production policy, a fake resolver and a
+// dialer that records every pinned target and refuses it. "refused" therefore
+// means the policy let every answer through; "blocked" means it stopped them.
+func openLAN(t *testing.T, host string, lanHost *string, answers ...string) ([]string, string) {
+	t.Helper()
+	var mu sync.Mutex
+	var dialed []string
+	opt := options{
+		lookup: func(context.Context, string) ([]net.IPAddr, error) {
+			var addrs []net.IPAddr
+			for _, a := range answers {
+				addrs = append(addrs, answer(a))
+			}
+			return addrs, nil
+		},
+		dial: func(_ context.Context, _, address string) (net.Conn, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			dialed = append(dialed, address)
+			return nil, errors.New("connection refused")
+		},
+	}
+	conn, code := openTCP(context.Background(), request{Host: host, Port: 1863, TimeoutMs: 1000, LanHost: lanHost}, opt)
+	if conn != nil {
+		t.Fatalf("refusing dialer connected: %v", conn)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	return dialed, code
+}
+
+func TestLANHostAllowsExactlyTheWebsitesOwnAddress(t *testing.T) {
+	const v4, v6 = "192.168.0.163", "fd12:3456:789a::163"
+	for _, tt := range []struct {
+		name, host, lan string
+		answers         []string
+		dialed          []string // nil: blocked before any dial
+	}{
+		{"own IPv4", v4, v4, nil, []string{"192.168.0.163:1863"}},
+		{"own 10/8", "10.1.2.3", "10.1.2.3", nil, []string{"10.1.2.3:1863"}},
+		{"own 172.16/12", "172.31.0.9", "172.31.0.9", nil, []string{"172.31.0.9:1863"}},
+		{"own IPv6 ULA", "[" + v6 + "]", v6, nil, []string{"[" + v6 + "]:1863"}},
+		{"own IPv6 ULA, other spelling", "FD12:3456:789A:0::163", v6, nil, []string{"[" + v6 + "]:1863"}},
+		{"own IPv4 as v4-mapped literal", "::ffff:" + v4, v4, nil, []string{"192.168.0.163:1863"}},
+		{"public still allowed", "8.8.8.8", v4, nil, []string{"8.8.8.8:1863"}},
+		{"public IPv6 still allowed", "2606:4700::1111", v6, nil, []string{"[2606:4700::1111]:1863"}},
+		{"name: own address", "game.example", v4, []string{v4}, []string{"192.168.0.163:1863"}},
+		{"name: own and public", "game.example", v4, []string{v4, "8.8.8.8"}, []string{"192.168.0.163:1863", "8.8.8.8:1863"}},
+		{"name: v4-mapped own address", "game.example", v4, []string{"::ffff:" + v4}, []string{"192.168.0.163:1863"}},
+		{"name: own ULA and public IPv6", "game.example", v6, []string{"2606:4700::1111", v6}, []string{"[2606:4700::1111]:1863", "[" + v6 + "]:1863"}},
+		{"another LAN address", "192.168.0.164", v4, nil, nil},
+		{"another private range", "10.0.0.1", v4, nil, nil},
+		{"another ULA", "fd12:3456:789a::164", v6, nil, nil},
+		{"own IPv4, IPv6 ULA asked", v6, v4, nil, nil},
+		{"own ULA, IPv4 asked", v4, v6, nil, nil},
+		{"loopback", "127.0.0.1", v4, nil, nil},
+		{"IPv6 loopback", "::1", v6, nil, nil},
+		{"localhost", "localhost", v4, []string{"127.0.0.1", "::1"}, nil},
+		{"link-local", "169.254.1.1", v4, nil, nil},
+		{"IPv6 link-local", "fe80::1", v6, nil, nil},
+		{"CGNAT", "100.64.0.1", v4, nil, nil},
+		{"unspecified", "0.0.0.0", v4, nil, nil},
+		{"broadcast", "255.255.255.255", v4, nil, nil},
+		{"name: own and another LAN address", "game.example", v4, []string{v4, "192.168.0.1"}, nil},
+		{"name: public, own, then loopback", "game.example", v4, []string{"8.8.8.8", v4, "127.0.0.1"}, nil},
+		{"name: rebound to another LAN address", "rebind.example", v4, []string{"192.168.0.1"}, nil},
+		{"name: own ULA and another ULA", "game.example", v6, []string{v6, "fd12:3456:789a::1"}, nil},
 	} {
-		opt := options{
-			lookup: func(context.Context, string) ([]net.IPAddr, error) {
-				var addrs []net.IPAddr
-				for i := 0; i < maxDialCandidates+5; i++ {
-					addrs = append(addrs, net.IPAddr{IP: net.ParseIP("8.8.8." + strconv.Itoa(i+1))})
+		t.Run(tt.name, func(t *testing.T) {
+			lan := tt.lan
+			dialed, code := openLAN(t, tt.host, &lan, tt.answers...)
+			if tt.dialed == nil {
+				if code != "blocked" || len(dialed) != 0 {
+					t.Fatalf("not blocked: %q dialed %v", code, dialed)
 				}
-				return append(addrs, bad), nil
+				return
+			}
+			if code != "refused" || !reflect.DeepEqual(dialed, tt.dialed) {
+				t.Fatalf("got %q dialed %v, want %v", code, dialed, tt.dialed)
+			}
+		})
+	}
+}
+
+// Without lanHost nothing changed: a private destination is still blocked,
+// even the one address a LAN website would have been allowed.
+func TestNoLANHostNoException(t *testing.T) {
+	for _, host := range []string{"192.168.0.163", "fd12:3456:789a::163", "game.example"} {
+		dialed, code := openLAN(t, host, nil, "192.168.0.163")
+		if code != "blocked" || len(dialed) != 0 {
+			t.Errorf("%s without lanHost: %q dialed %v", host, code, dialed)
+		}
+	}
+}
+
+// Every form 2.1 of the design rejects. The open fails as invalid even for a
+// public destination, and nothing is resolved or dialed, in either build.
+var invalidLANHosts = []string{
+	"", " ", "\t", " 192.168.0.1", "192.168.0.1 ", "192.168.0.1\n", "192.168.0.1\x00",
+	"127.0.0.1", "127.1.2.3", "::1", // loopback: this computer
+	"169.254.1.1", "fe80::1", "fe80::1%eth0", // link-local
+	"100.64.0.1", "100.127.255.254", // CGNAT
+	"224.0.0.1", "239.255.255.250", "ff02::1", "ff05::1:3", // multicast
+	"8.8.8.8", "1.1.1.1", "2606:4700::1111", "192.0.2.1", // public, documentation
+	"0.0.0.0", "::", "255.255.255.255", "198.18.0.1", "fec0::1", "64:ff9b::c0a8:1", "::192.168.0.1",
+	"11.0.0.1", "172.15.255.255", "172.32.0.1", "192.167.255.255", "192.169.0.1", "fbff::1", "fe00::1", // just outside
+	"::ffff:192.168.0.1", "::ffff:c0a8:1", "::ffff:10.0.0.1", "0:0:0:0:0:ffff:192.168.0.1", // IPv4-mapped
+	"fd00::1%eth0", "fd00::1%1", "192.168.0.1%eth0", // zone
+	"[fd00::1]", "[192.168.0.1]", "[fd00::1", "fd00::1]", // brackets
+	"192.168.0.1:80", "[fd00::1]:80", "fd00::1:80:", // port
+	"192.168.000.001", "192.168.0.01", "010.0.0.1", // leading zeros
+	"0xc0a80001", "3232235521", "0300.0250.0.1", "0xc0.0xa8.0.1", "192.168.1", "192.168.0.1.", "192.168..1", // other numeric forms
+	"localhost", "lan.example", "192.168.0.1.nip.io", "fd00--1.ipv6.example", // names
+	"http://192.168.0.1/", "http://[fd00::1]/", "//192.168.0.1", "user@192.168.0.1", "192.168.0.1/24", // URLs, userinfo, CIDR
+	"１９２.１６８.０.１", "192.168.0.1‎", // fullwidth digits, invisible mark
+	"fd00::1%" + strings.Repeat("a", 64), strings.Repeat("0", 65), // longer than 64
+}
+
+func TestInvalidLANHostFailsClosed(t *testing.T) {
+	for _, allowPrivate := range []bool{false, true} {
+		opt := options{
+			allowPrivate: allowPrivate,
+			lookup: func(context.Context, string) ([]net.IPAddr, error) {
+				t.Error("resolved with an invalid lanHost")
+				return nil, io.EOF
 			},
 			dial: func(context.Context, string, string) (net.Conn, error) {
-				t.Error("dialed mixed private DNS")
+				t.Error("dialed with an invalid lanHost")
 				return nil, io.EOF
 			},
 		}
-		if conn, code := openTCP(context.Background(), request{Host: "mixed.example", Port: 80}, opt); conn != nil || code != "blocked" {
-			t.Fatalf("mixed DNS accepted: %v %q", conn, code)
+		for _, value := range invalidLANHosts {
+			if _, ok := parseLANHost(value); ok {
+				t.Errorf("parseLANHost accepted %q", value)
+			}
+			for _, host := range []string{"8.8.8.8", "game.example"} {
+				value := value
+				if conn, code := openTCP(context.Background(), request{Host: host, Port: 80, LanHost: &value}, opt); conn != nil || code != "invalid" {
+					t.Errorf("lanHost %q (host %s, allowPrivate %v): %v %q", value, host, allowPrivate, conn, code)
+				}
+			}
+		}
+	}
+}
+
+func TestParseLANHost(t *testing.T) {
+	for value, want := range map[string]string{
+		"10.0.0.0": "10.0.0.0", "10.255.255.255": "10.255.255.255", "172.16.0.1": "172.16.0.1", "172.31.255.255": "172.31.255.255",
+		"192.168.0.0": "192.168.0.0", "192.168.0.163": "192.168.0.163", "192.168.255.255": "192.168.255.255",
+		"fc00::": "fc00::", "fd12:3456:789a::163": "fd12:3456:789a::163", "FD12:3456:789A::163": "fd12:3456:789a::163",
+		"fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff": "fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fd00::192.168.0.1": "fd00::c0a8:1",
+	} {
+		got, ok := parseLANHost(value)
+		if !ok || got.String() != want || got.Zone() != "" || got.Is4In6() {
+			t.Errorf("parseLANHost(%q) = %v %v, want %s", value, got, ok, want)
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,6 +27,12 @@ type client struct {
 }
 
 func start(t *testing.T, opt options) *client {
+	t.Helper()
+	return startHost(t, func(in io.Reader, out io.Writer) error { return serve(in, out, opt) })
+}
+
+// startHost drives any entry point that serves one native messaging session.
+func startHost(t *testing.T, host func(io.Reader, io.Writer) error) *client {
 	t.Helper()
 	inR, inW := io.Pipe()
 	outR, outW := io.Pipe()
@@ -52,7 +59,7 @@ func start(t *testing.T, opt options) *client {
 			c.messages <- m
 		}
 	}()
-	go func() { c.err = serve(inR, outW, opt); close(c.done) }()
+	go func() { c.err = host(inR, outW); close(c.done) }()
 	t.Cleanup(func() { _ = inW.Close(); _ = outR.Close(); c.wait() })
 	return c
 }
@@ -532,4 +539,178 @@ func TestWriteAllShortWrites(t *testing.T) {
 	if err := writeAll(&shortWriter{zero: true}, []byte{1}); !errors.Is(err, io.ErrShortWrite) {
 		t.Fatal("zero write not rejected")
 	}
+}
+
+func forbiddenDial(t *testing.T) func(context.Context, string, string) (net.Conn, error) {
+	return func(context.Context, string, string) (net.Conn, error) {
+		t.Error("dialed")
+		return nil, io.EOF
+	}
+}
+
+// lanOpen is an open frame with a raw lanHost value of any JSON type.
+func lanOpen(host string, lanHost any) map[string]any {
+	return map[string]any{"type": "open", "host": host, "port": 1863, "lanHost": lanHost}
+}
+
+func TestLANHostOpensTheWebsitesOwnAddress(t *testing.T) {
+	a, b := net.Pipe()
+	t.Cleanup(func() { a.Close(); b.Close() })
+	var dialed atomic.Value
+	// The production policy: no test-only private permission.
+	c := start(t, options{dial: func(_ context.Context, _, address string) (net.Conn, error) { dialed.Store(address); return a, nil }})
+	c.hello()
+	c.send(lanOpen("192.168.0.163", "192.168.0.163"))
+	c.expect("opened")
+	if dialed.Load() != "192.168.0.163:1863" {
+		t.Fatalf("dialed %v", dialed.Load())
+	}
+	c.send(request{Type: "close"})
+	c.terminal("")
+}
+
+func TestLANHostAbsentNullOrOtherAddressBlocks(t *testing.T) {
+	for i, frame := range []map[string]any{
+		{"type": "open", "host": "192.168.0.163", "port": 1863},
+		lanOpen("192.168.0.163", nil),
+		lanOpen("192.168.0.164", "192.168.0.163"),
+		lanOpen("127.0.0.1", "192.168.0.163"),
+		lanOpen("[fd12::2]", "fd12::1"),
+	} {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			c := start(t, options{dial: forbiddenDial(t)})
+			c.hello()
+			c.send(frame)
+			c.terminal("blocked")
+		})
+	}
+}
+
+// Invalid even for a public destination: the open fails closed instead of
+// ignoring the field. A value that is not a string is an invalid frame.
+func TestInvalidLANHostTerminates(t *testing.T) {
+	values := []any{5, true, []string{"192.168.0.163"}, map[string]string{"ip": "192.168.0.163"}}
+	for _, value := range invalidLANHosts {
+		values = append(values, value)
+	}
+	for i, value := range values {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			c := start(t, options{dial: forbiddenDial(t)})
+			c.hello()
+			c.send(lanOpen("8.8.8.8", value))
+			c.terminal("invalid")
+		})
+	}
+}
+
+// Each frame below is valid without its lanHost.
+func TestLANHostOnlyOnOpen(t *testing.T) {
+	for _, value := range []any{"192.168.0.163", ""} {
+		c := start(t, options{})
+		c.send(map[string]any{"type": "hello", "lanHost": value})
+		c.terminal("invalid")
+	}
+	opt, _ := pipeOptions(t)
+	c := start(t, opt)
+	c.open("127.0.0.1", 80)
+	c.send(map[string]any{"type": "send", "data": "AA==", "lanHost": "192.168.0.163"})
+	c.terminal("invalid")
+
+	opt, peer := pipeOptions(t)
+	c = start(t, opt)
+	c.open("127.0.0.1", 80)
+	go peer.Write([]byte{1})
+	c.expect("data")
+	c.send(map[string]any{"type": "ack", "lanHost": "192.168.0.163"})
+	c.terminal("invalid")
+}
+
+// privateInterfaceAddr returns a private IPv4 (else ULA) address of this
+// machine, the kind a LAN website's own server has, or skips the test.
+func privateInterfaceAddr(t *testing.T) netip.Addr {
+	t.Helper()
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		t.Skipf("no interface addresses: %v", err)
+	}
+	var v6 netip.Addr
+	for _, a := range addrs {
+		if n, ok := a.(*net.IPNet); ok {
+			if ip, ok := netip.AddrFromSlice(n.IP); ok {
+				if lan, ok := parseLANHost(ip.Unmap().String()); ok && lan.Is4() {
+					return lan
+				} else if ok && !v6.IsValid() {
+					v6 = lan
+				}
+			}
+		}
+	}
+	if !v6.IsValid() {
+		t.Skip("this machine has no private (RFC 1918 or ULA) address")
+	}
+	return v6
+}
+
+// Real TCP with the production policy: the website's own address carries
+// data, the same address without lanHost and this computer stay blocked.
+func TestLANHostRealConnection(t *testing.T) {
+	lan := privateInterfaceAddr(t)
+	l, err := net.Listen("tcp", net.JoinHostPort(lan.String(), "0"))
+	if err != nil {
+		t.Skipf("cannot listen on %s: %v", lan, err)
+	}
+	defer l.Close()
+	go func() {
+		if conn, err := l.Accept(); err == nil {
+			defer conn.Close()
+			_, _ = io.Copy(conn, conn)
+		}
+	}()
+	loopback, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer loopback.Close()
+	host, port := lan.String(), l.Addr().(*net.TCPAddr).Port
+
+	c := start(t, options{})
+	c.hello()
+	c.send(request{Type: "open", Host: host, Port: port})
+	c.terminal("blocked")
+
+	c = start(t, options{})
+	c.hello()
+	c.send(request{Type: "open", Host: "127.0.0.1", Port: loopback.Addr().(*net.TCPAddr).Port, LanHost: &host})
+	c.terminal("blocked")
+	loopback.(*net.TCPListener).SetDeadline(time.Now().Add(100 * time.Millisecond))
+	if conn, err := loopback.Accept(); err == nil {
+		conn.Close()
+		t.Fatal("this computer was reached")
+	}
+
+	c = start(t, options{})
+	c.hello()
+	c.send(request{Type: "open", Host: host, Port: port, LanHost: &host})
+	c.expect("opened")
+	payload := []byte{1, 2, 3}
+	c.send(request{Type: "send", Data: base64.StdEncoding.EncodeToString(payload)})
+	var got []byte
+	sent := false
+	for !sent || len(got) < len(payload) {
+		switch m := c.recv(); m["type"] {
+		case "sent":
+			sent = true
+		case "data":
+			b, _ := base64.StdEncoding.DecodeString(m["data"].(string))
+			got = append(got, b...)
+			c.send(request{Type: "ack"})
+		default:
+			t.Fatalf("unexpected message %v", m)
+		}
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("echo %v", got)
+	}
+	c.send(request{Type: "close"})
+	c.terminal("")
 }
