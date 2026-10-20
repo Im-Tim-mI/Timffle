@@ -126,6 +126,8 @@ struct RuffleInstance {
     animation_handler: Option<AnimationHandler>, // requestAnimationFrame callback
     animation_handler_id: Option<NonZeroI32>,    // requestAnimationFrame id
     background_tick_mode: bool,
+    /// Timffle: a frame was not drawn in background tick mode; draw it once the page is shown.
+    render_pending: bool,
     mouse_move_callback: Option<JsCallback<PointerEvent>>,
     mouse_enter_callback: Option<JsCallback<PointerEvent>>,
     mouse_leave_callback: Option<JsCallback<PointerEvent>>,
@@ -553,6 +555,7 @@ impl RuffleHandle {
             animation_handler: None,
             animation_handler_id: None,
             background_tick_mode: false,
+            render_pending: false,
             mouse_move_callback: None,
             mouse_enter_callback: None,
             mouse_leave_callback: None,
@@ -1123,7 +1126,12 @@ impl RuffleHandle {
         let mut dt = 0.0;
         let mut new_dimensions = None;
         let mut gamepad_button_events = Vec::new();
+        let mut background = false;
+        let mut render_pending = false;
         let _ = self.with_instance_mut(|instance| {
+            background = instance.background_tick_mode;
+            render_pending = instance.render_pending;
+
             // Check for canvas resize.
             let canvas_width = instance.canvas.client_width();
             let canvas_height = instance.canvas.client_height();
@@ -1246,10 +1254,20 @@ impl RuffleHandle {
             core.tick(FloatDuration::from_millis(dt));
 
             // Render if the core signals a new frame, or if we resized.
-            if core.needs_render() || new_dimensions.is_some() {
+            let wants_render = core.needs_render() || new_dimensions.is_some() || render_pending;
+            if background {
+                // Timffle: nobody sees the canvas while the page is hidden, but the
+                // background loop runs at the movie's frame rate, and drawing a big
+                // stage every frame kept phones' GPUs busy long after the app was
+                // left. The movie still gets its Event.RENDER every frame.
+                core.dispatch_render_event();
+                render_pending = wants_render;
+            } else if wants_render {
                 core.render();
+                render_pending = false;
             }
         });
+        let _ = self.with_instance_mut(|instance| instance.render_pending = render_pending);
     }
 
     fn on_metadata(self, swf_header: &ruffle_core::swf::HeaderExt) {

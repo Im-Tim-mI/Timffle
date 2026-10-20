@@ -2092,7 +2092,10 @@ impl Player {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn render(&mut self) {
+    /// Timffle: the part of `render` the movie can see, without drawing:
+    /// `Event.RENDER` after `stage.invalidate()`. For a player whose output
+    /// nobody sees (a hidden page), so the movie behaves as if it were drawn.
+    pub fn dispatch_render_event(&mut self) {
         let invalidated = self.enter_arena(|_, gc_root, _| gc_root.stage.invalidated());
 
         if invalidated {
@@ -2101,6 +2104,10 @@ impl Player {
                 stage.broadcast_render(context);
             });
         }
+    }
+
+    pub fn render(&mut self) {
+        self.dispatch_render_event();
 
         let mut background_color = Color::WHITE;
 
