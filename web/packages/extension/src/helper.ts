@@ -5,14 +5,15 @@
  */
 import { enableBrowserOnOutdatedChromium, setPageLanguage } from "./utils";
 import { fillRich, localizePage, text } from "./i18n";
-import { helperVerdict, queryHelper, statusMessage } from "./helper-status";
+import { helperVerdict, queryHelper, showStatus } from "./helper-status";
 import {
     detectInstaller,
     HELPER_INSTALLERS,
     HELPER_RELEASES_URL,
     installerUrl,
-    linuxCommand,
+    installStep,
 } from "./helper-download";
+import { HELPER_PAGE_REFRESH_MS, waitForHelper } from "./helper-wait";
 
 /** One download link per installer, under the system it belongs to. */
 function listInstallers(detected: string | undefined) {
@@ -72,6 +73,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     ) as HTMLButtonElement;
     let checking = false;
 
+    // While the page is shown and the helper is not there, it looks by itself
+    // now and then, without "Checking…" in between; once it is there, no more.
+    const refresh = waitForHelper({
+        query: queryHelper,
+        pollMs: HELPER_PAGE_REFRESH_MS,
+        active: () => document.visibilityState === "visible" && !checking,
+        notYet: (answer) => showStatus(status, helperVerdict(answer)),
+        ready: (version) => showStatus(status, { kind: "installed", version }),
+    });
+
     async function run() {
         if (checking) {
             return;
@@ -81,9 +92,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         status.textContent = text("timffle_helper_checking");
         status.dataset["state"] = "info";
         const verdict = helperVerdict(await queryHelper());
-        status.textContent = statusMessage(verdict);
-        status.dataset["state"] =
-            verdict.kind === "installed" ? "info" : "error";
+        showStatus(status, verdict);
+        if (verdict.kind === "installed") {
+            refresh.stop();
+        }
         check.disabled = false;
         checking = false;
     }
@@ -106,6 +118,6 @@ window.addEventListener("DOMContentLoaded", async () => {
             : HELPER_INSTALLERS.find(({ id }) => id === "linux-x64")!;
     fillRich(
         document.getElementById("helper-step-linux")!,
-        text("timffle_helper_step_linux", [linuxCommand(linuxInstaller)]),
+        installStep(linuxInstaller),
     );
 });

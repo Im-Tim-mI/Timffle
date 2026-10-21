@@ -61,6 +61,20 @@ export function statusMessage(verdict: HelperVerdict): string {
     }
 }
 
+/**
+ * Writes the install page's status line for an answer. A line that says so
+ * already is left alone: the page asks again by itself every few seconds, and
+ * a screen reader reads the line out each time it is written.
+ */
+export function showStatus(line: HTMLElement, verdict: HelperVerdict): void {
+    const message = statusMessage(verdict);
+    const state = verdict.kind === "installed" ? "info" : "error";
+    if (line.textContent !== message || line.dataset["state"] !== state) {
+        line.textContent = message;
+        line.dataset["state"] = state;
+    }
+}
+
 /** The popup's notice for a helper that has to be installed; nothing for any other state. */
 export function noticeMessage(verdict: HelperVerdict): string | undefined {
     switch (verdict.kind) {
