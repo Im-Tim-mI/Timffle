@@ -151,16 +151,19 @@ export function waitForHelper({
  * The window's wait line and its Continue button once the helper is there:
  * the line says so, with the version, and the button can be pressed. It is
  * marked like the question's recommended answer but takes no focus: the
- * visitor may be typing somewhere else.
+ * visitor may be typing somewhere else. The installer button, if there is one,
+ * stops being the highlighted one: what is left to do is "Continue".
  */
 export function showHelperReady(
     line: HTMLElement,
     button: HTMLButtonElement,
     version: string,
+    installer?: HTMLElement,
 ): void {
     line.textContent = text("timffle_helper_ready", [version]);
     line.dataset["state"] = "ready";
     button.disabled = false;
     button.dataset["ready"] = "true";
     button.classList.add("recommended");
+    installer?.classList.remove("recommended");
 }

@@ -346,7 +346,13 @@ test("once the helper is there the wait line says so with the version and Contin
                 classList: { add: (name) => classes.add(name) },
                 focus: () => assert.fail("the focus stays where it is"),
             };
-            showHelperReady(line, button, "1.4.0");
+            // The installer button was the highlighted one until now.
+            const installerClasses = new Set(["recommended", "other"]);
+            const installer = {
+                classList: { remove: (name) => installerClasses.delete(name) },
+            };
+            showHelperReady(line, button, "1.4.0", installer);
+            assert.deepEqual([...installerClasses], ["other"], language);
             assert.equal(
                 line.textContent,
                 fakeI18n(language).getMessage("timffle_helper_ready", [

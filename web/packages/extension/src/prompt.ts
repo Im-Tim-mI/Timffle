@@ -273,7 +273,7 @@ async function runHelperNotice(id: string, view: HelperPromptView) {
     const waiting = waitForHelper({
         query: queryHelper,
         minVersion: view.minVersion,
-        ready: (version) => showHelperReady(wait, proceed, version),
+        ready: (version) => showHelperReady(wait, proceed, version, download),
     });
     window.addEventListener("focus", () => waiting.check());
     document.addEventListener("visibilitychange", () => {

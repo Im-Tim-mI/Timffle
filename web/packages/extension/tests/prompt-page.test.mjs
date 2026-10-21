@@ -191,7 +191,7 @@ test("the install window keeps no text of its own, and has no room for the insta
 test("the window waits with the background's status question, from the start and at once when the visitor comes back, until the page goes", () => {
     assert.match(
         helperScript,
-        /waitForHelper\(\{\s*query: queryHelper,\s*minVersion: view\.minVersion,\s*ready: \(version\) => showHelperReady\(wait, proceed, version\),\s*\}\)/u,
+        /waitForHelper\(\{\s*query: queryHelper,\s*minVersion: view\.minVersion,\s*ready: \(version\) =>\s*showHelperReady\(wait, proceed, version, download\),\s*\}\)/u,
     );
     // The default pace: the window does not choose one of its own.
     assert.doesNotMatch(helperScript, /pollMs|active:/u);
