@@ -2,7 +2,6 @@
 export const SOCKET_PORT_NAME = "timffle-socket";
 export const NATIVE_HOST_NAME = "timffle_socket_helper";
 export const HELPER_STATUS_REQUEST = "socket_helper_status";
-export const HELPER_VERSION = "1.2.0";
 export const HELPER_PROTOCOL = 2;
 export const MAX_SEND_BYTES = 65536;
 export const MAX_RECEIVE_BYTES = 32768;
