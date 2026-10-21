@@ -429,7 +429,7 @@
     },
     "timffle_note_public": {
         "message": "The helper only connects to public internet addresses, never to your local network or this computer, and records no traffic. The one exception is the address a website you have allowed is itself served from, when that address is on your local network (for example http://192.168.0.5/): that website may connect back to that one address.",
-        "description": "Settings page note about the socket helper. Keep the example address http://192.168.0.5/ exactly as it is (Arabic and Hebrew: put U+200E right after http://)."
+        "description": "Settings page note about the socket helper. Keep the example address http://192.168.0.5/ exactly as it is (Arabic and Hebrew: put U+200E right after http:// and another right after the final /)."
     },
     "timffle_note_proxy": {
         "message": "A custom WebSocket proxy must be started by you, and Chrome may ask for local network access; only the websites on this method's own list can read the proxy URL, including its token."

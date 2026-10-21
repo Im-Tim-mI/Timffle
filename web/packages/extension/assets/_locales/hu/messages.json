@@ -360,7 +360,7 @@
         "message": "A Chrome-bővítmények nem tudnak TCP-socketeket nyitni, ezért van a segéd. Telepítsd egyszer (töltsd le a telepítőt és futtasd); utána a Chrome automatikusan elindítja és leállítja minden játékkapcsolatnál."
     },
     "timffle_note_public": {
-        "message": "A segéd csak nyilvános internetcímekhez csatlakozik, a helyi hálózatodhoz vagy ehhez a számítógéphez soha, és nem rögzíti a forgalmat. Az egyetlen kivétel az a cím, ahonnan egy általad engedélyezett webhely betöltődik, ha ez a cím a helyi hálózatodon van (például http://192.168.0.5/): az a webhely visszacsatlakozhat erre az egy címre."
+        "message": "A segéd csak nyilvános internetcímekhez csatlakozik, a helyi hálózatodhoz vagy ehhez a számítógéphez soha, és nem rögzíti a forgalmat. Az egyetlen kivétel az a cím, ahonnan egy általad engedélyezett webhely betöltődik, ha ez a cím a helyi hálózatodon van (például http://192.168.0.5/): az a webhely visszacsatlakozhat ehhez az egy címhez."
     },
     "timffle_note_proxy": {
         "message": "Az egyéni WebSocket-proxyt neked kell elindítanod, és a Chrome kérheti a helyi hálózathoz való hozzáférést; a proxy URL-jét a tokennel együtt csak az ehhez a módhoz tartozó lista webhelyei olvashatják."

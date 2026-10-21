@@ -258,9 +258,10 @@ test("names, protocols and what the user types are kept", () => {
 test("the example of a website on the local network keeps its address, written left to right in Arabic and Hebrew", () => {
     for (const language of languages) {
         const note = message(language, "timffle_note_public");
-        // U+200E after http:// keeps the address from being reordered in right-to-left text.
+        // U+200E after http:// keeps the address from being reordered in right-to-left text,
+        // and another one after the final / keeps that slash from jumping in front of it.
         const example = ["ar", "he"].includes(language)
-            ? "http://\u200e192.168.0.5/"
+            ? "http://\u200e192.168.0.5/\u200e"
             : "http://192.168.0.5/";
         assert.ok(
             note.includes(example),
