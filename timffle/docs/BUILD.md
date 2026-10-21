@@ -22,10 +22,10 @@
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
 
 # 1. 建置擴充功能 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26307 timffle/scripts/build-extension.sh
+VERSION4=0.8.0.26308 timffle/scripts/build-extension.sh
 
 # 2+3. 交叉編譯小幫手（7 個平台），並封裝成發行 ZIP（含 LICENSES/ 與 NOTICE.md）→ timffle/build/out/
-VERSION4=0.8.0.26307 timffle/scripts/package-release.sh
+VERSION4=0.8.0.26308 timffle/scripts/package-release.sh
 ```
 
 - `VERSION4` 是擴充功能版本，四段數字；最後一段只是流水號。
