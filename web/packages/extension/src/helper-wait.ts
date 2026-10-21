@@ -147,21 +147,32 @@ export function waitForHelper({
     };
 }
 
+/** The parts of the install window that change once the helper is there. */
+export interface HelperReadyLines {
+    /** The line at the top that says what is wrong. */
+    problem: HTMLElement;
+    /** The line that says what the window waits for. */
+    wait: HTMLElement;
+}
+
 /**
- * The window's wait line and its Continue button once the helper is there:
- * the line says so, with the version, and the button can be pressed. It is
- * marked like the question's recommended answer but takes no focus: the
- * visitor may be typing somewhere else. The installer button, if there is one,
- * stops being the highlighted one: what is left to do is "Continue".
+ * The window once the helper is there: the line at the top no longer says
+ * what is wrong but that the helper is there, with the version, and the wait
+ * line goes (it would only say the same again; its state stays readable).
+ * The Continue button can be pressed. It is marked like the question's
+ * recommended answer but takes no focus: the visitor may be typing somewhere
+ * else. The installer button, if there is one, stops being the highlighted
+ * one: what is left to do is "Continue".
  */
 export function showHelperReady(
-    line: HTMLElement,
+    { problem, wait }: HelperReadyLines,
     button: HTMLButtonElement,
     version: string,
     installer?: HTMLElement,
 ): void {
-    line.textContent = text("timffle_helper_ready", [version]);
-    line.dataset["state"] = "ready";
+    problem.textContent = text("timffle_helper_ready", [version]);
+    wait.dataset["state"] = "ready";
+    wait.hidden = true;
     button.disabled = false;
     button.dataset["ready"] = "true";
     button.classList.add("recommended");

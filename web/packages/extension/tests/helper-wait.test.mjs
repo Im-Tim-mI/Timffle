@@ -330,15 +330,17 @@ test("without timers of its own it uses the page's, and asks again only after a 
     assert.deepEqual(ready, ["1.4.0"]);
 });
 
-test("once the helper is there the wait line says so with the version and Continue can be pressed, highlighted, without taking the focus", () => {
+test("once the helper is there the line at the top says so with the version, the wait line goes, and Continue can be pressed, highlighted, without taking the focus", () => {
     const original = globalThis.browser;
     try {
         for (const language of ["en", "zh_TW", "de"]) {
             globalThis.browser = { i18n: fakeI18n(language) };
             const classes = new Set();
-            const line = {
+            const problem = { textContent: "not installed" };
+            const wait = {
                 textContent: "waiting",
                 dataset: { state: "waiting" },
+                hidden: false,
             };
             const button = {
                 disabled: true,
@@ -351,23 +353,26 @@ test("once the helper is there the wait line says so with the version and Contin
             const installer = {
                 classList: { remove: (name) => installerClasses.delete(name) },
             };
-            showHelperReady(line, button, "1.4.0", installer);
+            showHelperReady({ problem, wait }, button, "1.4.0", installer);
             assert.deepEqual([...installerClasses], ["other"], language);
             assert.equal(
-                line.textContent,
+                problem.textContent,
                 fakeI18n(language).getMessage("timffle_helper_ready", [
                     "1.4.0",
                 ]),
                 language,
             );
-            assert.ok(line.textContent.includes("1.4.0"), language);
+            assert.ok(problem.textContent.includes("1.4.0"), language);
             assert.ok(
-                line.textContent.includes(
+                problem.textContent.includes(
                     fakeI18n(language).getMessage("timffle_helper_continue"),
                 ),
                 language,
             );
-            assert.equal(line.dataset.state, "ready");
+            // The wait line would say it a second time: it goes, and keeps its state for whoever reads it.
+            assert.equal(wait.hidden, true, language);
+            assert.equal(wait.dataset.state, "ready");
+            assert.equal(wait.textContent, "waiting");
             assert.equal(button.disabled, false);
             assert.equal(button.dataset.ready, "true");
             assert.deepEqual([...classes], ["recommended"]);

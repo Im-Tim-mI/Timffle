@@ -270,10 +270,17 @@ async function runHelperNotice(id: string, view: HelperPromptView) {
     });
     // It looks by itself whether the helper is there now, and at once when
     // the visitor comes back to the window after running the installer.
+    // Once it is there, the line at the top says so instead of what was wrong.
     const waiting = waitForHelper({
         query: queryHelper,
         minVersion: view.minVersion,
-        ready: (version) => showHelperReady(wait, proceed, version, download),
+        ready: (version) =>
+            showHelperReady(
+                { problem: message, wait },
+                proceed,
+                version,
+                download,
+            ),
     });
     window.addEventListener("focus", () => waiting.check());
     document.addEventListener("visibilitychange", () => {

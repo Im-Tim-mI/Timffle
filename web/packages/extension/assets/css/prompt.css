@@ -176,16 +176,12 @@ p {
     overflow-wrap: anywhere;
 }
 
-/* What the window waits for; once the helper is there, that it is. */
+/* What the window waits for; once the helper is there the line at the top says so and this one goes. */
 .helper-wait {
     padding: 8px 12px;
     border-radius: 8px;
     background: #0003;
     font-size: 13px;
-}
-
-.helper-wait[data-state="ready"] {
-    outline: 2px solid var(--ruffle-orange);
 }
 
 /* Close, and Continue next to it. */

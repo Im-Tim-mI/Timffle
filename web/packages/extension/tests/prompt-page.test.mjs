@@ -181,6 +181,9 @@ test("the install window starts waiting: no step before the system is known, a w
     const css = readSources("assets/css", ".css")["prompt.css"];
     assert.match(css, /\.helper-actions \.recommended \{/u);
     assert.match(css, /\.helper-end \{\s*display: grid;\s*grid-template-columns: 1fr 1fr;/u);
+    // Once the helper is there the wait line is hidden, and nothing in the box shows it anyway.
+    assert.match(css, /\.helper-actions \[hidden\] \{\s*display: none;/u);
+    assert.doesNotMatch(css, /\.helper-wait\[/u);
 });
 
 test("the install window keeps no text of its own, and has no room for the install page's introduction", () => {
@@ -191,8 +194,10 @@ test("the install window keeps no text of its own, and has no room for the insta
 test("the window waits with the background's status question, from the start and at once when the visitor comes back, until the page goes", () => {
     assert.match(
         helperScript,
-        /waitForHelper\(\{\s*query: queryHelper,\s*minVersion: view\.minVersion,\s*ready: \(version\) =>\s*showHelperReady\(wait, proceed, version, download\),\s*\}\)/u,
+        /waitForHelper\(\{\s*query: queryHelper,\s*minVersion: view\.minVersion,\s*ready: \(version\) =>\s*showHelperReady\(\s*\{ problem: message, wait \},\s*proceed,\s*version,\s*download,\s*\),\s*\}\)/u,
     );
+    // Once the helper is there, the line at the top (the one that said what is wrong, read out when it changes) says so.
+    assert.match(helperScript, /const message = document\.getElementById\("helper-text"\)!;/u);
     // The default pace: the window does not choose one of its own.
     assert.doesNotMatch(helperScript, /pollMs|active:/u);
     assert.match(helperScript, /window\.addEventListener\("focus", \(\) => waiting\.check\(\)\)/u);
