@@ -159,27 +159,29 @@ for(const language of todo){
 
   // ---- "install the socket helper first" window (the same page; shown by hand like the question, because it needs a page that
   // has just tried to connect). The longest system name goes under the button, a long website above it. It is measured with each
-  // system's step line, while it waits for the installation and once the helper is there ("Continue" lit up).
+  // system's step line, while it waits for the installation and once the helper is there (the line at the top says so, the
+  // waiting line is gone, "Continue" lit up).
   const n=await open('chrome-extension://'+ID+'/prompt.html?id=00000000-0000-4000-8000-000000000000',HELPER_WINDOW.width,HELPER_WINDOW.height);
   await chrome.wait(n.sessionId,'!document.getElementById("expired").hidden',20000);
   await chrome.eval(n.sessionId,`(()=>{document.getElementById('helper-origin').textContent='https://a-long-example-website.example:8443';document.getElementById('helper-embedded-origin').textContent='https://another-long-example-website.example';document.getElementById('helper-embedded').hidden=false;document.getElementById('helper-text').textContent=${JSON.stringify(T('timffle_helper_notice_incompatible'))};const f=document.getElementById('helper-for');f.textContent=${JSON.stringify(T('timffle_helper_download_for',['macOS Apple silicon']))};f.hidden=false;document.getElementById('helper-download').hidden=false;document.getElementById('expired').hidden=true;document.getElementById('helper').hidden=false;})()`);
   await delay(150);
   const steps=[T('timffle_helper_step_windows'),T('timffle_helper_step_macos'),T('timffle_helper_step_linux',[LINUX_COMMAND])];
-  const states=[['waiting',T('timffle_helper_waiting')],['ready',T('timffle_helper_ready',['1.4.0'])]];
+  // [state, the line at the top, the waiting line (null: gone)]
+  const states=[['waiting',T('timffle_helper_notice_incompatible'),T('timffle_helper_waiting')],['ready',T('timffle_helper_ready',['1.4.0']),null]];
   const sizes=await chrome.eval(n.sessionId,`(()=>{
    const box=(e)=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
-   const step=document.getElementById('helper-step'),wait=document.getElementById('helper-wait'),next=document.getElementById('helper-continue');
+   const problem=document.getElementById('helper-text'),step=document.getElementById('helper-step'),wait=document.getElementById('helper-wait'),next=document.getElementById('helper-continue');
    // The step line as the page fills it: text, and the command in a copy of the line's <code>.
    const code=step.querySelector('code').cloneNode(false);
    const fill=(message)=>step.replaceChildren(...message.split(/(<1>[^<]*<\\/1>)/).filter(Boolean).map(part=>{const m=part.match(/^<1>([^<]*)<\\/1>$/);if(!m)return document.createTextNode(part);const c=code.cloneNode(false);c.textContent=m[1];return c;}));
    const out=[];
-   for(const [state,message] of ${JSON.stringify(states)}){
-    wait.dataset.state=state;wait.textContent=message;next.disabled=state==='waiting';next.classList.toggle('recommended',state==='ready');if(state==='ready')next.dataset.ready='true';else delete next.dataset.ready;
+   for(const [state,top,message] of ${JSON.stringify(states)}){
+    problem.textContent=top;wait.dataset.state=state;wait.hidden=message===null;if(message!==null)wait.textContent=message;next.disabled=state==='waiting';next.classList.toggle('recommended',state==='ready');if(state==='ready')next.dataset.ready='true';else delete next.dataset.ready;
     for(const [k,message] of ${JSON.stringify(steps)}.entries()){
      fill(message);step.hidden=false;
      const controls=['helper-download','helper-more','helper-close','helper-continue'].map(id=>{const e=document.getElementById(id);return {id,...box(e),clipped:e.scrollWidth>e.clientWidth+1||[...e.children].some(c=>c.scrollWidth>c.clientWidth+1)}});
      const e=document.documentElement;
-     out.push({state,step:['windows','macos','linux'][k],height:Math.ceil(document.getElementById('helper').getBoundingClientRect().bottom),overflowX:e.scrollWidth-e.clientWidth,controls,wait:box(wait),stepText:step.textContent.replace(/\\s+/g,' ').trim(),waitText:wait.textContent});
+     out.push({state,step:['windows','macos','linux'][k],height:Math.ceil(document.getElementById('helper').getBoundingClientRect().bottom),overflowX:e.scrollWidth-e.clientWidth,controls,wait:box(wait),stepText:step.textContent.replace(/\\s+/g,' ').trim(),problemText:problem.textContent,waitText:wait.hidden?null:wait.textContent});
     }
    }
    const e=document.documentElement;
@@ -190,7 +192,7 @@ for(const language of todo){
    const seen=sizes.out.filter(x=>x.state===state),worst=seen.reduce((a,b)=>b.height>a.height?b:a);
    const fits=seen.every(x=>x.overflowX<=0&&x.controls.every(c=>!c.clipped&&c.right<=HELPER_WINDOW.width+1&&c.x>=0)&&x.height<=budget);
    // The texts that were measured are the language's own (the step lines as the page shows them).
-   const texts=seen.every((x,k)=>x.waitText===states.find(s=>s[0]===state)[1]&&x.stepText===norm(steps[k].replace(/<\/?\d>/g,'')));
+   const want=states.find(s=>s[0]===state),texts=seen.every((x,k)=>x.problemText===want[1]&&x.waitText===want[2]&&(want[2]!==null||x.wait.h===0)&&x.stepText===norm(steps[k].replace(/<\/?\d>/g,'')));
    add(language+':helper-window-fits-its-window'+(state==='ready'?'-when-ready':''),fits&&texts,{height:worst.height,step:worst.step,budget,overflowX:worst.overflowX,heights:seen.map(x=>x.step+':'+x.height),controls:seen.flatMap(x=>x.controls.filter(c=>c.clipped||c.right>HELPER_WINDOW.width+1||c.x<0))});
   }
   const w=sizes.out[0],c=Object.fromEntries(w.controls.map(x=>[x.id,x]));
