@@ -18,7 +18,7 @@
 
 <p align="center"><b>English</b> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">Version <code>0.8.0.26305</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
+<p align="center">Version <code>0.8.0.26306</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
 > **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
@@ -283,8 +283,8 @@ Needs git, Rust 1.99 with `wasm32-unknown-unknown`, wasm-bindgen CLI 0.2.127 (mu
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26305 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26305 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
+VERSION4=0.8.0.26306 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26306 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
 ```
 
 The build script rewrites the build machine's home directory and user name out of the wasm by default, and the packaging script checks before and after packaging and refuses to produce a release ZIP that still carries them. See [`timffle/docs/BUILD.md`](timffle/docs/BUILD.md). The other parts of Ruffle (desktop app etc.) build as upstream does ([`README.ruffle.md`](README.ruffle.md)), but read [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md) first.
