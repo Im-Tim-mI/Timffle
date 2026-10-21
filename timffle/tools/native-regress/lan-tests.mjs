@@ -11,7 +11,8 @@
 //   D  the same server opened by a name gets no exception
 //   E  a lanHost that the page adds to its own bridge messages is never honoured
 //   F  the question for an unlisted LAN website names its address (the old text for a name or this computer)
-//   G  with an older helper the site's own address sends the visitor to the installer; every other answer stays
+//   G  with an older helper the site's own address sends the visitor to the installer; every other answer stays; the window
+//      waits (although the old helper answers) until 1.4.0 is installed, then "Continue" reloads the website, which connects
 //   H  the helper binary itself, spoken to as Chrome does: no relaxation without lanHost, the exception with it
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -150,6 +151,10 @@ const withServiceWorker=async(fn)=>{
  const sessionId=await attach(t.targetId,['Runtime.enable']);
  try{return await fn(sessionId);}finally{await chrome.send('Target.detachFromTarget',{sessionId}).catch(()=>{});}
 };
+// The status checks that the extension's windows send, heard by a listener of the test's own in the service worker (an open window
+// keeps it alive); statusChecks() returns the service worker's time to count from.
+const statusChecks=()=>withServiceWorker(sw=>chrome.eval(sw,'(()=>{if(!self.__heard){self.__heard=[];chrome.runtime.onMessage.addListener((m,s)=>{if(m&&m.type==="socket_helper_status")self.__heard.push({page:s.url?new URL(s.url).pathname:"",at:Date.now()})})}return Date.now()})()'));
+const windowChecksSince=(at)=>withServiceWorker(sw=>chrome.eval(sw,'self.__heard.filter(x=>x.at>='+at+'&&x.page==="/prompt.html").length'));
 
 // A page with the probe SWF, which opens a Flash socket to host:port as a game does.
 const flashPage=(site,host,port,timeout=20000)=>tab(site+'/?'+new URLSearchParams({host,port,timeout}));
@@ -173,6 +178,10 @@ const QUESTION_JS='({origin:document.getElementById("prompt-origin").textContent
 // The "install the helper first" window, read once it shows its download button.
 const NOTICE_JS='(()=>{const q=s=>document.querySelector(s),shown=e=>!!e&&!e.hidden&&getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;if(document.readyState!=="complete"||!shown(q("#helper"))||!shown(q("#helper-download")))return false;return {origin:q("#helper-origin").textContent,text:q("#helper-text").textContent,download:q("#helper-download").textContent,question:shown(q("#prompt"))}})()';
 const text=(key,subs)=>{try{return T.plain(key,subs);}catch{return null;}};
+// The parts of that window that wait for the helper: the waiting line and "Continue".
+const WAIT_JS='(()=>{const q=s=>document.querySelector(s),shown=e=>!!e&&!e.hidden&&getComputedStyle(e).display!=="none"&&e.getBoundingClientRect().width>0;const w=q("#helper-wait"),c=q("#helper-continue");if(document.readyState!=="complete"||!shown(q("#helper"))||!w||!w.dataset.state)return false;return {state:w.dataset.state,wait:w.textContent,next:{shown:shown(c),disabled:c&&c.disabled,ready:c&&(c.dataset.ready??null),recommended:!!c&&c.classList.contains("recommended")}}})()';
+const waiting=v=>!!v&&v.state==='waiting'&&norm(v.wait)===text('timffle_helper_waiting')&&v.next.shown&&v.next.disabled===true&&v.next.ready!=='true'&&!v.next.recommended;
+const isReady=(v,version)=>!!v&&v.state==='ready'&&norm(v.wait)===text('timffle_helper_ready',[version])&&v.next.shown&&v.next.disabled===false&&v.next.ready==='true'&&v.next.recommended;
 // The result of fn, and how many connections the echo server got meanwhile (a socket that opened has reached it by then).
 const counted=async(server,fn)=>{const before=server.stat.connections,result=await fn();return [result,server.stat.connections-before];};
 const badges=()=>chrome.eval(opts.sessionId,'(async()=>{const out=[];for(const t of await chrome.tabs.query({})){const text=await chrome.action.getBadgeText({tabId:t.id});if(text)out.push({text,url:t.url})}return out})()');
@@ -366,6 +375,15 @@ try{
   const notice=w?await attach(w.targetId):null;
   const view=notice?await chrome.wait(notice,NOTICE_JS,12000).catch(()=>null):null;
   add('old-helper-install-window-opens-for-the-lan-website',!!view&&view.origin===lanOrigin&&view.text===T('timffle_helper_notice_incompatible')&&view.download===T('timffle_helper_notice_button')&&!view.question,{view});
+  if(notice){
+   // The old helper answers every check of the window, but only 1.4.0 lets the website reach its own address: the window keeps waiting.
+   const since=await statusChecks();
+   await delay(6500);
+   const v=await chrome.eval(notice,WAIT_JS).catch(()=>null);
+   const status=await chrome.eval(opts.sessionId,'chrome.runtime.sendMessage({type:"socket_helper_status"})').catch(e=>({error:e.message}));
+   const checks=await windowChecksSince(since).catch(()=>-1);
+   add('old-helper-window-keeps-waiting-although-the-helper-answers',waiting(v)&&status.installed===true&&status.version===installed.split(' ').pop()&&checks>=2,{v,status,checks});
+  }
   if(w){await shot(notice,'install-window.png');await close(w.targetId);}
   const marks=await badges();
   add('old-helper-badge-on-the-lan-website-tab',marks.length===1&&marks[0].text==='!'&&marks[0].url.startsWith(lanOrigin+'/'),{marks});
@@ -379,6 +397,27 @@ try{
    const p=await viaPage(page,PUBLIC6,9);
    add('old-helper-lan-website-still-dials-public-addresses',p.reason==='unreachable',{p});
   }else console.log(JSON.stringify({info:'this machine has IPv6 routes: the public-address check of G is skipped'}));
+  // The next page load of the website gets the window again. Installing 1.4.0 (its own --install into the same HOME) makes it ready
+  // by itself, and "Continue" reloads the website, which then reaches its own address.
+  const again=await barePage(lanOrigin);
+  const [r4,n4]=await counted(lanEcho,()=>viaPage(again,priv,lanEcho.port));
+  const w2=await until(async()=>(await promptWindows())[0],10000);
+  const s2=w2?await attach(w2.targetId):null;
+  const v2=s2?await chrome.wait(s2,WAIT_JS,12000).catch(()=>null):null;
+  add('old-helper-the-next-page-load-gets-the-waiting-window',r4.reason==='helper_incompatible'&&n4===0&&waiting(v2),{r4,v2});
+  const first=await chrome.eval(again.sessionId,'performance.timeOrigin');
+  const t0=Date.now();
+  const out2=execFileSync(path.resolve(helper),['--install'],{env:installEnv,encoding:'utf8'});
+  const version=execFileSync(installedHelper,['--version'],{encoding:'utf8'}).trim().split(' ').pop();
+  const ready=s2?await chrome.wait(s2,'(()=>{const v='+WAIT_JS+';return v&&v.state==="ready"?v:false})()',15000).catch(()=>null):null,took=Date.now()-t0;
+  add('installing-the-new-helper-makes-the-window-ready-by-itself',out2.includes('installed')&&atLeast(version,LAN_HELPER)&&isReady(ready,version)&&took<=10000,{took,version,ready});
+  if(ready){await chrome.send('Page.bringToFront',{},s2);await delay(500);await click(s2,'#helper-continue');}
+  const gone=await until(async()=>(await promptWindows()).length===0,8000);
+  const reloaded=await chrome.wait(again.sessionId,'performance.timeOrigin!=='+first+'&&window.RufflePlayer?.config?.socketProxy?.length>0',20000).catch(()=>false);
+  add('continue-reloads-the-lan-website-and-closes-the-window',!!ready&&!!gone&&!!reloaded,{gone:!!gone,reloaded});
+  const [r5,n5]=await counted(lanEcho,()=>viaPage(again,priv,lanEcho.port));
+  await delay(1500);
+  add('after-the-update-the-lan-website-reaches-its-own-address-without-a-window',echoed(r5)&&n5===1&&(await promptWindows()).length===0,{r5});
  });
 
  if(chrome){await until(()=>countHelpers()===0,10000);add('no-helper-process-left',countHelpers()===0,{count:countHelpers()});}

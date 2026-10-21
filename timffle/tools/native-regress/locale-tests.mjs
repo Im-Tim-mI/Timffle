@@ -29,6 +29,11 @@ const NO_CHROME_UI=new Set(['bs','eo','gl','tt']);
 // The Logitech discount box is a Taiwanese shop's code: the English and Chinese interfaces show it, no other language does.
 const SHOWS_PROMO=new Set(['en','zh_CN','zh_TW']);
 const LINK='https://store.logitech.tw/discount/LOGITIM';
+// The "install the helper first" window (HELPER_PROMPT_SIZE in src/socket-bridge-background.ts). A real window has Chrome's title bar
+// above its page: what is shown has to fit with that much to spare.
+const HELPER_WINDOW={width:540,height:680},TITLE_BAR=40;
+// The Linux line names the file for this computer's processor; the tests run on x64.
+const LINUX_COMMAND='tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64';
 // Whether the box is out of sight: hidden, not drawn, no height.
 const PROMO_GONE=`(()=>{const s=document.getElementById('promo');return {hidden:s.hidden,display:getComputedStyle(s).display,height:s.getBoundingClientRect().height}})()`;
 const isGone=(s)=>s.hidden===true&&s.display==='none'&&s.height===0;
@@ -153,22 +158,45 @@ for(const language of todo){
   await chrome.send('Target.closeTarget',{targetId:q.targetId});
 
   // ---- "install the socket helper first" window (the same page; shown by hand like the question, because it needs a page that
-  // has just tried to connect). The longest system name goes under the button, a long website above it.
-  const n=await open('chrome-extension://'+ID+'/prompt.html?id=00000000-0000-4000-8000-000000000000',540,620);
+  // has just tried to connect). The longest system name goes under the button, a long website above it. It is measured with each
+  // system's step line, while it waits for the installation and once the helper is there ("Continue" lit up).
+  const n=await open('chrome-extension://'+ID+'/prompt.html?id=00000000-0000-4000-8000-000000000000',HELPER_WINDOW.width,HELPER_WINDOW.height);
   await chrome.wait(n.sessionId,'!document.getElementById("expired").hidden',20000);
   await chrome.eval(n.sessionId,`(()=>{document.getElementById('helper-origin').textContent='https://a-long-example-website.example:8443';document.getElementById('helper-embedded-origin').textContent='https://another-long-example-website.example';document.getElementById('helper-embedded').hidden=false;document.getElementById('helper-text').textContent=${JSON.stringify(T('timffle_helper_notice_incompatible'))};const f=document.getElementById('helper-for');f.textContent=${JSON.stringify(T('timffle_helper_download_for',['macOS Apple silicon']))};f.hidden=false;document.getElementById('helper-download').hidden=false;document.getElementById('expired').hidden=true;document.getElementById('helper').hidden=false;})()`);
   await delay(150);
-  const w=await chrome.eval(n.sessionId,`(()=>{
+  const steps=[T('timffle_helper_step_windows'),T('timffle_helper_step_macos'),T('timffle_helper_step_linux',[LINUX_COMMAND])];
+  const states=[['waiting',T('timffle_helper_waiting')],['ready',T('timffle_helper_ready',['1.4.0'])]];
+  const sizes=await chrome.eval(n.sessionId,`(()=>{
    const box=(e)=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
-   const ids=['helper-download','helper-more','helper-close'];
-   const controls=ids.map(id=>{const e=document.getElementById(id);return {id,...box(e),clipped:e.scrollWidth>e.clientWidth+1||[...e.children].some(c=>c.scrollWidth>c.clientWidth+1)}});
+   const step=document.getElementById('helper-step'),wait=document.getElementById('helper-wait'),next=document.getElementById('helper-continue');
+   // The step line as the page fills it: text, and the command in a copy of the line's <code>.
+   const code=step.querySelector('code').cloneNode(false);
+   const fill=(message)=>step.replaceChildren(...message.split(/(<1>[^<]*<\\/1>)/).filter(Boolean).map(part=>{const m=part.match(/^<1>([^<]*)<\\/1>$/);if(!m)return document.createTextNode(part);const c=code.cloneNode(false);c.textContent=m[1];return c;}));
+   const out=[];
+   for(const [state,message] of ${JSON.stringify(states)}){
+    wait.dataset.state=state;wait.textContent=message;next.disabled=state==='waiting';next.classList.toggle('recommended',state==='ready');if(state==='ready')next.dataset.ready='true';else delete next.dataset.ready;
+    for(const [k,message] of ${JSON.stringify(steps)}.entries()){
+     fill(message);step.hidden=false;
+     const controls=['helper-download','helper-more','helper-close','helper-continue'].map(id=>{const e=document.getElementById(id);return {id,...box(e),clipped:e.scrollWidth>e.clientWidth+1||[...e.children].some(c=>c.scrollWidth>c.clientWidth+1)}});
+     const e=document.documentElement;
+     out.push({state,step:['windows','macos','linux'][k],height:Math.ceil(document.getElementById('helper').getBoundingClientRect().bottom),overflowX:e.scrollWidth-e.clientWidth,controls,wait:box(wait),stepText:step.textContent.replace(/\\s+/g,' ').trim(),waitText:wait.textContent});
+    }
+   }
    const e=document.documentElement;
-   return {overflowX:e.scrollWidth-e.clientWidth,height:Math.ceil(document.getElementById('helper').getBoundingClientRect().bottom),controls,title:document.getElementById('helper-title').textContent,embedded:document.getElementById('helper-embedded').textContent.replace(/\\s+/g,' ').trim(),text:document.getElementById('helper-text').textContent,dir:e.dir,order:controls.map(c=>c.id+':'+Math.round(c.y))};
+   return {out,title:document.getElementById('helper-title').textContent,embedded:document.getElementById('helper-embedded').textContent.replace(/\\s+/g,' ').trim(),dir:e.dir};
   })()`);
-  // A real window has Chrome's title bar above it: what is shown has to fit with that much to spare.
-  add(language+':helper-window-fits-its-window',w.overflowX<=0&&w.controls.every(c=>!c.clipped&&c.right<=541&&c.x>=0)&&w.height<=580,{overflowX:w.overflowX,height:w.height,controls:w.controls.filter(c=>c.clipped||c.right>541)});
-  add(language+':helper-window-heading-and-embedded-line',w.title===T('timffle_helper_prompt_title')&&w.embedded===norm(T('timffle_prompt_embedded')+' https://another-long-example-website.example')&&w.dir===(RTL.has(language)?'rtl':'ltr'),{title:w.title,embedded:w.embedded,dir:w.dir});
-  add(language+':helper-window-buttons-are-one-below-the-other',w.controls[0].y<w.controls[1].y&&w.controls[1].y<w.controls[2].y,{order:w.order});
+  const budget=HELPER_WINDOW.height-TITLE_BAR;
+  for(const state of ['waiting','ready']){
+   const seen=sizes.out.filter(x=>x.state===state),worst=seen.reduce((a,b)=>b.height>a.height?b:a);
+   const fits=seen.every(x=>x.overflowX<=0&&x.controls.every(c=>!c.clipped&&c.right<=HELPER_WINDOW.width+1&&c.x>=0)&&x.height<=budget);
+   // The texts that were measured are the language's own (the step lines as the page shows them).
+   const texts=seen.every((x,k)=>x.waitText===states.find(s=>s[0]===state)[1]&&x.stepText===norm(steps[k].replace(/<\/?\d>/g,'')));
+   add(language+':helper-window-fits-its-window'+(state==='ready'?'-when-ready':''),fits&&texts,{height:worst.height,step:worst.step,budget,overflowX:worst.overflowX,heights:seen.map(x=>x.step+':'+x.height),controls:seen.flatMap(x=>x.controls.filter(c=>c.clipped||c.right>HELPER_WINDOW.width+1||c.x<0))});
+  }
+  const w=sizes.out[0],c=Object.fromEntries(w.controls.map(x=>[x.id,x]));
+  add(language+':helper-window-heading-and-embedded-line',sizes.title===T('timffle_helper_prompt_title')&&sizes.embedded===norm(T('timffle_prompt_embedded')+' https://another-long-example-website.example')&&sizes.dir===(RTL.has(language)?'rtl':'ltr'),{title:sizes.title,embedded:sizes.embedded,dir:sizes.dir});
+  // The download button, the line under it, then the waiting line, then "Close" with "Continue" next to it.
+  add(language+':helper-window-buttons-are-one-below-the-other',c['helper-download'].y<c['helper-more'].y&&c['helper-more'].y<w.wait.y&&w.wait.bottom<=c['helper-close'].y&&Math.abs(c['helper-close'].y-c['helper-continue'].y)<2&&(RTL.has(language)?c['helper-close'].x>c['helper-continue'].x:c['helper-close'].x<c['helper-continue'].x),{order:w.controls.map(x=>x.id+':'+Math.round(x.x)+','+Math.round(x.y)),wait:Math.round(w.wait.y)});
   await picture(n,'helper-window');
   await chrome.send('Target.closeTarget',{targetId:n.targetId});
 
@@ -184,8 +212,7 @@ for(const language of todo){
   add(language+':install-page-shows-its-catalog',h.marked.length>=6&&hwrong.length===0&&[T('timffle_helper_missing'),T('timffle_helper_unavailable')].includes(hstatus),{count:h.marked.length,wrong:hwrong.slice(0,3),hstatus});
   // One group for each system: its download links (the labels and file names are the same in every language), then its line.
   const groups=await chrome.eval(hp.sessionId,`(async()=>{for(let i=0;i<50&&document.querySelectorAll('.helper-files li').length<7;i++)await new Promise(r=>setTimeout(r,100));return [...document.querySelectorAll('.helper-systems > li')].map(li=>({family:li.dataset.family,links:[...li.querySelectorAll('.helper-files li')].map(item=>({label:item.querySelector('a').textContent,file:item.querySelector('code').textContent,dir:item.querySelector('code').dir})),text:li.querySelector('p').textContent,code:li.querySelector('p code')?.textContent,codeDir:li.querySelector('p code')?.dir}))})()`);
-  const linuxCommand='tar xzf timffle-helper-linux-x64.tar.gz && ./timffle-helper-linux-x64';
-  add(language+':install-page-lines-keep-their-commands-and-file-names',groups.length===3&&norm(groups[0].text)===T.plain('timffle_helper_step_windows')&&norm(groups[1].text)===T.plain('timffle_helper_step_macos')&&norm(groups[2].text)===T.plain('timffle_helper_step_linux',[linuxCommand])&&groups[2].code===linuxCommand&&groups[2].codeDir==='ltr'&&groups.flatMap(g=>g.links).length===7&&groups.flatMap(g=>g.links).every(l=>l.dir==='ltr'&&/^timffle-helper-(windows|macos|linux)-[a-z0-9]+\.(exe|zip|tar\.gz)$/.test(l.file)),{groups});
+  add(language+':install-page-lines-keep-their-commands-and-file-names',groups.length===3&&norm(groups[0].text)===T.plain('timffle_helper_step_windows')&&norm(groups[1].text)===T.plain('timffle_helper_step_macos')&&norm(groups[2].text)===T.plain('timffle_helper_step_linux',[LINUX_COMMAND])&&groups[2].code===LINUX_COMMAND&&groups[2].codeDir==='ltr'&&groups.flatMap(g=>g.links).length===7&&groups.flatMap(g=>g.links).every(l=>l.dir==='ltr'&&/^timffle-helper-(windows|macos|linux)-[a-z0-9]+\.(exe|zip|tar\.gz)$/.test(l.file)),{groups});
   const download=h.rich.find(r=>r.key==='timffle_helper_page_download');
   add(language+':install-page-link-goes-to-the-releases-page',!!download&&download.links.length===1&&download.links[0].href==='https://github.com/Im-Tim-mI/Timffle-Helper/releases/tag/v1.4.0'&&norm(download.text)===T.plain('timffle_helper_page_download'),{download});
   add(language+':install-page-fits-its-width',h.overflowX<=0,{overflowX:h.overflowX});
@@ -228,6 +255,8 @@ for(const language of todo){
   add(language+':run',false,{error:String(error?.message??error)});
  }finally{
   await chrome?.close();
+  // The browser profile of each language is large and of no use afterwards (Chrome may still write into it for a moment).
+  await delay(300);await fs.rm(path.join(output,language,'profile'),{recursive:true,force:true,maxRetries:8,retryDelay:250}).catch(()=>{});
  }
  console.error(language+' done in '+Math.round((Date.now()-t0)/1000)+'s');
 }
