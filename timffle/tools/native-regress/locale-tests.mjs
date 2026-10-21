@@ -138,6 +138,13 @@ for(const language of todo){
    return {overflowX:document.documentElement.scrollWidth-document.documentElement.clientWidth,mainWidth:box(main).w,buttons,embedded:document.getElementById('prompt-embedded').textContent.replace(/\\s+/g,' ').trim(),order:buttons.map(b=>b.id+':'+Math.round(b.x))};
   })()`);
   add(language+':question-window-fits-its-width',m.overflowX<=0&&m.buttons.every(b=>!b.clipped&&b.right<=541),{overflowX:m.overflowX,buttons:m.buttons.filter(b=>b.clipped||b.right>541)});
+  // A website on the local network gets a longer sentence (what it may reach): it must not push the buttons out of the window.
+  const lanFit=await chrome.eval(q.sessionId,`(()=>{
+   document.getElementById('prompt-origin').textContent='https://192.168.100.100:8443';
+   document.getElementById('prompt-what').textContent=chrome.i18n.getMessage('timffle_prompt_what_lan','192.168.100.100');
+   const bottoms=[...document.querySelectorAll('button[data-choice]')].map(b=>b.getBoundingClientRect().bottom);
+   return {lastButtonBottom:Math.ceil(Math.max(...bottoms)),overflowX:document.documentElement.scrollWidth-document.documentElement.clientWidth,height:Math.ceil(document.documentElement.scrollHeight),text:document.getElementById('prompt-what').textContent}})()`);
+  add(language+':question-window-with-the-lan-text-fits',lanFit.overflowX<=0&&lanFit.lastButtonBottom<=580&&lanFit.height<=680&&lanFit.text===T.plain('timffle_prompt_what_lan',['192.168.100.100']),{lastButtonBottom:lanFit.lastButtonBottom,overflowX:lanFit.overflowX,height:lanFit.height});
   // In a left-to-right language "Deny" is the first button on the left; in a right-to-left one it is on the right.
   const deny=m.buttons.find(b=>b.id==='deny-once'),allowOnce=m.buttons.find(b=>b.id==='allow-once');
   add(language+':question-buttons-follow-the-reading-direction',RTL.has(language)?deny.x>allowOnce.x:deny.x<allowOnce.x,{deny:deny.x,allow:allowOnce.x});
