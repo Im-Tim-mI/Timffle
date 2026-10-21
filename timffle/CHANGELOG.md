@@ -10,6 +10,8 @@
 - **改了什麼**：`showHelperReady`（`helper-wait.ts`）把「已偵測到小幫手（版本 …）。按「繼續」重新載入遊戲頁面。」寫進上方寫問題的那一格（`#helper-text`，原本就是 `role=status`，讀螢幕程式會念出新內容），並把等待那一行（`#helper-wait`）收起來（`hidden`；它的 `data-state` 仍改成 `ready`，給測試讀）；「繼續」啟用並亮起、下載鈕退回一般樣式，都和之前一樣。**還在等待時視窗完全沒變**：上方寫問題，下面那一行寫「等待安裝完成中…」。不相容（`incompatible`）與區網舊小幫手的視窗一樣：偵測到可用的小幫手後，上方那一格改寫成「已偵測到…」。`prompt.css` 拿掉用不到的「亮起時等待行加外框」規則。
 - **說明文件**：`ARCHITECTURE.md` 3b、`TESTING.md`。
 - **驗證**：擴充功能單元測試 **312 項**全過（數目不變；改寫了 `showHelperReady` 的測試：上方那格的文字、等待行收起與它的狀態，以及提示頁的接線與樣式規則），型別檢查與 ESLint 乾淨。端對端測試的期望值一併改成新的樣子（`browser-auto-tests.mjs` 的 `isReady`、`lan-tests.mjs`、`locale-tests.mjs` 的「亮起」版面）。
+- **發行包**：`timffle-chrome-0.8.0.26308.zip`（16,399,208 位元組，SHA-256 `138acb0dcca7fda7218287f0f72cdb16170f0e693d0cbb947f0a119968bbd092`），從乾淨的提交 `5258f1be9` 建置；ZIP 內嵌的 commit 編號就是它，之後的提交只改這份 CHANGELOG。**未打標籤、未建立 GitHub release、未推送。**打包前後的路徑檢查通過（78 與 99 個檔案，沒有家目錄或使用者名稱），另以獨立腳本掃描整個 ZIP（0 個命中）。與 0.8.0.26307 相比：99 個檔案中 91 個逐位元組相同，包含 `ruffle_web_bg.wasm`、七個小幫手執行檔（仍是 1.4.0）與 36 個語言檔；不同的 8 個是 `manifest.json`（只有版本）、`prompt.css`、`prompt.js`，以及只差內嵌建置時間與 commit 編號的 `ruffle.js`、`player.js`、`popup.js`、`options.js`、`onboard.js`。
+- **對這個 ZIP 跑的驗證**（解開後的擴充功能；Chrome 155 無頭模式、Linux x64，機器負載約 22）：`missing` 以繁體中文介面（`TEST_LOCALE=zh_TW`）**104 項**全過（數目不變；三項「亮起」檢查現在要求上方那格是「已偵測到…」、等待行看不見），肉眼看過偵測到之後的截圖：上方那格寫「已偵測到小幫手（版本 1.4.0）。按「繼續」重新載入遊戲頁面。」，下面沒有第二格；`locale-tests.mjs` 繁中、日文、英文 **105 項**全過（亮起狀態的視窗變矮：繁中 509→446 px、日文 605→523 px、英文 540→458 px）。**依作者要減少測試的要求，這一輪沒有跑**：`incompatible`、`lan-tests.mjs`（兩者走同一個 `showHelperReady`，只改了期望值，語法檢查過）、`localtest`、`production`、`delayed`、`manual`、`ask`（程式沒動），以及其餘 33 種語言的版面。
 
 ## 0.8.0.26307 — 2026-10-21
 
