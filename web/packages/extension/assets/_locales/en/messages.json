@@ -335,6 +335,24 @@
         "message": "Download started. When it has finished, run the downloaded installer, then reload the game page.",
         "description": "Shown in the popup notice (or next to the helper status on the settings page) after the download button was pressed. The popup is narrow: keep it short."
     },
+    "timffle_helper_continue": {
+        "message": "Continue",
+        "description": "Button of the “install the socket helper first” window (timffle_helper_prompt_title), next to “Close” (timffle_close). It stays off until the window has found the installed helper; then pressing it reloads the game page and closes the window. Keep it short. timffle_helper_waiting and timffle_helper_ready quote it: they must use exactly this word."
+    },
+    "timffle_helper_waiting": {
+        "message": "Waiting for the installation. This window checks by itself and turns on “Continue” as soon as the helper is ready. If nothing happens after the installer has finished, fully quit Chrome and start it again.",
+        "description": "Line of the “install the socket helper first” window while it waits for the helper to be installed: the window looks for it by itself every few seconds. “Continue” is the button timffle_helper_continue: quote exactly its text, in the quotation marks of your language. Chrome stays in Latin letters."
+    },
+    "timffle_helper_ready": {
+        "message": "The helper is installed (version $VERSION$). Press “Continue” to reload the game page.",
+        "description": "Takes the place of timffle_helper_waiting once the window has found the helper. $VERSION$ is the helper's version number, such as 1.4.0: keep the placeholder, once. “Continue” is the button timffle_helper_continue: quote exactly its text, in the quotation marks of your language.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Install the socket helper first",
         "description": "Heading of the window that opens when a website has just tried to open a TCP (socket) connection and the socket helper is not installed (or does not match this extension). Below it come the website's name, what is wrong and a button that downloads the installer. It is an instruction to the user: use the imperative, and say that the helper has to be installed before the game can connect. Keep it short; it is a heading."

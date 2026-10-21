@@ -287,6 +287,21 @@
     "timffle_helper_download_started": {
         "message": "A letöltés elindult. Amikor végzett, futtasd a letöltött telepítőt, majd töltsd újra a játék oldalát."
     },
+    "timffle_helper_continue": {
+        "message": "Folytatás"
+    },
+    "timffle_helper_waiting": {
+        "message": "Várakozás a telepítésre. Ez az ablak magától ellenőrzi az állapotot, és amint a segéd készen áll, aktiválja a „Folytatás” gombot. Ha a telepítő lefutása után sem történik semmi, zárd be teljesen a Chrome-ot, majd indítsd újra."
+    },
+    "timffle_helper_ready": {
+        "message": "A segéd telepítve van ($VERSION$ verzió). A játék oldalának újratöltéséhez kattints a „Folytatás” gombra.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Először telepítse a Socket-segédet"
     },

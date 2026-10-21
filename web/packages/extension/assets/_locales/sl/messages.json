@@ -293,6 +293,21 @@
     "timffle_helper_download_started": {
         "message": "Prenos se je začel. Ko se konča, zaženite preneseni namestitveni program in nato znova naložite stran igre."
     },
+    "timffle_helper_continue": {
+        "message": "Nadaljuj"
+    },
+    "timffle_helper_waiting": {
+        "message": "Čakanje na namestitev. To okno samo preverja in omogoči gumb »Nadaljuj«, takoj ko je pomočnik pripravljen. Če se po koncu namestitvenega programa nič ne zgodi, povsem zaprite Chrome in ga znova zaženite."
+    },
+    "timffle_helper_ready": {
+        "message": "Pomočnik je nameščen (različica $VERSION$). Kliknite »Nadaljuj«, da znova naložite stran igre.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Najprej namestite pomočnika za socket"
     },

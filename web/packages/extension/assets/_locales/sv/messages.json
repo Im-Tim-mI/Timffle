@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "Nedladdningen har startat. När den är klar kör du installationsprogrammet du laddade ner och laddar sedan om spelsidan."
     },
+    "timffle_helper_continue": {
+        "message": "Fortsätt"
+    },
+    "timffle_helper_waiting": {
+        "message": "Väntar på installationen. Det här fönstret kontrollerar automatiskt och aktiverar knappen ”Fortsätt” så snart hjälparen är redo. Om inget händer efter att installationsprogrammet är klart, avsluta Chrome helt och starta det på nytt."
+    },
+    "timffle_helper_ready": {
+        "message": "Hjälparen är installerad (version $VERSION$). Klicka på ”Fortsätt” för att ladda om spelsidan.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Installera sockethjälparen först"
     },

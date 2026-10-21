@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "Le téléchargement a commencé. Une fois terminé, lancez le programme d'installation téléchargé, puis rechargez la page du jeu."
     },
+    "timffle_helper_continue": {
+        "message": "Continuer"
+    },
+    "timffle_helper_waiting": {
+        "message": "En attente de l'installation. Cette fenêtre vérifie d'elle-même et active le bouton « Continuer » dès que l'assistant est prêt. Si rien ne se passe une fois le programme d'installation terminé, quittez complètement Chrome et relancez-le."
+    },
+    "timffle_helper_ready": {
+        "message": "L'assistant est installé (version $VERSION$). Cliquez sur « Continuer » pour recharger la page du jeu.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Installez d'abord l'assistant socket"
     },

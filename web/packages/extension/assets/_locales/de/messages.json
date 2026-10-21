@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "Der Download hat begonnen. Führen Sie danach das heruntergeladene Installationsprogramm aus und laden Sie dann die Spielseite neu."
     },
+    "timffle_helper_continue": {
+        "message": "Fortfahren"
+    },
+    "timffle_helper_waiting": {
+        "message": "Es wird auf die Installation gewartet. Dieses Fenster prüft das automatisch und aktiviert die Schaltfläche „Fortfahren“, sobald das Hilfsprogramm bereit ist. Passiert nichts, nachdem das Installationsprogramm fertig ist, beenden Sie Chrome vollständig und starten Sie es neu."
+    },
+    "timffle_helper_ready": {
+        "message": "Das Hilfsprogramm ist installiert (Version $VERSION$). Klicken Sie auf „Fortfahren“, um die Spielseite neu zu laden.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Installieren Sie zuerst das Socket-Hilfsprogramm"
     },

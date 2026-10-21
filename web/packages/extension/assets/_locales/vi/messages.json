@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "Đã bắt đầu tải về. Khi xong, hãy chạy trình cài đặt đã tải về, rồi tải lại trang trò chơi."
     },
+    "timffle_helper_continue": {
+        "message": "Tiếp tục"
+    },
+    "timffle_helper_waiting": {
+        "message": "Đang chờ cài đặt. Cửa sổ này sẽ tự kiểm tra và bật nút “Tiếp tục” ngay khi trình hỗ trợ sẵn sàng. Nếu trình cài đặt đã chạy xong mà vẫn không có gì thay đổi, hãy thoát hoàn toàn Chrome rồi mở lại."
+    },
+    "timffle_helper_ready": {
+        "message": "Trình hỗ trợ đã được cài đặt (phiên bản $VERSION$). Nhấn “Tiếp tục” để tải lại trang trò chơi.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Hãy cài đặt trình hỗ trợ socket trước"
     },

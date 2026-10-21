@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "İndirme başladı. Bittiğinde indirdiğiniz yükleyiciyi çalıştırın, sonra oyun sayfasını yeniden yükleyin."
     },
+    "timffle_helper_continue": {
+        "message": "Devam et"
+    },
+    "timffle_helper_waiting": {
+        "message": "Kurulum bekleniyor. Bu pencere durumu kendiliğinden denetler ve yardımcı hazır olur olmaz “Devam et” düğmesini etkinleştirir. Yükleyici işini bitirdikten sonra hiçbir şey olmazsa Chrome'u tamamen kapatıp yeniden başlatın."
+    },
+    "timffle_helper_ready": {
+        "message": "Yardımcı yüklü (sürüm $VERSION$). Oyun sayfasını yeniden yüklemek için “Devam et” düğmesine tıklayın.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Önce soket yardımcısını yükleyin"
     },

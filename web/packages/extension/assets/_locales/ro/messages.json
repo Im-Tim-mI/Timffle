@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "Descărcarea a început. Când se termină, rulează programul de instalare descărcat, apoi reîncarcă pagina jocului."
     },
+    "timffle_helper_continue": {
+        "message": "Continuă"
+    },
+    "timffle_helper_waiting": {
+        "message": "Se așteaptă instalarea. Această fereastră verifică automat și activează butonul „Continuă” imediat ce asistentul este gata. Dacă nu se întâmplă nimic după ce programul de instalare s-a terminat, închide complet Chrome și pornește-l din nou."
+    },
+    "timffle_helper_ready": {
+        "message": "Asistentul este instalat (versiunea $VERSION$). Apasă „Continuă” pentru a reîncărca pagina jocului.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Instalați mai întâi asistentul pentru socketuri"
     },

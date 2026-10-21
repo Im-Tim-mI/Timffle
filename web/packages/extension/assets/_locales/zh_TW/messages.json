@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "已開始下載。下載完成後請執行安裝程式，再重新整理遊戲頁面。"
     },
+    "timffle_helper_continue": {
+        "message": "繼續"
+    },
+    "timffle_helper_waiting": {
+        "message": "等待安裝完成中。這個視窗會自己檢查，小幫手一就緒，「繼續」就會亮起。安裝程式跑完後如果還是沒有反應，請完全結束 Chrome 再重新啟動。"
+    },
+    "timffle_helper_ready": {
+        "message": "已偵測到小幫手（版本 $VERSION$）。按「繼續」重新載入遊戲頁面。",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "請先安裝連線小幫手"
     },

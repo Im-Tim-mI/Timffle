@@ -6,7 +6,7 @@
  * nor click it.
  */
 import { enableBrowserOnOutdatedChromium, setPageLanguage } from "./utils";
-import { localizePage, text } from "./i18n";
+import { fillRich, localizePage, text } from "./i18n";
 import {
     PROMPT_ANSWER_REQUEST,
     PROMPT_GET_REQUEST,
@@ -16,7 +16,10 @@ import {
 import type { PromptChoice, PromptView } from "./socket-prompt";
 import { isHelperPromptView } from "./helper-prompt";
 import type { HelperPromptView } from "./helper-prompt";
-import { bindHelperDownload } from "./helper-download";
+import { bindHelperDownload, installStep } from "./helper-download";
+import { queryHelper } from "./helper-status";
+import { showHelperReady, waitForHelper } from "./helper-wait";
+import { HELPER_CONTINUE_REQUEST } from "./socket-bridge-protocol";
 import { createInputGuard } from "./prompt-guard";
 import type { InputGuard, PressKind } from "./prompt-guard";
 import { lanHostOf } from "./socket-lan";
@@ -187,8 +190,13 @@ function showOrigin(
     }
 }
 
-/** "Install the socket helper first": what is wrong, a button that downloads the installer, the way to the others. */
-async function runHelperNotice(view: HelperPromptView) {
+/**
+ * "Install the socket helper first": what is wrong, a button that downloads
+ * the installer and how to run it, the way to the others. Then the window
+ * waits for the helper and offers to continue: the background reloads the
+ * game page and closes the window.
+ */
+async function runHelperNotice(id: string, view: HelperPromptView) {
     showOrigin(view, {
         origin: "helper-origin",
         embedded: "helper-embedded",
@@ -205,7 +213,12 @@ async function runHelperNotice(view: HelperPromptView) {
     const download = document.getElementById("helper-download")!;
     const label = document.getElementById("helper-for")!;
     const more = document.getElementById("helper-more")!;
+    const step = document.getElementById("helper-step")!;
+    const wait = document.getElementById("helper-wait")!;
     const close = document.getElementById("helper-close")!;
+    const proceed = document.getElementById(
+        "helper-continue",
+    ) as HTMLButtonElement;
     // Not offered before it is known what it would download.
     download.hidden = true;
     show("helper");
@@ -218,7 +231,7 @@ async function runHelperNotice(view: HelperPromptView) {
             { isTrusted: event.isTrusted, detail: event.detail },
             Date.now(),
         );
-    for (const control of [download, more, close]) {
+    for (const control of [download, more, close, proceed]) {
         watch(control);
     }
     close.addEventListener("click", (event) => {
@@ -234,18 +247,56 @@ async function runHelperNotice(view: HelperPromptView) {
             });
         }
     });
+    let continuing = false;
+    proceed.addEventListener("click", (event) => {
+        if (continuing || proceed.disabled || !counts(proceed, event)) {
+            return;
+        }
+        continuing = true;
+        // Only the id of this window: the background knows the game's tab,
+        // reloads it if it still shows that game, and closes this window.
+        void browser.runtime
+            .sendMessage({ type: HELPER_CONTINUE_REQUEST, id })
+            .then(
+                (reloaded: unknown) => reloaded === true,
+                () => false,
+            )
+            .then((reloaded) => {
+                if (!reloaded) {
+                    // Nothing to continue: this window's request has ended.
+                    show("expired");
+                }
+            });
+    });
+    // It looks by itself whether the helper is there now, and at once when
+    // the visitor comes back to the window after running the installer.
+    const waiting = waitForHelper({
+        query: queryHelper,
+        minVersion: view.minVersion,
+        ready: (version) => showHelperReady(wait, proceed, version),
+    });
+    window.addEventListener("focus", () => waiting.check());
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            waiting.check();
+        }
+    });
+    window.addEventListener("pagehide", () => waiting.stop());
     close.focus();
     // The system is worked out before the button is offered, so it already knows what it will download.
     const installer = await bindHelperDownload({
         button: download,
         label,
         accepts: (event) => counts(download, event),
-        started: () => {
-            message.textContent = text("timffle_helper_download_started");
-        },
+        // The wait line says already what comes after the download.
+        started: () => {},
     });
     // A system without an installer (or one the browser did not describe) is sent to the page that lists them all.
     download.hidden = installer === undefined;
+    if (installer !== undefined) {
+        fillRich(step, installStep(installer));
+        step.hidden = false;
+    }
 }
 
 /** "This website wants to use sockets": four ways to answer. */
@@ -339,7 +390,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         return;
     }
     if (isHelperPromptView(view)) {
-        await runHelperNotice(view);
+        await runHelperNotice(id, view);
     } else {
         runQuestion(id, view);
     }

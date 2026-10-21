@@ -269,6 +269,21 @@
     "timffle_helper_download_started": {
         "message": "Lataus on alkanut. Kun se on valmis, suorita ladattu asennusohjelma ja lataa sitten pelin sivu uudelleen."
     },
+    "timffle_helper_continue": {
+        "message": "Jatka"
+    },
+    "timffle_helper_waiting": {
+        "message": "Odotetaan asennusta. Tämä ikkuna tarkistaa tilanteen itse ja ottaa painikkeen ”Jatka” käyttöön heti, kun apuohjelma on valmis. Jos mitään ei tapahdu asennusohjelman päätyttyä, sulje Chrome kokonaan ja käynnistä se uudelleen."
+    },
+    "timffle_helper_ready": {
+        "message": "Apuohjelma on asennettu (versio $VERSION$). Lataa pelin sivu uudelleen painamalla ”Jatka”.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Asenna ensin Socket-apuohjelma"
     },

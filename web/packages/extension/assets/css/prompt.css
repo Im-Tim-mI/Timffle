@@ -161,6 +161,40 @@ p {
     text-decoration: none;
 }
 
+/* How to run the installer of this system. */
+.helper-step {
+    font-size: 12px;
+}
+
+/* The Linux command reads left to right in every language. */
+.helper-step code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--ruffle-dark-blue);
+    font: 12px monospace;
+    unicode-bidi: isolate;
+    overflow-wrap: anywhere;
+}
+
+/* What the window waits for; once the helper is there, that it is. */
+.helper-wait {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #0003;
+    font-size: 13px;
+}
+
+.helper-wait[data-state="ready"] {
+    outline: 2px solid var(--ruffle-orange);
+}
+
+/* Close, and Continue next to it. */
+.helper-end {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
 button:disabled {
     cursor: default;
     opacity: 0.45;

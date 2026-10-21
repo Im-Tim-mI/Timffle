@@ -214,6 +214,7 @@ const MUST_CONTAIN = {
     timffle_helper_step_macos: ["macOS"],
     timffle_helper_step_linux: ["Linux", "<1>$COMMAND$</1>"],
     timffle_helper_step_after: ["Chrome"],
+    timffle_helper_waiting: ["Chrome"],
     timffle_helper_page_download: ["Releases"],
     timffle_helper_download_for: ["$SYSTEM$"],
     timffle_popup_allow_site_proxy: ["token"],
@@ -583,5 +584,29 @@ test("the button says what it does, and the text under it names the system", () 
             message(language, "timffle_helper_notice_button").length <= 40,
             language,
         );
+    }
+});
+
+test("the install window's wait line and its ready line quote the Continue button exactly, and only the ready line has the version", () => {
+    assert.equal(message("en", "timffle_helper_continue"), "Continue");
+    assert.equal(message("zh_TW", "timffle_helper_continue"), "繼續");
+    assert.equal(message("zh_CN", "timffle_helper_continue"), "继续");
+    for (const language of languages) {
+        const label = message(language, "timffle_helper_continue");
+        assert.ok(label && label.length <= 24 && !/[$<>{}“”"«»„「」]/u.test(label), `${language}: ${label}`);
+        for (const key of ["timffle_helper_waiting", "timffle_helper_ready"]) {
+            const text = message(language, key);
+            // In the language's own quotation marks, as the button reads; a space may sit inside them (French).
+            const quoted = new RegExp(
+                `\\p{Quotation_Mark}[\\s\\u00a0\\u202f]?${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}[\\s\\u00a0\\u202f]?\\p{Quotation_Mark}`,
+                "u",
+            );
+            assert.match(text, quoted, `${language}/${key} does not quote “${label}”: ${text}`);
+        }
+        assert.equal(message(language, "timffle_helper_ready").split("$VERSION$").length, 2, language);
+        for (const key of ["timffle_helper_waiting", "timffle_helper_continue"]) {
+            assert.doesNotMatch(message(language, key), /\$/u, `${language}/${key}`);
+        }
+        assert.notEqual(message(language, "timffle_helper_waiting"), message(language, "timffle_helper_ready"), language);
     }
 });

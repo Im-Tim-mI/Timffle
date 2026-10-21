@@ -296,6 +296,21 @@
     "timffle_helper_download_started": {
         "message": "Download avviato. Al termine, esegui il programma di installazione scaricato, poi ricarica la pagina del gioco."
     },
+    "timffle_helper_continue": {
+        "message": "Continua"
+    },
+    "timffle_helper_waiting": {
+        "message": "In attesa dell'installazione. Questa finestra controlla automaticamente e attiva il pulsante “Continua” non appena il programma di supporto è pronto. Se al termine del programma di installazione non succede nulla, chiudi completamente Chrome e riavvialo."
+    },
+    "timffle_helper_ready": {
+        "message": "Il programma di supporto è installato (versione $VERSION$). Fai clic su “Continua” per ricaricare la pagina del gioco.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Installa prima il programma di supporto socket"
     },

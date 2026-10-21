@@ -93,6 +93,21 @@ export function linuxCommand(installer: HelperInstaller): string {
     return `tar xzf ${installer.file} && ./${program}`;
 }
 
+/**
+ * How to run a downloaded installer, on the system it is for. The Linux line
+ * is rich text: `<1>…</1>` is the command (see fillRich in i18n.ts).
+ */
+export function installStep(installer: HelperInstaller): string {
+    switch (installer.family) {
+        case "windows":
+            return text("timffle_helper_step_windows");
+        case "macos":
+            return text("timffle_helper_step_macos");
+        case "linux":
+            return text("timffle_helper_step_linux", [linuxCommand(installer)]);
+    }
+}
+
 /** What the browser tells about the system; every field can be missing. */
 export interface SystemHints {
     /** `navigator.userAgentData.platform`: "Windows", "macOS", "Linux", "Chrome OS", "Android", ... */

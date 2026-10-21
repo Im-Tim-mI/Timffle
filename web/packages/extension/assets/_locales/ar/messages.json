@@ -293,6 +293,21 @@
     "timffle_helper_download_started": {
         "message": "بدأ التنزيل. عند اكتماله، شغّل المثبّت الذي نزّلته، ثم أعد تحميل صفحة اللعبة."
     },
+    "timffle_helper_continue": {
+        "message": "متابعة"
+    },
+    "timffle_helper_waiting": {
+        "message": "في انتظار التثبيت. تتحقق هذه النافذة من ذلك تلقائيًا وتفعّل زر «متابعة» بمجرد أن يصبح المساعد جاهزًا. إذا لم يحدث شيء بعد أن ينتهي المثبّت، فأغلق Chrome تمامًا وشغّله من جديد."
+    },
+    "timffle_helper_ready": {
+        "message": "المساعد مثبّت (الإصدار $VERSION$). انقر على «متابعة» لإعادة تحميل صفحة اللعبة.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "ثبّت مساعد Socket أولًا"
     },

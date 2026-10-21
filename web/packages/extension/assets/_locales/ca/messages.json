@@ -266,6 +266,21 @@
     "timffle_helper_download_started": {
         "message": "La baixada ha començat. Quan acabi, executa l'instal·lador baixat i torna a carregar la pàgina del joc."
     },
+    "timffle_helper_continue": {
+        "message": "Continua"
+    },
+    "timffle_helper_waiting": {
+        "message": "S'està esperant la instal·lació. Aquesta finestra ho comprova automàticament i activa el botó «Continua» tan bon punt l'assistent estigui a punt. Si no passa res quan l'instal·lador hagi acabat, tanca Chrome del tot i torna'l a obrir."
+    },
+    "timffle_helper_ready": {
+        "message": "L'assistent està instal·lat (versió $VERSION$). Fes clic a «Continua» per tornar a carregar la pàgina del joc.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.4.0"
+            }
+        }
+    },
     "timffle_helper_prompt_title": {
         "message": "Primer instal·leu l'assistent de sockets"
     },
