@@ -6,9 +6,10 @@
  * It is the sibling of the first-use question (socket-prompt.ts): a window of
  * the extension's own, opened next to the game's window, never something drawn
  * inside the page. Nothing is asked here, so there is no answer to store; the
- * window can simply be closed. A page cannot make the extension flood the
- * screen with these windows: one is open at a time, a page load is told once,
- * and only a few open per minute.
+ * window can simply be closed. It waits for the helper, and once that is
+ * there "Continue" reloads the game page. A page cannot make the extension
+ * flood the screen with these windows: one is open at a time, a page load is
+ * told once, and only a few open per minute.
  */
 import type { PromptHost } from "./socket-prompt";
 import type { SessionArea } from "./socket-visit";
@@ -32,6 +33,8 @@ export interface HelperPromptView {
     origin: string;
     /** Set when that frame is embedded in a page of another origin. */
     embeddedIn?: string;
+    /** A helper older than this does not count as installed: one was, and it was too old. */
+    minVersion?: string;
 }
 
 export function isHelperPromptView(value: unknown): value is HelperPromptView {
@@ -43,7 +46,11 @@ export function isHelperPromptView(value: unknown): value is HelperPromptView {
         (view["helper"] === "missing" || view["helper"] === "incompatible") &&
         typeof view["origin"] === "string" &&
         (view["embeddedIn"] === undefined ||
-            typeof view["embeddedIn"] === "string")
+            typeof view["embeddedIn"] === "string") &&
+        (view["minVersion"] === undefined ||
+            (typeof view["minVersion"] === "string" &&
+                view["minVersion"].length <= 32 &&
+                /^[0-9]+(?:\.[0-9]+)*$/u.test(view["minVersion"])))
     );
 }
 
@@ -62,6 +69,15 @@ export interface HelperPromptRequest {
     top?: string;
     /** The tab's window, to open the helper window next to it. */
     windowId?: number;
+    /** The helper that answered is older than this, which the page needs. */
+    minVersion?: string;
+}
+
+/** What the background needs to continue after the window: the tab to reload, if it still shows the page that asked. */
+export interface HelperContinue {
+    tabId: number;
+    /** The origin of the tab's page: the frame's, or that of the page that embeds it. */
+    expectedOrigin: string;
 }
 
 export interface HelperPromptManager {
@@ -75,6 +91,14 @@ export interface HelperPromptManager {
         id: string,
         windowId: number | undefined,
     ): HelperPromptView | undefined;
+    /**
+     * The visitor pressed "Continue" in window `windowId`: if `id` is its open
+     * window, the window is closed and what to reload is returned, once.
+     */
+    continue(
+        id: string,
+        windowId: number | undefined,
+    ): HelperContinue | undefined;
     /** The user closed a window. */
     windowRemoved(windowId: number): void;
     /** A tab was closed: its page loads need not be remembered. */
@@ -260,6 +284,9 @@ export function createHelperPromptManager(
                         request.top !== request.origin
                             ? { embeddedIn: request.top }
                             : {}),
+                        ...(request.minVersion === undefined
+                            ? {}
+                            : { minVersion: request.minVersion }),
                     },
                     near: request.windowId,
                     windowId: undefined,
@@ -299,6 +326,21 @@ export function createHelperPromptManager(
                     current.windowId === windowId)
                 ? current.view
                 : undefined;
+        },
+
+        continue(id, windowId) {
+            // Unlike the view, only for a window the browser has said is this one.
+            if (
+                !current ||
+                current.id !== id ||
+                windowId === undefined ||
+                current.windowId !== windowId
+            ) {
+                return undefined;
+            }
+            const { tabId, view } = current;
+            dropCurrent();
+            return { tabId, expectedOrigin: view.embeddedIn ?? view.origin };
         },
 
         windowRemoved(windowId) {

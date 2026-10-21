@@ -513,3 +513,154 @@ test("only a complete view is a view", () => {
         assert.equal(isHelperPromptView(bad), false, JSON.stringify(bad));
     }
 });
+
+test("a window opened because the helper is too old carries the version it waits for; any other window waits for any helper", async () => {
+    const old = setup();
+    await old.manager.show(
+        request({ problem: "incompatible", minVersion: "1.4.0" }),
+    );
+    assert.deepEqual(old.manager.view(old.fake.state.opened[0].id, 700), {
+        helper: "incompatible",
+        origin: MOLE,
+        minVersion: "1.4.0",
+    });
+    for (const problem of ["missing", "incompatible"]) {
+        const any = setup();
+        await any.manager.show(request({ problem }));
+        const view = any.manager.view(any.fake.state.opened[0].id, 700);
+        assert.equal("minVersion" in view, false, problem);
+    }
+});
+
+test("a view's version to wait for is a plain version number", () => {
+    assert.equal(
+        isHelperPromptView({
+            helper: "incompatible",
+            origin: MOLE,
+            minVersion: "1.4.0",
+        }),
+        true,
+    );
+    assert.equal(
+        isHelperPromptView({
+            helper: "missing",
+            origin: MOLE,
+            embeddedIn: PORTAL,
+            minVersion: "10.20.30",
+        }),
+        true,
+    );
+    for (const minVersion of [
+        5,
+        "",
+        "1.4.0-beta",
+        "v1.4.0",
+        "1..4",
+        ".1",
+        "1.4.",
+        " 1.4.0",
+        "1".repeat(33),
+        null,
+    ]) {
+        assert.equal(
+            isHelperPromptView({
+                helper: "incompatible",
+                origin: MOLE,
+                minVersion,
+            }),
+            false,
+            JSON.stringify(minVersion),
+        );
+    }
+});
+
+test("Continue in the open window closes it and says which tab to reload: the frame's origin, or that of the page that embeds it", async () => {
+    const own = setup();
+    await own.manager.show(request({ tabId: 4 }));
+    const { id } = own.fake.state.opened[0];
+    assert.deepEqual(own.manager.continue(id, 700), {
+        tabId: 4,
+        expectedOrigin: MOLE,
+    });
+    assert.deepEqual(own.fake.state.closed, [700]);
+    assert.equal(own.manager.view(id, 700), undefined);
+
+    const embedded = setup();
+    await embedded.manager.show(request({ frameId: 3, top: PORTAL }));
+    assert.deepEqual(
+        embedded.manager.continue(embedded.fake.state.opened[0].id, 700),
+        {
+            tabId: 1,
+            expectedOrigin: PORTAL,
+        },
+    );
+    // A frame of its own page, or one whose page the browser did not name, is reloaded by its own origin.
+    for (const overrides of [{ frameId: 3, top: MOLE }, { frameId: 3 }]) {
+        const plain = setup();
+        await plain.manager.show(request(overrides));
+        assert.equal(
+            plain.manager.continue(plain.fake.state.opened[0].id, 700)
+                ?.expectedOrigin,
+            MOLE,
+            JSON.stringify(overrides),
+        );
+    }
+});
+
+test("Continue counts once, only for the open window and only from that window", async () => {
+    const { fake, manager } = setup();
+    await manager.show(request());
+    const { id } = fake.state.opened[0];
+    assert.equal(manager.continue("other", 700), undefined);
+    assert.equal(manager.continue(id, 701), undefined, "another window");
+    assert.equal(
+        manager.continue(id, undefined),
+        undefined,
+        "a page outside a window",
+    );
+    assert.deepEqual(fake.state.closed, [], "nothing was closed for those");
+    assert.ok(manager.view(id, 700), "the window is still open");
+    assert.ok(manager.continue(id, 700));
+    assert.equal(manager.continue(id, 700), undefined, "used up");
+    assert.deepEqual(fake.state.closed, [700]);
+    // Its own removal event is not taken for the next window, and the next page load gets a window again.
+    manager.windowRemoved(700);
+    assert.equal(await manager.show(request({ documentId: "doc-2" })), true);
+    assert.ok(manager.view(fake.state.opened[1].id, 701));
+});
+
+test("Continue needs the window the browser has said is this one: not one that is still opening", async () => {
+    const { fake, manager } = setup();
+    fake.state.hold = true;
+    const opening = manager.show(request());
+    await tick();
+    await tick();
+    const { id } = fake.state.opened[0];
+    assert.ok(manager.view(id, 700), "its text can be read already");
+    assert.equal(manager.continue(id, 700), undefined);
+    fake.state.release();
+    assert.equal(await opening, true);
+    assert.ok(manager.continue(id, 700));
+});
+
+test("a window that went with its tab, was closed by the visitor or by turning the player off cannot continue", async () => {
+    for (const end of [
+        (manager) => manager.tabGone(1),
+        (manager) => manager.windowRemoved(700),
+        (manager) => manager.dispose(),
+    ]) {
+        const { fake, manager } = setup();
+        await manager.show(request());
+        end(manager);
+        assert.equal(
+            manager.continue(fake.state.opened[0].id, 700),
+            undefined,
+            String(end),
+        );
+    }
+    // Another tab closing changes nothing.
+    const { fake, manager } = setup();
+    await manager.show(request());
+    manager.tabGone(2);
+    assert.ok(manager.continue(fake.state.opened[0].id, 700));
+});

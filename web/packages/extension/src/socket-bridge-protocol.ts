@@ -2,6 +2,8 @@
 export const SOCKET_PORT_NAME = "timffle-socket";
 export const NATIVE_HOST_NAME = "timffle_socket_helper";
 export const HELPER_STATUS_REQUEST = "socket_helper_status";
+/** From the "install the helper first" window, once the helper is there: reload the game page. */
+export const HELPER_CONTINUE_REQUEST = "socket_helper_continue";
 export const HELPER_PROTOCOL = 2;
 export const MAX_SEND_BYTES = 65536;
 export const MAX_RECEIVE_BYTES = 32768;

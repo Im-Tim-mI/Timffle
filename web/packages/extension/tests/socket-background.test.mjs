@@ -8,9 +8,14 @@ import {
 } from "../src/socket-bridge-background.ts";
 import {
     SOCKET_PORT_NAME,
+    HELPER_CONTINUE_REQUEST,
     HELPER_STATUS_REQUEST,
     MAX_FRAME_SOCKETS,
 } from "../src/socket-bridge-protocol.ts";
+import {
+    createHelperPromptManager,
+    createToldDocuments,
+} from "../src/helper-prompt.ts";
 const ID = "eandddnbchclalbjkhfelhjhpijifcog",
     ORIGIN = "https://mole.61.com.tw";
 const tick = () => new Promise((r) => setImmediate(r));
@@ -283,7 +288,7 @@ test("content cannot probe helper status; concurrent UI checks share one process
     assert.ok(replies.every((x) => x.installed && x.protocol === 2));
 });
 
-/** The pages of the extension, as a message sender: only the settings, the popup and the install page may ask about the helper. */
+/** The pages of the extension, as a message sender: only the settings, the popup, the install page and the install window may ask about the helper. */
 const pageAt = (path, overrides = {}) => ({
     id: ID,
     url: "chrome-extension://" + ID + path,
@@ -292,7 +297,7 @@ const pageAt = (path, overrides = {}) => ({
     ...overrides,
 });
 
-test("the install page, the popup and the settings page may ask whether the helper is installed; no other page may", async (t) => {
+test("the install page, the install window, the popup and the settings page may ask whether the helper is installed; no other page may", async (t) => {
     const h = setup(t);
     const ask = async (sender) => {
         const before = h.natives.length;
@@ -305,13 +310,17 @@ test("the install page, the popup and the settings page may ask whether the help
         }
         return started;
     };
-    for (const path of ["/helper.html", "/popup.html", "/options.html"]) {
+    for (const path of ["/helper.html", "/prompt.html", "/popup.html", "/options.html"]) {
         assert.equal(await ask(pageAt(path)), 1, path);
     }
+    // The install window waits for the helper with this question: from its own window, with the request in its address.
+    assert.equal(await ask(pageAt("/prompt.html?id=x", { tab: { id: 900, windowId: 5 } })), 1);
     for (const sender of [
-        pageAt("/prompt.html"),
         pageAt("/onboard.html"),
         pageAt("/player.html"),
+        pageAt("/prompt.html", { frameId: 2 }),
+        pageAt("/prompt.html", { id: "other" }),
+        pageAt("/prompt.html", { origin: "https://evil.example" }),
         pageAt("/helper.html", { frameId: 2 }),
         pageAt("/helper.html", { id: "other" }),
         pageAt("/helper.html", { origin: "https://evil.example" }),
@@ -416,6 +425,7 @@ function helperWindow() {
             return true;
         },
         view: () => undefined,
+        continue: () => undefined,
         windowRemoved: (windowId) => calls.removed.push(windowId),
         tabGone: (tabId) => calls.gone.push(tabId),
         dispose: () => calls.disposed++,
@@ -604,11 +614,12 @@ test("a helper from before 1.4.0 that refuses the website's own address asks for
     // Brackets and letter case do not hide the address.
     assert.deepEqual(await refused(servedFrom(ULA, { tab: { id: 8 } }), "[FD00::1]", "1.2.9"), ["helper_incompatible"]);
     assert.deepEqual(mark.marked, [7, 8]);
+    // The old helper says hello like the new one: the window has to wait for the version that knows the exception.
     assert.deepEqual(
-        notice.calls.shown.map((x) => [x.problem, x.origin, x.tabId]),
+        notice.calls.shown.map((x) => [x.problem, x.origin, x.tabId, x.minVersion]),
         [
-            ["incompatible", LAN, 7],
-            ["incompatible", ULA, 8],
+            ["incompatible", LAN, 7, "1.4.0"],
+            ["incompatible", ULA, 8, "1.4.0"],
         ],
     );
     // A helper that knows the exception refused for a reason of its own.
@@ -641,4 +652,202 @@ test("an old helper still connects a website on the local network to public serv
     assert.deepEqual(p.sent, [{ type: "opened" }]);
     assert.equal(p.disconnected, false);
     assert.deepEqual(mark.marked, []);
+});
+
+// "Continue" in the install window: the helper is there now, the game's tab is reloaded (src/socket-bridge-background.ts reloadGameTab).
+const PORTAL = "https://portal.example";
+
+/** The real manager of the install window, in a browser that opens numbered windows, and tabs the test describes. */
+function continuing(t, tabs) {
+    const host = {
+        opened: [],
+        closed: [],
+        next: 700,
+        async open(id, near) {
+            this.opened.push({ id, near });
+            return this.next++;
+        },
+        async close(windowId) {
+            this.closed.push(windowId);
+        },
+    };
+    const h = setup(t, {
+        badge: badge(),
+        helperPrompts: createHelperPromptManager(host, createToldDocuments(undefined)),
+    });
+    const calls = { reload: [], active: [], focused: [] };
+    const fail = { reload: false, update: false, focus: false };
+    h.browser.tabs.get = async (tabId) => {
+        const tab = tabs.get(tabId);
+        if (!tab) {
+            throw new Error("No tab with id: " + tabId);
+        }
+        return { id: tabId, ...tab };
+    };
+    h.browser.tabs.reload = async (tabId) => {
+        if (fail.reload) {
+            throw new Error("cannot reload");
+        }
+        calls.reload.push(tabId);
+    };
+    h.browser.tabs.update = async (tabId, change) => {
+        if (fail.update) {
+            throw new Error("No tab");
+        }
+        calls.active.push([tabId, change]);
+    };
+    h.browser.windows.update = async (windowId, change) => {
+        if (fail.focus) {
+            throw new Error("No window");
+        }
+        calls.focused.push([windowId, change]);
+    };
+    /** A socket of `sender` fails because the helper is missing; resolves when its window is open. */
+    const missing = async (sender) => {
+        const before = host.opened.length;
+        await h.open(sender);
+        h.browser.runtime.lastError = { message: "Specified native messaging host not found." };
+        h.natives.at(-1).disconnect();
+        h.browser.runtime.lastError = undefined;
+        for (let i = 0; i < 5 && host.opened.length === before; i++) {
+            await tick();
+        }
+        assert.equal(host.opened.length, before + 1, "the install window opened");
+        await tick();
+        return { id: host.opened.at(-1).id, windowId: host.next - 1 };
+    };
+    /** What the background does with a message: whether it took it, and its answer. */
+    const send = async (message, sender) => {
+        let reply = "no reply";
+        const returned = h.browser.runtime.onMessage
+            .emit(message, sender, (r) => (reply = r))
+            .find((r) => r !== undefined);
+        await tick();
+        return { returned, reply };
+    };
+    const windowPage = (windowId, overrides = {}) => ({
+        id: ID,
+        url: "chrome-extension://" + ID + "/prompt.html?id=x",
+        origin: "chrome-extension://" + ID,
+        frameId: 0,
+        tab: { id: 900, windowId },
+        ...overrides,
+    });
+    return { h, host, calls, fail, missing, send, windowPage };
+}
+const gameTab = (overrides = {}) => content({ tab: { id: 7, windowId: 70, url: ORIGIN + "/game" }, ...overrides });
+
+test("Continue reloads the game's tab, brings it to the front and closes the window", async (t) => {
+    const tabs = new Map([[7, { url: ORIGIN + "/game?level=2#top", windowId: 70 }]]);
+    const c = continuing(t, tabs);
+    const { id, windowId } = await c.missing(gameTab());
+    const { returned, reply } = await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId));
+    assert.equal(returned, true, "answered later");
+    assert.equal(reply, true);
+    assert.deepEqual(c.host.closed, [windowId]);
+    assert.deepEqual(c.calls.reload, [7]);
+    assert.deepEqual(c.calls.active, [[7, { active: true }]]);
+    assert.deepEqual(c.calls.focused, [[70, { focused: true }]]);
+});
+
+test("Continue leaves a tab that went to another website, or was closed, alone; the window closes all the same", async (t) => {
+    for (const [label, tab] of [
+        ["another website", { url: "https://other.example/", windowId: 70 }],
+        ["the same host on another port", { url: ORIGIN + ":8443/game", windowId: 70 }],
+        ["an address the extension may not read", { windowId: 70 }],
+        ["a browser page", { url: "chrome://newtab/", windowId: 70 }],
+        ["closed", undefined],
+    ]) {
+        await t.test(label, async (t) => {
+            const c = continuing(t, new Map(tab ? [[7, tab]] : []));
+            const { id, windowId } = await c.missing(gameTab());
+            const { reply } = await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId));
+            assert.equal(reply, false);
+            assert.deepEqual(c.calls.reload, []);
+            assert.deepEqual(c.calls.active, []);
+            assert.deepEqual(c.host.closed, [windowId]);
+        });
+    }
+});
+
+test("a game frame embedded in another website's page reloads the tab while it still shows that page", async (t) => {
+    const embedded = gameTab({ frameId: 3, tab: { id: 7, windowId: 70, url: PORTAL + "/play" } });
+    await t.test("still that page", async (t) => {
+        const c = continuing(t, new Map([[7, { url: PORTAL + "/play?again", windowId: 70 }]]));
+        const { id, windowId } = await c.missing(embedded);
+        assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId))).reply, true);
+        assert.deepEqual(c.calls.reload, [7]);
+    });
+    // The tab now shows the game's own site at the top: not the page the window was about.
+    await t.test("the game's own site", async (t) => {
+        const c = continuing(t, new Map([[7, { url: ORIGIN + "/game", windowId: 70 }]]));
+        const { id, windowId } = await c.missing(embedded);
+        assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId))).reply, false);
+        assert.deepEqual(c.calls.reload, []);
+        assert.deepEqual(c.host.closed, [windowId]);
+    });
+});
+
+test("only the window's own page can continue, once; it names no tab, and nothing else is closed or reloaded", async (t) => {
+    const c = continuing(t, new Map([[7, { url: ORIGIN + "/game", windowId: 70 }], [99, { url: ORIGIN + "/other", windowId: 70 }]]));
+    const { id, windowId } = await c.missing(gameTab());
+    // Not even looked at: a web page, another page of the extension, the window's page inside a frame.
+    for (const sender of [
+        content(),
+        content({ tab: { id: 7, windowId } }),
+        pageAt("/options.html", { tab: { id: 901, windowId } }),
+        pageAt("/helper.html", { tab: { id: 901, windowId } }),
+        c.windowPage(windowId, { frameId: 1 }),
+        c.windowPage(windowId, { id: "other" }),
+    ]) {
+        assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, sender)).returned, undefined, JSON.stringify(sender));
+    }
+    // Refused: a window page of another window, or without one, and a request that is not one.
+    for (const [message, sender] of [
+        [{ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId + 1)],
+        [{ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(undefined)],
+        [{ type: HELPER_CONTINUE_REQUEST, id: "other" }, c.windowPage(windowId)],
+        [{ type: HELPER_CONTINUE_REQUEST }, c.windowPage(windowId)],
+        [{ type: HELPER_CONTINUE_REQUEST, id: 5 }, c.windowPage(windowId)],
+    ]) {
+        const { returned, reply } = await c.send(message, sender);
+        assert.deepEqual([returned, reply], [false, false], JSON.stringify([message, sender]));
+    }
+    assert.deepEqual(c.host.closed, []);
+    assert.deepEqual(c.calls.reload, []);
+    // The right window: whatever tab the message names, it is the game's tab that is reloaded.
+    assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id, tabId: 99 }, c.windowPage(windowId))).reply, true);
+    assert.deepEqual(c.calls.reload, [7]);
+    // Once.
+    assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId))).reply, false);
+    assert.deepEqual(c.calls.reload, [7]);
+    assert.deepEqual(c.host.closed, [windowId]);
+});
+
+test("a window that went with its tab cannot continue any more", async (t) => {
+    const c = continuing(t, new Map([[7, { url: ORIGIN + "/game", windowId: 70 }]]));
+    const { id, windowId } = await c.missing(gameTab());
+    c.h.browser.tabs.onRemoved.emit(7);
+    assert.deepEqual(c.host.closed, [windowId], "closed with its tab");
+    assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId))).reply, false);
+    assert.deepEqual(c.calls.reload, []);
+});
+
+test("a reload the browser refuses is not reported as one; failing to bring the tab forward does not undo it", async (t) => {
+    await t.test("reload refused", async (t) => {
+        const c = continuing(t, new Map([[7, { url: ORIGIN + "/game", windowId: 70 }]]));
+        c.fail.reload = true;
+        const { id, windowId } = await c.missing(gameTab());
+        assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId))).reply, false);
+        assert.deepEqual(c.host.closed, [windowId]);
+        assert.deepEqual(c.calls.active, []);
+    });
+    await t.test("tab and window cannot be brought forward", async (t) => {
+        const c = continuing(t, new Map([[7, { url: ORIGIN + "/game", windowId: 70 }]]));
+        c.fail.update = true;
+        c.fail.focus = true;
+        const { id, windowId } = await c.missing(gameTab());
+        assert.equal((await c.send({ type: HELPER_CONTINUE_REQUEST, id }, c.windowPage(windowId))).reply, true);
+        assert.deepEqual(c.calls.reload, [7]);
+    });
 });

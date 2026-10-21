@@ -1110,10 +1110,11 @@ test("a game that needs TCP and finds no helper gets a window next to its own, w
     );
     assert.equal(window.type, "popup");
     assert.equal(window.focused, true);
-    assert.deepEqual([window.width, window.height], [540, 620]);
+    // As tall as the question: it shows how to run the installer and waits for the helper.
+    assert.deepEqual([window.width, window.height], [540, 680]);
     // Centered over the window of the page that needed the helper.
     assert.equal(window.left, Math.round(100 + (1280 - 540) / 2));
-    assert.equal(window.top, Math.round(50 + (900 - 620) / 2));
+    assert.equal(window.top, Math.round(50 + (900 - 680) / 2));
     assert.deepEqual(helperView(h, 500), { helper: "missing", origin: MOLE });
     // The window belongs to the window the browser opened for it.
     assert.equal(helperView(h, 501), null);

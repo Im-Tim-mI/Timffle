@@ -3,7 +3,7 @@ import {
     createHelperPromptManager,
     createToldDocuments,
 } from "./helper-prompt";
-import type { HelperPromptManager } from "./helper-prompt";
+import type { HelperContinue, HelperPromptManager } from "./helper-prompt";
 import { getProxySettings, updateProxySettings } from "./proxy-settings";
 import {
     defaultProxySettings,
@@ -37,6 +37,7 @@ import {
 import type { SessionArea, VisitStore } from "./socket-visit";
 import {
     HELLO_TIMEOUT_MS,
+    HELPER_CONTINUE_REQUEST,
     HELPER_STATUS_REQUEST,
     MAX_ASKING_SOCKETS,
     MAX_FRAME_SOCKETS,
@@ -109,8 +110,15 @@ export function topOrigin(sender: Sender): string | undefined {
 }
 
 const SETTINGS_PAGES = ["/options.html", "/popup.html"];
-/** The pages that may ask whether the helper is installed: the install page checks it too. */
-const HELPER_STATUS_PAGES = [...SETTINGS_PAGES, "/helper.html"];
+/**
+ * The pages that may ask whether the helper is installed: the install page
+ * checks it too, and the "install the helper first" window waits for it.
+ */
+const HELPER_STATUS_PAGES = [
+    ...SETTINGS_PAGES,
+    "/helper.html",
+    `/${PROMPT_PAGE}`,
+];
 
 /** The toolbar icon of a tab whose game could not reach the helper: a red "!". */
 const HELPER_BADGE_TEXT = "!";
@@ -225,8 +233,12 @@ function handleSocketPort(
     authorize: (signal: AbortSignal, asking: () => void) => Promise<boolean>,
     release: () => void,
     limits: SocketLimits,
-    /** Called with the code ("helper_missing", "helper_incompatible") when the socket failed because the helper has to be installed. */
-    helperProblem: (code: string) => void,
+    /**
+     * Called with the code ("helper_missing", "helper_incompatible") when the
+     * socket failed because the helper has to be installed, and the version
+     * the new one needs at least when the one there was too old.
+     */
+    helperProblem: (code: string, minVersion?: string) => void,
     /** The private address the frame is served from (lanHostOf of the browser's sender origin): the helper may connect back to it. */
     lan: string | undefined,
 ): SocketHandle {
@@ -248,7 +260,7 @@ function handleSocketPort(
     let sendTimer: ReturnType<typeof setTimeout> | undefined;
     let receiveTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const finish = (reply?: FinalReply) => {
+    const finish = (reply?: FinalReply, minVersion?: string) => {
         if (state === "done") {
             return;
         }
@@ -260,7 +272,7 @@ function handleSocketPort(
         abort.abort();
         release();
         if (reply?.type === "error" && NEEDS_INSTALLER.has(reply.code)) {
-            helperProblem(reply.code);
+            helperProblem(reply.code, minVersion);
         }
         if (reply) {
             try {
@@ -273,7 +285,8 @@ function handleSocketPort(
         disconnect(native);
         disconnect(page);
     };
-    const fail = (code: string) => finish({ type: "error", code });
+    const fail = (code: string, minVersion?: string) =>
+        finish({ type: "error", code }, minVersion);
     const arm = (ms: number, code: string) => {
         clearTimeout(phaseTimer);
         phaseTimer = setTimeout(() => fail(code), ms);
@@ -322,13 +335,17 @@ function handleSocketPort(
             }
             // A protocol 2 helper always answers hello; an older one may reject it.
             if (reply.type === "error") {
-                fail(
-                    state === "hello" ||
-                        (state === "connecting" &&
-                            refusedAsOutdated(open.host, reply.code))
-                        ? "helper_incompatible"
-                        : reply.code,
-                );
+                if (state === "hello") {
+                    fail("helper_incompatible");
+                } else if (
+                    state === "connecting" &&
+                    refusedAsOutdated(open.host, reply.code)
+                ) {
+                    // It says hello like a new one: only its version tells the new one apart.
+                    fail("helper_incompatible", MIN_LAN_HELPER_VERSION);
+                } else {
+                    fail(reply.code);
+                }
                 return;
             }
             if (state === "hello") {
@@ -551,8 +568,8 @@ export interface SocketBridgeDeps {
 }
 
 const PROMPT_SIZE = { width: 540, height: 680 };
-/** The "install the helper" window has less to say than the question. */
-const HELPER_PROMPT_SIZE = { width: 540, height: 620 };
+/** The "install the helper" window: as tall as the question, for the step to run the installer and the wait for it. */
+const HELPER_PROMPT_SIZE = { width: 540, height: 680 };
 
 /** A window of prompt.html, opened next to the window of the page that causes it. */
 function browserPromptHost(size = PROMPT_SIZE): PromptHost {
@@ -635,6 +652,46 @@ function browserPromptEffects(visits: VisitStore): PromptEffects {
         budgetSpent: (tabId) =>
             (visits.get(tabId)?.prompts ?? 0) >= MAX_PROMPTS_PER_TAB,
     };
+}
+
+/**
+ * "Continue" in the "install the helper first" window: the helper is there
+ * now, so the game's tab is reloaded and brought to the front. Only while the
+ * tab still shows the website that needed the helper: a tab that has gone
+ * elsewhere in the meantime is left alone. Resolves to whether it was reloaded.
+ */
+async function reloadGameTab({
+    tabId,
+    expectedOrigin,
+}: HelperContinue): Promise<boolean> {
+    let tab: chrome.tabs.Tab;
+    let origin: string | undefined;
+    try {
+        tab = await browser.tabs.get(tabId);
+        origin = new URL(tab.url ?? "").origin;
+    } catch {
+        // Closed in the meantime, or no page the extension may know the address of.
+        return false;
+    }
+    if (origin !== expectedOrigin) {
+        return false;
+    }
+    try {
+        await browser.tabs.reload(tabId);
+    } catch {
+        return false;
+    }
+    try {
+        await browser.tabs.update(tabId, { active: true });
+    } catch {
+        /* Reloaded all the same. */
+    }
+    try {
+        await browser.windows.update(tab.windowId, { focused: true });
+    } catch {
+        /* Some browsers have no windows to bring forward. */
+    }
+    return true;
 }
 
 /** Register synchronously in the service worker. Return cleanup for isolated tests. */
@@ -819,7 +876,7 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 },
                 mayConnect: () => hasFreeSlot(page.sender, handle),
             },
-            (code) => {
+            (code, minVersion) => {
                 if (tabId === undefined) {
                     return;
                 }
@@ -845,6 +902,8 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                     ...(documentId === undefined ? {} : { documentId }),
                     ...(top === undefined ? {} : { top }),
                     ...(windowId === undefined ? {} : { windowId }),
+                    // The window then waits for that version, not for any helper.
+                    ...(minVersion === undefined ? {} : { minVersion }),
                 });
             },
             lan,
@@ -907,6 +966,25 @@ export function registerSocketBridge(deps: SocketBridgeDeps = {}): () => void {
                 void prompts
                     .answer(id, sender.tab?.windowId, choice as PromptChoice)
                     .then(sendResponse, () => sendResponse(false));
+                return true;
+            }
+            case HELPER_CONTINUE_REQUEST: {
+                // Only the window itself, for the request it shows; it names no tab.
+                if (!isExtensionUI(sender, [`/${PROMPT_PAGE}`])) {
+                    return undefined;
+                }
+                const id = message["id"];
+                const target =
+                    typeof id === "string"
+                        ? helperPrompts.continue(id, sender.tab?.windowId)
+                        : undefined;
+                if (!target) {
+                    sendResponse(false);
+                    return false;
+                }
+                void reloadGameTab(target).then(sendResponse, () =>
+                    sendResponse(false),
+                );
                 return true;
             }
             case VISIT_GET_REQUEST: {
