@@ -13,6 +13,12 @@ import { versionAtLeast } from "./socket-lan";
 
 /** How long the window waits between two looks. */
 export const HELPER_WAIT_POLL_MS = 2000;
+/**
+ * While the helper stays missing the window waits a little longer each time,
+ * up to this: an open window forgotten behind the browser starts a helper
+ * process per look, and coming back to it looks at once anyway.
+ */
+export const HELPER_WAIT_MAX_POLL_MS = 10000;
 /** The same for the install page, which looks only while it is shown. */
 export const HELPER_PAGE_REFRESH_MS = 3000;
 
@@ -56,6 +62,12 @@ export interface HelperWaitOptions {
     minVersion?: string | undefined;
     /** How long to wait between two looks. */
     pollMs?: number;
+    /**
+     * After each look that finds nothing the next wait is `pollMs` longer
+     * than the last, up to this; after coming back (`check`) the next wait is
+     * `pollMs` again. Without it the wait stays the same.
+     */
+    maxPollMs?: number;
     /** Whether a look that is due is made now; one that is not waits for the next turn. */
     active?: () => boolean;
     /** Replaceable for tests. */
@@ -80,6 +92,7 @@ export function waitForHelper({
     notYet = () => {},
     minVersion,
     pollMs = HELPER_WAIT_POLL_MS,
+    maxPollMs = pollMs,
     active = () => true,
     setTimer = (callback, ms) => setTimeout(callback, ms),
     clearTimer = (timer) =>
@@ -88,10 +101,11 @@ export function waitForHelper({
     let over = false;
     let looking = false;
     let timer: unknown;
+    let delay = pollMs;
 
     const schedule = () => {
         clearTimer(timer);
-        timer = setTimer(due, pollMs);
+        timer = setTimer(due, delay);
     };
     const look = async () => {
         looking = true;
@@ -117,6 +131,7 @@ export function waitForHelper({
                 ? (status as unknown as HelperStatus)
                 : { installed: false, error: "no_response" },
         );
+        delay = Math.min(delay + pollMs, maxPollMs);
         schedule();
     };
     function due() {
@@ -136,7 +151,9 @@ export function waitForHelper({
             if (over || looking) {
                 return;
             }
-            // The look that was due is this one; the next is due after its answer.
+            // The look that was due is this one; the next is due a shortest
+            // wait after its answer.
+            delay = 0;
             clearTimer(timer);
             void look();
         },

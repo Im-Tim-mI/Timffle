@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { setImmediate } from "node:timers";
 import {
     HELPER_PAGE_REFRESH_MS,
+    HELPER_WAIT_MAX_POLL_MS,
     HELPER_WAIT_POLL_MS,
     readyVersion,
     showHelperReady,
@@ -17,9 +18,10 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
 const INSTALLED = { installed: true, version: "1.4.0", protocol: 2 };
 const MISSING = { installed: false, error: "helper_missing" };
 
-test("the window and the install page look every 2 and 3 seconds", () => {
+test("the window and the install page look every 2 and 3 seconds; the window waits up to 10 seconds while the helper stays missing", () => {
     assert.equal(HELPER_WAIT_POLL_MS, 2000);
     assert.equal(HELPER_PAGE_REFRESH_MS, 3000);
+    assert.equal(HELPER_WAIT_MAX_POLL_MS, 10000);
 });
 
 test("only an installed helper of this protocol is one to continue with, and only one new enough when a version is asked for", () => {
@@ -309,6 +311,65 @@ test("while it should not look (the install page is not shown, or is checking by
     active = false;
     clock.advance(HELPER_PAGE_REFRESH_MS);
     assert.equal(asked.length, 1);
+});
+
+test("the window waits longer after each look that finds nothing, up to the most, and from the start again when the visitor comes back", async () => {
+    const { wait, clock, asked, answer } = setup({
+        maxPollMs: HELPER_WAIT_MAX_POLL_MS,
+    });
+    const gaps = [];
+    let last = 0;
+    let elapsed = 0;
+    for (let look = 1; look <= 7; look++) {
+        // Nothing is asked until the look is due; then exactly one look.
+        while (asked.length < look) {
+            clock.advance(100);
+            elapsed += 100;
+        }
+        gaps.push(elapsed - last);
+        last = elapsed;
+        await answer(MISSING);
+    }
+    assert.deepEqual(gaps, [2000, 4000, 6000, 8000, 10000, 10000, 10000]);
+    // Coming back looks at once, and the waits start again from the shortest.
+    wait.check();
+    assert.equal(asked.length, 8);
+    await answer(MISSING);
+    clock.advance(HELPER_WAIT_POLL_MS - 1);
+    assert.equal(asked.length, 8);
+    clock.advance(1);
+    assert.equal(asked.length, 9);
+    await answer(INSTALLED);
+    assert.equal(clock.pending, 0);
+});
+
+test("the window does not look while it is hidden; shown again, it looks at once", async () => {
+    let visible = true;
+    const { wait, clock, asked, answer } = setup({
+        maxPollMs: HELPER_WAIT_MAX_POLL_MS,
+        active: () => visible,
+    });
+    clock.advance(HELPER_WAIT_POLL_MS);
+    assert.equal(asked.length, 1);
+    await answer(MISSING);
+    visible = false;
+    clock.advance(HELPER_WAIT_MAX_POLL_MS * 6);
+    assert.equal(
+        asked.length,
+        1,
+        "no helper process is started for a hidden window",
+    );
+    assert.equal(
+        clock.pending,
+        1,
+        "it still has a turn, for when the page becomes visible by itself",
+    );
+    // The page's visibilitychange handler calls check().
+    visible = true;
+    wait.check();
+    assert.equal(asked.length, 2);
+    await answer(INSTALLED);
+    assert.equal(clock.pending, 0);
 });
 
 test("without timers of its own it uses the page's, and asks again only after a full wait", async (t) => {

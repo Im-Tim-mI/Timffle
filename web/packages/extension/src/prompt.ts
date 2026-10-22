@@ -18,7 +18,11 @@ import { isHelperPromptView } from "./helper-prompt";
 import type { HelperPromptView } from "./helper-prompt";
 import { bindHelperDownload, installStep } from "./helper-download";
 import { queryHelper } from "./helper-status";
-import { showHelperReady, waitForHelper } from "./helper-wait";
+import {
+    HELPER_WAIT_MAX_POLL_MS,
+    showHelperReady,
+    waitForHelper,
+} from "./helper-wait";
 import { HELPER_CONTINUE_REQUEST } from "./socket-bridge-protocol";
 import { createInputGuard } from "./prompt-guard";
 import type { InputGuard, PressKind } from "./prompt-guard";
@@ -270,10 +274,14 @@ async function runHelperNotice(id: string, view: HelperPromptView) {
     });
     // It looks by itself whether the helper is there now, and at once when
     // the visitor comes back to the window after running the installer.
+    // Each look starts a helper process, so it looks only while the window is
+    // shown and, while the helper stays missing, less and less often.
     // Once it is there, the line at the top says so instead of what was wrong.
     const waiting = waitForHelper({
         query: queryHelper,
         minVersion: view.minVersion,
+        maxPollMs: HELPER_WAIT_MAX_POLL_MS,
+        active: () => document.visibilityState === "visible",
         ready: (version) =>
             showHelperReady(
                 { problem: message, wait },

@@ -73,7 +73,12 @@ test("the install window offers a download only once it knows what it would down
         script,
         /document\.title = text\("timffle_helper_prompt_title"\)/u,
     );
-    for (const id of ["helper-download", "helper-more", "helper-close", "helper-continue"]) {
+    for (const id of [
+        "helper-download",
+        "helper-more",
+        "helper-close",
+        "helper-continue",
+    ]) {
         assert.match(tag(id), /<button\b[^>]*\btype="button"/u, id);
     }
     // The link to the other installers is a button, so that the window's input guard sees every way out of the page.
@@ -122,7 +127,10 @@ test("the install window has a heading in every language, and it is not the inst
 
 test("a website on the local network is told what it may reach: the address it comes from, twice, in every language", () => {
     // The page has the usual text; for such a website the script puts the other one in its place before the question is shown.
-    assert.match(tag("prompt-what"), /\bclass="what"[^>]*\bdata-i18n="timffle_prompt_what"/u);
+    assert.match(
+        tag("prompt-what"),
+        /\bclass="what"[^>]*\bdata-i18n="timffle_prompt_what"/u,
+    );
     assert.match(script, /const lan = lanHostOf\(view\.origin\);/u);
     assert.match(
         script,
@@ -136,7 +144,11 @@ test("a website on the local network is told what it may reach: the address it c
     for (const language of languages) {
         const i18n = fakeI18n(language);
         const what = i18n.getMessage("timffle_prompt_what_lan", "192.168.0.5");
-        assert.equal(what.split("192.168.0.5").length, 3, `${language}: ${what}`);
+        assert.equal(
+            what.split("192.168.0.5").length,
+            3,
+            `${language}: ${what}`,
+        );
         assert.doesNotMatch(what, /\$/u, language);
         assert.notEqual(what, i18n.getMessage("timffle_prompt_what"), language);
     }
@@ -147,7 +159,10 @@ test("a website on the local network is told what it may reach: the address it c
 });
 
 /** The install window's part of the page, and of the script. */
-const helperHtml = html.slice(html.indexOf('<main id="helper"'), html.indexOf('<main id="expired"'));
+const helperHtml = html.slice(
+    html.indexOf('<main id="helper"'),
+    html.indexOf('<main id="expired"'),
+);
 const helperScript = script.slice(
     script.indexOf("async function runHelperNotice"),
     script.indexOf("function runQuestion"),
@@ -156,10 +171,18 @@ const helperScript = script.slice(
 test("the install window starts waiting: no step before the system is known, a wait line that says it waits, Continue off", () => {
     // The step is filled in once the system is known; its first child is the place of the Linux command.
     assert.match(tag("helper-step"), /\bhidden\b/u);
-    assert.match(html, /<p id="helper-step" class="helper-step" hidden><code dir="ltr" translate="no"><\/code><\/p>/u);
+    assert.match(
+        html,
+        /<p id="helper-step" class="helper-step" hidden><code dir="ltr" translate="no"><\/code><\/p>/u,
+    );
     // The wait line is read out when it changes, and says what the window waits for from the start.
     const wait = tag("helper-wait");
-    for (const attribute of ['role="status"', 'aria-live="polite"', 'data-state="waiting"', 'data-i18n="timffle_helper_waiting"']) {
+    for (const attribute of [
+        'role="status"',
+        'aria-live="polite"',
+        'data-state="waiting"',
+        'data-i18n="timffle_helper_waiting"',
+    ]) {
         assert.ok(wait.includes(attribute), `${wait} lacks ${attribute}`);
     }
     assert.doesNotMatch(wait, /\bhidden\b/u);
@@ -174,13 +197,28 @@ test("the install window starts waiting: no step before the system is known, a w
     );
     // Top to bottom: the download, the way to the others, how to run it, the wait, the two buttons.
     const at = (id) => helperHtml.indexOf(`id="${id}"`);
-    const order = ["helper-download", "helper-more", "helper-step", "helper-wait", "helper-close", "helper-continue"];
-    assert.deepEqual([...order].sort((a, b) => at(a) - at(b)), order);
+    const order = [
+        "helper-download",
+        "helper-more",
+        "helper-step",
+        "helper-wait",
+        "helper-close",
+        "helper-continue",
+    ];
+    assert.deepEqual(
+        [...order].sort((a, b) => at(a) - at(b)),
+        order,
+    );
     // Inside the box whose recommended button is highlighted, so that Continue can be.
-    assert.ok(helperHtml.indexOf('class="helper-actions"') < at("helper-continue"));
+    assert.ok(
+        helperHtml.indexOf('class="helper-actions"') < at("helper-continue"),
+    );
     const css = readSources("assets/css", ".css")["prompt.css"];
     assert.match(css, /\.helper-actions \.recommended \{/u);
-    assert.match(css, /\.helper-end \{\s*display: grid;\s*grid-template-columns: 1fr 1fr;/u);
+    assert.match(
+        css,
+        /\.helper-end \{\s*display: grid;\s*grid-template-columns: 1fr 1fr;/u,
+    );
     // Once the helper is there the wait line is hidden, and nothing in the box shows it anyway.
     assert.match(css, /\.helper-actions \[hidden\] \{\s*display: none;/u);
     assert.doesNotMatch(css, /\.helper-wait\[/u);
@@ -194,29 +232,47 @@ test("the install window keeps no text of its own, and has no room for the insta
 test("the window waits with the background's status question, from the start and at once when the visitor comes back, until the page goes", () => {
     assert.match(
         helperScript,
-        /waitForHelper\(\{\s*query: queryHelper,\s*minVersion: view\.minVersion,\s*ready: \(version\) =>\s*showHelperReady\(\s*\{ problem: message, wait \},\s*proceed,\s*version,\s*download,\s*\),\s*\}\)/u,
+        /waitForHelper\(\{\s*query: queryHelper,\s*minVersion: view\.minVersion,\s*maxPollMs: HELPER_WAIT_MAX_POLL_MS,\s*active: \(\) => document\.visibilityState === "visible",\s*ready: \(version\) =>\s*showHelperReady\(\s*\{ problem: message, wait \},\s*proceed,\s*version,\s*download,\s*\),\s*\}\)/u,
     );
     // Once the helper is there, the line at the top (the one that said what is wrong, read out when it changes) says so.
-    assert.match(helperScript, /const message = document\.getElementById\("helper-text"\)!;/u);
-    // The default pace: the window does not choose one of its own.
-    assert.doesNotMatch(helperScript, /pollMs|active:/u);
-    assert.match(helperScript, /window\.addEventListener\("focus", \(\) => waiting\.check\(\)\)/u);
+    assert.match(
+        helperScript,
+        /const message = document\.getElementById\("helper-text"\)!;/u,
+    );
+    // The default pace, growing while the helper stays missing, and only while the window is shown.
+    assert.doesNotMatch(helperScript, /pollMs:/u);
+    assert.match(
+        helperScript,
+        /window\.addEventListener\("focus", \(\) => waiting\.check\(\)\)/u,
+    );
     assert.match(
         helperScript,
         /document\.addEventListener\("visibilitychange", \(\) => \{\s*if \(document\.visibilityState === "visible"\) \{\s*waiting\.check\(\);/u,
     );
-    assert.match(helperScript, /window\.addEventListener\("pagehide", \(\) => waiting\.stop\(\)\)/u);
+    assert.match(
+        helperScript,
+        /window\.addEventListener\("pagehide", \(\) => waiting\.stop\(\)\)/u,
+    );
     assert.match(script, /from "\.\/helper-status"/u);
 });
 
 test("Continue goes through the window's input guard and sends nothing but the window's id; only the background closes the window", () => {
-    assert.match(helperScript, /for \(const control of \[download, more, close, proceed\]\) \{\s*watch\(control\);/u);
+    assert.match(
+        helperScript,
+        /for \(const control of \[download, more, close, proceed\]\) \{\s*watch\(control\);/u,
+    );
     const handler = helperScript.slice(
         helperScript.indexOf('proceed.addEventListener("click"'),
         helperScript.indexOf("waitForHelper("),
     );
-    assert.match(handler, /if \(continuing \|\| proceed\.disabled \|\| !counts\(proceed, event\)\) \{\s*return;/u);
-    assert.match(handler, /\.sendMessage\(\{ type: HELPER_CONTINUE_REQUEST, id \}\)/u);
+    assert.match(
+        handler,
+        /if \(continuing \|\| proceed\.disabled \|\| !counts\(proceed, event\)\) \{\s*return;/u,
+    );
+    assert.match(
+        handler,
+        /\.sendMessage\(\{ type: HELPER_CONTINUE_REQUEST, id \}\)/u,
+    );
     assert.equal([...handler.matchAll(/sendMessage/gu)].length, 1);
     assert.doesNotMatch(handler, /window\.close\(\)|browser\.tabs|\.reload\(/u);
     // A reply that is not "reloaded" means the window's request has ended.
@@ -226,7 +282,10 @@ test("Continue goes through the window's input guard and sends nothing but the w
 test("the download no longer changes what the window says is wrong: the wait line tells what comes next", () => {
     assert.doesNotMatch(script, /timffle_helper_download_started/u);
     assert.match(helperScript, /started: \(\) => \{\},/u);
-    assert.equal([...helperScript.matchAll(/message\.textContent =/gu)].length, 1);
+    assert.equal(
+        [...helperScript.matchAll(/message\.textContent =/gu)].length,
+        1,
+    );
 });
 
 test("the step under the download is that system's line of the install page, and the Linux one names the file that was offered", () => {
@@ -238,16 +297,30 @@ test("the step under the download is that system's line of the install page, and
             for (const installer of HELPER_INSTALLERS) {
                 const want =
                     installer.family === "linux"
-                        ? i18n.getMessage("timffle_helper_step_linux", [linuxCommand(installer)])
-                        : i18n.getMessage(`timffle_helper_step_${installer.family}`);
-                assert.equal(installStep(installer), want, `${language}/${installer.id}`);
+                        ? i18n.getMessage("timffle_helper_step_linux", [
+                              linuxCommand(installer),
+                          ])
+                        : i18n.getMessage(
+                              `timffle_helper_step_${installer.family}`,
+                          );
+                assert.equal(
+                    installStep(installer),
+                    want,
+                    `${language}/${installer.id}`,
+                );
                 if (installer.family === "linux") {
                     assert.ok(
-                        installStep(installer).includes(`<1>tar xzf ${installer.file} && ./${installer.file.replace(".tar.gz", "")}</1>`),
+                        installStep(installer).includes(
+                            `<1>tar xzf ${installer.file} && ./${installer.file.replace(".tar.gz", "")}</1>`,
+                        ),
                         `${language}/${installer.id}`,
                     );
                 } else {
-                    assert.doesNotMatch(installStep(installer), /<\/?\d>|\$/u, `${language}/${installer.id}`);
+                    assert.doesNotMatch(
+                        installStep(installer),
+                        /<\/?\d>|\$/u,
+                        `${language}/${installer.id}`,
+                    );
                 }
             }
         }
