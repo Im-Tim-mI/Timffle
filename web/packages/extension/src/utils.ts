@@ -6,6 +6,8 @@ import {
     defaultProxySettings,
     PROXY_STORAGE_KEY,
 } from "./socket-proxy";
+import type { ProxySettings } from "./socket-proxy";
+import { explicitOptionsFrom } from "./startup-options";
 
 const DEFAULT_OPTIONS: Required<Options> = {
     ...Config.DEFAULT_CONFIG,
@@ -50,14 +52,17 @@ export const openOnboardPage: () => Promise<void> = () =>
         browser.tabs.create({ url: "/onboard.html" }, cb),
     );
 
-export async function getOptions(origin?: string): Promise<Options> {
+/**
+ * One read of each storage area: the options for `origin`, and the socket
+ * settings they were derived from (nothing when they could not be read), for
+ * the content script, which needs both before the page may load.
+ */
+export async function loadOptions(
+    origin?: string,
+): Promise<{ options: Options; proxySettings: ProxySettings | undefined }> {
     const [synced, proxySettings] = await Promise.all([
         browser.storage.sync.get(),
-        // A local storage failure must not enable sockets or break normal playback.
-        getProxySettings().catch(() => ({
-            ...defaultProxySettings(),
-            enabled: false,
-        })),
+        getProxySettings().catch(() => undefined),
     ]);
     // Never pass private settings through as arbitrary player config, even if
     // an old/manual storage edit placed this key in the wrong storage area.
@@ -74,35 +79,31 @@ export async function getOptions(origin?: string): Promise<Options> {
             : {};
 
     // Copy over default options if they don't exist yet.
-    return applyProxySettings(
-        { ...DEFAULT_OPTIONS, ...fonts, ...options },
+    return {
+        options: applyProxySettings(
+            { ...DEFAULT_OPTIONS, ...fonts, ...options },
+            // A local storage failure must not enable sockets or break normal playback.
+            proxySettings ?? { ...defaultProxySettings(), enabled: false },
+            origin,
+        ),
         proxySettings,
-        origin,
-    );
+    };
+}
+
+export async function getOptions(origin?: string): Promise<Options> {
+    return (await loadOptions(origin)).options;
+}
+
+/** The options that are explicitly different from the defaults; a copy. */
+export function explicitOptions(options: Options): Options {
+    return explicitOptionsFrom(options, DEFAULT_OPTIONS);
 }
 
 /**
  * Gets the options that are explicitly different from the defaults.
- *
- * In the future we should just not store options we don't want to set.
  */
 export async function getExplicitOptions(origin?: string): Promise<Options> {
-    const options = await getOptions(origin);
-    const defaultOptions = DEFAULT_OPTIONS;
-    for (const key in defaultOptions) {
-        // @ts-expect-error: Element implicitly has an any type
-        if (key in options && defaultOptions[key] === options[key]) {
-            // @ts-expect-error: Element implicitly has an any type
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-            delete options[key];
-        }
-    }
-    // This value is specific to the internal extension pages, and is always "default"
-    if ("responseHeadersUnsupported" in options) {
-        delete options["responseHeadersUnsupported"];
-    }
-
-    return options;
+    return explicitOptions(await getOptions(origin));
 }
 
 export const hasAllUrlsPermission = async () => {

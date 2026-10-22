@@ -9,11 +9,11 @@
 
 import {
     enableBrowserOnOutdatedChromium,
-    getOptions,
-    getExplicitOptions,
+    explicitOptions,
+    loadOptions,
 } from "./utils";
 import { isMessage } from "./messages";
-import { getProxySettings } from "./proxy-settings";
+import { clearReloadFlag } from "./startup-options";
 import {
     askSocketProxies,
     mergeSocketProxies,
@@ -121,13 +121,13 @@ function isXMLDocument(): boolean {
 
 (async () => {
     enableBrowserOnOutdatedChromium();
-    await browser.storage.sync.set({
-        ["showReloadButton"]: false,
-    });
     // Use this frame's origin, never a requested SWF URL or the top-level site.
     const origin = window.location.origin;
-    const options = await getOptions(origin);
-    const explicitOptions = await getExplicitOptions(origin);
+    // One read of each storage area for this frame; the socket settings are
+    // reused below for the bridge.
+    const loaded = await loadOptions(origin);
+    const options = clearReloadFlag(loaded.options);
+    const explicit = explicitOptions(options);
 
     const pageOptout = checkPageOptout();
     const shouldLoad =
@@ -210,7 +210,7 @@ function isXMLDocument(): boolean {
     // that its first connection attempt reaches the background's question;
     // its page is only changed once a movie is about to load (see
     // socket-bridge-arm.ts).
-    const proxySettings = await getProxySettings().catch(() => undefined);
+    const proxySettings = loaded.proxySettings;
     const allowed =
         resolveSocketAccess(proxySettings, origin)?.mode === "helper";
     const asked = askSocketProxies(proxySettings, origin);
@@ -235,11 +235,11 @@ function isXMLDocument(): boolean {
     await sendMessageToPage({
         type: "load",
         config: {
-            ...explicitOptions,
+            ...explicit,
             ...(asked.length
                 ? {
                       socketProxy: mergeSocketProxies(
-                          explicitOptions.socketProxy,
+                          explicit.socketProxy,
                           asked,
                       ),
                   }
