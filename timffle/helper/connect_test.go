@@ -5,14 +5,22 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
+
+// refusedError is what the standard dialer returns for a refused connection:
+// the errno wrapped in os.SyscallError and net.OpError.
+func refusedError() error {
+	return &net.OpError{Op: "dial", Net: "tcp", Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED}}
+}
 
 func TestFirstCandidateTimeoutFallsBackAndPins(t *testing.T) {
 	var lookups atomic.Int32
@@ -121,7 +129,7 @@ func openLAN(t *testing.T, host string, lanHost *string, answers ...string) ([]s
 			mu.Lock()
 			defer mu.Unlock()
 			dialed = append(dialed, address)
-			return nil, errors.New("connection refused")
+			return nil, refusedError()
 		},
 	}
 	conn, code := openTCP(context.Background(), request{Host: host, Port: 1863, TimeoutMs: 1000, LanHost: lanHost}, opt)
@@ -274,7 +282,7 @@ func TestCandidateLimitAndDeduplication(t *testing.T) {
 		},
 		dial: func(context.Context, string, string) (net.Conn, error) {
 			count.Add(1)
-			return nil, errors.New("refused")
+			return nil, refusedError()
 		},
 	}
 	_, code := openTCP(context.Background(), request{Host: "many.example", Port: 80}, opt)
@@ -291,8 +299,13 @@ func TestFailedConnectionsNeverOpen(t *testing.T) {
 		{"dns", "fake.example", "dns", options{lookup: func(context.Context, string) ([]net.IPAddr, error) { return nil, errors.New("fake lookup failure") }}},
 		{"empty", "fake.example", "dns", options{lookup: func(context.Context, string) ([]net.IPAddr, error) { return nil, nil }}},
 		{"blocked", "127.0.0.1", "blocked", options{}},
-		{"refused", "8.8.8.8", "refused", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("connection refused") }}},
+		{"refused", "8.8.8.8", "refused", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, refusedError() }}},
 		{"unreachable", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("unreachable") }}},
+		// The text no longer decides: only the errno does.
+		{"refused-text", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("connection refused") }}},
+		{"reset", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) {
+			return nil, &net.OpError{Op: "dial", Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNRESET}}
+		}}},
 		{"nil-success", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, nil }}},
 	}
 	for _, tt := range tests {
@@ -303,6 +316,21 @@ func TestFailedConnectionsNeverOpen(t *testing.T) {
 			c.terminal(tt.code)
 		})
 	}
+}
+
+// A port nobody listens on: the kernel refuses at once, and the production
+// dialer's error must map to "refused" on this platform.
+func TestRealRefusedConnection(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	c := start(t, local())
+	c.hello()
+	c.send(request{Type: "open", Host: "127.0.0.1", Port: port, TimeoutMs: 5000})
+	c.terminal("refused")
 }
 
 func TestTotalTimeoutIncludesDNS(t *testing.T) {
@@ -377,12 +405,24 @@ func TestTimeoutBoundsAndOverflow(t *testing.T) {
 }
 
 func TestIsPublicIP(t *testing.T) {
-	good := []string{"1.1.1.1", "8.8.8.8", "9.9.9.9", "192.0.1.1", "192.88.100.1", "100.128.0.1", "223.255.255.255", "2606:4700::1111", "2001:4860:4860::8888", "2001:200::1", "3ffe::1", "::ffff:8.8.8.8"}
+	good := []string{
+		"1.1.1.1", "8.8.8.8", "9.9.9.9", "192.0.1.1", "192.88.100.1", "100.128.0.1", "223.255.255.255", "2606:4700::1111", "2001:4860:4860::8888", "2001:200::1", "3ffe::1", "::ffff:8.8.8.8",
+		// Globally reachable special-purpose blocks outside any denied block
+		// (AS112 and AMT) are ordinary public addresses to this policy.
+		"192.31.196.1", "192.52.193.1", "192.175.48.1", "2620:4f:8000::1",
+		// Neighbours of denied blocks.
+		"192.0.1.255", "192.0.3.0", "2001:200::", "3ffe:ffff::1", "3fff:1000::1", "2003::1",
+	}
 	bad := []string{
 		"0.1.2.3", "10.0.0.1", "100.64.0.1", "100.127.255.255", "127.1.2.3", "169.254.1.1", "172.16.1.1", "172.31.255.255",
 		"192.0.0.9", "192.0.0.10", "192.0.2.1", "192.88.99.1", "192.168.1.1", "198.18.0.1", "198.19.255.255", "198.51.100.1", "203.0.113.1", "224.0.0.1", "240.0.0.1", "255.255.255.255",
 		"::", "::1", "::8.8.8.8", "::ffff:10.0.0.1", "::ffff:127.0.0.1", "64:ff9b::808:808", "64:ff9b:1::1", "100::1", "100:0:0:1::1",
-		"2001::1", "2001:2::1", "2001:3::1", "2001:4:112::1", "2001:10::1", "2001:20::1", "2001:30::1", "2001:1ff::1", "2001:db8::1", "2002::1", "3fff::1", "3fff:fff:ffff::1", "4000::1", "5f00::1", "fc00::1", "fe80::1", "fec0::1", "ff02::1",
+		"2001::1", "2001:2::1", "2001:3::1", "2001:4:112::1", "2001:10::1", "2001:20::1", "2001:30::1", "2001:1ff::1", "2001:db8::1", "2002::1", "3fff::1", "3fff:fff:ffff::1", "4000::1", "fc00::1", "fe80::1", "fec0::1", "ff02::1",
+		// Globally reachable anycast assignments inside denied blocks: PCP and
+		// TURN (IPv4 and IPv6), AMT and AS112 in 2001::/23.
+		"192.0.0.0", "192.0.0.255", "2001:1::1", "2001:1::2", "2001:3:ffff::1", "2001:4:112:ffff::1", "2001:1ff:ffff::1",
+		// SRv6 SIDs (RFC 9602): the whole of 5f00::/16, which is outside 2000::/3.
+		"5f00::", "5f00::1", "5f00:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "5eff::1", "5f01::1", "5fff::1",
 	}
 	for _, ip := range good {
 		if !isPublicIP(net.ParseIP(ip)) {

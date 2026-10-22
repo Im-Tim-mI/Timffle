@@ -5,11 +5,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type fakeRegistry map[string]string
@@ -139,6 +141,91 @@ func TestReinstallUpgradesAndRepairs(t *testing.T) {
 		t.Fatal("not repaired")
 	}
 	noLeftovers(t, e.dir())
+}
+
+// Installing the same bytes again (a same-version reinstall, or a repeated
+// double-click while the extension keeps probing the installed helper) must
+// not replace a file that may be running; everything else is still redone.
+func TestReinstallSameBytesSkipsCopy(t *testing.T) {
+	e := newInstallEnv(t)
+	if err := e.installer().install(); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(e.binary())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(e.manifest("google-chrome")); err != nil {
+		t.Fatal(err)
+	}
+	copies := 0
+	in := e.installer()
+	in.copy = func(src, dst string) error { copies++; return copyPlain(src, dst) }
+	if err := in.install(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(e.binary())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if copies != 0 || !os.SameFile(before, after) || readText(t, e.binary()) != "helper v1" {
+		t.Fatalf("identical helper replaced (copies %d)", copies)
+	}
+	if !exists(e.manifest("google-chrome")) {
+		t.Fatal("manifest not rewritten")
+	}
+	want, _ := digestString(e.self)
+	if r, err := readReceipt(e.dir()); err != nil || r == nil || r.InstalledBinarySHA256 != want || r.PendingBinarySHA256 != "" {
+		t.Fatalf("receipt %+v %v", r, err)
+	}
+	noLeftovers(t, e.dir())
+	// Different bytes are still copied.
+	e.writeSelf("helper v2")
+	if err := in.install(); err != nil {
+		t.Fatal(err)
+	}
+	if copies != 1 || readText(t, e.binary()) != "helper v2" {
+		t.Fatalf("upgrade not copied (copies %d)", copies)
+	}
+}
+
+func TestRenameRetrying(t *testing.T) {
+	transient := errors.New("transient")
+	permanent := errors.New("permanent")
+	isTransient := func(err error) bool { return errors.Is(err, transient) }
+	failing := func(n int, err error) (func(string, string) error, *int) {
+		calls := 0
+		return func(string, string) error {
+			calls++
+			if calls <= n {
+				return err
+			}
+			return nil
+		}, &calls
+	}
+	rename, calls := failing(3, transient)
+	if err := renameRetrying(rename, "a", "b", isTransient, 12, time.Millisecond); err != nil || *calls != 4 {
+		t.Fatalf("transient failures not retried: %v after %d calls", err, *calls)
+	}
+	rename, calls = failing(100, transient)
+	if err := renameRetrying(rename, "a", "b", isTransient, 12, time.Millisecond); !errors.Is(err, transient) || *calls != 13 {
+		t.Fatalf("retry not bounded: %v after %d calls", err, *calls)
+	}
+	rename, calls = failing(1, permanent)
+	if err := renameRetrying(rename, "a", "b", isTransient, 12, time.Millisecond); !errors.Is(err, permanent) || *calls != 1 {
+		t.Fatalf("permanent failure retried: %v after %d calls", err, *calls)
+	}
+	rename, calls = failing(0, nil)
+	if err := renameRetrying(rename, "a", "b", isTransient, 12, time.Millisecond); err != nil || *calls != 1 {
+		t.Fatalf("success repeated: %v after %d calls", err, *calls)
+	}
+	// On this platform no error is transient: a failing rename fails at once.
+	if transientReplaceError(&os.LinkError{Op: "rename", Old: "a", New: "b", Err: errors.New("busy")}) {
+		t.Fatal("retried on a platform without sharing violations")
+	}
+	if err := replaceFile(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "dst")); err == nil {
+		t.Fatal("renamed a missing file")
+	}
 }
 
 func TestRunningInstalledCopyReinstalls(t *testing.T) {

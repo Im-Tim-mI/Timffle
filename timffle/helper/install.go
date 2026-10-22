@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 // Per-user installation, built into the helper so that no platform needs
@@ -225,6 +226,29 @@ func sameFile(a, b string) bool {
 	return err == nil && os.SameFile(ai, bi)
 }
 
+const (
+	replaceRetries = 12
+	replaceDelay   = 250 * time.Millisecond
+)
+
+// replaceFile moves tmp over dst. An installed helper that is still running
+// (the extension probes it every two seconds while its install window is
+// open, or a game is connected) makes Windows refuse to replace its file for
+// a moment; such transient errors are retried for a few seconds instead of
+// failing the whole install. Other platforms never report them.
+func replaceFile(tmp, dst string) error {
+	return renameRetrying(os.Rename, tmp, dst, transientReplaceError, replaceRetries, replaceDelay)
+}
+
+func renameRetrying(rename func(oldpath, newpath string) error, tmp, dst string, transient func(error) bool, retries int, delay time.Duration) error {
+	err := rename(tmp, dst)
+	for i := 0; i < retries && err != nil && transient(err); i++ {
+		time.Sleep(delay)
+		err = rename(tmp, dst)
+	}
+	return err
+}
+
 func appendMissing(list []string, more ...string) []string {
 	for _, item := range more {
 		found := false
@@ -360,6 +384,8 @@ func (in *installer) install() error {
 	if in.reg != nil {
 		receipt.Registry = l.registry
 	}
+	// The bytes already installed, if any; inspect verified they are ours.
+	var installed string
 	if old != nil {
 		receipt.Manifests = appendMissing(append([]string(nil), receipt.Manifests...), old.Manifests...)
 		if in.reg != nil {
@@ -368,10 +394,11 @@ func (in *installer) install() error {
 		if exists, err := existingRegular(l.binary); err != nil {
 			return err
 		} else if exists {
-			receipt.InstalledBinarySHA256, err = digestString(l.binary)
+			installed, err = digestString(l.binary)
 			if err != nil {
 				return err
 			}
+			receipt.InstalledBinarySHA256 = installed
 		}
 	}
 	if err := in.checkLayoutPaths(&receipt); err != nil {
@@ -388,7 +415,10 @@ func (in *installer) install() error {
 	if err := saveReceipt(l.dir, receipt); err != nil {
 		return err
 	}
-	if !sameFile(in.self, l.binary) {
+	// Identical bytes are left in place: a same-version reinstall then never
+	// has to replace a helper that may be running, and only rewrites the
+	// receipt, manifests and registrations.
+	if !sameFile(in.self, l.binary) && installed != want {
 		staging, err := os.MkdirTemp(l.dir, ".install-*")
 		if err != nil {
 			return err
@@ -415,7 +445,7 @@ func (in *installer) install() error {
 		if err := verifyOwnedBinary(l.binary, &receipt); err != nil {
 			return err
 		}
-		if err := os.Rename(tmp, l.binary); err != nil {
+		if err := replaceFile(tmp, l.binary); err != nil {
 			return fmt.Errorf("cannot replace helper; close Chrome and retry: %w", err)
 		}
 	}

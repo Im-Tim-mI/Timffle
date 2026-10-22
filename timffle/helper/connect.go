@@ -7,8 +7,6 @@ import (
 	"net"
 	"net/netip"
 	"strconv"
-	"strings"
-	"syscall"
 	"time"
 )
 
@@ -177,9 +175,4 @@ func openTCP(parent context.Context, req request, opt options) (net.Conn, string
 		}
 	}
 	return nil, code
-}
-
-// Windows has WSAECONNREFUSED rather than syscall.ECONNREFUSED.
-func isRefused(err error) bool {
-	return errors.Is(err, syscall.ECONNREFUSED) || strings.Contains(strings.ToLower(err.Error()), "refused")
 }

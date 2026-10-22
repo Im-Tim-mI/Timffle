@@ -23,6 +23,14 @@ var (
 
 const chromiumKey = `Software\Chromium`
 
+const errorSharingViolation = syscall.Errno(32) // ERROR_SHARING_VIOLATION
+
+// transientReplaceError reports the errors MoveFileEx returns while another
+// process (a running copy of the helper) still holds the file being replaced.
+func transientReplaceError(err error) bool {
+	return errors.Is(err, errorSharingViolation) || errors.Is(err, syscall.ERROR_ACCESS_DENIED)
+}
+
 func platformInstaller(out io.Writer) (*installer, error) {
 	self, err := os.Executable()
 	if err != nil {

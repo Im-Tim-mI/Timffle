@@ -12,6 +12,9 @@ func samePath(a, b string) bool { return filepath.Clean(a) == filepath.Clean(b) 
 
 func isLinkLike(info os.FileInfo) bool { return info.Mode()&os.ModeSymlink != 0 }
 
+// A rename over a running helper succeeds here; nothing is worth retrying.
+func transientReplaceError(error) bool { return false }
+
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
