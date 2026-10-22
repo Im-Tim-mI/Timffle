@@ -6,11 +6,16 @@ import (
 	"strings"
 )
 
-// A conservative, explicit public-unicast policy. Entire special-purpose
-// blocks are denied, including globally reachable anycast exceptions within
-// them: game servers do not need IANA protocol-assignment destinations.
-// The snapshots below cover IANA IPv4/IPv6 special-purpose assignments as of
-// 2026-10; future allocations require deliberate review, not an env override.
+// A conservative, explicit public-unicast policy: every IPv4 special-purpose
+// block that IANA lists as not globally reachable is denied, and so is all of
+// 192.0.0.0/24 (IETF protocol assignments), including the two globally
+// reachable anycast addresses inside it: game servers do not need IANA
+// protocol-assignment destinations. The globally reachable special-purpose
+// blocks that are not inside such a denied block (AS112 192.31.196.0/24 and
+// 192.175.48.0/24, AMT 192.52.193.0/24) stay allowed, like any other public
+// address. The snapshots below cover the IANA IPv4/IPv6 special-purpose
+// registries as of 2026-10; future allocations require deliberate review,
+// not an env override.
 var blockedV4 = mustPrefixes(
 	"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8",
 	"169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24",
@@ -20,9 +25,14 @@ var blockedV4 = mustPrefixes(
 
 // Fail closed outside currently allocated global-unicast 2000::/3. This
 // excludes unspecified, loopback, compatible-v4, NAT64, discard-only, local,
-// link/site-local and multicast. Inside 2000::/3 deny IETF assignments (which
-// include Teredo, benchmarking, ORCHID/ORCHIDv2, AMT and drone remote IDs),
-// documentation (both allocations), and 6to4 transition addresses.
+// link/site-local and multicast, and also the SRv6 SID block 5f00::/16
+// (RFC 9602, not globally reachable), which lies outside 2000::/3 and so
+// needs no entry below. Inside 2000::/3 deny all of the IETF assignments
+// 2001::/23 (which include Teredo, benchmarking, ORCHID/ORCHIDv2, drone
+// remote IDs and the globally reachable AMT, AS112 and PCP/TURN anycast
+// assignments), documentation (both allocations), and 6to4 transition
+// addresses. The AS112 delegation block 2620:4f:8000::/48 is globally
+// reachable and outside any denied block, so it stays allowed.
 var globalV6 = netip.MustParsePrefix("2000::/3")
 var blockedV6 = mustPrefixes("2001::/23", "2001:db8::/32", "2002::/16", "3fff::/20")
 
