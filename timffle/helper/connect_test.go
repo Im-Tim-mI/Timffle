@@ -5,14 +5,22 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
+
+// refusedError is what the standard dialer returns for a refused connection:
+// the errno wrapped in os.SyscallError and net.OpError.
+func refusedError() error {
+	return &net.OpError{Op: "dial", Net: "tcp", Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED}}
+}
 
 func TestFirstCandidateTimeoutFallsBackAndPins(t *testing.T) {
 	var lookups atomic.Int32
@@ -121,7 +129,7 @@ func openLAN(t *testing.T, host string, lanHost *string, answers ...string) ([]s
 			mu.Lock()
 			defer mu.Unlock()
 			dialed = append(dialed, address)
-			return nil, errors.New("connection refused")
+			return nil, refusedError()
 		},
 	}
 	conn, code := openTCP(context.Background(), request{Host: host, Port: 1863, TimeoutMs: 1000, LanHost: lanHost}, opt)
@@ -274,7 +282,7 @@ func TestCandidateLimitAndDeduplication(t *testing.T) {
 		},
 		dial: func(context.Context, string, string) (net.Conn, error) {
 			count.Add(1)
-			return nil, errors.New("refused")
+			return nil, refusedError()
 		},
 	}
 	_, code := openTCP(context.Background(), request{Host: "many.example", Port: 80}, opt)
@@ -291,8 +299,13 @@ func TestFailedConnectionsNeverOpen(t *testing.T) {
 		{"dns", "fake.example", "dns", options{lookup: func(context.Context, string) ([]net.IPAddr, error) { return nil, errors.New("fake lookup failure") }}},
 		{"empty", "fake.example", "dns", options{lookup: func(context.Context, string) ([]net.IPAddr, error) { return nil, nil }}},
 		{"blocked", "127.0.0.1", "blocked", options{}},
-		{"refused", "8.8.8.8", "refused", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("connection refused") }}},
+		{"refused", "8.8.8.8", "refused", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, refusedError() }}},
 		{"unreachable", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("unreachable") }}},
+		// The text no longer decides: only the errno does.
+		{"refused-text", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("connection refused") }}},
+		{"reset", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) {
+			return nil, &net.OpError{Op: "dial", Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNRESET}}
+		}}},
 		{"nil-success", "8.8.8.8", "unreachable", options{dial: func(context.Context, string, string) (net.Conn, error) { return nil, nil }}},
 	}
 	for _, tt := range tests {
@@ -303,6 +316,21 @@ func TestFailedConnectionsNeverOpen(t *testing.T) {
 			c.terminal(tt.code)
 		})
 	}
+}
+
+// A port nobody listens on: the kernel refuses at once, and the production
+// dialer's error must map to "refused" on this platform.
+func TestRealRefusedConnection(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	c := start(t, local())
+	c.hello()
+	c.send(request{Type: "open", Host: "127.0.0.1", Port: port, TimeoutMs: 5000})
+	c.terminal("refused")
 }
 
 func TestTotalTimeoutIncludesDNS(t *testing.T) {
