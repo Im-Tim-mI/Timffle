@@ -111,6 +111,11 @@ export function startContentSocketBridge(
                 if (done) {
                     return;
                 }
+                // The background has already checked this reply the same way
+                // before forwarding it. Only the extension's own background can
+                // speak on this port (a web page cannot), so the check here
+                // guards the state machine and the decode allocation of this
+                // side, not against the page; it is kept on purpose.
                 if (!isHelperReply(reply)) {
                     socket.fail("invalid");
                     return;

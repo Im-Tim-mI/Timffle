@@ -205,5 +205,11 @@ export function bytesToBase64(bytes: Uint8Array): string {
 
 export function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
     const binary = atob(base64);
-    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    // A plain loop: a callback per byte costs more than the decoding itself
+    // on a 32 KiB chunk.
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
 }

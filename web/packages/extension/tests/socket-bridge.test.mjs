@@ -167,10 +167,17 @@ test("a received chunk is acknowledged only after it has been dispatched", async
     ws.onmessage = (event) =>
         seen.push({
             data: [...new Uint8Array(event.data)],
+            origin: event.origin,
             acksBefore: ops().filter((op) => op === "ack").length,
         });
     ws.receive({ op: "data", sid: 3, data: new Uint8Array([128, 10]).buffer });
-    assert.deepEqual(seen, [{ data: [128, 10], acksBefore: 0 }]);
+    assert.deepEqual(seen, [
+        {
+            data: [128, 10],
+            origin: new URL(helperUrl("9.9.9.9", 8888)).origin,
+            acksBefore: 0,
+        },
+    ]);
     assert.deepEqual(port.sent.at(-1), { op: "ack", sid: 3 });
 
     // A listener may reply synchronously; that write goes out before the ack.
@@ -641,6 +648,13 @@ test("base64 round trip and message validation", () => {
     assert.deepEqual(base64ToBytes(bytesToBase64(all)), all);
     const big = Uint8Array.from({ length: 100_000 }, (_, i) => (i * 31) & 255);
     assert.deepEqual(base64ToBytes(bytesToBase64(big)), big);
+    for (const length of [0, 1, 2, 3, MAX_RECEIVE_BYTES]) {
+        const bytes = Uint8Array.from({ length }, (_, i) => 255 - (i & 255));
+        const decoded = base64ToBytes(bytesToBase64(bytes));
+        assert.ok(decoded instanceof Uint8Array);
+        assert.equal(decoded.byteLength, length);
+        assert.deepEqual(decoded, bytes);
+    }
 
     assert.ok(isOpenRequest({ type: "open", host: "9.9.9.9", port: 8888 }));
     assert.ok(isOpenRequest({ type: "open", host: "::1", port: 1 }));

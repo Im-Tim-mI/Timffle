@@ -114,6 +114,8 @@ export class BridgeSocket extends EventTarget {
     #closePosted = false;
     readonly #handlers = new Map<string, EventListener>();
     readonly #sid: number;
+    /** Of the helper URL; computed once, not per received chunk. */
+    readonly #origin: string;
     readonly #port: MessagePort;
     readonly #sockets: Map<number, BridgeSocket>;
 
@@ -178,6 +180,7 @@ export class BridgeSocket extends EventTarget {
         super();
         this.url = destination.url;
         this.#sid = sid;
+        this.#origin = new URL(destination.url).origin;
         this.#port = port;
         this.#sockets = sockets;
         if (sockets.size >= MAX_FRAME_SOCKETS) {
@@ -346,7 +349,7 @@ export class BridgeSocket extends EventTarget {
                         this.dispatchEvent(
                             new MessageEvent("message", {
                                 data,
-                                origin: new URL(this.url).origin,
+                                origin: this.#origin,
                             }),
                         );
                     }
