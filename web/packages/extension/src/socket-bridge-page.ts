@@ -25,8 +25,14 @@ interface Destination {
     host: string;
     port: number;
 }
+interface QueuedWrite {
+    data: ArrayBuffer | Blob;
+    offset: number;
+    length: number;
+}
 type Handler<E extends Event> =
     ((this: BridgeSocket, event: E) => unknown) | null;
+const utf8 = new TextEncoder();
 
 export function parseHelperUrl(value: unknown): Destination | null {
     if (typeof value !== "string" && !(value instanceof URL)) {
@@ -99,7 +105,7 @@ export class BridgeSocket extends EventTarget {
     #binaryType: BinaryType = "blob";
     #state = CONNECTING;
     #buffered = 0;
-    #queue: { data: ArrayBuffer | Blob; offset: number; length: number }[] = [];
+    #queue: QueuedWrite[] = [];
     #inFlight = 0;
     #reading = false;
     #timer: ReturnType<typeof setTimeout> | undefined;
@@ -236,7 +242,7 @@ export class BridgeSocket extends EventTarget {
         // Copy WASM views at send(), not after asynchronous Blob reads.
         const copy =
             typeof input === "string"
-                ? new TextEncoder().encode(input).buffer
+                ? utf8.encode(input).buffer
                 : input instanceof Blob
                   ? input
                   : input instanceof ArrayBuffer
@@ -310,8 +316,11 @@ export class BridgeSocket extends EventTarget {
                 }
                 this.#buffered -= this.#inFlight;
                 this.#inFlight = 0;
-                const first = this.#queue[0];
-                if (first && first.offset === first.length) {
+                // One send may have carried several whole writes.
+                while (
+                    this.#queue.length &&
+                    this.#queue[0]!.offset === this.#queue[0]!.length
+                ) {
                     this.#queue.shift();
                 }
                 clearTimeout(this.#timer);
@@ -389,14 +398,22 @@ export class BridgeSocket extends EventTarget {
         }
         this.#reading = true;
         try {
-            const end = Math.min(first.offset + MAX_SEND_BYTES, first.length);
-            const part = first.data.slice(first.offset, end);
-            const buffer =
-                part instanceof Blob ? await part.arrayBuffer() : part;
-            if (this.readyState === CLOSED) {
-                return;
+            let buffer: ArrayBuffer;
+            if (first.data instanceof Blob) {
+                const end = Math.min(
+                    first.offset + MAX_SEND_BYTES,
+                    first.length,
+                );
+                buffer = await first.data
+                    .slice(first.offset, end)
+                    .arrayBuffer();
+                if (this.readyState === CLOSED) {
+                    return;
+                }
+                first.offset = end;
+            } else {
+                buffer = this.#takeBuffers();
             }
-            first.offset = end;
             this.#inFlight = buffer.byteLength;
             this.#post({ op: "send", sid: this.#sid, data: buffer }, [buffer]);
         } catch {
@@ -404,6 +421,53 @@ export class BridgeSocket extends EventTarget {
         } finally {
             this.#reading = false;
         }
+    }
+
+    /**
+     * The next send: the queued ArrayBuffer writes from the front of the
+     * queue, in order, up to one send's worth. TCP is a byte stream, so
+     * several flushes of the game may travel as one bridge send; their bytes
+     * keep their order and every write is still acknowledged in order (see
+     * "sent"). A single whole write is handed over without a copy.
+     */
+    #takeBuffers(): ArrayBuffer {
+        const parts: { item: QueuedWrite; take: number }[] = [];
+        let total = 0;
+        for (const item of this.#queue) {
+            if (
+                !(item.data instanceof ArrayBuffer) ||
+                total === MAX_SEND_BYTES
+            ) {
+                break;
+            }
+            const take = Math.min(
+                item.length - item.offset,
+                MAX_SEND_BYTES - total,
+            );
+            parts.push({ item, take });
+            total += take;
+        }
+        const [only] = parts;
+        if (
+            only &&
+            parts.length === 1 &&
+            only.item.offset === 0 &&
+            only.take === only.item.length
+        ) {
+            only.item.offset = only.item.length;
+            return only.item.data as ArrayBuffer;
+        }
+        const out = new Uint8Array(total);
+        let at = 0;
+        for (const { item, take } of parts) {
+            out.set(
+                new Uint8Array(item.data as ArrayBuffer, item.offset, take),
+                at,
+            );
+            item.offset += take;
+            at += take;
+        }
+        return out.buffer;
     }
 
     #arm(): void {

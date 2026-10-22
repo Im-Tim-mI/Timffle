@@ -219,7 +219,7 @@ test("one send in flight; large writes are split into 64 KiB chunks, in order", 
     assert.equal(ws.bufferedAmount, buffered);
 
     const chunks = [];
-    for (let chunkIndex = 0; chunkIndex < 6; chunkIndex++) {
+    for (let chunkIndex = 0; chunkIndex < 5; chunkIndex++) {
         await until(() => sends().length === chunkIndex + 1, "next chunk");
         await tick();
         assert.equal(sends().length, chunkIndex + 1, "one send in flight");
@@ -230,9 +230,10 @@ test("one send in flight; large writes are split into 64 KiB chunks, in order", 
         buffered -= data.byteLength;
         assert.equal(ws.bufferedAmount, buffered);
     }
+    // A Blob is never merged; the two small writes after it travel together.
     assert.deepEqual(
         sends().map(({ data }) => data.byteLength),
-        [65536, 65536, 18928, 3, 3, 3],
+        [65536, 65536, 18928, 3, 6],
     );
     assert.deepEqual(chunks, [
         ...big,
@@ -241,8 +242,59 @@ test("one send in flight; large writes are split into 64 KiB chunks, in order", 
         ...[0x68, 0xc3, 0xa9],
     ]);
     await tick();
-    assert.equal(sends().length, 6);
+    assert.equal(sends().length, 5);
     assert.equal(ws.bufferedAmount, 0);
+});
+
+test("queued small writes are merged into one send; whole writes are handed over without a copy", async (t) => {
+    const { open, sends } = harness(t);
+    const ws = open(40);
+    opened(ws, 40);
+    const first = new Uint8Array([1, 2, 3]).buffer;
+    ws.send(first);
+    await tick();
+    // The caller's buffer is copied at send(); that copy is transferred as is.
+    assert.equal(first.byteLength, 3, "the caller's buffer is untouched");
+    assert.equal(sends().length, 1);
+    assert.deepEqual([...new Uint8Array(sends()[0].data)], [1, 2, 3]);
+    // Three flushes while the first is in flight: one send, bytes in order.
+    ws.send(new Uint8Array([4]));
+    ws.send(new Uint8Array([5, 6]));
+    ws.send("7");
+    await tick();
+    assert.equal(sends().length, 1, "one send in flight");
+    assert.equal(ws.bufferedAmount, 3 + 1 + 2 + 1);
+    ws.receive({ op: "sent", sid: 40 });
+    await tick();
+    assert.equal(sends().length, 2);
+    assert.deepEqual([...new Uint8Array(sends()[1].data)], [4, 5, 6, 0x37]);
+    assert.equal(ws.bufferedAmount, 4);
+    ws.receive({ op: "sent", sid: 40 });
+    await tick();
+    assert.equal(sends().length, 2);
+    assert.equal(ws.bufferedAmount, 0);
+    // No "sent" is owed any more: a stray one is a protocol error, as before.
+    ws.receive({ op: "sent", sid: 40 });
+    assert.equal(ws.readyState, BridgeSocket.CLOSED);
+
+    // Merging stops at the send limit and never splits the order of bytes.
+    const big = open(41);
+    opened(big, 41);
+    big.send(new Uint8Array(10).fill(1));
+    await tick();
+    big.send(new Uint8Array(MAX_SEND_BYTES - 4).fill(2));
+    big.send(new Uint8Array(8).fill(3));
+    big.receive({ op: "sent", sid: 41 });
+    await tick();
+    const second = new Uint8Array(sends().at(-1).data);
+    assert.equal(second.byteLength, MAX_SEND_BYTES);
+    assert.deepEqual([...second.slice(-5)], [2, 3, 3, 3, 3]);
+    big.receive({ op: "sent", sid: 41 });
+    await tick();
+    assert.deepEqual([...new Uint8Array(sends().at(-1).data)], [3, 3, 3, 3]);
+    big.receive({ op: "sent", sid: 41 });
+    assert.equal(big.bufferedAmount, 0);
+    assert.equal(big.readyState, BridgeSocket.OPEN);
 });
 
 test("bufferedAmount is bounded; overflow fails the socket instead of queueing", async (t) => {
@@ -590,9 +642,7 @@ test("base64 round trip and message validation", () => {
     const big = Uint8Array.from({ length: 100_000 }, (_, i) => (i * 31) & 255);
     assert.deepEqual(base64ToBytes(bytesToBase64(big)), big);
 
-    assert.ok(
-        isOpenRequest({ type: "open", host: "9.9.9.9", port: 8888 }),
-    );
+    assert.ok(isOpenRequest({ type: "open", host: "9.9.9.9", port: 8888 }));
     assert.ok(isOpenRequest({ type: "open", host: "::1", port: 1 }));
     for (const bad of [
         { type: "open", host: "a/b", port: 1 },
