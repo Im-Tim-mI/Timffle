@@ -267,6 +267,14 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 之後的 commit 加上了第一次連線時的詢問、彈出視窗與設定清單、canvas 文字的 Windows 字型度量，以及各個發行版（見 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每項修正的細節與原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改過的 Ruffle 檔案清單（Apache-2.0 第 4(b) 條的「修改聲明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差異：`git diff 46fec3f -- . ':!timffle'`。
 
+### Timffle 對 Ruffle 的修補
+
+<p align="center"><img src="timffle/docs/images/zh-TW/ruffle-patches.svg" width="100%" alt="Timffle 對 Ruffle 的修補：AVM2 API 從 82.1% 到 82.6%；3D API 從 79.7% 到 100%；網路與 LocalConnection 的 4 個類別從 75.4% 到 87.7%；另有 Socket 連線、中文字型、網域查找等 API 統計看不到的修補"></p>
+
+- **怎麼算的**：用 Ruffle 官網同一套統計工具（[`tools/stub-report`](tools/stub-report) 加 [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)），各跑一次 Ruffle `46fec3f` 與 Timffle（2026-10-25 的 `9096355ce`）。每個 Flash Player API 算一項，空殼（stub）畫成橘色、不算實作，算法和 Ruffle 官網相同。**這只看 API 有沒有實作，不代表行為完全相同**；行為以真 Flash Player 32 的實測為準，見 [`timffle/difftest/expected/`](timffle/difftest/expected/) 的 30 份黃金答案（3D 15 份、網路與 LocalConnection 14 份、基本 1 份）。
+- **補齊的 23 個 API**：`DisplayObject` 的 `z`、`rotationX`／`rotationY`／`rotationZ`、`scaleZ`、`globalToLocal3D()`、`local3DToGlobal()`；`Transform` 的 `matrix3D`、`perspectiveProjection`、`getRelativeMatrix3D()`；`PerspectiveProjection` 的 `fieldOfView`、`focalLength`、`projectionCenter`；`Matrix3D` 的 `pointAt()`、`recompose()`；`Utils3D.pointTowards()`；`URLStream` 的 `stop()`、`position`、`length`、`objectEncoding`；`LocalConnection.isPerUser`；`Loader.close()`、`URLLoader.close()`。
+- **3D API** 指 `Vector3D`、`Matrix3D`、`Utils3D`、`PerspectiveProjection`，加上 `DisplayObject` 與 `Transform` 的 3D 成員（共 79 項）；**網路與 LocalConnection** 指 `URLStream`、`URLLoader`、`LocalConnection`、`Loader` 四個類別（共 57 項）。圖與數字由 [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py) 產生，數字存在 [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json)。
+
 ## 羅技優惠碼
 
 <p align="center"><a href="https://store.logitech.tw/discount/LOGITIM"><img src="web/packages/extension/assets/images/promo-logitech-zh.png" alt="橫幅：羅技網路旗艦店電競類別九折折扣碼 LOGITIM，可使用到 2026/12/31" width="560"></a></p>

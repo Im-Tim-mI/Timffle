@@ -1,0 +1,183 @@
+{
+ "measured": "2026-10-25",
+ "ruffle": {
+  "commit": "46fec3f",
+  "label": "nightly-2026-10-13"
+ },
+ "timffle": {
+  "commit": "9096355ce"
+ },
+ "overall": {
+  "ruffle": {
+   "points": 4560,
+   "implemented": 4182,
+   "stubbed": 440
+  },
+  "timffle": {
+   "points": 4560,
+   "implemented": 4187,
+   "stubbed": 422
+  }
+ },
+ "groups": {
+  "3d": {
+   "ruffle": {
+    "points": 79,
+    "implemented": 78,
+    "stubbed": 15
+   },
+   "timffle": {
+    "points": 79,
+    "implemented": 79,
+    "stubbed": 0
+   }
+  },
+  "net": {
+   "ruffle": {
+    "points": 57,
+    "implemented": 51,
+    "stubbed": 8
+   },
+   "timffle": {
+    "points": 57,
+    "implemented": 55,
+    "stubbed": 5
+   }
+  }
+ },
+ "fixed": [
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "globalToLocal3D()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "local3DToGlobal()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "rotationX",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "rotationY",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "rotationZ",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "scaleZ",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "member": "z",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Loader",
+   "member": "close()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Matrix3D",
+   "member": "pointAt()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Matrix3D",
+   "member": "recompose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.PerspectiveProjection",
+   "member": "fieldOfView",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.PerspectiveProjection",
+   "member": "focalLength",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.PerspectiveProjection",
+   "member": "projectionCenter",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Transform",
+   "member": "getRelativeMatrix3D()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Transform",
+   "member": "matrix3D",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Transform",
+   "member": "perspectiveProjection",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Utils3D",
+   "member": "static pointTowards()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.LocalConnection",
+   "member": "isPerUser",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.URLLoader",
+   "member": "close()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.URLStream",
+   "member": "length",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.URLStream",
+   "member": "position",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.URLStream",
+   "member": "stop()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.URLStream",
+   "member": "objectEncoding",
+   "was": "stub"
+  }
+ ],
+ "goldens": {
+  "3d": 15,
+  "net": 14,
+  "basic": 1,
+  "total": 30
+ },
+ "changes": {
+  "engine": {
+   "files": 53,
+   "insertions": 3940,
+   "deletions": 853
+  },
+  "extension": {
+   "files": 108,
+   "insertions": 27383,
+   "deletions": 455
+  }
+ }
+}

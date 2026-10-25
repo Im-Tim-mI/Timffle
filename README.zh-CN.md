@@ -267,6 +267,14 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 之后的 commit 加上了第一次连接时的询问、弹出窗口与设置清单、canvas 文字的 Windows 字体度量，以及各个发行版（见 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每项修正的细节与原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改过的 Ruffle 文件清单（Apache-2.0 第 4(b) 条的「修改声明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差异：`git diff 46fec3f -- . ':!timffle'`。
 
+### Timffle 对 Ruffle 的修补
+
+<p align="center"><img src="timffle/docs/images/zh-CN/ruffle-patches.svg" width="100%" alt="Timffle 对 Ruffle 的修补：AVM2 API 从 82.1% 到 82.6%；3D API 从 79.7% 到 100%；网络与 LocalConnection 的 4 个类别从 75.4% 到 87.7%；另有 Socket 连接、中文字型、网域查找等 API 统计看不到的修补"></p>
+
+- **怎么算的**：用 Ruffle 官网同一套统计工具（[`tools/stub-report`](tools/stub-report) 加 [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)），各跑一次 Ruffle `46fec3f` 与 Timffle（2026-10-25 的 `9096355ce`）。每个 Flash Player API 算一项，空壳（stub）画成橘色、不算实现，算法和 Ruffle 官网相同。**这只看 API 有没有实现，不代表行为完全相同**；行为以真 Flash Player 32 的实测为准，见 [`timffle/difftest/expected/`](timffle/difftest/expected/) 的 30 份黄金答案（3D 15 份、网络与 LocalConnection 14 份、基本 1 份）。
+- **补齐的 23 个 API**：`DisplayObject` 的 `z`、`rotationX`／`rotationY`／`rotationZ`、`scaleZ`、`globalToLocal3D()`、`local3DToGlobal()`；`Transform` 的 `matrix3D`、`perspectiveProjection`、`getRelativeMatrix3D()`；`PerspectiveProjection` 的 `fieldOfView`、`focalLength`、`projectionCenter`；`Matrix3D` 的 `pointAt()`、`recompose()`；`Utils3D.pointTowards()`；`URLStream` 的 `stop()`、`position`、`length`、`objectEncoding`；`LocalConnection.isPerUser`；`Loader.close()`、`URLLoader.close()`。
+- **3D API** 指 `Vector3D`、`Matrix3D`、`Utils3D`、`PerspectiveProjection`，加上 `DisplayObject` 与 `Transform` 的 3D 成员（共 79 项）；**网络与 LocalConnection** 指 `URLStream`、`URLLoader`、`LocalConnection`、`Loader` 四个类别（共 57 项）。图与数字由 [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py) 产生，数字存在 [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json)。
+
 ## 罗技优惠码
 
 <p align="center"><a href="https://store.logitech.tw/discount/LOGITIM"><img src="web/packages/extension/assets/images/promo-logitech-zh.png" alt="横幅：罗技网络旗舰店电竞类别九折折扣码 LOGITIM，可使用到 2026/12/31" width="560"></a></p>
