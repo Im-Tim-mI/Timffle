@@ -267,6 +267,14 @@ Timffle is based on Ruffle `nightly-2026-10-13` (commit [`46fec3f`](https://gith
 
 Later commits add the first-use question, the popup and the settings lists, the Windows font metrics for canvas text, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
 
+### What Timffle patches in Ruffle
+
+<p align="center"><img src="timffle/docs/images/ruffle-patches.svg" width="100%" alt="What Timffle patches in Ruffle: AVM2 API from 82.1% to 82.6%; 3D APIs from 79.7% to 100%; four networking and LocalConnection classes from 75.4% to 87.7%; plus fixes an API count can't show, such as sockets, Chinese fonts and domain lookup"></p>
+
+- **How it is measured**: with the same tool as Ruffle's website ([`tools/stub-report`](tools/stub-report) and [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)), run once on Ruffle `46fec3f` and once on Timffle (`9096355ce`, 2026-10-25). Every Flash Player API counts as one item; stubs are drawn orange and do not count as implemented, the same scoring as on Ruffle's website. **It only shows whether an API is implemented, not that it behaves exactly like Flash**; behaviour is checked against real Flash Player 32 with the 30 golden files in [`timffle/difftest/expected/`](timffle/difftest/expected/) (3D 15, networking and LocalConnection 14, basic 1).
+- **The 23 APIs filled in**: `DisplayObject`'s `z`, `rotationX`/`rotationY`/`rotationZ`, `scaleZ`, `globalToLocal3D()`, `local3DToGlobal()`; `Transform`'s `matrix3D`, `perspectiveProjection`, `getRelativeMatrix3D()`; `PerspectiveProjection`'s `fieldOfView`, `focalLength`, `projectionCenter`; `Matrix3D`'s `pointAt()`, `recompose()`; `Utils3D.pointTowards()`; `URLStream`'s `stop()`, `position`, `length`, `objectEncoding`; `LocalConnection.isPerUser`; `Loader.close()`, `URLLoader.close()`.
+- **3D APIs** are `Vector3D`, `Matrix3D`, `Utils3D`, `PerspectiveProjection` and the 3D members of `DisplayObject` and `Transform` (79 items); **networking and LocalConnection** are the classes `URLStream`, `URLLoader`, `LocalConnection` and `Loader` (57 items). The picture and the numbers come from [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py); the numbers are in [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json).
+
 ## Logitech discount code
 
 <p align="center"><a href="https://store.logitech.tw/discount/LOGITIM"><img src="web/packages/extension/assets/images/promo-logitech-en.png" alt="Banner: Logitech Taiwan online store, 10% off gaming products with the code LOGITIM, valid until 2026-12-31" width="560"></a></p>

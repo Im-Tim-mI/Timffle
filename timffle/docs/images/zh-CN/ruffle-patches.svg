@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="822" viewBox="0 0 1200 822" role="img" aria-label="Timffle 对 Ruffle 的修补" font-family="&apos;PingFang SC&apos;, &apos;Microsoft YaHei&apos;, &apos;Noto Sans CJK SC&apos;, &apos;Noto Sans SC&apos;, &apos;Segoe UI&apos;, sans-serif">
+<title>Timffle 对 Ruffle 的修补</title>
+<defs><pattern id="pg" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#58A55C"/><rect width="6" height="12" fill="#4A9150"/></pattern><pattern id="py" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#FFD038"/><rect width="6" height="12" fill="#F0BC18"/></pattern><pattern id="po" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#F28C3A"/><rect width="6" height="12" fill="#DD7A2C"/></pattern></defs>
+<rect width="1200" height="822" rx="18" fill="#163A61"/>
+<text x="28.0" y="52.0" font-size="32" fill="#FFD038" font-weight="bold" text-anchor="start">Timffle 对 Ruffle 的修补</text>
+<text x="28.0" y="84.0" font-size="15" fill="#A9C6E6" font-weight="normal" text-anchor="start">基底：Ruffle nightly-2026-10-13（46fec3f）　统计日期：2026-10-25</text>
+<rect x="28" y="112" width="560" height="260" rx="14" fill="#1F4A78"/>
+<rect x="459.9" y="132" width="106.1" height="28" rx="7" fill="#2E5A8C"/>
+<text x="513.0" y="151.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">stub-report</text>
+<text x="54.0" y="154.0" font-size="25" fill="#FFD038" font-weight="bold" text-anchor="start">AVM2 API（ActionScript 3）</text>
+<text x="54.0" y="188.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">用 Ruffle 官网同一套工具统计 Flash Player API 的实现程度。Timffle</text>
+<text x="54.0" y="212.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">把 23 个原本是空壳或缺少的 API 补成完整实现，集中在 3D 与网络。</text>
+<text x="54.0" y="244.0" font-size="13.5" fill="#A9C6E6" font-weight="normal" text-anchor="start">统计范围：全部 AVM2 API（4,560 项）</text>
+<text x="54.0" y="283.0" font-size="16" fill="#FFD038" font-weight="bold" text-anchor="start">Ruffle：82.1%</text>
+<clipPath id="bzh-CN7"><rect x="232.0" y="270" width="330.0" height="16" rx="8"/></clipPath>
+<rect x="232.0" y="270" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
+<rect x="232.00" y="270" width="270.80" height="16" fill="url(#pg)" clip-path="url(#bzh-CN7)"/>
+<rect x="502.80" y="270" width="31.84" height="16" fill="url(#po)" clip-path="url(#bzh-CN7)"/>
+<text x="54.0" y="317.0" font-size="16" fill="#FFD038" font-weight="bold" text-anchor="start">Timffle：82.6%</text>
+<clipPath id="bzh-CN8"><rect x="232.0" y="304" width="330.0" height="16" rx="8"/></clipPath>
+<rect x="232.0" y="304" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
+<rect x="232.00" y="304" width="270.80" height="16" fill="url(#pg)" clip-path="url(#bzh-CN8)"/>
+<rect x="502.80" y="304" width="1.66" height="16" fill="url(#py)" clip-path="url(#bzh-CN8)"/>
+<rect x="504.47" y="304" width="30.54" height="16" fill="url(#po)" clip-path="url(#bzh-CN8)"/>
+<rect x="612" y="112" width="560" height="260" rx="14" fill="#1F4A78"/>
+<rect x="1088.2" y="132" width="61.8" height="28" rx="7" fill="#2E5A8C"/>
+<text x="1119.1" y="151.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">0004</text>
+<text x="638.0" y="154.0" font-size="25" fill="#FFD038" font-weight="bold" text-anchor="start">3D 与 Matrix3D</text>
+<text x="638.0" y="188.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">游戏登录画面的 3D 转盘等。补齐 Flash 的 3D 模型：z、</text>
+<text x="638.0" y="212.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">rotationX/Y/Z、scaleZ、matrix3D、透视投影、Matrix3D、Utils3D，</text>
+<text x="638.0" y="236.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">以及投影后的边界、命中测试与 BitmapData.draw。</text>
+<text x="638.0" y="268.0" font-size="13.5" fill="#A9C6E6" font-weight="normal" text-anchor="start">统计范围：3D API（79 项）　真 Flash 黄金答案：15 份</text>
+<text x="638.0" y="307.0" font-size="16" fill="#FFD038" font-weight="bold" text-anchor="start">Ruffle：79.7%</text>
+<clipPath id="bzh-CN9"><rect x="816.0" y="294" width="330.0" height="16" rx="8"/></clipPath>
+<rect x="816.0" y="294" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
+<rect x="816.00" y="294" width="263.16" height="16" fill="url(#pg)" clip-path="url(#bzh-CN9)"/>
+<rect x="1079.16" y="294" width="62.66" height="16" fill="url(#po)" clip-path="url(#bzh-CN9)"/>
+<text x="638.0" y="341.0" font-size="16" fill="#FFD038" font-weight="bold" text-anchor="start">Timffle：100%</text>
+<clipPath id="bzh-CN10"><rect x="816.0" y="328" width="330.0" height="16" rx="8"/></clipPath>
+<rect x="816.0" y="328" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
+<rect x="816.00" y="328" width="263.16" height="16" fill="url(#pg)" clip-path="url(#bzh-CN10)"/>
+<rect x="1079.16" y="328" width="66.84" height="16" fill="url(#py)" clip-path="url(#bzh-CN10)"/>
+<rect x="28" y="396" width="560" height="324" rx="14" fill="#1F4A78"/>
+<rect x="504.2" y="416" width="61.8" height="28" rx="7" fill="#2E5A8C"/>
+<text x="535.1" y="435.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">0003</text>
+<text x="54.0" y="438.0" font-size="25" fill="#FFD038" font-weight="bold" text-anchor="start">网络、加载与 LocalConnection</text>
+<text x="54.0" y="472.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">LocalConnection 的循环引用与消息上限、URLStream 渐进传输、</text>
+<text x="54.0" y="496.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">Loader／URLLoader 真正取消、URLLoader 的 open 时机、AMF3 循</text>
+<text x="54.0" y="520.0" font-size="16" fill="#EAF2FB" font-weight="normal" text-anchor="start">环引用。</text>
+<text x="54.0" y="552.0" font-size="13.5" fill="#A9C6E6" font-weight="normal" text-anchor="start">统计范围：4 个类别（57 项）　真 Flash 黄金答案：14 份</text>
+<text x="54.0" y="591.0" font-size="16" fill="#FFD038" font-weight="bold" text-anchor="start">Ruffle：75.4%</text>
+<clipPath id="bzh-CN11"><rect x="232.0" y="578" width="330.0" height="16" rx="8"/></clipPath>
+<rect x="232.0" y="578" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
+<rect x="232.00" y="578" width="248.95" height="16" fill="url(#pg)" clip-path="url(#bzh-CN11)"/>
+<rect x="480.95" y="578" width="46.32" height="16" fill="url(#po)" clip-path="url(#bzh-CN11)"/>
+<text x="54.0" y="625.0" font-size="16" fill="#FFD038" font-weight="bold" text-anchor="start">Timffle：87.7%</text>
+<clipPath id="bzh-CN12"><rect x="232.0" y="612" width="330.0" height="16" rx="8"/></clipPath>
+<rect x="232.0" y="612" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
+<rect x="232.00" y="612" width="248.95" height="16" fill="url(#pg)" clip-path="url(#bzh-CN12)"/>
+<rect x="480.95" y="612" width="40.53" height="16" fill="url(#py)" clip-path="url(#bzh-CN12)"/>
+<rect x="521.47" y="612" width="28.95" height="16" fill="url(#po)" clip-path="url(#bzh-CN12)"/>
+<rect x="612" y="396" width="560" height="324" rx="14" fill="#1F4A78"/>
+<rect x="988.5" y="416" width="161.5" height="28" rx="7" fill="#2E5A8C"/>
+<text x="1069.2" y="435.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">0001・0002・0005</text>
+<text x="638.0" y="438.0" font-size="25" fill="#FFD038" font-weight="bold" text-anchor="start">API 统计看不到的修补</text>
+<text x="638.0" y="474.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="474.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Socket（TCP）连接：用连接助手直接连游戏服务器</text>
+<text x="638.0" y="500.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="500.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">中文：_sans／_serif 不再让中文消失，按 Windows 字体排版</text>
+<text x="638.0" y="526.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="526.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">域名查找改成父域优先，库里的同名函数不再覆盖内置函数</text>
+<text x="638.0" y="552.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="552.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">网页版递归保护：抛出可捕获的错误，不再整个卡死</text>
+<text x="638.0" y="578.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="578.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">AMF3 编码器的引用索引（rust-flash-lso）</text>
+<text x="638.0" y="604.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="604.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">只有 256 个顶点 uniform 的旧 GPU 也能绘制</text>
+<text x="638.0" y="630.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="630.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">标签页在后台时不绘制画面</text>
+<text x="638.0" y="662.0" font-size="14" fill="#A9C6E6" font-weight="normal" text-anchor="start">Ruffle 引擎：53 个文件，+3,940／−853 行</text>
+<text x="638.0" y="684.0" font-size="14" fill="#A9C6E6" font-weight="normal" text-anchor="start">Chrome 扩展程序：110 个文件，+27,863／−478 行</text>
+<rect x="28" y="745" width="30" height="14" rx="7" fill="url(#pg)"/>
+<text x="68.0" y="758.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Ruffle 原本就有</text>
+<rect x="204.66" y="745" width="30" height="14" rx="7" fill="url(#py)"/>
+<text x="244.7" y="758.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Timffle 修补</text>
+<rect x="357.25" y="745" width="30" height="14" rx="7" fill="url(#po)"/>
+<text x="397.2" y="758.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">空壳（部分实现）</text>
+<rect x="547.25" y="745" width="30" height="14" rx="7" fill="#DCE7F3"/>
+<text x="587.2" y="758.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">缺少</text>
+<text x="28.0" y="788.0" font-size="13.5" fill="#A9C6E6" font-weight="normal" text-anchor="start">API 统计只看有没有实现、是不是空壳，不代表行为完全相同；行为以真 Flash Player 32 的 30 份黄金答案验证。</text>
+</svg>
