@@ -9,6 +9,7 @@
 - **起因**：作者說明有人用 `LOGITIM` 購物時，他會獲得分潤。Chrome 線上應用程式商店的政策規定聯盟計畫要在商店頁、使用者介面與安裝前清楚說明，原本「與羅技毫無關係」的說法也就不正確了。
 - **改了什麼**：`timffle_promo_disclaimer`（英文、繁體中文、簡體中文）；三種語言 README 的「羅技優惠碼」一節、`NOTICE.md`、`ARCHITECTURE.md`、`timffle/locales/README.md`。
 - **小幫手下載倉庫公開**：`Im-Tim-mI/Timffle-Helper` 從這天起是公開倉庫，「直接下載安裝程式」按鈕對所有人都能用（程式沒改）。
+- **驗證**：從 tag 的乾淨工作目錄建置（`47e0ab0e4`，ZIP 內嵌的 commit 編號就是它），擴充功能單元測試 **312 項**全過，打包前後的路徑檢查都通過。發行 ZIP `timffle-chrome-0.8.0.26310.zip`（SHA-256 `04776b6d07c6239f7ebfcc62dd0219a82790faaf981d740c7bff5f89cfa3a912`）和 0.8.0.26309 的 99 個檔案比對：**89 個逐位元組相同**（含 wasm 與 7 個小幫手執行檔）；不同的是 `NOTICE.md`、三種語言的 `messages.json`（只有 `timffle_promo_disclaimer`）、`manifest.json`（只有版本號）與 5 個 JS（只有內嵌的建置時間與 commit 編號）。商店 ZIP `timffle-chrome-store-0.8.0.26310.zip`（85 個檔案，SHA-256 `9afc6169ccd7522a31891f02779cc563996755cb0904c21dafb5a291d17c1e66`）在無頭 Chrome 載入成功，英文與繁體中文介面的彈出視窗與設定頁都顯示新的聲明。
 
 ## 0.8.0.26309 — 2026-10-26
 
