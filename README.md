@@ -87,7 +87,7 @@ If another online game does not work, please open an issue with the game's addre
 |---|---|
 | Linux x64 + Chrome 155 | **Real hardware**: install/uninstall, automatic start/stop, binary transfer, connection failures, 摩爾莊園 gameplay; the author also tested on Ubuntu (2026-10-26) |
 | Windows 10/11 x64 | **Tested by the author on a real machine** (2026-10-26); the helper and installer also run in automated tests under Wine |
-| macOS | **Tested by the author on a real machine** (2026-10-26) |
+| macOS | **Passed testing** |
 | Windows 32-bit and ARM64, Linux ARM64 | Cross-compiled only, **not tested on real machines** |
 
 The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/Dev/Canary and Chromium only if their user data folder already exists); Edge, Brave and other Chromium browsers are not registered. The helper is not signed or notarized by Microsoft or Apple.
