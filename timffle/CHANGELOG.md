@@ -9,6 +9,7 @@
 - **商店用的套件**：新增 `timffle/scripts/package-store.py`，從發行 ZIP 做出商店要的 ZIP：擴充功能放在最上層、`manifest.json` 拿掉 `key` 欄位（商店不接受，也用不到）、附上 `LICENSES/` 與 `NOTICE.md`；連線小幫手、安裝程式與 `README.txt` 不放。結果含 PEM 私鑰、執行檔或安裝腳本，或沒通過 `check-no-build-paths.py` 時拒絕產出。
 - **擴充功能 ID 不變**：商店項目的 ID 就是原本的 `eandddnbchclalbjkhfelhjhpijifcog`（建立項目的第一次上傳附了私鑰，商店依它沿用原本的 ID），所以小幫手 1.4.0 也接受商店版。
 - **說明文件**：三種語言 README 的版本號與建置指令、`BUILD.md`（新增「Chrome 線上應用程式商店的套件」一節）、兩個建置腳本的用法說明。
+- **驗證**：從 tag 的乾淨工作目錄建置（`e3d7d920e`，ZIP 內嵌的 commit 編號就是它），擴充功能單元測試 **312 項**全過，打包前後的路徑檢查都通過。發行 ZIP `timffle-chrome-0.8.0.26309.zip`（SHA-256 `2850c1051a4abdbc990788b55e600c44cb6cf21db78ebb5fedcaf48cb8b89608`）和 0.8.0.26308 的 99 個檔案比對：**93 個逐位元組相同**（含 wasm 與 7 個小幫手執行檔），`manifest.json` 只差版本號，另外 5 個 JS 只差內嵌的建置時間與 commit 編號。商店 ZIP `timffle-chrome-store-0.8.0.26309.zip`（85 個檔案，SHA-256 `d78bd75e9c9660d40d1fdebcae44eadd403e95f92da22afcd96e3dd381cd5f46`）在無頭 Chrome 載入成功：背景服務啟動，彈出視窗與設定頁正常顯示版本。`package-store.py` 另以反例確認：含 PEM 私鑰或執行檔時拒絕並刪掉輸出、不覆寫既有檔案、不是發行 ZIP 時拒絕。程式與 26308 相同，所以端對端測試沒有重跑。
 
 ## 0.8.0.26308 — 2026-10-21
 
