@@ -538,7 +538,7 @@
         "description": "Text of a link to https://store.logitech.tw/discount/LOGITIM, which opens the store with the code already set. “Logitech” stays in Latin letters."
     },
     "timffle_promo_disclaimer": {
-        "message": "This is a 10% discount code for Logitech's official online store in Taiwan. Timffle has no connection with Logitech whatsoever.",
+        "message": "This is a 10% discount code for Logitech's official online store in Taiwan. When you buy with this code, Timffle's author earns a commission. Timffle is not made or endorsed by Logitech.",
         "description": "Keep the meaning exactly: the code belongs to Logitech's store, and this project has nothing to do with Logitech. “Logitech” and “Timffle” stay in Latin letters."
     },
     "timffle_promo_image_alt": {
