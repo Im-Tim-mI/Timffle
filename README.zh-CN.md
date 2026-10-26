@@ -85,9 +85,10 @@ Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使�
 
 | 平台 | 验证程度 |
 |---|---|
-| Linux x64＋Chrome 155 | **实机验证**：安装／移除、自动启停、二进制传输、连接失败处理、摩尔庄园游戏流程 |
-| Windows 10／11 x64 | 助手与安装／移除程序在 **Wine 模拟环境**测试（Wine 不是 Windows 实机） |
-| Windows 32 位与 ARM64、macOS（Intel／Apple Silicon）、Linux ARM64 | 只做了交叉编译，**未实机测试** |
+| Linux x64＋Chrome 155 | **实机验证**：安装／移除、自动启停、二进制传输、连接失败处理、摩尔庄园游戏流程；作者也在 Ubuntu 实机测过（2026-10-26） |
+| Windows 10／11 x64 | **作者实机测试**（2026-10-26）；助手与安装／移除程序另在 Wine 模拟环境自动测试 |
+| macOS | **作者实机测试**（2026-10-26） |
+| Windows 32 位与 ARM64、Linux ARM64 | 只做了交叉编译，**未实机测试** |
 
 安装程序替 **Google Chrome** 注册助手（Linux／macOS 上，Beta／Dev／Canary 与 Chromium 只在你用过、用户文件夹已存在时才注册）；Edge、Brave 等其他 Chromium 系浏览器不会被注册。助手尚未取得 Microsoft 或 Apple 的签名／公证。
 
@@ -243,7 +244,7 @@ Chrome 扩展程序（Manifest V3）
 - **其他 Flash 在线游戏**：你允许的网站都能使用 Socket 连接，但游戏能不能运作取决于 Ruffle 对它所用功能的支持；只有摩尔庄园用真实账号玩过，淘米台湾的另外三个游戏只是默认放行 Socket 连接。
 - **没有 Socket 策略文件（policy file）**：真正的 Flash 在每次 Socket 连接前，都会向目的地服务器索取 Socket 策略文件。Timffle（和 Ruffle 一样）不会，所以**游戏服务器没有否决权**：「一律允许」清单与你对第一次询问的回答，是唯一的把关。这就是为什么只该允许你信任的在线游戏。
 - **ActionScript 2 的 `XMLSocket`** 与 `flash.net.Socket` 走同一条 Socket 路径，但只测试过 `flash.net.Socket`。
-- **平台**：Windows 只在 Wine 测过、macOS 未实测；助手**未签名**。询问窗口、弹出窗口（含助手的提示）与安装页只在 Chrome 155 桌面版（无头模式）验证过；没有在有画面的 Chrome、Windows、macOS、Firefox 与 Safari 上试过。
+- **平台**：Windows、macOS、Ubuntu 已由作者实机测试（2026-10-26）；自动化测试只在 Linux 的 Chrome（无头模式）与 Wine 上跑。助手**未签名**：Windows 会出现 SmartScreen 警告，macOS 第一次要到「系统设置」→「隐私与安全性」允许。没有在 Firefox 与 Safari 上试过。
 - **品牌**：只有网页版（扩展程序、网页 Demo、播放器画面）改成 Timffle；桌面版、Safari 扩展程序、npm 包的文字与标识符仍是上游 Ruffle 的，**不要以 Timffle 名义分发它们的构建**（见 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。
 - **3D**：嵌套的「投影拥有者」与 Flash 不同；Flash 对 3D 图做约 1 像素的双线性滤波，Timffle 边缘较利落；透视只在 wgpu 渲染器实现。`Matrix3D.determinant`／`invert` 与 Flash 差在最后一位有效数字。
 - **命中测试**：Flash 的 `hitTestPoint(x, y, true)` 以整数像素判断，Timffle 用精确坐标；边缘偶有 1～2 格差异。

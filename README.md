@@ -85,9 +85,10 @@ If another online game does not work, please open an issue with the game's addre
 
 | Platform | How far it is verified |
 |---|---|
-| Linux x64 + Chrome 155 | **Real hardware**: install/uninstall, automatic start/stop, binary transfer, connection failures, 摩爾莊園 gameplay |
-| Windows 10/11 x64 | Helper and installer tested under **Wine** (Wine is not real Windows) |
-| Windows 32-bit and ARM64, macOS (Intel/Apple Silicon), Linux ARM64 | Cross-compiled only, **not tested on real machines** |
+| Linux x64 + Chrome 155 | **Real hardware**: install/uninstall, automatic start/stop, binary transfer, connection failures, 摩爾莊園 gameplay; the author also tested on Ubuntu (2026-10-26) |
+| Windows 10/11 x64 | **Tested by the author on a real machine** (2026-10-26); the helper and installer also run in automated tests under Wine |
+| macOS | **Tested by the author on a real machine** (2026-10-26) |
+| Windows 32-bit and ARM64, Linux ARM64 | Cross-compiled only, **not tested on real machines** |
 
 The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/Dev/Canary and Chromium only if their user data folder already exists); Edge, Brave and other Chromium browsers are not registered. The helper is not signed or notarized by Microsoft or Apple.
 
@@ -243,7 +244,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 - **Other Flash online games**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; only 摩爾莊園 has been played with a real account, and the other three Taomee Taiwan games merely have sockets allowed by default.
 - **No socket policy files**: real Flash asked the destination server for a socket policy file before every socket connection. Timffle (like Ruffle) does not, so **the game server has no veto**: the allow list and your answer to the first-use question are the only gate. That is why you should allow only online games you trust.
 - **ActionScript 2 `XMLSocket`** goes through the same socket path as `flash.net.Socket`, but only `flash.net.Socket` has been tested.
-- **Platforms**: Windows was tested under Wine only, macOS not at all; the helper is **not signed**. The question window, the popup (with its helper notice) and the install page were verified only in desktop Chrome 155 (headless); not in headed Chrome, on Windows, macOS, Firefox or Safari.
+- **Platforms**: Windows, macOS and Ubuntu were tested by the author on real machines (2026-10-26); the automated tests run only in Chrome on Linux (headless) and under Wine. The helper is **not signed**: Windows shows a SmartScreen warning, and on macOS you allow it once in System Settings → Privacy & Security. Not tried in Firefox or Safari.
 - **Branding**: only the web UI (extension, web demo, player screens) is renamed Timffle; the texts and identifiers of the desktop app, the Safari extension and the npm packages are still upstream Ruffle's, so **do not distribute builds of those under the Timffle name** (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)).
 - **3D**: nested "projection owners" differ from Flash; Flash bilinear-filters 3D pictures by about 1 px, Timffle's edges are crisper; perspective is implemented in the wgpu renderer only. `Matrix3D.determinant`/`invert` differ from Flash in the last significant digit.
 - **Hit testing**: Flash's `hitTestPoint(x, y, true)` works on whole pixels, Timffle on exact coordinates; edges occasionally differ by 1–2 cells.
