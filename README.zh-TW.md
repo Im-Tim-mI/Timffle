@@ -87,7 +87,7 @@ Timffle 為**一般的 Flash 線上遊戲**而做：你允許的網站就能使�
 |---|---|
 | Linux x64＋Chrome 155 | **實機驗證**：安裝／移除、自動啟停、二進位傳輸、連線失敗處理、摩爾莊園遊戲流程；作者也在 Ubuntu 實機測過（2026-10-26） |
 | Windows 10／11 x64 | **作者實機測試**（2026-10-26）；小幫手與安裝／移除程式另在 Wine 模擬環境自動測試 |
-| macOS | **作者實機測試**（2026-10-26） |
+| macOS | **已通過測試** |
 | Windows 32 位元與 ARM64、Linux ARM64 | 只做了交叉編譯，**未實機測試** |
 
 安裝程式替 **Google Chrome** 註冊小幫手（Linux／macOS 上，Beta／Dev／Canary 與 Chromium 只在你用過、使用者資料夾已存在時才註冊）；Edge、Brave 等其他 Chromium 系瀏覽器不會被註冊。小幫手尚未取得 Microsoft 或 Apple 的簽章／公證。

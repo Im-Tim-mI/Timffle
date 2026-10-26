@@ -87,7 +87,7 @@ Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使�
 |---|---|
 | Linux x64＋Chrome 155 | **实机验证**：安装／移除、自动启停、二进制传输、连接失败处理、摩尔庄园游戏流程；作者也在 Ubuntu 实机测过（2026-10-26） |
 | Windows 10／11 x64 | **作者实机测试**（2026-10-26）；助手与安装／移除程序另在 Wine 模拟环境自动测试 |
-| macOS | **作者实机测试**（2026-10-26） |
+| macOS | **已通过测试** |
 | Windows 32 位与 ARM64、Linux ARM64 | 只做了交叉编译，**未实机测试** |
 
 安装程序替 **Google Chrome** 注册助手（Linux／macOS 上，Beta／Dev／Canary 与 Chromium 只在你用过、用户文件夹已存在时才注册）；Edge、Brave 等其他 Chromium 系浏览器不会被注册。助手尚未取得 Microsoft 或 Apple 的签名／公证。
