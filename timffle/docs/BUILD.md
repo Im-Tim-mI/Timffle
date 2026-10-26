@@ -22,10 +22,10 @@
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
 
 # 1. 建置擴充功能 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26308 timffle/scripts/build-extension.sh
+VERSION4=0.8.0.26309 timffle/scripts/build-extension.sh
 
 # 2+3. 交叉編譯小幫手（7 個平台），並封裝成發行 ZIP（含 LICENSES/ 與 NOTICE.md）→ timffle/build/out/
-VERSION4=0.8.0.26308 timffle/scripts/package-release.sh
+VERSION4=0.8.0.26309 timffle/scripts/package-release.sh
 ```
 
 - `VERSION4` 是擴充功能版本，四段數字；最後一段只是流水號。
@@ -45,6 +45,16 @@ go test -tags localtest ./...                                              # 含
 ```
 
 `build.sh` 以 `-trimpath -buildvcs=false -tags= -ldflags='-s -w'` 編譯 `windows/{amd64,arm64,386}`、`darwin/{amd64,arm64}`、`linux/amd64`（`INCLUDE_LINUX_ARM64=1` 另加 `linux/arm64`），全部 `CGO_ENABLED=0`，並拒絕環境裡殘留的 `GOFLAGS`／`GOWORK`。輸出只是「交叉編譯產物」，**沒有簽章，也不代表在該平台實機測試過**。
+
+### Chrome 線上應用程式商店的套件
+
+```sh
+python3 -I timffle/scripts/package-store.py timffle/build/out/timffle-chrome-<版本>.zip timffle-chrome-store-<版本>.zip
+```
+
+- 商店要求 `manifest.json` 在 ZIP 的最上層，而且不接受 `key` 欄位（商店自己簽章）。`package-store.py` 從發行 ZIP 取出 `extension/` 放到最上層、拿掉 `key`、附上 `LICENSES/` 與 `NOTICE.md`；連線小幫手、安裝程式與 `README.txt` 不放。結果含 PEM 私鑰、執行檔或安裝腳本，或沒通過 `check-no-build-paths.py` 時，它會刪掉輸出並拒絕。
+- 商店項目的 ID 和 `timffle/extension-key/` 算出的 ID 相同（`eandddnbchclalbjkhfelhjhpijifcog`）：建立項目的第一次上傳在 ZIP 最上層附了私鑰 `key.pem`，商店依它沿用了原本的 ID（2026-10-26）。官方文件沒有寫這個做法；之後的上傳都不要再放私鑰。
+- 每次上傳的版本號都必須比前一次大。
 
 ## 3. 驗證過什麼、沒驗證什麼
 
