@@ -195,12 +195,29 @@ export function isPageEvent(value: unknown): value is PageEvent {
     }
 }
 
+// Uint8Array.prototype.toBase64 (Chrome 140+, Firefox 133+) writes the
+// base64 string directly. Without it a binary string is built first, from
+// 32 KiB pieces joined once (no spread argument copies, no rope to flatten).
+// This runs in the content script, whose built-ins the page cannot touch.
+const nativeToBase64 = (
+    Uint8Array.prototype as { toBase64?: (this: Uint8Array) => string }
+).toBase64;
+const BINARY_CHUNK = 0x8000;
+
 export function bytesToBase64(bytes: Uint8Array): string {
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    if (nativeToBase64) {
+        return nativeToBase64.call(bytes);
     }
-    return btoa(binary);
+    const parts: string[] = [];
+    for (let i = 0; i < bytes.length; i += BINARY_CHUNK) {
+        parts.push(
+            String.fromCharCode.apply(
+                null,
+                bytes.subarray(i, i + BINARY_CHUNK) as unknown as number[],
+            ),
+        );
+    }
+    return btoa(parts.join(""));
 }
 
 export function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {

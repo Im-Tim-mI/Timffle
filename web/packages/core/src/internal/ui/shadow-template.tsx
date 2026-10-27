@@ -14,16 +14,31 @@ import { ContextMenuOverlay } from "./context-menu-overlay.js";
  * The shadow template which is used to fill the actual Ruffle player element
  * on the page.
  *
+ * Built on first use: this module is loaded into every frame of every page,
+ * and most of them never create a player.
+ *
  */
 
-export const ruffleShadowTemplate = document.createElement("template");
-ruffleShadowTemplate.content.appendChild(<StaticStyles />);
-ruffleShadowTemplate.content.appendChild(<DynamicStyles />);
-ruffleShadowTemplate.content.appendChild(<MainContainer />);
-ruffleShadowTemplate.content.appendChild(<SplashScreen />);
-ruffleShadowTemplate.content.appendChild(<SaveManager />);
-ruffleShadowTemplate.content.appendChild(<VolumeControls />);
-ruffleShadowTemplate.content.appendChild(<UnsupportedVideo />);
-ruffleShadowTemplate.content.appendChild(<HardwareAcceleration />);
-ruffleShadowTemplate.content.appendChild(<ClipboardPermission />);
-ruffleShadowTemplate.content.appendChild(<ContextMenuOverlay />);
+let template: HTMLTemplateElement | null = null;
+
+/**
+ * Returns the shared shadow template, building it the first time.
+ *
+ * @returns The template to clone into each player's shadow root.
+ */
+export function ruffleShadowTemplate(): HTMLTemplateElement {
+    if (template === null) {
+        template = document.createElement("template");
+        template.content.appendChild(<StaticStyles />);
+        template.content.appendChild(<DynamicStyles />);
+        template.content.appendChild(<MainContainer />);
+        template.content.appendChild(<SplashScreen />);
+        template.content.appendChild(<SaveManager />);
+        template.content.appendChild(<VolumeControls />);
+        template.content.appendChild(<UnsupportedVideo />);
+        template.content.appendChild(<HardwareAcceleration />);
+        template.content.appendChild(<ClipboardPermission />);
+        template.content.appendChild(<ContextMenuOverlay />);
+    }
+    return template;
+}

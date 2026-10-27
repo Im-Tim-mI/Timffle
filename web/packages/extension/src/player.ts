@@ -102,6 +102,37 @@ function unload() {
     }
 }
 
+/**
+ * Fills the metadata table from the current player's movie.
+ */
+function showMetadata() {
+    const metadata = player.ruffle().metadata;
+    if (metadata) {
+        for (const [key, value] of Object.entries(metadata)) {
+            const metadataElement = document.getElementById(key);
+            if (metadataElement) {
+                switch (key) {
+                    case "backgroundColor":
+                        metadataElement.style.backgroundColor =
+                            value ?? "white";
+                        break;
+                    case "uncompressedLength":
+                        metadataElement.textContent = `${value >> 10}Kb`;
+                        break;
+                    // @ts-expect-error This intentionally falls through to the default case
+                    case "swfVersion":
+                        document.getElementById("flashVersion")!.textContent =
+                            swfToFlashVersion[value] ?? null;
+                    // falls through and executes the default case as well
+                    default:
+                        metadataElement.textContent = value;
+                        break;
+                }
+            }
+        }
+    }
+}
+
 async function load(
     options: string | Config.DataLoadOptions | Config.URLLoadOptions,
 ) {
@@ -135,34 +166,9 @@ async function load(
         }
     }
     await player.ruffle().load(options);
-    player.addEventListener("loadedmetadata", () => {
-        const metadata = player.ruffle().metadata;
-        if (metadata) {
-            for (const [key, value] of Object.entries(metadata)) {
-                const metadataElement = document.getElementById(key);
-                if (metadataElement) {
-                    switch (key) {
-                        case "backgroundColor":
-                            metadataElement.style.backgroundColor =
-                                value ?? "white";
-                            break;
-                        case "uncompressedLength":
-                            metadataElement.textContent = `${value >> 10}Kb`;
-                            break;
-                        // @ts-expect-error This intentionally falls through to the default case
-                        case "swfVersion":
-                            document.getElementById(
-                                "flashVersion",
-                            )!.textContent = swfToFlashVersion[value] ?? null;
-                        // falls through and executes the default case as well
-                        default:
-                            metadataElement.textContent = value;
-                            break;
-                    }
-                }
-            }
-        }
-    });
+    // A shared handler: no closure per load, and adding it to the same
+    // element again is a no-op.
+    player.addEventListener("loadedmetadata", showMetadata);
 }
 
 async function loadFile(file: File | undefined) {
