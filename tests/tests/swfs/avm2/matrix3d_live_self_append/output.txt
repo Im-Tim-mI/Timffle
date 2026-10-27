@@ -1,0 +1,21 @@
+append(self) plain=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1
+append(self) live=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 object=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 equal=true
+append(self) x=15 y=28 z=22 scaleX=4 scaleY=9
+prepend(self) plain=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1
+prepend(self) live=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 object=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 equal=true
+prepend(self) x=15 y=28 z=22 scaleX=4 scaleY=9
+copyFrom(self) plain=2,0,0,0,0,3,0,0,0,0,1,0,5,7,11,1
+copyFrom(self) live=2,0,0,0,0,3,0,0,0,0,1,0,5,7,11,1 object=2,0,0,0,0,3,0,0,0,0,1,0,5,7,11,1 equal=true
+copyFrom(self) x=5 y=7 z=11 scaleX=2 scaleY=3
+copyToMatrix3D(self) plain=2,0,0,0,0,3,0,0,0,0,1,0,5,7,11,1
+copyToMatrix3D(self) live=2,0,0,0,0,3,0,0,0,0,1,0,5,7,11,1 object=2,0,0,0,0,3,0,0,0,0,1,0,5,7,11,1 equal=true
+copyToMatrix3D(self) x=5 y=7 z=11 scaleX=2 scaleY=3
+interpolateTo(self) plain=1,0,0,0,0,1,0,0,0,0,1,0,5,7,11,1
+interpolateTo(self) live=1,0,0,0,0,1,0,0,0,0,1,0,5,7,11,1 object=1,0,0,0,0,1,0,0,0,0,1,0,5,7,11,1 equal=true
+interpolateTo(self) x=5 y=7 z=11 scaleX=1 scaleY=1
+interpolate(self, self) plain=1,0,0,0,0,1,0,0,0,0,1,0,5,7,11,1 live=1,0,0,0,0,1,0,0,0,0,1,0,5,7,11,1 equal=true
+append(other live view) plain=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1
+append(other live view) live=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 object=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 equal=true
+append(other live view) x=15 y=28 z=22 scaleX=4 scaleY=9
+after leaving 3d: live=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 plain=4,0,0,0,0,9,0,0,0,0,1,0,15,28,22,1 equal=true matrix3D=null
+done

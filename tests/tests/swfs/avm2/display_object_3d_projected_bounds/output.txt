@@ -1,0 +1,87 @@
+stage 400x300
+== 2d
+child stage=(71,51,100,60) container=(21,11,100,60) rect=(71,51,100,60) size=100x60
+container stage=(71,51,170,120) root=(71,51,170,120) size=170x120
+flat stage=(201,141,40,30) container=(151,101,40,30)
+child l2g=(71,51) (171,111) g2l=(129,99) (-71,-51)
+flat l2g=(201,141) g2l=(-1,9)
+child hit centre=true/true corner2d=true/true outside=false
+flat hit=true/false
+concat child=(a=1, b=0, c=0, d=1, tx=71, ty=51) flat=(a=1, b=0, c=0, d=1, tx=201, ty=141)
+== child z=200
+child stage=(115,85,66,40) container=(65,45,66,40) rect=(115,85,66,40) size=66x40
+container stage=(115,85,126,86) root=(115,85,126,86) size=126x86
+flat stage=(201,141,40,30) container=(151,101,40,30)
+child l2g=(115,85) (181,124) g2l=(129,99) (-175.1,-129.1)
+flat l2g=(201,141) g2l=(-1,9)
+child hit centre=true/false corner2d=true/false outside=false
+flat hit=true/false
+concat child=null flat=(a=1, b=0, c=0, d=1, tx=201, ty=141)
+== child z=200 rotationY=40
+child stage=(115,76,47,49) container=(65,36,47,49) rect=(115,76,47,49) size=47x49
+container stage=(115,76,126,95) root=(115,76,126,95) size=126x95
+flat stage=(201,141,40,30) container=(151,101,40,30)
+child l2g=(115,85) (161,121) g2l=(168.4,99) (-405.9,-230.95)
+flat l2g=(201,141) g2l=(-1,9)
+child hit centre=true/false corner2d=false/false outside=false
+flat hit=true/false
+concat child=null flat=(a=1, b=0, c=0, d=1, tx=201, ty=141)
+== container z=100
+child stage=(127,88,41,40) container=(58,31.85,51.65,50.4) rect=(127,88,41,40) size=76.6x60
+container stage=(127,88,106,79) root=(127,88,106,79) size=106x79
+flat stage=(201,143,31,24) container=(151.25,101.2,39.1,30.2)
+child l2g=(128,94) (168,126) g2l=(168.4,99) (-526.55,-300.25)
+flat l2g=(201,143) g2l=(-1,9)
+child hit centre=true/false corner2d=false/false outside=false
+flat hit=false/false
+concat child=null flat=(a=1, b=0, c=0, d=1, tx=151, ty=101)
+== late 2d child under 3d parent
+child stage=(127,88,41,40) container=(58,31.85,51.65,50.4) rect=(127,88,41,40) size=76.6x60
+container stage=(127,88,185,158) root=(127,88,185,158) size=185x158
+flat stage=(201,143,31,24) container=(151.25,101.2,39.1,30.2)
+extra stage=(280,222,32,24) container=(250.8,200.75,40.35,30.25)
+child l2g=(128,94) (168,126) g2l=(168.4,99) (-526.55,-300.25)
+flat l2g=(201,143) g2l=(-1,9)
+child hit centre=true/false corner2d=false/false outside=false
+flat hit=false/false
+concat child=null flat=(a=1, b=0, c=0, d=1, tx=151, ty=101)
+== late z=0
+child stage=(127,88,41,40) container=(58,31.85,51.65,50.4) rect=(127,88,41,40) size=76.6x60
+container stage=(127,88,185,158) root=(127,88,185,158) size=185x158
+flat stage=(201,143,31,24) container=(151.25,101.2,39.1,30.2)
+extra stage=(280,222,32,24) container=(250.8,200.75,40.35,30.25)
+child l2g=(128,94) (168,126) g2l=(168.4,99) (-526.55,-300.25)
+flat l2g=(201,143) g2l=(-1,9)
+child hit centre=true/false corner2d=false/false outside=false
+flat hit=false/false
+concat child=null flat=(a=1, b=0, c=0, d=1, tx=151, ty=101)
+== child matrix3D=null
+child stage=(98,72,79,47) container=(21.45,11.7,99.55,59.25) rect=(98,72,79,47) size=100x60
+container stage=(97,71,215,175) root=(97,71,215,175) size=215x175
+flat stage=(201,143,31,24) container=(151.25,101.2,39.1,30.2)
+extra stage=(280,222,32,24) container=(250.8,200.75,40.35,30.25)
+child l2g=(98,72) (177,119) g2l=(129,99) (-123.05,-90.05)
+flat l2g=(201,143) g2l=(-1,9)
+child hit centre=false/false corner2d=false/false outside=false
+flat hit=false/false
+concat child=(a=1, b=0, c=0, d=1, tx=21, ty=11) flat=(a=1, b=0, c=0, d=1, tx=151, ty=101)
+== container matrix3D=null
+child stage=(71,51,100,60) container=(21,11,100,60) rect=(71,51,100,60) size=100x60
+container stage=(71,51,270,220) root=(71,51,270,220) size=270x220
+flat stage=(201,141,40,30) container=(151,101,40,30)
+extra stage=(301,241,40,30) container=(251,201,40,30)
+child l2g=(71,51) (171,111) g2l=(129,99) (-71,-51)
+flat l2g=(201,141) g2l=(-1,9)
+child hit centre=true/true corner2d=true/true outside=false
+flat hit=true/false
+concat child=(a=1, b=0, c=0, d=1, tx=71, ty=51) flat=(a=1, b=0, c=0, d=1, tx=201, ty=141)
+== late removed
+child stage=(71,51,100,60) container=(21,11,100,60) rect=(71,51,100,60) size=100x60
+container stage=(71,51,170,120) root=(71,51,170,120) size=170x120
+flat stage=(201,141,40,30) container=(151,101,40,30)
+child l2g=(71,51) (171,111) g2l=(129,99) (-71,-51)
+flat l2g=(201,141) g2l=(-1,9)
+child hit centre=true/true corner2d=true/true outside=false
+flat hit=true/false
+concat child=(a=1, b=0, c=0, d=1, tx=71, ty=51) flat=(a=1, b=0, c=0, d=1, tx=201, ty=141)
+done

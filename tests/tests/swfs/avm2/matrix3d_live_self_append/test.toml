@@ -1,0 +1,3 @@
+# Source: LiveSelfAppend.hx (Haxe 4.3.7; built like the other Haxe tests:
+#   haxe -cp . -main <Class> -swf test.swf -swf-version 17 -D swf-header=400:300:30:FFFFFF).
+num_frames = 1
