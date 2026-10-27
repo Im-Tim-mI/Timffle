@@ -14,6 +14,7 @@ use ruffle_macros::istr;
 use slotmap::{SlotMap, new_key_type};
 use std::{
     cell::{Cell, RefCell},
+    collections::VecDeque,
     time::Duration,
 };
 
@@ -190,11 +191,11 @@ impl<'gc> Sockets<'gc> {
             SocketKind::Avm1(target) => {
                 let target = XmlSocket::cast(target.into()).expect("target should be XmlSocket");
 
-                target.read_buffer().clear();
+                drop(std::mem::take(&mut *target.read_buffer()));
             }
             SocketKind::Avm2(target) => {
-                target.read_buffer().clear();
-                target.write_buffer().clear();
+                drop(std::mem::take(&mut *target.read_buffer()));
+                drop(std::mem::take(&mut *target.write_buffer()));
             }
         }
     }
@@ -291,7 +292,10 @@ impl<'gc> Sockets<'gc> {
                             let mut activation = Avm2Activation::from_nothing(context);
 
                             let bytes_loaded = data.len();
-                            target.read_buffer().extend(data);
+                            let mut read_buffer = target.read_buffer();
+                            shrink_idle_read_buffer(&mut read_buffer);
+                            read_buffer.extend(data);
+                            drop(read_buffer);
 
                             let progress_evt = EventObject::progress_event(
                                 &mut activation,
@@ -316,7 +320,10 @@ impl<'gc> Sockets<'gc> {
                             // since they are always processed immediately. Therefore, we
                             // only need to check the new data for null bytes.
                             let has_null = data.contains(&0);
-                            xml_socket.read_buffer().extend(data);
+                            let mut read_buffer = xml_socket.read_buffer();
+                            shrink_idle_read_buffer(&mut read_buffer);
+                            read_buffer.extend(data);
+                            drop(read_buffer);
 
                             if has_null {
                                 // Process complete messages (null-terminated) one at a time.
@@ -366,8 +373,8 @@ impl<'gc> Sockets<'gc> {
                     match target {
                         SocketKind::Avm2(target) => {
                             // Clear the buffers if the connection was closed.
-                            target.read_buffer().clear();
-                            target.write_buffer().clear();
+                            drop(std::mem::take(&mut *target.read_buffer()));
+                            drop(std::mem::take(&mut *target.write_buffer()));
 
                             let close_evt = EventObject::bare_default_event(context, "close");
                             Avm2::dispatch_event(context, close_evt, target.into());
@@ -382,7 +389,7 @@ impl<'gc> Sockets<'gc> {
                             let socket =
                                 XmlSocket::cast(target.into()).expect("target should be XmlSocket");
 
-                            socket.read_buffer().clear();
+                            drop(std::mem::take(&mut *socket.read_buffer()));
 
                             let _ = target.call_method(
                                 istr!("onClose"),
@@ -398,6 +405,20 @@ impl<'gc> Sockets<'gc> {
     }
 }
 
+/// An empty read buffer whose capacity is above this is shrunk.
+const IDLE_READ_BUFFER_MAX_CAPACITY: usize = 1024 * 1024;
+
+/// What an idle read buffer is shrunk to.
+const IDLE_READ_BUFFER_SHRINK_TO: usize = 64 * 1024;
+
+/// A read buffer keeps its peak capacity for the life of the socket; give the
+/// memory back once a burst has been fully read. Only capacity changes.
+fn shrink_idle_read_buffer(buffer: &mut VecDeque<u8>) {
+    if buffer.is_empty() && buffer.capacity() > IDLE_READ_BUFFER_MAX_CAPACITY {
+        buffer.shrink_to(IDLE_READ_BUFFER_SHRINK_TO);
+    }
+}
+
 /// Flash treats a socket host as a cstring, and stops reading at a null byte.
 /// We need to account for this here.
 fn sanitize_host(host: &str) -> &str {
@@ -406,7 +427,30 @@ fn sanitize_host(host: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize_host;
+    use super::{
+        IDLE_READ_BUFFER_MAX_CAPACITY, IDLE_READ_BUFFER_SHRINK_TO, sanitize_host,
+        shrink_idle_read_buffer,
+    };
+    use std::collections::VecDeque;
+
+    #[test]
+    fn idle_read_buffer_is_shrunk() {
+        let mut buffer = VecDeque::from(vec![1u8; 4 * IDLE_READ_BUFFER_MAX_CAPACITY]);
+        // Not empty: left alone.
+        shrink_idle_read_buffer(&mut buffer);
+        assert!(buffer.capacity() >= 4 * IDLE_READ_BUFFER_MAX_CAPACITY);
+
+        buffer.drain(..);
+        shrink_idle_read_buffer(&mut buffer);
+        assert!(buffer.capacity() >= IDLE_READ_BUFFER_SHRINK_TO);
+        assert!(buffer.capacity() <= IDLE_READ_BUFFER_MAX_CAPACITY);
+
+        // Small buffers are not touched.
+        let mut small = VecDeque::<u8>::with_capacity(1000);
+        let capacity = small.capacity();
+        shrink_idle_read_buffer(&mut small);
+        assert_eq!(small.capacity(), capacity);
+    }
 
     #[test]
     fn truncate_host_at_null() {

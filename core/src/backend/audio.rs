@@ -1,4 +1,6 @@
 use std::any::Any;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::{
     avm1::{NativeObject, Object as Avm1Object},
@@ -103,6 +105,11 @@ pub trait AudioBackend: Any {
 
     /// Registers MP3 audio from an external source.
     fn register_mp3(&mut self, data: &[u8]) -> Result<SoundHandle, DecodeError>;
+
+    /// Frees a sound registered with `register_mp3` that can never be played
+    /// again. Instances of it that are still playing are not affected.
+    /// No-op for an unknown or already released handle.
+    fn unregister_sound(&mut self, _sound: SoundHandle) {}
 
     /// Plays a sound.
     fn start_sound(
@@ -254,6 +261,10 @@ impl AudioBackend for NullAudioBackend {
         }))
     }
 
+    fn unregister_sound(&mut self, sound: SoundHandle) {
+        self.sounds.remove(sound);
+    }
+
     fn register_mp3(&mut self, _data: &[u8]) -> Result<SoundHandle, DecodeError> {
         Ok(self.sounds.insert(NullSound {
             size: 0,
@@ -360,6 +371,44 @@ pub struct AudioManager<'gc> {
 
     /// Whether a sound transform has been changed.
     transforms_dirty: bool,
+
+    /// Sounds whose owning `Sound` object is gone, waiting to be unregistered
+    /// from the audio backend (see `SoundRelease`).
+    #[collect(require_static)]
+    released_sounds: Rc<RefCell<Vec<SoundHandle>>>,
+}
+
+/// Owns a sound registered with `AudioBackend::register_mp3` on behalf of a
+/// `Sound` object. Dropping it (when the object is collected, or when its
+/// sound is replaced) queues the sound to be unregistered by
+/// `AudioManager::release_sounds`.
+///
+/// Never create one for a sound that belongs to a SWF library.
+pub struct SoundRelease {
+    sound: SoundHandle,
+    queue: Rc<RefCell<Vec<SoundHandle>>>,
+}
+
+impl SoundRelease {
+    pub fn sound(&self) -> SoundHandle {
+        self.sound
+    }
+}
+
+impl Drop for SoundRelease {
+    fn drop(&mut self) {
+        // Never borrowed while gc-arena drops objects; if it ever is, the
+        // sound is only kept, not freed.
+        if let Ok(mut queue) = self.queue.try_borrow_mut() {
+            queue.push(self.sound);
+        }
+    }
+}
+
+impl std::fmt::Debug for SoundRelease {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SoundRelease").field(&self.sound).finish()
+    }
 }
 
 impl<'gc> AudioManager<'gc> {
@@ -383,7 +432,39 @@ impl<'gc> AudioManager<'gc> {
             global_sound_transform: Default::default(),
             stream_buffer_time: Self::DEFAULT_STREAM_BUFFER_TIME,
             transforms_dirty: false,
+            released_sounds: Default::default(),
         }
+    }
+
+    /// Hand the ownership of a sound made with `AudioBackend::register_mp3`
+    /// to a `Sound` object: the sound is released once the returned guard is
+    /// dropped and no instance of it is playing.
+    pub fn own_sound(&self, sound: SoundHandle) -> SoundRelease {
+        SoundRelease {
+            sound,
+            queue: self.released_sounds.clone(),
+        }
+    }
+
+    /// Unregister released sounds from the audio backend. A sound that still
+    /// has a playing instance stays queued until that instance has ended, so
+    /// everything that looks a playing sound up by its handle keeps working.
+    pub fn release_sounds(&mut self, audio: &mut dyn AudioBackend) {
+        let Ok(mut queue) = self.released_sounds.try_borrow_mut() else {
+            return;
+        };
+        if queue.is_empty() {
+            return;
+        }
+        let playing = &self.sounds;
+        queue.retain(|&sound| {
+            if playing.iter().any(|other| other.sound == Some(sound)) {
+                true
+            } else {
+                audio.unregister_sound(sound);
+                false
+            }
+        });
     }
 
     /// Update state of active sounds. Should be called once per frame.
@@ -908,5 +989,78 @@ impl Default for SoundTransform {
             right_to_left: 0.0,
             right_to_right: 1.0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AudioBackend, AudioManager, NullAudioBackend, SoundInstance, SoundRelease};
+    use crate::backend::audio::SoundInstanceHandle;
+    use gc_arena::{Arena, Collect, Gc, Rootable};
+    use slotmap::Key;
+
+    #[derive(Collect)]
+    #[collect(require_static)]
+    struct Owner(#[allow(dead_code)] SoundRelease);
+
+    #[test]
+    fn collected_owner_releases_its_sound() {
+        let mut audio = NullAudioBackend::new();
+        let mut manager = AudioManager::new();
+        let library = audio
+            .register_sound(&swf::Sound {
+                id: 1,
+                format: swf::SoundFormat {
+                    compression: swf::AudioCompression::Uncompressed,
+                    sample_rate: 44100,
+                    is_stereo: false,
+                    is_16_bit: false,
+                },
+                num_samples: 0,
+                data: &[],
+            })
+            .unwrap();
+        let loaded = audio.register_mp3(&[]).unwrap();
+        assert_eq!(audio.sounds.len(), 2);
+
+        let mut arena = Arena::<Rootable![Option<Gc<'_, Owner>>]>::new(|_| None);
+        arena.mutate_root(|mc, root| *root = Some(Gc::new(mc, Owner(manager.own_sound(loaded)))));
+
+        // Still referenced: nothing is released.
+        arena.finish_cycle();
+        manager.release_sounds(&mut audio);
+        assert_eq!(audio.sounds.len(), 2);
+
+        // Collected: only the owned sound is released.
+        arena.mutate_root(|_, root| *root = None);
+        arena.finish_cycle();
+        manager.release_sounds(&mut audio);
+        assert_eq!(audio.sounds.len(), 1);
+        assert!(audio.get_sound_duration(loaded).is_none());
+        assert!(audio.get_sound_duration(library).is_some());
+    }
+
+    #[test]
+    fn playing_sound_is_released_after_it_ends() {
+        let mut audio = NullAudioBackend::new();
+        let mut manager = AudioManager::new();
+        let loaded = audio.register_mp3(&[]).unwrap();
+        manager.sounds.push(SoundInstance {
+            instance: SoundInstanceHandle::null(),
+            sound: Some(loaded),
+            display_object: None,
+            transform: Default::default(),
+            avm1_object: None,
+            avm2_object: None,
+            stream_start_frame: None,
+        });
+
+        drop(manager.own_sound(loaded));
+        manager.release_sounds(&mut audio);
+        assert!(audio.get_sound_duration(loaded).is_some(), "still playing");
+
+        manager.sounds.clear();
+        manager.release_sounds(&mut audio);
+        assert!(audio.get_sound_duration(loaded).is_none());
     }
 }

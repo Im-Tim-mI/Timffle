@@ -1,5 +1,6 @@
 use crate::sandbox::SandboxType;
 
+use gc_arena::metrics::Metrics;
 use gc_arena::{Collect, Gc, GcWeak, Mutation};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
@@ -10,6 +11,26 @@ use url::Url;
 
 pub type SwfStream<'a> = swf::read::Reader<'a>;
 
+/// How many bytes of a buffer owned by a `Gc` count as one `Gc` allocation
+/// for collector pacing.
+///
+/// gc-arena paces collection by the number of `Gc`s only, so a `Gc` that owns
+/// megabytes (bitmap pixels, a whole SWF, a large `ByteArray`) counts as much
+/// as a tiny object, and dead ones are freed late. With 256 a 4 MiB bitmap
+/// counts like 16384 objects. Only the timing of collection changes: lower
+/// values collect sooner and cost more collector time.
+pub const BYTES_PER_GC: usize = 256;
+
+/// Tell the collector that `bytes` of memory owned by a `Gc` were just
+/// allocated outside of the arena, so that the next collection starts and
+/// finishes sooner. See [`BYTES_PER_GC`].
+#[inline]
+pub fn note_external_alloc(metrics: &Metrics, bytes: usize) {
+    if bytes >= BYTES_PER_GC {
+        metrics.adjust_debt((bytes / BYTES_PER_GC) as f64);
+    }
+}
+
 /// A shared pointer to a `SwfMovieData`.
 #[derive(Clone, Collect, Copy, Debug)]
 #[collect(no_drop)]
@@ -17,6 +38,7 @@ pub struct SwfMovie<'gc>(Gc<'gc, SwfMovieData>);
 
 impl<'gc> SwfMovie<'gc> {
     pub fn new(mc: &Mutation<'gc>, data: SwfMovieData) -> Self {
+        note_external_alloc(mc.metrics(), data.data.len());
         SwfMovie(Gc::new(mc, data))
     }
 
@@ -564,4 +586,28 @@ impl SwfSlice {
 #[derive(Clone, Copy)]
 pub struct LoadBytesInfo {
     pub loader_sandbox_type: SandboxType,
+}
+
+#[cfg(test)]
+mod pacing_tests {
+    use super::{BYTES_PER_GC, SwfMovie, SwfMovieData};
+    use gc_arena::{Arena, Rootable};
+    use std::sync::Arc;
+
+    #[test]
+    fn swf_movie_counts_its_data_for_gc_pacing() {
+        let arena = Arena::<Rootable![()]>::new(|_| ());
+        arena.mutate(|mc, _| {
+            let _ = SwfMovie::new(mc, SwfMovieData::empty(10, None));
+            let small = mc.metrics().allocation_debt();
+
+            let mut data = SwfMovieData::empty(10, None);
+            data.data = Arc::new(vec![0; 1024 * 1024]);
+            let _ = SwfMovie::new(mc, data);
+            let big = mc.metrics().allocation_debt();
+
+            let expected = (1024 * 1024 / BYTES_PER_GC) as f64;
+            assert!(big - small >= expected, "{small} -> {big}");
+        });
+    }
 }

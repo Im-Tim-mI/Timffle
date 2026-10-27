@@ -1,6 +1,6 @@
 //! AVM1 Sound object
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::io::Cursor;
 
@@ -15,7 +15,7 @@ use crate::avm1::error::Error;
 use crate::avm1::function::FunctionObject;
 use crate::avm1::property_decl::{DeclContext, PropertyOrder, StaticDeclarations, SystemClass};
 use crate::avm1::{ArrayBuilder, Attribute, ExecutionReason, NativeObject, Object, Value};
-use crate::backend::audio::{SoundHandle, SoundInstanceHandle};
+use crate::backend::audio::{SoundHandle, SoundInstanceHandle, SoundRelease};
 use crate::backend::navigator::Request;
 use crate::character::Character;
 use crate::context::UpdateContext;
@@ -117,6 +117,11 @@ struct SoundData<'gc> {
     /// The sound that is attached to this object.
     sound: Cell<Option<SoundHandle>>,
 
+    /// Set while `sound` was made by `loadSound()` for this object only;
+    /// dropping it releases that sound.
+    #[collect(require_static)]
+    release: RefCell<Option<SoundRelease>>,
+
     /// The instance of the last played sound on this object.
     sound_instance: Cell<Option<SoundInstanceHandle>>,
 
@@ -156,6 +161,7 @@ impl<'gc> Sound<'gc> {
             mc,
             SoundData {
                 sound: Cell::new(None),
+                release: RefCell::new(None),
                 sound_instance: Cell::new(None),
                 target,
                 position: Cell::new(0),
@@ -184,6 +190,8 @@ impl<'gc> Sound<'gc> {
         sound: Option<SoundHandle>,
     ) {
         self.0.sound.set(sound);
+        // A sound this object owned is no longer attached to it.
+        drop(self.0.release.take());
 
         // `position` and `duration` are only defined when a sound is loaded.
         if !sound_object.has_property(activation, istr!("position"))
@@ -210,6 +218,20 @@ impl<'gc> Sound<'gc> {
                 Attribute::DONT_ENUM | Attribute::DONT_DELETE,
             );
         }
+    }
+
+    /// Like `set_sound`, for a sound made by `AudioBackend::register_mp3`
+    /// for this object only. It is unregistered once it is replaced or this
+    /// object is collected.
+    pub fn set_owned_sound(
+        self,
+        activation: &mut Activation<'_, 'gc>,
+        sound_object: Object<'gc>,
+        sound: SoundHandle,
+    ) {
+        self.set_sound(activation, sound_object, Some(sound));
+        let release = activation.context.audio_manager.own_sound(sound);
+        self.0.release.replace(Some(release));
     }
 
     pub fn sound_instance(self) -> Option<SoundInstanceHandle> {

@@ -4,6 +4,7 @@ use crate::display_object::{BoundsMode, DisplayObject, DisplayObjectWeak, TDispl
 use bitflags::bitflags;
 use gc_arena::lock::GcRefLock;
 use gc_arena::{Collect, Gc, Mutation};
+use ruffle_common::tag_utils::note_external_alloc;
 use ruffle_render::backend::RenderBackend;
 use ruffle_render::bitmap::{
     Bitmap, BitmapFormat, BitmapHandle, PixelRegion, PixelSnapping, SyncHandle,
@@ -234,6 +235,7 @@ impl<'gc> BitmapData<'gc> {
         fill_color: u32,
     ) -> Self {
         let data = BitmapRawData::new(width, height, transparency, fill_color);
+        data.note_pixel_alloc(mc);
         let data = BitmapRawDataWrapper::new(Gc::new(mc, data.into()));
 
         Self(data)
@@ -247,6 +249,7 @@ impl<'gc> BitmapData<'gc> {
         pixels: Vec<Color>,
     ) -> Self {
         let data = BitmapRawData::new_with_pixels(width, height, transparency, pixels);
+        data.note_pixel_alloc(mc);
         let data = BitmapRawDataWrapper::new(Gc::new(mc, data.into()));
 
         Self(data)
@@ -262,6 +265,7 @@ impl<'gc> BitmapData<'gc> {
         renderer: &mut dyn RenderBackend,
     ) -> BitmapData<'gc> {
         let data = self.0.clone_data(renderer);
+        data.note_pixel_alloc(mc);
         let data = BitmapRawDataWrapper::new(Gc::new(mc, data.into()));
         Self(data)
     }
@@ -363,6 +367,10 @@ impl<'gc> BitmapData<'gc> {
     }
 }
 
+/// Smallest `display_objects` length at which dead weak entries are pruned.
+/// Most bitmaps have 0-1 display objects and never reach it.
+const DISPLAY_OBJECTS_MIN_PRUNE_AT: usize = 8;
+
 #[derive(Collect)]
 #[collect(no_drop)]
 pub struct BitmapRawData<'gc> {
@@ -394,6 +402,10 @@ pub struct BitmapRawData<'gc> {
 
     /// A list of display objects that are backed by this BitmapData
     display_objects: Vec<DisplayObjectWeak<'gc>>,
+
+    /// Length of `display_objects` at which dead weak entries are pruned
+    /// before the next insertion.
+    display_objects_prune_at: usize,
 
     #[collect(require_static)]
     dirty_state: DirtyState,
@@ -429,7 +441,9 @@ mod wrapper {
     use ruffle_render::commands::CommandHandler;
     use std::cell::Ref;
 
-    use super::{BitmapRawData, DirtyState, copy_pixels_to_bitmapdata};
+    use super::{
+        BitmapRawData, DISPLAY_OBJECTS_MIN_PRUNE_AT, DirtyState, copy_pixels_to_bitmapdata,
+    };
 
     /// A wrapper type that ensures that we always wait for a pending
     /// GPU -> CPU sync to complete (using `sync_handle`) before accessing
@@ -484,6 +498,7 @@ mod wrapper {
                     bitmap_handle: None,
                     avm2_object: None,
                     display_objects: vec![],
+                    display_objects_prune_at: DISPLAY_OBJECTS_MIN_PRUNE_AT,
                     dirty_state: DirtyState::Clean,
                     #[cfg(feature = "egui")]
                     egui_texture: Default::default(),
@@ -507,6 +522,7 @@ mod wrapper {
                 bitmap_handle: None,
                 avm2_object: None,
                 display_objects: vec![],
+                display_objects_prune_at: DISPLAY_OBJECTS_MIN_PRUNE_AT,
                 // We have no GPU texture, so there's no need to mark as dirty
                 dirty_state: DirtyState::Clean,
                 #[cfg(feature = "egui")]
@@ -653,7 +669,22 @@ mod wrapper {
         }
 
         pub fn add_display_object(&self, mc: &Mutation<'gc>, callback: DisplayObjectWeak<'gc>) {
-            self.0.borrow_mut(mc).display_objects.push(callback);
+            let mut data = self.0.borrow_mut(mc);
+            // A `Bitmap` that is collected without being retargeted leaves its weak
+            // entry behind, and a `GcWeak` keeps the dead allocation around. Drop dead
+            // entries whenever the list reaches the prune mark; the mark then doubles
+            // from the surviving length, so the total cost stays linear in insertions.
+            if data.display_objects.len() >= data.display_objects_prune_at {
+                data.display_objects.retain(|c| c.upgrade(mc).is_some());
+                data.display_objects_prune_at =
+                    (data.display_objects.len() * 2).max(DISPLAY_OBJECTS_MIN_PRUNE_AT);
+            }
+            data.display_objects.push(callback);
+        }
+
+        #[cfg(test)]
+        pub fn display_object_count(&self) -> usize {
+            self.0.borrow().display_objects.len()
         }
 
         pub fn render(
@@ -743,6 +774,7 @@ impl<'gc> BitmapRawData<'gc> {
             bitmap_handle: None,
             avm2_object: None,
             display_objects: vec![],
+            display_objects_prune_at: DISPLAY_OBJECTS_MIN_PRUNE_AT,
             dirty_state: DirtyState::Clean,
             #[cfg(feature = "egui")]
             egui_texture: Default::default(),
@@ -765,6 +797,7 @@ impl<'gc> BitmapRawData<'gc> {
             disposed: false,
             dirty_state: DirtyState::Clean,
             display_objects: vec![],
+            display_objects_prune_at: DISPLAY_OBJECTS_MIN_PRUNE_AT,
             #[cfg(feature = "egui")]
             egui_texture: Default::default(),
         }
@@ -772,6 +805,11 @@ impl<'gc> BitmapRawData<'gc> {
 
     pub fn disposed(&self) -> bool {
         self.disposed
+    }
+
+    /// Count the pixel buffer towards collector pacing (see `BYTES_PER_GC`).
+    fn note_pixel_alloc(&self, mc: &Mutation<'gc>) {
+        note_external_alloc(mc.metrics(), self.pixels.len() * size_of::<Color>());
     }
 
     pub fn dispose(&mut self) {
@@ -1039,5 +1077,68 @@ impl ThresholdOperation {
             ThresholdOperation::GreaterThan => value > masked_threshold,
             ThresholdOperation::GreaterThanOrEquals => value >= masked_threshold,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BitmapData;
+    use crate::display_object::Bitmap;
+    use gc_arena::{Arena, Rootable};
+    use ruffle_common::tag_utils::{SwfMovie, SwfMovieData};
+
+    #[test]
+    fn dead_display_object_entries_are_pruned() {
+        let mut arena =
+            Arena::<Rootable![BitmapData<'_>]>::new(|mc| BitmapData::new(mc, 1, 1, true, 0));
+
+        // 1000 `Bitmap`s that nothing keeps alive.
+        arena.mutate(|mc, data| {
+            let movie = SwfMovie::new(mc, SwfMovieData::empty(10, None));
+            for _ in 0..1000 {
+                Bitmap::new_with_bitmap_data(mc, 0, *data, true, movie);
+            }
+        });
+        arena.finish_cycle();
+
+        // The list reaches its prune mark (1024) while these live `Bitmap`s are
+        // added; only live entries may remain afterwards.
+        let count = arena.mutate(|mc, data| {
+            let movie = SwfMovie::new(mc, SwfMovieData::empty(10, None));
+            let kept: Vec<_> = (0..30)
+                .map(|_| Bitmap::new_with_bitmap_data(mc, 0, *data, true, movie))
+                .collect();
+            let count = data.0.display_object_count();
+            drop(kept);
+            count
+        });
+        assert_eq!(count, 30, "dead entries were not pruned");
+    }
+
+    #[test]
+    fn bitmap_pixels_count_for_gc_pacing() {
+        let arena = Arena::<Rootable![()]>::new(|_| ());
+        arena.mutate(|mc, _| {
+            let _ = BitmapData::new(mc, 1, 1, true, 0);
+            let small = mc.metrics().allocation_debt();
+            let _ = BitmapData::new(mc, 1000, 600, true, 0);
+            let big = mc.metrics().allocation_debt();
+            let expected = (1000 * 600 * 4 / ruffle_common::tag_utils::BYTES_PER_GC) as f64;
+            assert!(big - small >= expected, "{small} -> {big}");
+        });
+    }
+
+    #[test]
+    fn live_display_object_entries_are_kept() {
+        let arena =
+            Arena::<Rootable![BitmapData<'_>]>::new(|mc| BitmapData::new(mc, 1, 1, true, 0));
+        arena.mutate(|mc, data| {
+            let movie = SwfMovie::new(mc, SwfMovieData::empty(10, None));
+            let kept: Vec<_> = (0..100)
+                .map(|_| Bitmap::new_with_bitmap_data(mc, 0, *data, true, movie))
+                .collect();
+            assert_eq!(data.0.display_object_count(), 100);
+            drop(kept);
+        });
     }
 }

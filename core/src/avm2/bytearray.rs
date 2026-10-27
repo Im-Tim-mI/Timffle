@@ -5,6 +5,8 @@ use crate::context::UpdateContext;
 use flate2::Compression;
 use flate2::read::*;
 use gc_arena::Collect;
+use gc_arena::metrics::Metrics;
+use ruffle_common::tag_utils::note_external_alloc;
 use ruffle_macros::Avm2Enum;
 use std::cell::Cell;
 use std::cmp;
@@ -53,6 +55,57 @@ pub enum ObjectEncoding {
     Amf3 = 3,
 }
 
+/// A `ByteArray` buffer counts towards collector pacing once its capacity has
+/// grown by at least this many bytes since the last time it was counted.
+/// Small arrays are never counted.
+const GROWTH_NOTE_STEP: usize = 64 * 1024;
+
+/// Tracks how much of a `ByteArray` buffer was already counted towards
+/// collector pacing (see `note_external_alloc`). Only the timing of garbage
+/// collection depends on it.
+struct GrowthNote {
+    metrics: Metrics,
+    /// Buffer capacity that was already counted.
+    reported: usize,
+}
+
+impl GrowthNote {
+    fn new(context: &mut UpdateContext<'_>) -> Self {
+        Self {
+            metrics: context.gc().metrics().clone(),
+            reported: 0,
+        }
+    }
+
+    fn update(&mut self, capacity: usize) {
+        if capacity < self.reported {
+            // The buffer was shrunk; growing it again allocates again.
+            self.reported = capacity;
+        } else if capacity - self.reported >= GROWTH_NOTE_STEP {
+            note_external_alloc(&self.metrics, capacity - self.reported);
+            self.reported = capacity;
+        }
+    }
+}
+
+impl Clone for GrowthNote {
+    fn clone(&self) -> Self {
+        // The clone owns a new buffer that has not been counted yet.
+        Self {
+            metrics: self.metrics.clone(),
+            reported: 0,
+        }
+    }
+}
+
+impl std::fmt::Debug for GrowthNote {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GrowthNote")
+            .field("reported", &self.reported)
+            .finish_non_exhaustive()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ByteArrayStorage {
     /// Underlying ByteArray
@@ -66,6 +119,9 @@ pub struct ByteArrayStorage {
 
     /// The encoding used when serializing/deserializing using readObject/writeObject
     object_encoding: ObjectEncoding,
+
+    /// Collector pacing for `bytes`.
+    growth: GrowthNote,
 }
 
 impl ByteArrayStorage {
@@ -76,17 +132,21 @@ impl ByteArrayStorage {
             position: Cell::new(0),
             endian: Endian::Big,
             object_encoding: context.avm2.default_bytearray_encoding,
+            growth: GrowthNote::new(context),
         }
     }
 
     /// Create a new ByteArrayStorage using an already existing vector
     pub fn from_vec(context: &mut UpdateContext<'_>, bytes: Vec<u8>) -> ByteArrayStorage {
-        ByteArrayStorage {
+        let mut storage = ByteArrayStorage {
             bytes,
             position: Cell::new(0),
             endian: Endian::Big,
             object_encoding: context.avm2.default_bytearray_encoding,
-        }
+            growth: GrowthNote::new(context),
+        };
+        storage.note_growth();
+        storage
     }
 
     /// Write bytes at the next position in the ByteArray, growing if needed.
@@ -282,13 +342,21 @@ impl ByteArrayStorage {
 
     #[inline]
     pub fn shrink_to_fit(&mut self) {
-        self.bytes.shrink_to_fit()
+        self.bytes.shrink_to_fit();
+        self.note_growth();
     }
 
     #[inline]
     pub fn set_length(&mut self, new_len: usize) {
         self.bytes.resize(new_len, 0);
+        self.note_growth();
         self.position.set(self.position().min(new_len));
+    }
+
+    /// Count buffer growth towards collector pacing.
+    #[inline]
+    fn note_growth(&mut self) {
+        self.growth.update(self.bytes.capacity());
     }
 
     pub fn get(&self, pos: usize) -> Option<u8> {
@@ -297,7 +365,8 @@ impl ByteArrayStorage {
 
     pub fn set(&mut self, item: usize, value: u8) {
         if self.len() < (item + 1) {
-            self.bytes.resize(item + 1, 0)
+            self.bytes.resize(item + 1, 0);
+            self.note_growth();
         }
 
         *self.bytes.get_mut(item).unwrap() = value;
@@ -308,6 +377,7 @@ impl ByteArrayStorage {
     pub fn swap_storage_with(&mut self, new_data: &mut Vec<u8>) {
         self.position.set(0);
         std::mem::swap(&mut self.bytes, new_data);
+        self.note_growth();
     }
 
     /// Write a single byte at any offset in the bytearray, panicking if out of bounds.
@@ -465,3 +535,47 @@ macro_rules! impl_read{
 
 impl_write!(write_float f32, write_double f64, write_int i32, write_unsigned_int u32, write_short i16, write_unsigned_short u16);
 impl_read!(read_float read_float_at 4; f32, read_double read_double_at 8; f64, read_int read_int_at 4; i32, read_unsigned_int read_unsigned_int_at 4; u32, read_short read_short_at 2; i16, read_unsigned_short read_unsigned_short_at 2; u16, read_byte read_byte_at 1; i8, read_unsigned_byte read_unsigned_byte_at 1; u8);
+
+#[cfg(test)]
+mod tests {
+    use super::{GROWTH_NOTE_STEP, GrowthNote};
+    use gc_arena::{Arena, Rootable};
+    use ruffle_common::tag_utils::BYTES_PER_GC;
+
+    #[test]
+    fn growth_counts_only_large_steps() {
+        let arena = Arena::<Rootable![()]>::new(|_| ());
+        let metrics = arena.metrics().clone();
+        // Keep one live `Gc` so that `allocation_debt` is not forced to 0.
+        arena.mutate(|mc, _| {
+            let _ = gc_arena::Gc::new(mc, 0u8);
+        });
+        let mut note = GrowthNote {
+            metrics: metrics.clone(),
+            reported: 0,
+        };
+        let start = metrics.allocation_debt();
+
+        note.update(GROWTH_NOTE_STEP - 1);
+        assert_eq!(
+            metrics.allocation_debt(),
+            start,
+            "small arrays are not counted"
+        );
+
+        note.update(4 * GROWTH_NOTE_STEP);
+        let after_grow = metrics.allocation_debt();
+        let expected = (4 * GROWTH_NOTE_STEP / BYTES_PER_GC) as f64;
+        assert_eq!(after_grow - start, expected);
+
+        // Small growth past the counted capacity is not counted again.
+        note.update(4 * GROWTH_NOTE_STEP + 10);
+        assert_eq!(metrics.allocation_debt(), after_grow);
+
+        // After a shrink, growing again is counted again.
+        note.update(0);
+        note.update(2 * GROWTH_NOTE_STEP);
+        let expected = (2 * GROWTH_NOTE_STEP / BYTES_PER_GC) as f64;
+        assert_eq!(metrics.allocation_debt() - after_grow, expected);
+    }
+}

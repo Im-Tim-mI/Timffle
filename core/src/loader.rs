@@ -1700,7 +1700,7 @@ fn load_sound_avm1_data<'gc>(
         .map_err(|e| e.error)
         .and_then(|(body, _, _, _)| {
             let handle = activation.context.audio.register_mp3(&body)?;
-            sound.set_sound(&mut activation, sound_object, Some(handle));
+            sound.set_owned_sound(&mut activation, sound_object, handle);
             sound.set_duration(Some(0));
             sound.load_id3(&mut activation, sound_object, &body)?;
             let duration = activation
@@ -1758,7 +1758,7 @@ pub fn load_sound_avm2<'gc>(
             match response {
                 Ok((body, _, _, _)) => {
                     let handle = uc.audio.register_mp3(&body)?;
-                    sound.set_sound(uc, handle);
+                    sound.set_owned_sound(uc, handle);
 
                     let total_len = body.len();
 

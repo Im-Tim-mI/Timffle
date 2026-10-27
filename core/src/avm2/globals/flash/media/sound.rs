@@ -297,7 +297,7 @@ pub fn load_compressed_data_from_byte_array<'gc>(
     Avm2::dispatch_event(activation.context, progress_evt, this_object);
 
     this.read_and_call_id3_event(activation, bytes);
-    this.set_sound(activation.context, handle);
+    this.set_owned_sound(activation.context, handle);
 
     Ok(Value::Undefined)
 }
