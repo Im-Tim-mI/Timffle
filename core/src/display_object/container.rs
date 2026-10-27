@@ -35,6 +35,9 @@ pub fn dispatch_removed_from_stage_event<'gc>(
         Avm2::dispatch_event(context, removed_evt, object.into());
     }
 
+    // Off the stage nothing shows the cached bitmap; it is drawn again when the object is shown again.
+    child.base().release_cached_bitmap();
+
     if let Some(child_container) = child.as_container() {
         for grandchild in child_container.iter_render_list() {
             dispatch_removed_from_stage_event(grandchild, context)

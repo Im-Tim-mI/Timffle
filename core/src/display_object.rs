@@ -1037,6 +1037,15 @@ impl<'gc> DisplayObjectBase<'gc> {
         true
     }
 
+    /// Drops the texture of the bitmap cache (`cacheAsBitmap` or filters), keeping the cache settings: used
+    /// when the object leaves the stage, so a kept but hidden object does not hold its texture. The cache is
+    /// dirty while it has no texture, so the next render that shows the object draws it again.
+    pub fn release_cached_bitmap(&self) {
+        if let Some(cache) = &mut *self.bitmap_cache_mut() {
+            cache.clear();
+        }
+    }
+
     fn clear_invalidate_flag(&self) {
         self.set_flag(DisplayObjectFlags::CACHE_INVALIDATED, false);
     }
@@ -3877,5 +3886,67 @@ impl<'gc> DisplayObjectWeak<'gc> {
             DisplayObjectWeak::LoaderDisplay(ld) => ld.upgrade(mc).map(|ld| ld.into()),
             DisplayObjectWeak::Bitmap(b) => b.upgrade(mc).map(|ld| ld.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod bitmap_cache_release_tests {
+    use super::*;
+    use ruffle_render::bitmap::{BitmapHandle, BitmapHandleImpl};
+    use std::sync::Arc;
+
+    #[derive(Debug)]
+    struct TestTexture;
+    impl BitmapHandleImpl for TestTexture {}
+
+    #[test]
+    fn release_drops_the_texture_and_keeps_the_settings() {
+        let base = DisplayObjectBase::default();
+        base.set_bitmap_cached_preference(true);
+        let texture: Arc<dyn BitmapHandleImpl> = Arc::new(TestTexture);
+        if let Some(cache) = &mut *base.bitmap_cache_mut() {
+            cache.update(
+                &mut ruffle_render::backend::null::NullRenderer::new(
+                    ruffle_render::backend::ViewportDimensions {
+                        width: 1,
+                        height: 1,
+                        scale_factor: 1.0,
+                    },
+                ),
+                Matrix::IDENTITY,
+                10,
+                10,
+                10,
+                10,
+                Point::new(0, 0),
+                10,
+            );
+            cache.bitmap = Some(BitmapInfo {
+                handle: BitmapHandle(texture.clone()),
+                width: 10,
+                height: 10,
+            });
+            assert!(!cache.is_dirty(&Matrix::IDENTITY, 10, 10));
+        }
+        assert_eq!(Arc::strong_count(&texture), 2);
+
+        base.release_cached_bitmap();
+
+        assert_eq!(Arc::strong_count(&texture), 1, "the texture is dropped");
+        assert!(base.is_bitmap_cached_preference());
+        let cache = base.bitmap_cache_mut();
+        let cache = cache.as_ref().expect("the cache settings stay");
+        assert!(cache.bitmap.is_none());
+        assert!(
+            cache.is_dirty(&Matrix::IDENTITY, 10, 10),
+            "redrawn when shown again"
+        );
+    }
+
+    #[test]
+    fn release_without_cache_is_a_no_op() {
+        let base = DisplayObjectBase::default();
+        base.release_cached_bitmap();
+        assert!(base.bitmap_cache_mut().is_none());
     }
 }
