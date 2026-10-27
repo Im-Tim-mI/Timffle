@@ -187,21 +187,44 @@ async function injectRuffle(
 }
 
 /**
+ * Whether any of the mutation records added an `<embed>` or `<object>`,
+ * directly or inside an added subtree.
+ *
+ * Runs for every DOM change of every frame, so it allocates nothing (pages
+ * such as game chat panels mutate constantly).
+ *
+ * @param mutationsList The records passed to the MutationObserver callback.
+ * @returns True if the polyfill should run again.
+ * @internal
+ */
+export function mutationsAddEmbedOrObject(
+    mutationsList: ArrayLike<MutationRecord>,
+): boolean {
+    for (let i = 0; i < mutationsList.length; i++) {
+        const addedNodes = mutationsList[i]!.addedNodes;
+        for (let j = 0; j < addedNodes.length; j++) {
+            const node = addedNodes[j]!;
+            const name = node.nodeName;
+            if (
+                name === "EMBED" ||
+                name === "OBJECT" ||
+                (node instanceof Element &&
+                    node.querySelector("embed, object") !== null)
+            ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/**
  * Listen for changes to the DOM.
  */
 function initMutationObserver(): void {
     const observer = new MutationObserver(function (mutationsList) {
         // If any embed or object nodes were added, re-run the polyfill to detect any new instances.
-        const embedOrObjectAdded = mutationsList.some((mutation) =>
-            Array.from(mutation.addedNodes).some(
-                (node) =>
-                    ["EMBED", "OBJECT"].includes(node.nodeName) ||
-                    (node instanceof Element &&
-                        (node as Element).querySelector("embed, object") !==
-                            null),
-            ),
-        );
-        if (embedOrObjectAdded) {
+        if (mutationsAddEmbedOrObject(mutationsList)) {
             polyfillFlashInstances();
             polyfillFrames();
         }
