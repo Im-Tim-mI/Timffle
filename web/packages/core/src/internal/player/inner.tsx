@@ -230,7 +230,7 @@ export class InnerPlayer {
             mode: "open",
             delegatesFocus: true,
         });
-        this.shadow.appendChild(ruffleShadowTemplate.content.cloneNode(true));
+        this.shadow.appendChild(ruffleShadowTemplate().content.cloneNode(true));
 
         this.dynamicStyles = this.shadow.getElementById(
             "dynamic-styles",
