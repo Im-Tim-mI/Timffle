@@ -2,9 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -217,4 +221,67 @@ func TestConsecutiveDataFramesDoNotShareBuffers(t *testing.T) {
 	}
 	peer.Close()
 	c.terminal("")
+}
+
+// Full serve loop over a fake connection that returns size bytes per read:
+// one hello and open, then b.N data frames each acknowledged.
+func benchSession(b *testing.B, size int) {
+	chunk := bytes.Repeat([]byte{1, 2, 3, 250}, size/4+1)[:size]
+	opt, peer := pipeOptionsB(b)
+	inR, inW := io.Pipe()
+	outR, outW := io.Pipe()
+	done := make(chan error, 1)
+	go func() { done <- serve(inR, outW, opt) }()
+	readMsg := func() []byte {
+		var h [4]byte
+		if _, err := io.ReadFull(outR, h[:]); err != nil {
+			b.Fatal(err)
+		}
+		m := make([]byte, binary.LittleEndian.Uint32(h[:]))
+		if _, err := io.ReadFull(outR, m); err != nil {
+			b.Fatal(err)
+		}
+		return m
+	}
+	inW.Write(encode(request{Type: "hello"}))
+	readMsg()
+	inW.Write(encode(request{Type: "open", Host: "127.0.0.1", Port: 80}))
+	readMsg()
+	ack := encode(request{Type: "ack"})
+	b.SetBytes(int64(size))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		go peer.Write(chunk)
+		readMsg()
+		inW.Write(ack)
+	}
+	b.StopTimer()
+	inW.Close()
+	outR.Close()
+	peer.Close()
+	<-done
+}
+
+func pipeOptionsB(b *testing.B) (options, net.Conn) {
+	x, y := net.Pipe()
+	b.Cleanup(func() { x.Close(); y.Close() })
+	return options{allowPrivate: true, dial: func(context.Context, string, string) (net.Conn, error) { return x, nil }}, y
+}
+
+func BenchmarkSession(b *testing.B) {
+	for _, size := range []int{100, 1400, readChunk} {
+		b.Run(fmt.Sprint(size), func(b *testing.B) { benchSession(b, size) })
+	}
+}
+
+// A process that only answers hello and sees EOF (the install window's probe).
+func BenchmarkHelloOnly(b *testing.B) {
+	in := encode(request{Type: "hello"})
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := serve(bytes.NewReader(in), io.Discard, options{}); err != nil {
+			b.Fatal(err)
+		}
+	}
 }
