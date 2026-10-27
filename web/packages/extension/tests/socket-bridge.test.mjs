@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { Blob } from "node:buffer";
 import { setImmediate } from "node:timers";
 import { URL } from "node:url";
+import { execFileSync } from "node:child_process";
+import process from "node:process";
 import { HELPER_PROXY_URL } from "../src/socket-proxy.ts";
 import {
     BridgeSocket,
@@ -27,7 +29,7 @@ import {
     isSendRequest,
 } from "../src/socket-bridge-protocol.ts";
 
-const { structuredClone } = globalThis;
+const { structuredClone, btoa } = globalThis;
 
 // Ruffle form-encodes the host, with %20 for spaces.
 const helperUrl = (host, port) =>
@@ -641,6 +643,89 @@ test("the global WebSocket only changes for helper URLs", async (t) => {
     } finally {
         globalThis.WebSocket = original;
     }
+});
+
+// bytesToBase64 as it was before it used toBase64 / joined pieces.
+function oldBytesToBase64(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+}
+
+const BASE64_SIZES = [0, 1, 2, 3, 100, 0x8000, 0x8001, 65536];
+function base64Sample(length) {
+    // Deterministic, covers every byte value.
+    let x = length + 1;
+    return Uint8Array.from({ length }, () => {
+        x = (x * 1103515245 + 12345) >>> 0;
+        return x >>> 24;
+    });
+}
+
+test("bytesToBase64 output is identical to the old implementation", () => {
+    for (const length of BASE64_SIZES) {
+        const bytes = base64Sample(length);
+        assert.equal(
+            bytesToBase64(bytes),
+            oldBytesToBase64(bytes),
+            `${length}`,
+        );
+    }
+    // A view into a larger buffer encodes only the view.
+    const backing = base64Sample(300);
+    const view = backing.subarray(7, 207);
+    assert.equal(bytesToBase64(view), oldBytesToBase64(view));
+});
+
+test("bytesToBase64 with native Uint8Array.prototype.toBase64 matches too", (t) => {
+    // Node 24 has toBase64 only behind --js-base-64; later versions may
+    // have it by default (and drop the flag).
+    const script = `
+        const { bytesToBase64 } = await import(${JSON.stringify(
+            new URL("../src/socket-bridge-protocol.ts", import.meta.url).href,
+        )});
+        const sizes = ${JSON.stringify(BASE64_SIZES)};
+        ${base64Sample.toString()}
+        process.stdout.write(JSON.stringify({
+            native: typeof Uint8Array.prototype.toBase64 === "function",
+            out: sizes.map((n) => bytesToBase64(base64Sample(n))),
+        }));
+    `;
+    let result;
+    for (const flags of [["--js-base-64"], []]) {
+        try {
+            result = JSON.parse(
+                execFileSync(
+                    process.execPath,
+                    [
+                        ...flags,
+                        "--import",
+                        "tsx",
+                        "--input-type=module",
+                        "-e",
+                        script,
+                    ],
+                    { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+                ),
+            );
+            break;
+        } catch {
+            // Unknown flag: try without it.
+        }
+    }
+    if (!result?.native) {
+        t.skip("this Node has no Uint8Array.prototype.toBase64");
+        return;
+    }
+    BASE64_SIZES.forEach((length, i) => {
+        assert.equal(
+            result.out[i],
+            oldBytesToBase64(base64Sample(length)),
+            `${length}`,
+        );
+    });
 });
 
 test("base64 round trip and message validation", () => {
