@@ -226,9 +226,9 @@ pub fn flush<'gc>(
 
         let UpdateContext { sockets, .. } = activation.context;
 
-        let mut buffer = socket.write_buffer();
-        let len = buffer.len();
-        let data = buffer.drain(..len).collect::<Vec<_>>();
+        // Move the buffer out instead of copying it, so that a large write
+        // does not leave its capacity behind in the socket.
+        let data = std::mem::take(&mut *socket.write_buffer());
 
         sockets.send(handle, data)
     }
