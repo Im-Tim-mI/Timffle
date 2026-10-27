@@ -18,7 +18,7 @@
 
 <p align="center"><a href="README.md">English</a> ・ <b>繁體中文</b> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">版本 <code>0.8.0.26308</code>（基於 Ruffle nightly 2026-10-13）｜ 授權 MIT 或 Apache-2.0（任選其一）</p>
+<p align="center">版本 <code>0.8.0.26310</code>（基於 Ruffle nightly 2026-10-13）｜ 授權 MIT 或 Apache-2.0（任選其一）</p>
 
 > [!IMPORTANT]
 > **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，與 Ruffle 專案、Ruffle LLC、淘米網絡（Taomee）沒有隸屬或合作關係，也沒有得到它們的認可。** Flash 模擬核心幾乎全部是 Ruffle 與其[數百位貢獻者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 歷史、作者紀錄與授權檔。
@@ -282,7 +282,7 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 **折扣碼 `LOGITIM`：[羅技台灣官方線上商城](https://store.logitech.tw/discount/LOGITIM)電競類別九折**，可使用到 2026/12/31。點這個連結會自動帶入折扣碼，也可以在結帳頁面輸入。
 
-**此為羅技官方線上商城的九折優惠碼。本專案與羅技毫無關係：**Timffle 與羅技沒有隸屬、背書或贊助關係。「Logitech」「Logi」與橫幅圖中的產品名稱、照片屬於羅技，圖中的價格是製作當天的價格。同樣的區塊也在擴充功能的設定頁與彈出視窗裡（彈出視窗預設展開，點標題可以折疊）。只有你點擊時才會在瀏覽器開啟連結，不會從網路載入任何東西。這是台灣商店的優惠碼，所以只有瀏覽器的介面語言是中文或英文時才會顯示，其他語言看不到。
+**此為羅技官方線上商城的九折優惠碼。使用此優惠碼購物時，Timffle 作者會獲得分潤。**Timffle 不是羅技的產品，也沒有得到羅技背書或贊助。「Logitech」「Logi」與橫幅圖中的產品名稱、照片屬於羅技，圖中的價格是製作當天的價格。同樣的區塊也在擴充功能的設定頁與彈出視窗裡（彈出視窗預設展開，點標題可以折疊）。只有你點擊時才會在瀏覽器開啟連結，不會從網路載入任何東西。這是台灣商店的優惠碼，所以只有瀏覽器的介面語言是中文或英文時才會顯示，其他語言看不到。
 
 ## 開發
 
@@ -292,8 +292,8 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26308 timffle/scripts/build-extension.sh   # 建置 wasm 與 Chrome 擴充功能 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26308 timffle/scripts/package-release.sh   # 交叉編譯小幫手（7 個平台）並封裝發行 ZIP（含授權檔）→ timffle/build/out/
+VERSION4=0.8.0.26310 timffle/scripts/build-extension.sh   # 建置 wasm 與 Chrome 擴充功能 → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26310 timffle/scripts/package-release.sh   # 交叉編譯小幫手（7 個平台）並封裝發行 ZIP（含授權檔）→ timffle/build/out/
 ```
 
 建置腳本預設會把建置機的家目錄與使用者名稱從 wasm 裡改寫掉，打包腳本打包前後都會檢查，發現就拒絕產出發行 ZIP。步驟、工具版本、擴充功能金鑰與常見問題：[`timffle/docs/BUILD.md`](timffle/docs/BUILD.md)。Ruffle 原有的桌面版等其他部分，建置方式與上游相同（見 [`README.ruffle.md`](README.ruffle.md)），但請先讀 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)。
