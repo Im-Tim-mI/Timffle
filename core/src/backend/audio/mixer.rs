@@ -556,6 +556,12 @@ impl AudioMixer {
         Err(decoders::Error::UnhandledCompression(AudioCompression::Mp3))
     }
 
+    /// Removes a registered sound. Playing instances keep their own reference
+    /// to the audio data and finish normally.
+    pub fn unregister_sound(&mut self, sound: SoundHandle) {
+        self.sounds.remove(sound);
+    }
+
     /// Starts a timeline audio stream.
     pub fn start_stream(
         &mut self,
@@ -1080,6 +1086,11 @@ macro_rules! impl_audio_mixer_backend {
         }
 
         #[inline]
+        fn unregister_sound(&mut self, sound: SoundHandle) {
+            self.$mixer.unregister_sound(sound)
+        }
+
+        #[inline]
         fn start_stream(
             &mut self,
             clip_data: $crate::tag_utils::SwfSlice,
@@ -1164,4 +1175,39 @@ macro_rules! impl_audio_mixer_backend {
             self.$mixer.get_sample_history()
         }
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AudioMixer;
+    use crate::backend::audio::swf;
+
+    #[test]
+    fn unregister_sound_frees_it() {
+        let mut mixer = AudioMixer::new(2, 44100);
+        let data = [0u8; 64];
+        let sound = swf::Sound {
+            id: 1,
+            format: swf::SoundFormat {
+                compression: swf::AudioCompression::UncompressedUnknownEndian,
+                sample_rate: 44100,
+                is_stereo: false,
+                is_16_bit: false,
+            },
+            num_samples: 64,
+            data: &data,
+        };
+        let a = mixer.register_sound(&sound).unwrap();
+        let b = mixer.register_sound(&sound).unwrap();
+        assert_eq!(mixer.sounds.len(), 2);
+
+        mixer.unregister_sound(a);
+        assert_eq!(mixer.sounds.len(), 1);
+        assert_eq!(mixer.get_sound_size(a), None);
+        assert_eq!(mixer.get_sound_size(b), Some(64));
+
+        // A stale handle is ignored.
+        mixer.unregister_sound(a);
+        assert_eq!(mixer.sounds.len(), 1);
+    }
 }

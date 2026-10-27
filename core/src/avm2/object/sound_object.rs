@@ -7,7 +7,7 @@ use crate::avm2::activation::Activation;
 use crate::avm2::globals::slots::flash_media_id3info as id3_slots;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, Object, TObject};
-use crate::backend::audio::{AudioManager, SoundHandle};
+use crate::backend::audio::{AudioManager, SoundHandle, SoundRelease};
 use crate::context::UpdateContext;
 use crate::display_object::SoundTransform;
 use crate::string::AvmString;
@@ -101,6 +101,12 @@ pub enum SoundData<'gc> {
     Loaded {
         #[collect(require_static)]
         sound: SoundHandle,
+
+        /// Set when this object owns `sound` (it was loaded by URL or from a
+        /// `ByteArray`); dropping it releases the sound. `None` for sounds
+        /// that belong to a SWF library.
+        #[collect(require_static)]
+        _release: Option<SoundRelease>,
     },
 }
 
@@ -127,7 +133,7 @@ impl<'gc> SoundObject<'gc> {
         let sound_data = self.0.sound_data.borrow();
         match &*sound_data {
             SoundData::NotLoaded { .. } => None,
-            SoundData::Loaded { sound } => Some(*sound),
+            SoundData::Loaded { sound, .. } => Some(*sound),
         }
     }
 
@@ -160,11 +166,28 @@ impl<'gc> SoundObject<'gc> {
                 // We don't know the length yet, so return the `SoundChannel`
                 true
             }
-            SoundData::Loaded { sound } => play_queued(queued, *sound, activation.context),
+            SoundData::Loaded { sound, .. } => play_queued(queued, *sound, activation.context),
         }
     }
 
+    /// Attach a sound that belongs to a SWF library.
     pub fn set_sound(self, context: &mut UpdateContext<'gc>, sound: SoundHandle) {
+        self.set_sound_inner(context, sound, None);
+    }
+
+    /// Attach a sound made by `AudioBackend::register_mp3` for this object
+    /// only. It is unregistered once this object is collected.
+    pub fn set_owned_sound(self, context: &mut UpdateContext<'gc>, sound: SoundHandle) {
+        let release = context.audio_manager.own_sound(sound);
+        self.set_sound_inner(context, sound, Some(release));
+    }
+
+    fn set_sound_inner(
+        self,
+        context: &mut UpdateContext<'gc>,
+        sound: SoundHandle,
+        release: Option<SoundRelease>,
+    ) {
         let mut sound_data =
             unlock!(Gc::write(context.gc(), self.0), SoundObjectData, sound_data).borrow_mut();
 
@@ -173,9 +196,14 @@ impl<'gc> SoundObject<'gc> {
                 for queued in std::mem::take(queued_plays) {
                     play_queued(queued, sound, context);
                 }
-                *sound_data = SoundData::Loaded { sound };
+                *sound_data = SoundData::Loaded {
+                    sound,
+                    _release: release,
+                };
             }
-            SoundData::Loaded { sound: old_sound } => {
+            SoundData::Loaded {
+                sound: old_sound, ..
+            } => {
                 panic!("Tried to replace sound {old_sound:?} with {sound:?}")
             }
         }

@@ -2439,6 +2439,9 @@ impl Player {
         F: for<'gc> FnOnce(&mut UpdateContext<'gc>) -> R,
     {
         let rval = self.mutate_with_update_context(|context| {
+            // Free sounds whose `Sound` objects were collected since the last update.
+            context.audio_manager.release_sounds(context.audio);
+
             let rval = func(context);
 
             Self::run_actions(context);
