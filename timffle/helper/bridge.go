@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -8,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -95,8 +97,59 @@ func readFrame(r io.Reader) (request, error) {
 	return req, nil
 }
 
-func errorMessage(code string) map[string]string {
-	return map[string]string{"type": "error", "code": code}
+// The helper's replies. Field names and values are the protocol's; only the
+// key order inside a frame differs from the former map encoding.
+type typeMessage struct {
+	Type string `json:"type"`
+}
+type errorReply struct {
+	Type string `json:"type"`
+	Code string `json:"code"`
+}
+type helloReply struct {
+	Type     string `json:"type"`
+	Version  string `json:"version"`
+	Protocol int    `json:"protocol"`
+}
+
+// dataReply carries the raw bytes; encodeFrame base64-encodes them straight
+// into the frame.
+type dataReply struct {
+	Data []byte
+}
+
+func errorMessage(code string) errorReply { return errorReply{Type: "error", Code: code} }
+func dataMessage(data []byte) dataReply   { return dataReply{Data: data} }
+
+const (
+	dataFramePrefix = `{"type":"data","data":"`
+	dataFrameSuffix = `"}`
+)
+
+// encodeFrame serializes one native message with its 4-byte length header.
+// A data frame is written in one allocation: the base64 alphabet contains
+// nothing that JSON escapes, so the payload needs no further quoting.
+func encodeFrame(value any) ([]byte, error) {
+	if d, ok := value.(dataReply); ok {
+		n := base64.StdEncoding.EncodedLen(len(d.Data))
+		body := len(dataFramePrefix) + n + len(dataFrameSuffix)
+		frame := make([]byte, 4+body)
+		binary.LittleEndian.PutUint32(frame, uint32(body))
+		p := frame[4:4]
+		p = append(p, dataFramePrefix...)
+		base64.StdEncoding.Encode(p[len(p):len(p)+n], d.Data)
+		p = p[:len(p)+n]
+		p = append(p, dataFrameSuffix...)
+		return frame[:4+len(p)], nil
+	}
+	b, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	frame := make([]byte, len(b)+4)
+	binary.LittleEndian.PutUint32(frame, uint32(len(b)))
+	copy(frame[4:], b)
+	return frame, nil
 }
 
 // writeAll handles legal short writes, detects broken writers and never spins
@@ -144,13 +197,10 @@ func outputLoop(out io.Writer, frames <-chan outputFrame, stop <-chan struct{}) 
 }
 
 func sendFrame(out chan<- outputFrame, value any, timeout time.Duration, abort <-chan struct{}) error {
-	b, err := json.Marshal(value)
+	frame, err := encodeFrame(value)
 	if err != nil {
 		return err
 	}
-	frame := make([]byte, len(b)+4)
-	binary.LittleEndian.PutUint32(frame, uint32(len(b)))
-	copy(frame[4:], b)
 	done := make(chan error, 1)
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -213,14 +263,8 @@ func inputLoop(in io.Reader, requests chan<- inputEvent, ended chan<- inputEnd, 
 		}
 		event := inputEvent{req: req}
 		if req.Type == "send" {
-			// Check encoded size before allocating a decode buffer. Newlines and
-			// noncanonical encodings are rejected (browser btoa always is canonical).
-			if len(req.Data) > base64.StdEncoding.EncodedLen(maxSend) {
-				finish(inputEnd{err: errInvalidFrame, code: "invalid"})
-				return
-			}
-			b, err := base64.StdEncoding.Strict().DecodeString(req.Data)
-			if err != nil || len(b) > maxSend || base64.StdEncoding.EncodeToString(b) != req.Data {
+			b, ok := decodeSendData(req.Data)
+			if !ok {
 				finish(inputEnd{err: errInvalidFrame, code: "invalid"})
 				return
 			}
@@ -245,6 +289,23 @@ func inputLoop(in io.Reader, requests chan<- inputEvent, ended chan<- inputEnd, 
 			return
 		}
 	}
+}
+
+// decodeSendData decodes a send's payload. Newlines and noncanonical
+// encodings are rejected (browser btoa output is always canonical): the
+// strict decoder refuses nonzero padding bits, and the only characters it
+// would skip are CR and LF, so refusing those up front, plus the length
+// check, leaves exactly the inputs whose re-encoding reproduces them.
+func decodeSendData(data string) ([]byte, bool) {
+	// Check the encoded size before allocating a decode buffer.
+	if len(data) > base64.StdEncoding.EncodedLen(maxSend) || strings.ContainsAny(data, "\r\n") {
+		return nil, false
+	}
+	b, err := base64.StdEncoding.Strict().DecodeString(data)
+	if err != nil || len(b) > maxSend || len(data) != base64.StdEncoding.EncodedLen(len(b)) {
+		return nil, false
+	}
+	return b, true
 }
 
 type connectResult struct {
@@ -283,7 +344,10 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 		}
 		connectionWG.Wait()
 	}()
-	go inputLoop(in, requests, ended, abort, ctx.Done(), &sendBusy)
+	// Buffered reads cut the system calls per frame; io.ReadFull sees the same
+	// bytes and a short read still ends a truncated frame the same way. The
+	// unwrapped handle stays with the deferred close above.
+	go inputLoop(bufio.NewReaderSize(in, 64<<10), requests, ended, abort, ctx.Done(), &sendBusy)
 	go outputLoop(out, output, stopOutput)
 	// Network cancellation must not depend on the event loop's stdout writer.
 	go func() {
@@ -327,7 +391,7 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 		}
 		if !closedSent {
 			closedSent = true
-			if err := emit(map[string]string{"type": "closed"}); err != nil && !errors.Is(err, context.Canceled) {
+			if err := emit(typeMessage{Type: "closed"}); err != nil && !errors.Is(err, context.Canceled) {
 				return err
 			}
 		}
@@ -364,12 +428,16 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 			writeTimer.Stop()
 		}
 	}()
+	// One read is in flight at a time, and the next is only started (after
+	// opened, or after an ack) once the previous chunk has been encoded into
+	// its frame, so a single buffer serves the whole session.
+	readBuf := make([]byte, readChunk)
 	readNext := func() {
 		c := conn
 		connectionWG.Add(1)
 		go func() {
 			defer connectionWG.Done()
-			buf := make([]byte, readChunk)
+			buf := readBuf
 			n, err := c.Read(buf)
 			if n < 0 || n > len(buf) {
 				n, err = 0, io.ErrUnexpectedEOF
@@ -403,7 +471,7 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 					return finish("invalid", errInvalidFrame)
 				}
 				greeted = true
-				if err := emit(map[string]any{"type": "hello", "version": version, "protocol": protocolVersion}); err != nil {
+				if err := emit(helloReply{Type: "hello", Version: version, Protocol: protocolVersion}); err != nil {
 					if absorbEnd() {
 						return finish(ending.code, ending.err)
 					}
@@ -484,7 +552,7 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 			// it before any output, so stdin EOF also interrupts a blocked stdout.
 			connectionWG.Add(1)
 			go func(c net.Conn) { defer connectionWG.Done(); <-ctx.Done(); _ = c.Close() }(conn)
-			if err := emit(map[string]string{"type": "opened"}); err != nil {
+			if err := emit(typeMessage{Type: "opened"}); err != nil {
 				if absorbEnd() {
 					return finish(ending.code, ending.err)
 				}
@@ -498,7 +566,7 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 			if len(result.data) > 0 {
 				waitingAck = true
 				afterAck = result.err
-				if err := emit(map[string]string{"type": "data", "data": base64.StdEncoding.EncodeToString(result.data)}); err != nil {
+				if err := emit(dataMessage(result.data)); err != nil {
 					if absorbEnd() {
 						return finish(ending.code, ending.err)
 					}
@@ -530,7 +598,7 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 			// as soon as Chrome receives the frame. No second write can execute until
 			// this synchronous frame publication has completed.
 			sendBusy.Store(false)
-			if err := emit(map[string]string{"type": "sent"}); err != nil {
+			if err := emit(typeMessage{Type: "sent"}); err != nil {
 				if absorbEnd() {
 					return finish(ending.code, ending.err)
 				}
