@@ -39,6 +39,12 @@ use tracing::instrument;
 use wgpu::SubmissionIndex;
 use wgpu_profiler::{GpuProfiler, GpuProfilerSettings};
 
+/// GPU -> CPU readback buffers larger than this are dropped after use.
+const MAX_POOLED_READBACK_BUFFER_SIZE: u64 = 4 * 1024 * 1024;
+
+/// At most this many GPU -> CPU readback buffers are kept for reuse.
+const MAX_POOLED_READBACK_BUFFERS: usize = 2;
+
 /// Creates a wgpu instance with Ruffle's required configuration.
 ///
 /// This disables indirect call validation because wgpu's validation runs a compute
@@ -238,16 +244,23 @@ impl<T: RenderTarget> WgpuRenderBackend<T> {
             target.format(),
         );
 
-        let offscreen_buffer_pool = BufferPool::new(Box::new(
-            |descriptors: &Descriptors, dimensions: &BufferDimensions| {
+        // Readback buffers are only kept for reuse while they are small and
+        // few: on WebGL each one is mirrored by a buffer of the same size in
+        // the wasm heap, which never shrinks.
+        let offscreen_buffer_pool = BufferPool::with_limits(
+            Box::new(|descriptors: &Descriptors, dimensions: &BufferDimensions| {
                 descriptors.device.create_buffer(&wgpu::BufferDescriptor {
                     label: None,
                     size: dimensions.size(),
                     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                     mapped_at_creation: false,
                 })
-            },
-        ));
+            }),
+            Some(|dimensions: &BufferDimensions| {
+                dimensions.size() <= MAX_POOLED_READBACK_BUFFER_SIZE
+            }),
+            MAX_POOLED_READBACK_BUFFERS,
+        );
 
         let transforms = DynamicTransforms::new(&descriptors);
         let active_frame = ActiveFrame::new(&descriptors);
