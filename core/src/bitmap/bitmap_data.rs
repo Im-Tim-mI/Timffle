@@ -4,6 +4,7 @@ use crate::display_object::{BoundsMode, DisplayObject, DisplayObjectWeak, TDispl
 use bitflags::bitflags;
 use gc_arena::lock::GcRefLock;
 use gc_arena::{Collect, Gc, Mutation};
+use ruffle_common::tag_utils::note_external_alloc;
 use ruffle_render::backend::RenderBackend;
 use ruffle_render::bitmap::{
     Bitmap, BitmapFormat, BitmapHandle, PixelRegion, PixelSnapping, SyncHandle,
@@ -234,6 +235,7 @@ impl<'gc> BitmapData<'gc> {
         fill_color: u32,
     ) -> Self {
         let data = BitmapRawData::new(width, height, transparency, fill_color);
+        data.note_pixel_alloc(mc);
         let data = BitmapRawDataWrapper::new(Gc::new(mc, data.into()));
 
         Self(data)
@@ -247,6 +249,7 @@ impl<'gc> BitmapData<'gc> {
         pixels: Vec<Color>,
     ) -> Self {
         let data = BitmapRawData::new_with_pixels(width, height, transparency, pixels);
+        data.note_pixel_alloc(mc);
         let data = BitmapRawDataWrapper::new(Gc::new(mc, data.into()));
 
         Self(data)
@@ -262,6 +265,7 @@ impl<'gc> BitmapData<'gc> {
         renderer: &mut dyn RenderBackend,
     ) -> BitmapData<'gc> {
         let data = self.0.clone_data(renderer);
+        data.note_pixel_alloc(mc);
         let data = BitmapRawDataWrapper::new(Gc::new(mc, data.into()));
         Self(data)
     }
@@ -803,6 +807,11 @@ impl<'gc> BitmapRawData<'gc> {
         self.disposed
     }
 
+    /// Count the pixel buffer towards collector pacing (see `BYTES_PER_GC`).
+    fn note_pixel_alloc(&self, mc: &Mutation<'gc>) {
+        note_external_alloc(mc.metrics(), self.pixels.len() * size_of::<Color>());
+    }
+
     pub fn dispose(&mut self) {
         self.width = 0;
         self.height = 0;
@@ -1104,6 +1113,19 @@ mod tests {
             count
         });
         assert_eq!(count, 30, "dead entries were not pruned");
+    }
+
+    #[test]
+    fn bitmap_pixels_count_for_gc_pacing() {
+        let arena = Arena::<Rootable![()]>::new(|_| ());
+        arena.mutate(|mc, _| {
+            let _ = BitmapData::new(mc, 1, 1, true, 0);
+            let small = mc.metrics().allocation_debt();
+            let _ = BitmapData::new(mc, 1000, 600, true, 0);
+            let big = mc.metrics().allocation_debt();
+            let expected = (1000 * 600 * 4 / ruffle_common::tag_utils::BYTES_PER_GC) as f64;
+            assert!(big - small >= expected, "{small} -> {big}");
+        });
     }
 
     #[test]
