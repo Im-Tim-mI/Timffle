@@ -1,0 +1,7 @@
+# Source: ProjectedBounds.hx (Haxe 4.3.7; built like the other Haxe tests:
+#   haxe -cp . -main <Class> -swf test.swf -swf-version 17 -D swf-header=400:300:30:FFFFFF).
+# output.txt is Flash Player 32.0.0.465 (standalone, Wine, twice, identical); output.ruffle.txt pins what
+# Ruffle prints today (the 2D lines must stay identical before and after 3D was used, whatever order the
+# tests run in).
+num_frames = 1
+known_failure = true

@@ -26,7 +26,6 @@ use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::num::NonZero;
-use std::sync::atomic::{AtomicBool, Ordering};
 use swf::{ColorTransform, Fixed8};
 
 mod avm1_button;
@@ -432,7 +431,9 @@ impl<'gc> DisplayObjectBase<'gc> {
     pub fn set_matrix(&self, matrix: Matrix) {
         self.matrix.set(matrix);
         // A 2D matrix takes the object out of 3D.
-        self.matrix3d.set(None);
+        if self.matrix3d.replace(None).is_some() {
+            unmark_3d_descendant_above(self.parent.get(), None);
+        }
         self.set_scale_rotation_cached(false);
     }
 
@@ -512,10 +513,10 @@ impl<'gc> DisplayObjectBase<'gc> {
     /// Makes this object 3D, keeping what its 2D matrix does.
     fn enter_3d(&self) {
         if self.matrix3d.get().is_none() {
-            ANY_3D.store(true, Ordering::Relaxed);
             let matrix = Matrix3D::from_matrix(self.matrix.get());
             self.trs3d.set(matrix.decompose_trs());
             self.matrix3d.set(Some(matrix));
+            mark_3d_descendant_above(self.parent.get());
         }
     }
 
@@ -525,16 +526,40 @@ impl<'gc> DisplayObjectBase<'gc> {
         self.set_transformed_by_script(true);
         match matrix3d {
             Some(matrix) => {
-                ANY_3D.store(true, Ordering::Relaxed);
                 self.trs3d.set(matrix.decompose_trs());
-                self.matrix3d.set(Some(matrix));
+                if self.matrix3d.replace(Some(matrix)).is_none() {
+                    mark_3d_descendant_above(self.parent.get());
+                }
                 self.matrix.set(matrix.to_matrix());
             }
             None => {
-                self.matrix3d.set(None);
+                if self.matrix3d.replace(None).is_some() {
+                    unmark_3d_descendant_above(self.parent.get(), None);
+                }
                 self.matrix.set(Matrix::IDENTITY);
                 self.set_scale_rotation_cached(false);
             }
+        }
+    }
+
+    /// Whether some object below this one (in its render list, or deeper) may have a 3D matrix.
+    /// Kept up to date by the 3D setters, `set_parent`, removal from a render list and `replace_with_movie`;
+    /// it may stay set after the last 3D descendant has gone by a path that does none of these
+    /// (`subtree_has_own_3d` checks for real), but it is never clear while one exists.
+    pub fn has_3d_descendant(&self) -> bool {
+        self.contains_flag(DisplayObjectFlags::HAS_3D_DESCENDANT)
+    }
+
+    fn set_has_3d_descendant(&self, value: bool) {
+        self.set_flag(DisplayObjectFlags::HAS_3D_DESCENDANT, value);
+    }
+
+    /// Tells the 3D bookkeeping that every child of this object is being dropped at once (the clip is
+    /// replaced by another movie), without going through `set_parent`.
+    pub fn children_dropped(&self) {
+        if self.has_3d_descendant() {
+            self.set_has_3d_descendant(false);
+            unmark_3d_descendant_above(self.parent.get(), None);
         }
     }
 
@@ -1012,6 +1037,15 @@ impl<'gc> DisplayObjectBase<'gc> {
         true
     }
 
+    /// Drops the texture of the bitmap cache (`cacheAsBitmap` or filters), keeping the cache settings: used
+    /// when the object leaves the stage, so a kept but hidden object does not hold its texture. The cache is
+    /// dirty while it has no texture, so the next render that shows the object draws it again.
+    pub fn release_cached_bitmap(&self) {
+        if let Some(cache) = &mut *self.bitmap_cache_mut() {
+            cache.clear();
+        }
+    }
+
     fn clear_invalidate_flag(&self) {
         self.set_flag(DisplayObjectFlags::CACHE_INVALIDATED, false);
     }
@@ -1162,12 +1196,35 @@ fn twips_nearest(pixels: f64) -> Twips {
     Twips::new((pixels * 20.0).round().clamp(-2.0e9, 2.0e9) as i32)
 }
 
-/// Set the first time any object becomes 3D. The 3D aware (and slower) geometry is only used after that.
-static ANY_3D: AtomicBool = AtomicBool::new(false);
+/// Marks `node` and all its ancestors as having a 3D descendant: an object below `node` has become 3D,
+/// or a 3D object (or one with 3D below it) has been placed under `node`.
+fn mark_3d_descendant_above(mut node: Option<DisplayObject<'_>>) {
+    while let Some(ancestor) = node {
+        ancestor.base().set_has_3d_descendant(true);
+        node = ancestor.parent();
+    }
+}
 
-/// Whether any display object has been made 3D so far.
-pub fn any_3d() -> bool {
-    ANY_3D.load(Ordering::Relaxed)
+/// Re-derives the 3D descendant mark of `node` and its ancestors after an object below `node` has left 3D,
+/// or after `removed` (an object with 3D) has been taken out of `node`. Stops at the first ancestor that
+/// still has 3D below it, because everything above it keeps the mark too.
+fn unmark_3d_descendant_above<'gc>(
+    mut node: Option<DisplayObject<'gc>>,
+    removed: Option<DisplayObject<'gc>>,
+) {
+    while let Some(ancestor) = node {
+        let still_3d = ancestor.as_container().is_some_and(|ctr| {
+            ctr.iter_render_list().any(|child| {
+                !removed.is_some_and(|removed| DisplayObject::ptr_eq(removed, child))
+                    && (child.base().has_matrix3d() || child.base().has_3d_descendant())
+            })
+        });
+        if still_3d {
+            break;
+        }
+        ancestor.base().set_has_3d_descendant(false);
+        node = ancestor.parent();
+    }
 }
 
 struct DrawCacheInfo {
@@ -1650,7 +1707,7 @@ pub trait TDisplayObject<'gc>:
     /// the projection, taken back to the parent's space.
     #[no_dynamic]
     fn projected_local_bounds(self, mode: BoundsMode) -> Option<Rectangle<Twips>> {
-        if !any_3d() || !self.subtree_has_own_3d() {
+        if !self.subtree_has_own_3d() {
             // Nothing of this object is 3D: its bounds in the parent's space are those of the plain 2D matrices,
             // even inside a 3D parent.
             return None;
@@ -1711,10 +1768,28 @@ pub trait TDisplayObject<'gc>:
     #[no_dynamic]
     fn subtree_has_own_3d(self) -> bool {
         self.base().has_matrix3d()
-            || self.as_container().is_some_and(|ctr| {
-                ctr.iter_render_list()
-                    .any(|child| child.subtree_has_own_3d())
-            })
+            || (self.base().has_3d_descendant()
+                && self.as_container().is_some_and(|ctr| {
+                    ctr.iter_render_list()
+                        .any(|child| child.subtree_has_own_3d())
+                }))
+    }
+
+    /// Whether this object, or an ancestor below the stage, has a 3D matrix: whether the mapping of its
+    /// local space to the stage is projective rather than affine.
+    #[no_dynamic]
+    fn chain_has_3d(self) -> bool {
+        let mut node: Option<DisplayObject<'gc>> = Some(self.into());
+        while let Some(object) = node {
+            if object.as_stage().is_some() {
+                break;
+            }
+            if object.base().has_matrix3d() {
+                return true;
+            }
+            node = object.parent();
+        }
+        false
     }
 
     /// The bounds of this object and its children, where `state` is the chain from the stage down to this object.
@@ -1912,10 +1987,11 @@ pub trait TDisplayObject<'gc>:
 
     /// The state of the chain of display objects from the stage down to this object (included), which folds
     /// all the matrices, 3D ones and perspective projections, into one mapping to the stage.
-    /// `None` if this object is not on a stage, or if no 3D has ever been used.
+    /// `None` if this object is not on a stage, or if nothing on the chain or below this object is 3D (then
+    /// the plain 2D geometry is exact, and 2D content never pays for the chain).
     #[no_dynamic]
     fn chain_state_to_stage(self) -> Option<ChainState> {
-        if !any_3d() {
+        if !self.base().has_3d_descendant() && !self.chain_has_3d() {
             return None;
         }
         let mut chain: Vec<DisplayObject<'gc>> = vec![self.into()];
@@ -1948,6 +2024,9 @@ pub trait TDisplayObject<'gc>:
     /// the chain from the stage down to this object is 3D. `None` for plain 2D chains.
     #[no_dynamic]
     fn projective_to_stage(self) -> Option<Mat4> {
+        if !self.chain_has_3d() {
+            return None;
+        }
         self.chain_state_to_stage()?.projective()
     }
 
@@ -2430,9 +2509,21 @@ pub trait TDisplayObject<'gc>:
     /// Set the parent of this display object.
     #[no_dynamic]
     fn set_parent(self, context: &mut UpdateContext<'gc>, parent: Option<DisplayObject<'gc>>) {
-        let had_parent = self.parent().is_some();
+        let old_parent = self.parent();
+        let had_parent = old_parent.is_some();
         let write = Gc::write(context.gc(), self.base());
         DisplayObjectBase::set_parent_ignoring_orphan_list(write, parent);
+        if self.base().has_matrix3d() || self.base().has_3d_descendant() {
+            // Keep the 3D descendant marks of both chains right (see `has_3d_descendant`).
+            let same_parent = match (old_parent, parent) {
+                (Some(old), Some(new)) => DisplayObject::ptr_eq(old, new),
+                _ => false,
+            };
+            if !same_parent {
+                unmark_3d_descendant_above(old_parent, Some(self.into()));
+            }
+            mark_3d_descendant_above(parent);
+        }
         let parent_removed = had_parent && parent.is_none();
 
         if parent_removed {
@@ -3556,6 +3647,10 @@ bitflags! {
         /// (they need to be instantiated "manually" by
         /// `Sprite.constructChildren`).
         const MANUAL_FRAME_CONSTRUCT  = 1 << 16;
+
+        /// Whether an object below this one may have a 3D matrix (see `DisplayObjectBase::has_3d_descendant`).
+        /// While clear, the geometry of this object takes the plain 2D path.
+        const HAS_3D_DESCENDANT        = 1 << 17;
     }
 }
 
@@ -3791,5 +3886,67 @@ impl<'gc> DisplayObjectWeak<'gc> {
             DisplayObjectWeak::LoaderDisplay(ld) => ld.upgrade(mc).map(|ld| ld.into()),
             DisplayObjectWeak::Bitmap(b) => b.upgrade(mc).map(|ld| ld.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod bitmap_cache_release_tests {
+    use super::*;
+    use ruffle_render::bitmap::{BitmapHandle, BitmapHandleImpl};
+    use std::sync::Arc;
+
+    #[derive(Debug)]
+    struct TestTexture;
+    impl BitmapHandleImpl for TestTexture {}
+
+    #[test]
+    fn release_drops_the_texture_and_keeps_the_settings() {
+        let base = DisplayObjectBase::default();
+        base.set_bitmap_cached_preference(true);
+        let texture: Arc<dyn BitmapHandleImpl> = Arc::new(TestTexture);
+        if let Some(cache) = &mut *base.bitmap_cache_mut() {
+            cache.update(
+                &mut ruffle_render::backend::null::NullRenderer::new(
+                    ruffle_render::backend::ViewportDimensions {
+                        width: 1,
+                        height: 1,
+                        scale_factor: 1.0,
+                    },
+                ),
+                Matrix::IDENTITY,
+                10,
+                10,
+                10,
+                10,
+                Point::new(0, 0),
+                10,
+            );
+            cache.bitmap = Some(BitmapInfo {
+                handle: BitmapHandle(texture.clone()),
+                width: 10,
+                height: 10,
+            });
+            assert!(!cache.is_dirty(&Matrix::IDENTITY, 10, 10));
+        }
+        assert_eq!(Arc::strong_count(&texture), 2);
+
+        base.release_cached_bitmap();
+
+        assert_eq!(Arc::strong_count(&texture), 1, "the texture is dropped");
+        assert!(base.is_bitmap_cached_preference());
+        let cache = base.bitmap_cache_mut();
+        let cache = cache.as_ref().expect("the cache settings stay");
+        assert!(cache.bitmap.is_none());
+        assert!(
+            cache.is_dirty(&Matrix::IDENTITY, 10, 10),
+            "redrawn when shown again"
+        );
+    }
+
+    #[test]
+    fn release_without_cache_is_a_no_op() {
+        let base = DisplayObjectBase::default();
+        base.release_cached_bitmap();
+        assert!(base.bitmap_cache_mut().is_none());
     }
 }

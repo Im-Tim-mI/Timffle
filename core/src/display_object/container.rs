@@ -35,6 +35,9 @@ pub fn dispatch_removed_from_stage_event<'gc>(
         Avm2::dispatch_event(context, removed_evt, object.into());
     }
 
+    // Off the stage nothing shows the cached bitmap; it is drawn again when the object is shown again.
+    child.base().release_cached_bitmap();
+
     if let Some(child_container) = child.as_container() {
         for grandchild in child_container.iter_render_list() {
             dispatch_removed_from_stage_event(grandchild, context)
@@ -217,6 +220,13 @@ pub trait TDisplayObjectContainer<'gc>:
         child.set_parent(context, Some(self.into()));
         child.set_place_frame(0);
         child.set_depth(depth);
+
+        if let Some(removed_child) = removed_child
+            && (removed_child.base().has_matrix3d() || removed_child.base().has_3d_descendant())
+        {
+            // It left the render list without going through `set_parent`.
+            super::unmark_3d_descendant_above(Some(self.into()), Some(removed_child));
+        }
 
         if let Some(removed_child) = removed_child
             && !self.raw_container().is_action_script_3()
@@ -741,6 +751,10 @@ impl<'gc> ChildContainer<'gc> {
         if let Some(position) = render_list_position {
             this.render_list_mut().remove(position);
             drop(this);
+
+            if child.base().has_matrix3d() || child.base().has_3d_descendant() {
+                super::unmark_3d_descendant_above(Some(container.into()), Some(child));
+            }
 
             // Only set the parent's field to 'null' if the child was not placed/modified
             // on the render list by AVM2 code.

@@ -1,0 +1,59 @@
+== before any 3d
+item0 stage=(58.5,25,166.5,52) parent=(58.5,25,166.5,52) rect=(58.5,25,166.5,52) pixel=(58,25,167,52) size=166.5x52 l2g=(34.5,24) g2l=(62,57) hit=false/true/false concat=(a=1.5, b=0, c=0, d=1, tx=30, ty=20) mouse=246.65,280
+item1 stage=(58.5,37,75,40) parent=(19,17,50,40) rect=(58.5,37,75,40) pixel=(58,37,75,40) size=50x40 l2g=(52.5,32) g2l=(50,49) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=48, ty=28) mouse=234.65,272
+item2 stage=(58.5,37,75,40) parent=(7,9,50,40) rect=(58.5,37,75,40) pixel=(58,37,75,40) size=50x40 l2g=(63,41) g2l=(43,40) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=58.5, ty=37) mouse=228,263
+item3 stage=(180,25,45,30) parent=(100,5,30,30) rect=(180,25,45,30) pixel=(180,25,45,30) size=30x30 l2g=(184.5,29) g2l=(-38,52) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=180, ty=25) mouse=146.65,275
+item4 stage=(204.65,161.6,62.55,30.1) parent=(204.65,161.6,62.55,30.1) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,31) size=62.55x30.1 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(204.65,161.6,62.55,30.1) parent=(10,10,60,20) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,30) size=60x20 l2g=(210.35,166.05) g2l=(-98.5,-68.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=208, ty=161.5) mouse=213.05,102.6
+== with 3d child
+item0 stage=(58.5,25,166.5,96) parent=(58.5,25,166.5,96) rect=(58.5,25,166.5,96) pixel=(58,25,167,96) size=166.5x96 l2g=(34.5,24) g2l=(62,57) hit=false/true/false concat=(a=1.5, b=0, c=0, d=1, tx=30, ty=20) mouse=246.65,280
+item1 stage=(58.5,37,140.5,84) parent=(19,17,93.65,84) rect=(58.5,37,140.5,84) pixel=(58,37,141,84) size=93.65x84 l2g=(52.5,32) g2l=(50,49) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=48, ty=28) mouse=234.65,272
+item2 stage=(58.5,37,75,40) parent=(7,9,50,40) rect=(58.5,37,75,40) pixel=(58,37,75,40) size=50x40 l2g=(63,41) g2l=(43,40) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=58.5, ty=37) mouse=228,263
+item3 stage=(180,25,45,30) parent=(100,5,30,30) rect=(180,25,45,30) pixel=(180,25,45,30) size=30x30 l2g=(184.5,29) g2l=(-38,52) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=180, ty=25) mouse=146.65,275
+item4 stage=(204.65,161.6,62.55,30.1) parent=(204.65,161.6,62.55,30.1) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,31) size=62.55x30.1 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(204.65,161.6,62.55,30.1) parent=(10,10,60,20) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,30) size=60x20 l2g=(210.35,166.05) g2l=(-98.5,-68.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=208, ty=161.5) mouse=213.05,102.6
+same after removing the 3d child: true
+== 3d child moved to b
+item0 stage=(58.5,25,166.5,52) parent=(58.5,25,166.5,52) rect=(58.5,25,166.5,52) pixel=(58,25,167,52) size=166.5x52 l2g=(34.5,24) g2l=(62,57) hit=false/true/false concat=(a=1.5, b=0, c=0, d=1, tx=30, ty=20) mouse=246.65,280
+item1 stage=(58.5,37,75,40) parent=(19,17,50,40) rect=(58.5,37,75,40) pixel=(58,37,75,40) size=50x40 l2g=(52.5,32) g2l=(50,49) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=48, ty=28) mouse=234.65,272
+item2 stage=(58.5,37,75,40) parent=(7,9,50,40) rect=(58.5,37,75,40) pixel=(58,37,75,40) size=50x40 l2g=(63,41) g2l=(43,40) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=58.5, ty=37) mouse=228,263
+item3 stage=(180,25,45,30) parent=(100,5,30,30) rect=(180,25,45,30) pixel=(180,25,45,30) size=30x30 l2g=(184.5,29) g2l=(-38,52) hit=true/true/false concat=(a=1.5, b=0, c=0, d=1, tx=180, ty=25) mouse=146.65,275
+item4 stage=(202.25,161.6,64.95,43.65) parent=(202.25,161.6,64.95,43.65) rect=(202.25,161.6,64.95,43.65) pixel=(202,161,65,44) size=62.55x42.05 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(204.65,161.6,62.55,30.1) parent=(10,10,60,20) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,30) size=60x20 l2g=(210.35,166.05) g2l=(-98.5,-68.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=208, ty=161.5) mouse=213.05,102.6
+same after moving it out again: true
+== a z=0
+item0 stage=(58,25,167,52) parent=(58,25,167,52) rect=(58,25,167,52) pixel=(19,5,111,52) size=167x52 l2g=(34,24) g2l=(62,57) hit=false/true/false concat=null mouse=246.65,280
+item1 stage=(58,37,76,40) parent=(18.65,17,50.7,40) rect=(58,37,76,40) pixel=(19,17,50,40) size=50x40 l2g=(52,32) g2l=(50,49) hit=false/false/false concat=(a=1, b=0, c=0, d=1, tx=12, ty=8) mouse=234.65,272
+item2 stage=(58,37,76,40) parent=(6.65,9,50.7,40) rect=(58,37,76,40) pixel=(19,17,50,40) size=50x40 l2g=(63,41) g2l=(43,40) hit=false/false/false concat=(a=1, b=0, c=0, d=1, tx=19, ty=17) mouse=227.65,263
+item3 stage=(180,25,45,30) parent=(100,5,30,30) rect=(180,25,45,30) pixel=(100,5,30,30) size=30x30 l2g=(184,29) g2l=(-38,52) hit=false/false/false concat=(a=1, b=0, c=0, d=1, tx=100, ty=5) mouse=146.65,275
+item4 stage=(204.65,161.6,62.55,30.1) parent=(204.65,161.6,62.55,30.1) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,31) size=62.55x30.1 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(204.65,161.6,62.55,30.1) parent=(10,10,60,20) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,30) size=60x20 l2g=(210.35,166.05) g2l=(-98.5,-68.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=208, ty=161.5) mouse=213.05,102.6
+first difference at 0: item0 stage=(49,25,111,52) parent=(49,25,111,52) rect=(49,25,111,52) pixel=(49,25,111,52) size=111x52 l2g=(33,24) g2l=(93,57) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=30, ty=20) mouse=370,280
+same after a.matrix3D = null: false
+== b1 rotationX=30
+item0 stage=(49,25,111,52) parent=(49,25,111,52) rect=(49,25,111,52) pixel=(49,25,111,52) size=111x52 l2g=(33,24) g2l=(93,57) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=30, ty=20) mouse=370,280
+item1 stage=(49,37,50,40) parent=(19,17,50,40) rect=(49,37,50,40) pixel=(49,37,50,40) size=50x40 l2g=(45,32) g2l=(81,49) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=42, ty=28) mouse=358,272
+item2 stage=(49,37,50,40) parent=(7,9,50,40) rect=(49,37,50,40) pixel=(49,37,50,40) size=50x40 l2g=(52,41) g2l=(74,40) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=49, ty=37) mouse=351,263
+item3 stage=(130,25,30,30) parent=(100,5,30,30) rect=(130,25,30,30) pixel=(130,25,30,30) size=30x30 l2g=(133,29) g2l=(-7,52) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=130, ty=25) mouse=270,275
+item4 stage=(200.4,150.2,72.25,48.55) parent=(200.4,150.2,72.25,48.55) rect=(200.4,150.2,72.25,48.55) pixel=(200,150,73,49) size=72.25x48.55 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(205,161,63,27) parent=(6.85,-1,66.75,37.55) rect=(205,161,63,27) pixel=(196,150,63,30) size=66.75x37.55 l2g=(210,166) g2l=(-90.15,-72.75) hit=false/true/false concat=null mouse=254.6,143.25
+first difference at 0: item0 stage=(49,25,111,52) parent=(49,25,111,52) rect=(49,25,111,52) pixel=(49,25,111,52) size=111x52 l2g=(33,24) g2l=(93,57) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=30, ty=20) mouse=370,280
+same after b1.transform.matrix = 2d: false
+== 3d grandchild under a2
+item0 stage=(49,25,162,94) parent=(49,25,162,94) rect=(49,25,162,94) pixel=(49,25,162,94) size=162x94 l2g=(33,24) g2l=(93,57) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=30, ty=20) mouse=370,280
+item1 stage=(49,37,50,40) parent=(19,17,50,40) rect=(49,37,50,40) pixel=(49,37,50,40) size=50x40 l2g=(45,32) g2l=(81,49) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=42, ty=28) mouse=358,272
+item2 stage=(49,37,50,40) parent=(7,9,50,40) rect=(49,37,50,40) pixel=(49,37,50,40) size=50x40 l2g=(52,41) g2l=(74,40) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=49, ty=37) mouse=351,263
+item3 stage=(130,25,81,94) parent=(100,5,81,94) rect=(130,25,81,94) pixel=(130,25,81,94) size=81x94 l2g=(133,29) g2l=(-7,52) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=130, ty=25) mouse=270,275
+item4 stage=(204.65,161.6,62.55,30.1) parent=(204.65,161.6,62.55,30.1) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,31) size=62.55x30.1 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(204.65,161.6,62.55,30.1) parent=(10,10,60,20) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,30) size=60x20 l2g=(210.35,166.05) g2l=(-98.5,-68.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=208, ty=161.5) mouse=213.05,102.6
+== former 3d child, now 2d, under b
+item0 stage=(49,25,111,52) parent=(49,25,111,52) rect=(49,25,111,52) pixel=(49,25,111,52) size=111x52 l2g=(33,24) g2l=(93,57) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=30, ty=20) mouse=370,280
+item1 stage=(49,37,50,40) parent=(19,17,50,40) rect=(49,37,50,40) pixel=(49,37,50,40) size=50x40 l2g=(45,32) g2l=(81,49) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=42, ty=28) mouse=358,272
+item2 stage=(49,37,50,40) parent=(7,9,50,40) rect=(49,37,50,40) pixel=(49,37,50,40) size=50x40 l2g=(52,41) g2l=(74,40) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=49, ty=37) mouse=351,263
+item3 stage=(130,25,30,30) parent=(100,5,30,30) rect=(130,25,30,30) pixel=(130,25,30,30) size=30x30 l2g=(133,29) g2l=(-7,52) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=130, ty=25) mouse=270,275
+item4 stage=(193.05,150,75.9,51.55) parent=(193.05,150,75.9,51.55) rect=(193.05,150,75.9,51.55) pixel=(193,150,76,52) size=74.15x46.35 l2g=(202.25,154.45) g2l=(-88.5,-58.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=200, ty=150) mouse=223,113
+item5 stage=(204.65,161.6,62.55,30.1) parent=(10,10,60,20) rect=(204.65,161.6,62.55,30.1) pixel=(204,161,63,30) size=60x20 l2g=(210.35,166.05) g2l=(-98.5,-68.55) hit=false/true/false concat=(a=0.98480224609375, b=0.17364501953125, c=-0.17364501953125, d=0.98480224609375, tx=208, ty=161.5) mouse=213.05,102.6
+first difference at 0: item0 stage=(49,25,111,52) parent=(49,25,111,52) rect=(49,25,111,52) pixel=(49,25,111,52) size=111x52 l2g=(33,24) g2l=(93,57) hit=false/true/false concat=(a=1, b=0, c=0, d=1, tx=30, ty=20) mouse=370,280
+same after all 3d is gone: false
+fresh stage=(300,200,20,20) hit=true l2g=(301,201) concat=(a=1, b=0, c=0, d=1, tx=300, ty=200)
+done

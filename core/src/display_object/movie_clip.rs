@@ -385,6 +385,7 @@ impl<'gc> MovieClip<'gc> {
             "Called replace_movie on a clip with LoaderInfo set"
         );
 
+        write.base.base.children_dropped();
         write.base.base.reset_for_movie_load();
         write.base.base.set_is_root(is_root);
 

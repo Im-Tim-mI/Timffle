@@ -91,8 +91,11 @@ impl<'gc> Matrix3DObject<'gc> {
     fn refresh_from_owner(&self) {
         if let Some(owner) = self.0.owner.get()
             && let Some(matrix) = owner.base().matrix3d()
+            && let Ok(mut current) = self.0.matrix.try_borrow_mut()
         {
-            *self.0.matrix.borrow_mut() = matrix;
+            // A live borrow (a method whose argument is this very matrix, like `m.append(m)`) was taken
+            // right after a refresh and nothing has moved the owner since, so it is already current.
+            *current = matrix;
         }
     }
 
