@@ -156,6 +156,9 @@ func TestCopyMismatchDoesNotReplaceOwnedBinary(t *testing.T) {
 	if err := e.installer().install(); err != nil {
 		t.Fatal(err)
 	}
+	// A same-bytes reinstall skips the copy (fc796a33e), so the copy only runs,
+	// and can only be corrupt, when the installer is a different build.
+	e.writeSelf("helper v2")
 	in := e.installer()
 	in.copy = func(src, dst string) error { return os.WriteFile(dst, []byte("corrupt"), 0o700) }
 	if err := in.install(); err == nil {
