@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -344,10 +343,7 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 		}
 		connectionWG.Wait()
 	}()
-	// Buffered reads cut the system calls per frame; io.ReadFull sees the same
-	// bytes and a short read still ends a truncated frame the same way. The
-	// unwrapped handle stays with the deferred close above.
-	go inputLoop(bufio.NewReaderSize(in, 64<<10), requests, ended, abort, ctx.Done(), &sendBusy)
+	go inputLoop(in, requests, ended, abort, ctx.Done(), &sendBusy)
 	go outputLoop(out, output, stopOutput)
 	// Network cancellation must not depend on the event loop's stdout writer.
 	go func() {
@@ -431,13 +427,18 @@ func serve(in io.Reader, out io.Writer, opt options) error {
 	// One read is in flight at a time, and the next is only started (after
 	// opened, or after an ack) once the previous chunk has been encoded into
 	// its frame, so a single buffer serves the whole session.
-	readBuf := make([]byte, readChunk)
+	// It is allocated on the first read, so a process that only answers hello
+	// never pays for it.
+	var readBuf []byte
 	readNext := func() {
 		c := conn
+		if readBuf == nil {
+			readBuf = make([]byte, readChunk)
+		}
+		buf := readBuf
 		connectionWG.Add(1)
 		go func() {
 			defer connectionWG.Done()
-			buf := readBuf
 			n, err := c.Read(buf)
 			if n < 0 || n > len(buf) {
 				n, err = 0, io.ErrUnexpectedEOF
