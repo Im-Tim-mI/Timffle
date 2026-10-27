@@ -18,11 +18,13 @@ const GLOBALS = [
     "MutationObserver",
     "Event",
     "CustomEvent",
+    "AbortController",
 ] as const;
 
 interface FakeHandle {
     destroyed: boolean;
     played: number;
+    visibilityChecks: number;
     destroy(): void;
 }
 
@@ -38,7 +40,7 @@ function deferred<T>(): Deferred<T> {
 }
 
 function fakeHandle(): FakeHandle {
-    const state = { destroyed: false, played: 0 };
+    const state = { destroyed: false, played: 0, visibilityChecks: 0 };
     const methods: Record<string, unknown> = {
         destroy: () => {
             state.destroyed = true;
@@ -46,7 +48,11 @@ function fakeHandle(): FakeHandle {
         play: () => {
             state.played++;
         },
-        is_playing: () => state.played > 0,
+        // Only the visibilitychange handler asks this in these tests.
+        is_playing: () => {
+            state.visibilityChecks++;
+            return state.played > 0;
+        },
         renderer_debug_info: () => "",
         renderer_name: () => "fake",
         // "running" skips the 200 ms autoplay probe.
@@ -105,7 +111,7 @@ describe("InnerPlayer load lifecycle", function () {
             if (descriptor) {
                 Object.defineProperty(g, key, descriptor);
             } else {
-                delete g[key];
+                Reflect.deleteProperty(g, key);
             }
         }
         dom.window.close();
@@ -140,8 +146,8 @@ describe("InnerPlayer load lifecycle", function () {
     function makePlayer() {
         const element = dom.window.document.createElement("div");
         dom.window.document.body.appendChild(element);
-        const builderGate = deferred<void>();
-        const buildGate = deferred<void>();
+        const builderGate = deferred<null>();
+        const buildGate = deferred<null>();
         const handles: FakeHandle[] = [];
         const player = new InnerPlayer(
             element,
@@ -178,8 +184,8 @@ describe("InnerPlayer load lifecycle", function () {
 
     it("keeps the instance when the element stays connected", async function () {
         const { player, builderGate, buildGate, handles } = makePlayer();
-        builderGate.resolve();
-        buildGate.resolve();
+        builderGate.resolve(null);
+        buildGate.resolve(null);
         await player.load(DATA);
         assert.equal(handles.length, 1);
         assert.equal(handles[0]!.destroyed, false);
@@ -190,12 +196,12 @@ describe("InnerPlayer load lifecycle", function () {
     it("destroys an instance built after the element was removed", async function () {
         const { element, player, builderGate, buildGate, handles } =
             makePlayer();
-        builderGate.resolve();
+        builderGate.resolve(null);
         const loading = player.load(DATA);
         await new Promise((r) => setTimeout(r, 0));
         element.remove();
         player.destroy(); // what disconnectedCallback does
-        buildGate.resolve();
+        buildGate.resolve(null);
         await loading;
         assert.equal(handles.length, 1);
         assert.equal(handles[0]!.destroyed, true);
@@ -209,8 +215,8 @@ describe("InnerPlayer load lifecycle", function () {
         const loading = player.load(DATA);
         element.remove();
         player.destroy();
-        builderGate.resolve();
-        buildGate.resolve();
+        builderGate.resolve(null);
+        buildGate.resolve(null);
         await loading;
         assert.equal(handles.length, 0);
         assert.equal(player.instance, null);
@@ -223,8 +229,8 @@ describe("InnerPlayer load lifecycle", function () {
         element.remove();
         player.destroy();
         dom.window.document.body.appendChild(element);
-        builderGate.resolve();
-        buildGate.resolve();
+        builderGate.resolve(null);
+        buildGate.resolve(null);
         await loading;
         assert.equal(handles.length, 1);
         assert.equal(handles[0]!.destroyed, false);
@@ -233,15 +239,74 @@ describe("InnerPlayer load lifecycle", function () {
 
     it("drops the older of two overlapping loads", async function () {
         const { player, builderGate, buildGate, handles } = makePlayer();
-        builderGate.resolve();
+        builderGate.resolve(null);
         const first = player.load(DATA);
         const second = player.load(DATA);
-        buildGate.resolve();
+        buildGate.resolve(null);
         await Promise.all([first, second]);
         // Before, both loads built an instance and the first one kept running
         // unreferenced next to the second.
         const alive = handles.filter((h) => !h.destroyed);
         assert.equal(alive.length, 1);
         assert.equal(player.instance, alive[0]);
+    });
+
+    describe("document listeners", function () {
+        function fire(target: EventTarget, type: string) {
+            target.dispatchEvent(new dom.window.Event(type));
+        }
+
+        function listenerCounts(player: {
+            localize: () => void;
+            isTouch: boolean;
+        }) {
+            let localized = 0;
+            player.localize = () => {
+                localized++;
+            };
+            return () => {
+                player.isTouch = true;
+                fire(dom.window, "languagechange");
+                // A pointerdown that is not touch/pen clears isTouch.
+                fire(dom.window.document.documentElement, "pointerdown");
+                return { localized, touchHandled: !player.isTouch };
+            };
+        }
+
+        it("are active while the element is connected", async function () {
+            const { player, builderGate, buildGate, handles } = makePlayer();
+            builderGate.resolve(null);
+            buildGate.resolve(null);
+            await player.load(DATA);
+            const probe = listenerCounts(player);
+            assert.deepEqual(probe(), { localized: 1, touchHandled: true });
+            fire(dom.window.document, "visibilitychange");
+            assert.equal(handles[0]!.visibilityChecks, 1);
+            // A reload (destroy + load on a connected element) keeps them.
+            await player.load(DATA);
+            assert.deepEqual(probe(), { localized: 2, touchHandled: true });
+        });
+
+        it("are removed on disconnect and added again on reconnect", async function () {
+            const { element, player, builderGate, buildGate, handles } =
+                makePlayer();
+            builderGate.resolve(null);
+            buildGate.resolve(null);
+            await player.load(DATA);
+            const probe = listenerCounts(player);
+            element.remove();
+            player.destroy(); // disconnectedCallback
+            assert.deepEqual(probe(), { localized: 0, touchHandled: false });
+
+            dom.window.document.body.appendChild(element);
+            player.updateStyles(); // connectedCallback
+            player.updateStyles(); // attributeChangedCallback: no duplicates
+            assert.deepEqual(probe(), { localized: 1, touchHandled: true });
+
+            await player.load(DATA);
+            fire(dom.window.document, "visibilitychange");
+            assert.equal(handles[1]!.visibilityChecks, 1);
+            assert.equal(handles[0]!.visibilityChecks, 0);
+        });
     });
 });

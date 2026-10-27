@@ -199,6 +199,10 @@ export class InnerPlayer {
     private panicked = false;
     private rendererDebugInfo = "";
 
+    // Aborting it removes the `window`/`document` listeners of this player.
+    // Null while the element is out of the document.
+    private documentListeners: AbortController | null = null;
+
     // Incremented by every call of `ensureFreshInstance`. A pending load whose
     // token is no longer the current one has been superseded by a newer load.
     private loadToken = 0;
@@ -287,12 +291,7 @@ export class InnerPlayer {
         this.contextMenuElement.addEventListener("click", preserveMenu);
 
         this.localize();
-        window.addEventListener("languagechange", () => this.localize());
-
-        document.documentElement.addEventListener(
-            "pointerdown",
-            this.checkIfTouch.bind(this),
-        );
+        this.addDocumentListeners();
         this.element.addEventListener(
             "contextmenu",
             this.showContextMenu.bind(this),
@@ -331,7 +330,37 @@ export class InnerPlayer {
 
         this.lastActivePlayingState = false;
         this.backgroundWorker = null;
-        this.setupTabVisibilityHandling();
+    }
+
+    /**
+     * Adds the listeners this player keeps on `window` and `document`.
+     * They hold the whole player, so they are removed when the element leaves
+     * the document (see `destroy`) and added again when it comes back.
+     */
+    private addDocumentListeners(): void {
+        if (this.documentListeners) {
+            return;
+        }
+        const controller = new AbortController();
+        const { signal } = controller;
+        this.documentListeners = controller;
+        window.addEventListener("languagechange", () => this.localize(), {
+            signal,
+        });
+        document.documentElement.addEventListener(
+            "pointerdown",
+            this.checkIfTouch.bind(this),
+            { signal },
+        );
+        this.setupTabVisibilityHandling(signal);
+    }
+
+    /**
+     * Removes the listeners added by `addDocumentListeners`.
+     */
+    private removeDocumentListeners(): void {
+        this.documentListeners?.abort();
+        this.documentListeners = null;
     }
 
     addFSCommandHandler(handler: (command: string, args: string) => void) {
@@ -470,8 +499,8 @@ export class InnerPlayer {
      * @ignore
      * @internal
      */
-    private setupTabVisibilityHandling(): void {
-        document.addEventListener("visibilitychange", () => {
+    private setupTabVisibilityHandling(signal: AbortSignal): void {
+        const onVisibilityChange = () => {
             if (!this.instance) {
                 return;
             }
@@ -499,6 +528,9 @@ export class InnerPlayer {
                 // Browsers may auto-suspend AudioContext in background tabs.
                 this.instance.audio_context()?.resume();
             }
+        };
+        document.addEventListener("visibilitychange", onVisibilityChange, {
+            signal,
         });
     }
 
@@ -552,6 +584,11 @@ export class InnerPlayer {
      * this element.
      */
     updateStyles(): void {
+        // Called from connectedCallback: an element put back into a document
+        // gets its document listeners again.
+        if (this.element.isConnected) {
+            this.addDocumentListeners();
+        }
         if (this.dynamicStyles.sheet) {
             if (this.dynamicStyles.sheet.cssRules) {
                 for (
@@ -901,6 +938,11 @@ export class InnerPlayer {
      * Destroys the currently running instance of Ruffle.
      */
     destroy(): void {
+        if (!this.element.isConnected) {
+            // disconnectedCallback: drop what keeps this player reachable
+            // from the document. `updateStyles` adds it back on reconnect.
+            this.removeDocumentListeners();
+        }
         if (this.instance) {
             this.stopBackgroundTick();
             this.instance.destroy();
