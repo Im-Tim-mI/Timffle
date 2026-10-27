@@ -1385,10 +1385,11 @@ pub fn draw<'gc>(
     // Flash Player ignores the matrix when what it draws is 3D, or has 3D content (measured: translations,
     // scales and rotations alike; the colour transform still applies).
     let mut transform = transform;
-    if let IBitmapDrawable::DisplayObject(object) = &source
-        && crate::display_object::any_3d()
-        && object.subtree_has_own_3d()
-    {
+    let source_has_3d = match &source {
+        IBitmapDrawable::DisplayObject(object) => object.subtree_has_own_3d(),
+        IBitmapDrawable::BitmapData(_) => false,
+    };
+    if source_has_3d {
         transform.matrix = Matrix::IDENTITY;
     }
 
@@ -1406,8 +1407,7 @@ pub fn draw<'gc>(
     // Calculate the maximum potential area that this draw call will affect
     let mut bounds = transform.matrix * source.bounds();
     if let IBitmapDrawable::DisplayObject(object) = &source
-        && crate::display_object::any_3d()
-        && object.subtree_has_own_3d()
+        && source_has_3d
     {
         // 3D content below the drawn object is drawn projected, which can reach beyond its flat bounds.
         let (stage_width, stage_height) = context.stage.stage_size();

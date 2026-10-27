@@ -8,7 +8,7 @@ use crate::avm2::globals::slots::flash_geom_transform as transform_slots;
 use crate::avm2::object::Matrix3DObject;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::{Activation, Error, Object, TObject as _, Value};
-use crate::display_object::{BoundsMode, TDisplayObject, any_3d};
+use crate::display_object::{BoundsMode, TDisplayObject};
 use crate::prelude::{DisplayObject, Matrix, Twips};
 use ruffle_render::matrix3d::Matrix3D;
 use ruffle_render::perspective_projection::PerspectiveProjection;
@@ -144,9 +144,6 @@ pub fn matrix3d_from_transform_object(transform_object: Object<'_>) -> Option<Ma
 /// The product of the 2D matrices from the stage down to the object. Like in Flash Player, 3D objects above it
 /// do not contribute.
 fn concatenated_2d_matrix(dobj: DisplayObject<'_>) -> Matrix {
-    if !any_3d() {
-        return dobj.local_to_global_matrix_without_own_scroll_rect();
-    }
     let mut matrix = dobj.base().matrix();
     let mut node = dobj.parent();
     while let Some(ancestor) = node {
