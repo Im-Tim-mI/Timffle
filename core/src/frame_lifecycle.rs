@@ -143,6 +143,17 @@ pub fn run_inner_goto_frame<'gc>(
             context.goto_construct_queue.push_back(initial_clip);
         }
 
+        // Timffle: a goto from outside the frame loop (Timer, Socket or other
+        // event handlers between frames) leaves its new children unconstructed
+        // until the next frame, as in Flash. Flash never draws in between;
+        // Ruffle would render right after the handler and show those children
+        // before their constructors and frame-1 scripts ran (摩爾莊園 lamus
+        // drawn uncoloured for a frame), so hold the next render back until a
+        // frame has run.
+        if *context.frame_phase == FramePhase::Idle {
+            *context.render_waits_for_frame = true;
+        }
+
         return;
     }
 
