@@ -4,6 +4,7 @@
 
 use crate::environment::NativeEnvironment;
 use crate::external_interface::tests::{external_interface_avm1, external_interface_avm2};
+use crate::library_pacing::library_pacing_avm2;
 use crate::library_release::library_release_avm2;
 use crate::shared_object::{shared_object_avm1, shared_object_avm2, shared_object_self_ref_avm1};
 use anyhow::Context;
@@ -22,6 +23,7 @@ use std::thread::sleep;
 
 mod environment;
 mod external_interface;
+mod library_pacing;
 mod library_release;
 mod shared_object;
 
@@ -117,6 +119,11 @@ fn main() {
     let env_clone = env.clone();
     runner.with_additional_test(Trial::test("library_release_avm2", move || {
         library_release_avm2(&*env_clone)
+    }));
+
+    let env_clone = env.clone();
+    runner.with_additional_test(Trial::test("library_pacing_avm2", move || {
+        library_pacing_avm2(&*env_clone)
     }));
 
     let conclusion = runner.run();

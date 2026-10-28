@@ -523,6 +523,12 @@ impl<'gc> MovieClip<'gc> {
 
         let tag_callback = |reader: &mut SwfStream<'_>, tag_code| {
             let tag_len = reader.get_ref().len();
+            // Timffle: let the collector know roughly how much decoded data
+            // this definition adds to the library (see `decoded_tag_estimate`).
+            tag_utils::note_external_alloc(
+                context.gc().metrics(),
+                tag_utils::decoded_tag_estimate(tag_code, tag_len),
+            );
             match tag_code {
                 TagCode::CsmTextSettings => shared.csm_text_settings(context, reader),
                 TagCode::DefineBits => shared.define_bits(context, reader),
@@ -3489,6 +3495,13 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         version: u8,
     ) -> Result<(), Error> {
         let define_bits_lossless = reader.read_define_bits_lossless(version)?;
+        tag_utils::note_external_alloc(
+            context.gc().metrics(),
+            tag_utils::decoded_bitmap_bytes(
+                define_bits_lossless.width.into(),
+                define_bits_lossless.height.into(),
+            ),
+        );
         let bitmap = Gc::new(
             context.gc(),
             BitmapCharacter::new(CompressedBitmap::Lossless {
@@ -3620,6 +3633,10 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         // movie); owned only when the tables really change the bytes.
         let jpeg_data = ruffle_render::utils::glue_tables_to_jpeg(jpeg_data, jpeg_tables);
         let (width, height) = ruffle_render::utils::decode_define_bits_jpeg_dimensions(&jpeg_data)?;
+        tag_utils::note_external_alloc(
+            mc.metrics(),
+            tag_utils::decoded_bitmap_bytes(width, height),
+        );
         let bitmap = Character::Bitmap(Gc::new(
             mc,
             BitmapCharacter::new(CompressedBitmap::Jpeg {
@@ -3641,6 +3658,10 @@ impl<'gc, 'a> MovieClipShared<'gc> {
     ) -> Result<(), Error> {
         let (id, jpeg_data) = reader.read_define_bits_jpeg_2()?;
         let (width, height) = ruffle_render::utils::decode_define_bits_jpeg_dimensions(jpeg_data)?;
+        tag_utils::note_external_alloc(
+            context.gc().metrics(),
+            tag_utils::decoded_bitmap_bytes(width, height),
+        );
         let bitmap = Character::Bitmap(Gc::new(
             context.gc(),
             BitmapCharacter::new(CompressedBitmap::Jpeg {
@@ -3663,6 +3684,10 @@ impl<'gc, 'a> MovieClipShared<'gc> {
     ) -> Result<(), Error> {
         let jpeg = reader.read_define_bits_jpeg_3(version)?;
         let (width, height) = ruffle_render::utils::decode_define_bits_jpeg_dimensions(jpeg.data)?;
+        tag_utils::note_external_alloc(
+            context.gc().metrics(),
+            tag_utils::decoded_bitmap_bytes(width, height),
+        );
 
         let bitmap = Character::Bitmap(Gc::new(
             context.gc(),
