@@ -42,10 +42,13 @@ pub fn set_interval<'gc>(
         params: params.to_vec(),
     };
 
-    Ok(Value::Integer(activation.context.timers.add_timer(
+    let owner_movie = activation.caller_movie();
+    Ok(Value::Integer(activation.context.timers.add_timer_owned(
         callback,
         interval as i32,
         false,
+        owner_movie,
+        None,
     )))
 }
 
@@ -75,10 +78,13 @@ pub fn set_timeout<'gc>(
         params: params.to_vec(),
     };
 
-    Ok(Value::Integer(activation.context.timers.add_timer(
+    let owner_movie = activation.caller_movie();
+    Ok(Value::Integer(activation.context.timers.add_timer_owned(
         callback,
         interval as i32,
         true,
+        owner_movie,
+        None,
     )))
 }
 

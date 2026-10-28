@@ -1,6 +1,7 @@
 //! Loader-info object
 
 use crate::avm2::activation::Activation;
+use crate::avm2::globals::slots::flash_utils_timer as timer_slots;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{EventObject, Object, StageObject, TObject};
 use crate::avm2::{Avm2, Error};
@@ -335,6 +336,16 @@ impl<'gc> LoaderInfoObject<'gc> {
             context
                 .audio_manager
                 .stop_sounds_owned_by_movie(context.audio, movie);
+
+            // "Timers are stopped." – setTimeout/setInterval and flash.utils.Timer
+            // started by the child's code; the Timer objects report running == false.
+            let timer_objects = context.timers.remove_owned_by_movie(movie);
+            if !timer_objects.is_empty() {
+                let mut activation = Activation::from_nothing(context);
+                for timer in timer_objects {
+                    let _ = timer.set_slot(timer_slots::_TIMER_ID, (-1).into(), &mut activation);
+                }
+            }
 
             let _ = gc;
         }
