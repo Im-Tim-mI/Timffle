@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const version = "1.4.0"
+const version = "1.4.1"
 const callerOrigin = "chrome-extension://eandddnbchclalbjkhfelhjhpijifcog/"
 
 // stdinIsTerminal reports whether in is an interactive console; a variable so

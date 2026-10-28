@@ -1,7 +1,7 @@
 #!/bin/sh
 # Cross-compile the connection helper and assemble the release ZIP (extension + helper + installers + README.txt).
 #
-# Usage: VERSION4=0.8.0.26310 timffle/scripts/package-release.sh [BUILD_DIR]
+# Usage: VERSION4=0.8.0.26316 timffle/scripts/package-release.sh [BUILD_DIR]
 #   BUILD_DIR defaults to timffle/build (git-ignored).
 #   Needs the extension zip from timffle/scripts/build-extension.sh (or set EXTENSION_ZIP=/path/to/ruffle_extension.zip).
 #   GO                   go binary to use (default: go from PATH; Go 1.27 or newer, see helper/go.mod)

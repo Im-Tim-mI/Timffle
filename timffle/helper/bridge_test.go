@@ -140,7 +140,7 @@ func (c *client) hello() {
 	c.t.Helper()
 	c.send(request{Type: "hello"})
 	m := c.expect("hello")
-	if m["version"] != "1.4.0" || m["protocol"] != float64(2) {
+	if m["version"] != "1.4.1" || m["protocol"] != float64(2) {
 		c.t.Fatalf("bad hello: %v", m)
 	}
 }

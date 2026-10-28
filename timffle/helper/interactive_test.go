@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	downloadHeader = "Timffle 連線小幫手 1.4.0 / Timffle socket helper 1.4.0\n"
+	downloadHeader = "Timffle 連線小幫手 1.4.1 / Timffle socket helper 1.4.1\n"
 	adminText      = "只替目前的使用者安裝，不需要系統管理員權限"
 	uninstallHint  = "run this file with --uninstall"
 	enterPrompt    = "按 Enter 關閉 / Press Enter to close."
@@ -77,7 +77,7 @@ func TestNoArgumentsInstallsForTheCurrentUser(t *testing.T) {
 		if !strings.HasPrefix(text, downloadHeader) || !strings.Contains(text, adminText) {
 			t.Fatalf("header missing: %q", text)
 		}
-		installed := strings.Index(text, "Socket helper 1.4.0 installed:\n  "+e.binary+"\n  "+e.manifest+"\n")
+		installed := strings.Index(text, "Socket helper 1.4.1 installed:\n  "+e.binary+"\n  "+e.manifest+"\n")
 		hint := strings.Index(text, uninstallHint)
 		if installed < 0 || hint < installed || strings.Count(text, uninstallHint) != 1 || !strings.Contains(text, "日後要移除：在終端機用 --uninstall 執行這個檔案") {
 			t.Fatalf("install result or uninstall hint missing: %q", text)

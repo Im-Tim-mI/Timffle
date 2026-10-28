@@ -59,7 +59,7 @@ func TestCallerOriginExact(t *testing.T) {
 func TestVersionOutsideChrome(t *testing.T) {
 	forceTerminal(t, true)
 	var out bytes.Buffer
-	if code := run([]string{"--version"}, forbiddenReader{t}, &out); code != 0 || out.String() != "timffle-socket-helper 1.4.0\n" {
+	if code := run([]string{"--version"}, forbiddenReader{t}, &out); code != 0 || out.String() != "timffle-socket-helper 1.4.1\n" {
 		t.Fatalf("version: %d %q", code, out.String())
 	}
 }

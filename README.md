@@ -18,7 +18,7 @@
 
 <p align="center"><b>English</b> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">Version <code>0.8.0.26310</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
+<p align="center">Version <code>0.8.0.26316</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
 > **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
@@ -127,7 +127,7 @@ The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/D
    2. Click **Load unpacked** and pick the unzipped `extension` folder.
    3. If the official Ruffle extension is installed, disable or remove it first so the two do not fight over the same pages.
 
-4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.4.0)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it. You do not have to go looking for this: while the helper is missing, the toolbar popup says so, with a **Download the installer** button that downloads the installer for your system (a Chrome extension cannot start the installer itself, so running it stays your click); and a game that needs the helper but cannot reach it makes Timffle open a window right then, **Install the socket helper first** (with the same download button, once per page load; it shows how to run the installer on your system and **checks by itself** whether the helper is installed now: as soon as it is, the **Continue** button lights up, and pressing it reloads the game page so the connection starts again), and puts a red **!** on the Timffle icon of its tab. A website you denied, or one that is not allowed, never gets this window.
+4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.4.1)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it. You do not have to go looking for this: while the helper is missing, the toolbar popup says so, with a **Download the installer** button that downloads the installer for your system (a Chrome extension cannot start the installer itself, so running it stays your click); and a game that needs the helper but cannot reach it makes Timffle open a window right then, **Install the socket helper first** (with the same download button, once per page load; it shows how to run the installer on your system and **checks by itself** whether the helper is installed now: as soon as it is, the **Continue** button lights up, and pressing it reloads the game page so the connection starts again), and puts a red **!** on the Timffle icon of its tab. A website you denied, or one that is not allowed, never gets this window.
 
 5. **Play**: open a game site (for example https://mole.61.com.tw/ ), press the player's play button and log in as usual; no proxy needed. 賽爾號, 小花仙 and 彈彈堂 work the same way from their own sites; any other site is asked about the first time it wants a socket ([The first-use question](#the-first-use-question)). After loading the extension for the first time, reload any game page that was already open; if it still shows the "download Flash" message, wait a few seconds and reload once more.
 
@@ -292,8 +292,8 @@ Needs git, Rust 1.99 with `wasm32-unknown-unknown`, wasm-bindgen CLI 0.2.127 (mu
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26310 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26310 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
+VERSION4=0.8.0.26316 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26316 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
 ```
 
 The build script rewrites the build machine's home directory and user name out of the wasm by default, and the packaging script checks before and after packaging and refuses to produce a release ZIP that still carries them. See [`timffle/docs/BUILD.md`](timffle/docs/BUILD.md). The other parts of Ruffle (desktop app etc.) build as upstream does ([`README.ruffle.md`](README.ruffle.md)), but read [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md) first.
