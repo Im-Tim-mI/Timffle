@@ -90,6 +90,10 @@ pub struct UpdateContext<'gc> {
     /// Requests that the player re-renders after this execution (e.g. due to `updateAfterEvent`).
     pub needs_render: &'gc mut bool,
 
+    /// Timffle: do not render again until the next frame has run (see
+    /// `Player::render_waits_for_frame`).
+    pub render_waits_for_frame: &'gc mut bool,
+
     /// Timffle: set by `Loader.unloadAndStop(true)`; the player runs a full
     /// garbage collection cycle at the end of this update.
     pub full_gc_requested: &'gc mut bool,

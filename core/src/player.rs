@@ -335,6 +335,11 @@ pub struct Player {
 
     run_state: RunState,
     needs_render: bool,
+    /// Timffle: a goto outside the frame loop (timer, socket, net event) in a
+    /// SWF 9 movie placed children that will only be constructed and run their
+    /// frame-1 scripts in the next frame. Flash shows nothing before that frame,
+    /// so rendering waits for it (see `run_inner_goto_frame`).
+    render_waits_for_frame: bool,
 
     /// Timffle: `Loader.unloadAndStop(true)` asked for a full collection; the
     /// next GC step after the current update runs a whole cycle.
@@ -958,7 +963,7 @@ impl Player {
     }
 
     pub fn needs_render(&self) -> bool {
-        self.needs_render
+        self.needs_render && !self.render_waits_for_frame
     }
 
     pub fn background_color(&mut self) -> Option<Color> {
@@ -2097,6 +2102,7 @@ impl Player {
         });
 
         self.needs_render = true;
+        self.render_waits_for_frame = false;
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2371,6 +2377,7 @@ impl Player {
                 timers,
                 current_context_menu,
                 needs_render: &mut this.needs_render,
+                render_waits_for_frame: &mut this.render_waits_for_frame,
                 full_gc_requested: &mut this.full_gc_requested,
                 avm1,
                 avm2,
@@ -3242,6 +3249,7 @@ impl PlayerBuilder {
                     RunState::Suspended
                 },
                 needs_render: true,
+                render_waits_for_frame: false,
                 full_gc_requested: false,
                 self_reference: self_ref.clone(),
                 load_behavior: self.load_behavior,
