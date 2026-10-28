@@ -7,6 +7,7 @@ use crate::avm2::object::{ClassObject, Object, TObject};
 use crate::backend::audio::SoundInstanceHandle;
 use crate::context::UpdateContext;
 use crate::display_object::SoundTransform;
+use crate::tag_utils::SwfMovie;
 use core::fmt;
 use gc_arena::{Collect, Gc, GcWeak};
 use ruffle_common::utils::HasPrefixField;
@@ -28,6 +29,7 @@ pub fn sound_channel_allocator<'gc>(
                 should_stop: false,
             }),
             position: Cell::new(0.0),
+            owner_movie: activation.caller_movie(),
         },
     ))
     .into())
@@ -61,6 +63,10 @@ pub struct SoundChannelObjectData<'gc> {
 
     /// Position of the last playing sound in milliseconds.
     position: Cell<f64>,
+
+    /// Timffle: the SWF whose code called `Sound.play()` and got this channel,
+    /// so that `Loader.unloadAndStop()` can stop the sounds of the SWF it unloads.
+    owner_movie: Option<SwfMovie<'gc>>,
 }
 
 pub enum SoundChannelData {
@@ -88,8 +94,14 @@ impl<'gc> SoundChannelObject<'gc> {
                     should_stop: false,
                 }),
                 position: Cell::new(0.0),
+                owner_movie: activation.caller_movie(),
             },
         ))
+    }
+
+    /// Timffle: the SWF whose code started this channel, if known.
+    pub fn owner_movie(self) -> Option<SwfMovie<'gc>> {
+        self.0.owner_movie
     }
 
     /// Return the position of the playing sound in seconds.

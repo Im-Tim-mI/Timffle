@@ -298,6 +298,50 @@ impl<'gc> LoaderInfoObject<'gc> {
         }
     }
 
+    /// Timffle: `Loader.unloadAndStop(gc)`.
+    ///
+    /// Adobe's reference: "Attempts to unload child SWF file contents and stops
+    /// the execution of commands from loaded SWF files. [...] As a result, the
+    /// following occurs for the child SWF file and the child SWF file's display
+    /// list: Sounds are stopped. Stage event listeners are removed. Event
+    /// listeners for enterFrame, frameConstructed, exitFrame, activate and
+    /// deactivate are removed. Timers are stopped. Camera and Microphone
+    /// instances are detached. Movie clips are stopped."
+    ///
+    /// "Of the child SWF file" is decided by SWF identity: the display objects
+    /// under the loaded content, and sounds / timers / listeners created by
+    /// code compiled into the loaded SWF (`SwfMovie::ptr_eq`). Content loaded
+    /// into the parent's ApplicationDomain is still a different SWF, so the
+    /// parent's own listeners and timers are never touched.
+    pub fn unload_and_stop(self, context: &mut UpdateContext<'gc>, gc: bool) {
+        let loader = self
+            .0
+            .loader
+            .expect("LoaderInfo must have been created by Loader")
+            .display_object()
+            .as_container()
+            .unwrap();
+
+        if let Some(content) = loader.child_by_index(0) {
+            let movie = self.0.loaded_stream.get().movie();
+
+            // "Movie clips are stopped." – every timeline under the content,
+            // which also stops their SoundStreamBlock audio.
+            stop_timelines(context, content);
+
+            // "Sounds are stopped." – timeline/attachSound sounds under the
+            // content, and every SoundChannel the child's code obtained.
+            context.stop_sounds_on_parent_and_children(content);
+            context
+                .audio_manager
+                .stop_sounds_owned_by_movie(context.audio, movie);
+
+            let _ = gc;
+        }
+
+        self.unload(context);
+    }
+
     /// Puts this loader info (and its `Loader`) back into the state of a `Loader` that has never
     /// loaded anything, after the load into it was cancelled by `Loader.close()` or by another
     /// `load()`. Unlike `unload`, nothing is dispatched: a cancelled load never became visible
@@ -340,5 +384,19 @@ impl<'gc> LoaderInfoObject<'gc> {
 impl<'gc> TObject<'gc> for LoaderInfoObject<'gc> {
     fn gc_base(&self) -> Gc<'gc, ScriptObjectData<'gc>> {
         HasPrefixField::as_prefix_gc(self.0)
+    }
+}
+
+/// Timffle: `MovieClip.stop()` on `root` and everything below it
+/// (`Loader.unloadAndStop()`: "Movie clips are stopped").
+fn stop_timelines<'gc>(context: &mut UpdateContext<'gc>, root: DisplayObject<'gc>) {
+    let mut pending = vec![root];
+    while let Some(object) = pending.pop() {
+        if let Some(clip) = object.as_movie_clip() {
+            clip.stop(context);
+        }
+        if let Some(container) = object.as_container() {
+            pending.extend(container.iter_render_list());
+        }
     }
 }
