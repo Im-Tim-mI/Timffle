@@ -1,0 +1,7 @@
+loaded: timer.running=true channel=true
+before unloadAndStop: child timer ticked=true interval ticked=true stage frames=true own frames=true
+parent before: timer ticked=true
+after unloadAndStop: content=null timer.running=false loaderInfo.content=null
+child since unloadAndStop: timer ticks=0 interval ticks=0 stage frames=0 own frames=0
+parent since unloadAndStop: timer ticked=true frames=5
+done
