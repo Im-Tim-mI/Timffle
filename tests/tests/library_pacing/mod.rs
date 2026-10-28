@@ -61,7 +61,10 @@ pub fn library_pacing_avm2(environment: &impl Environment) -> Result<(), libtest
     let total_cycles = cycles.last().copied().unwrap_or(0);
     eprintln!("movie libraries after each tick (no forced GC): {libraries:?}");
     eprintln!("completed collection cycles after each tick: {cycles:?}");
-    eprintln!("peak libraries {peak}, cycles {total_cycles} over {} ticks", libraries.len());
+    eprintln!(
+        "peak libraries {peak}, cycles {total_cycles} over {} ticks",
+        libraries.len()
+    );
 
     if peak > MAX_LIBRARIES {
         return Err(format!(

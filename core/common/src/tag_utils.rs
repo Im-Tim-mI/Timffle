@@ -93,7 +93,9 @@ pub const ABC_DECODE_FACTOR: usize = 8;
 
 /// Bytes of a decoded `width × height` RGBA bitmap, for [`note_external_alloc`].
 pub fn decoded_bitmap_bytes(width: u32, height: u32) -> usize {
-    (width as usize).saturating_mul(height as usize).saturating_mul(4)
+    (width as usize)
+        .saturating_mul(height as usize)
+        .saturating_mul(4)
 }
 
 /// A shared pointer to a `SwfMovieData`.
@@ -690,16 +692,30 @@ mod pacing_tests {
 
     #[test]
     fn decoded_tag_estimate_follows_the_documented_factors() {
-        use super::{ABC_DECODE_FACTOR, SHAPE_DECODE_FACTOR, decoded_bitmap_bytes, decoded_tag_estimate};
+        use super::{
+            ABC_DECODE_FACTOR, SHAPE_DECODE_FACTOR, decoded_bitmap_bytes, decoded_tag_estimate,
+        };
         use swf::TagCode;
-        assert_eq!(decoded_tag_estimate(TagCode::DefineShape4, 1000), 1000 * SHAPE_DECODE_FACTOR);
-        assert_eq!(decoded_tag_estimate(TagCode::DefineFont3, 1000), 1000 * SHAPE_DECODE_FACTOR);
-        assert_eq!(decoded_tag_estimate(TagCode::DoAbc2, 1000), 1000 * ABC_DECODE_FACTOR);
+        assert_eq!(
+            decoded_tag_estimate(TagCode::DefineShape4, 1000),
+            1000 * SHAPE_DECODE_FACTOR
+        );
+        assert_eq!(
+            decoded_tag_estimate(TagCode::DefineFont3, 1000),
+            1000 * SHAPE_DECODE_FACTOR
+        );
+        assert_eq!(
+            decoded_tag_estimate(TagCode::DoAbc2, 1000),
+            1000 * ABC_DECODE_FACTOR
+        );
         assert_eq!(decoded_tag_estimate(TagCode::DefineBitsJpeg3, 1000), 1000);
         assert_eq!(decoded_tag_estimate(TagCode::DefineSound, 1000), 1000);
         assert_eq!(decoded_tag_estimate(TagCode::DefineSprite, 1000), 0);
         assert_eq!(decoded_tag_estimate(TagCode::PlaceObject2, 1000), 0);
-        assert_eq!(decoded_tag_estimate(TagCode::DoAbc2, usize::MAX), usize::MAX);
+        assert_eq!(
+            decoded_tag_estimate(TagCode::DoAbc2, usize::MAX),
+            usize::MAX
+        );
         assert_eq!(decoded_bitmap_bytes(1000, 600), 1000 * 600 * 4);
     }
 }

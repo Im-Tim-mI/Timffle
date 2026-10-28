@@ -3633,7 +3633,10 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         let jpeg_data =
             ruffle_render::utils::glue_tables_to_jpeg(jpeg_data, jpeg_tables).into_owned();
         let (width, height) = ruffle_render::utils::decode_define_bits_jpeg_dimensions(&jpeg_data)?;
-        tag_utils::note_external_alloc(mc.metrics(), tag_utils::decoded_bitmap_bytes(width, height));
+        tag_utils::note_external_alloc(
+            mc.metrics(),
+            tag_utils::decoded_bitmap_bytes(width, height),
+        );
         let bitmap = Character::Bitmap(Gc::new(
             mc,
             BitmapCharacter::new(CompressedBitmap::Jpeg {
