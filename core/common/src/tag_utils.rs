@@ -31,6 +31,71 @@ pub fn note_external_alloc(metrics: &Metrics, bytes: usize) {
     }
 }
 
+/// Estimated bytes that decoding one definition tag adds to a movie library
+/// beyond the SWF bytes themselves (those are counted by [`SwfMovie::new`]).
+///
+/// gc-arena only sees the `Gc` objects a library holds, not the shape
+/// records, glyphs, ABC pools or compressed bitmaps behind them, so a game
+/// that reloads SWFs all the time piles up dead libraries between
+/// collections. This feeds a cheap per-tag estimate into
+/// [`note_external_alloc`] when the tag is preloaded, so the next cycle
+/// starts sooner. Only timing changes; nothing is freed differently.
+///
+/// Formula (`len` = tag body length):
+/// - shapes, morph shapes, fonts, static text: `6 × len` (shape records and
+///   glyph outlines decoded into `Vec`s plus the tessellated meshes the
+///   renderer keeps per character);
+/// - DoAbc/DoAbc2: `8 × len` (constant pool, classes, methods and traits,
+///   plus the domain and class objects created on load);
+/// - bitmaps: `len` for the stored compressed copy; the decoded size
+///   (`width × height × 4`) is reported separately by the tag handlers,
+///   which know the dimensions;
+/// - sounds, binary data: `len` (the backend keeps a copy);
+/// - everything else (DefineSprite whose nested tags are preloaded through
+///   the same path, PlaceObject, frame labels, ...): `0`.
+///
+/// The factors are deliberately below the ~15× decoded-to-SWF ratio
+/// measured on the restaurant SWFs: this is a pacing hint, and overcounting
+/// costs collector time on every frame.
+pub fn decoded_tag_estimate(tag_code: swf::TagCode, len: usize) -> usize {
+    use swf::TagCode;
+    let factor = match tag_code {
+        TagCode::DefineShape
+        | TagCode::DefineShape2
+        | TagCode::DefineShape3
+        | TagCode::DefineShape4
+        | TagCode::DefineMorphShape
+        | TagCode::DefineMorphShape2
+        | TagCode::DefineFont
+        | TagCode::DefineFont2
+        | TagCode::DefineFont3
+        | TagCode::DefineFont4
+        | TagCode::DefineText
+        | TagCode::DefineText2 => SHAPE_DECODE_FACTOR,
+        TagCode::DoAbc | TagCode::DoAbc2 => ABC_DECODE_FACTOR,
+        TagCode::DefineBits
+        | TagCode::DefineBitsJpeg2
+        | TagCode::DefineBitsJpeg3
+        | TagCode::DefineBitsJpeg4
+        | TagCode::DefineBitsLossless
+        | TagCode::DefineBitsLossless2
+        | TagCode::DefineSound
+        | TagCode::DefineBinaryData => 1,
+        _ => 0,
+    };
+    len.saturating_mul(factor)
+}
+
+/// See [`decoded_tag_estimate`].
+pub const SHAPE_DECODE_FACTOR: usize = 6;
+/// See [`decoded_tag_estimate`].
+pub const ABC_DECODE_FACTOR: usize = 8;
+
+/// Bytes of a decoded `width × height` RGBA bitmap, for [`note_external_alloc`].
+pub fn decoded_bitmap_bytes(width: u32, height: u32) -> usize {
+    (width as usize).saturating_mul(height as usize).saturating_mul(4)
+}
+
 /// A shared pointer to a `SwfMovieData`.
 #[derive(Clone, Collect, Copy, Debug)]
 #[collect(no_drop)]
@@ -621,5 +686,20 @@ mod pacing_tests {
             let expected = (1024 * 1024 / BYTES_PER_GC) as f64;
             assert!(big - small >= expected, "{small} -> {big}");
         });
+    }
+
+    #[test]
+    fn decoded_tag_estimate_follows_the_documented_factors() {
+        use super::{ABC_DECODE_FACTOR, SHAPE_DECODE_FACTOR, decoded_bitmap_bytes, decoded_tag_estimate};
+        use swf::TagCode;
+        assert_eq!(decoded_tag_estimate(TagCode::DefineShape4, 1000), 1000 * SHAPE_DECODE_FACTOR);
+        assert_eq!(decoded_tag_estimate(TagCode::DefineFont3, 1000), 1000 * SHAPE_DECODE_FACTOR);
+        assert_eq!(decoded_tag_estimate(TagCode::DoAbc2, 1000), 1000 * ABC_DECODE_FACTOR);
+        assert_eq!(decoded_tag_estimate(TagCode::DefineBitsJpeg3, 1000), 1000);
+        assert_eq!(decoded_tag_estimate(TagCode::DefineSound, 1000), 1000);
+        assert_eq!(decoded_tag_estimate(TagCode::DefineSprite, 1000), 0);
+        assert_eq!(decoded_tag_estimate(TagCode::PlaceObject2, 1000), 0);
+        assert_eq!(decoded_tag_estimate(TagCode::DoAbc2, usize::MAX), usize::MAX);
+        assert_eq!(decoded_bitmap_bytes(1000, 600), 1000 * 600 * 4);
     }
 }

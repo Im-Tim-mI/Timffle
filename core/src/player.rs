@@ -351,6 +351,10 @@ pub struct Player {
 
     gc_arena: Rc<RefCell<GcArena>>,
 
+    /// Timffle: completed collection cycles (sweep started) since the player
+    /// was created; for tests and memory diagnostics.
+    gc_cycles: usize,
+
     frame_rate: f64,
     forced_frame_rate: bool,
     actions_since_timeout_check: u32,
@@ -2459,7 +2463,9 @@ impl Player {
         self.update_mouse_state(EnumSet::empty(), false, &mut false);
 
         // GC
-        Self::gc_step(&mut self.gc_arena.borrow_mut(), false);
+        if Self::gc_step(&mut self.gc_arena.borrow_mut(), false) {
+            self.gc_cycles += 1;
+        }
 
         rval
     }
@@ -2470,7 +2476,22 @@ impl Player {
     /// when this returns. Meant for tests and debugging; the SWF cannot
     /// trigger it.
     pub fn force_full_gc(&mut self) {
-        Self::gc_step(&mut self.gc_arena.borrow_mut(), true);
+        if Self::gc_step(&mut self.gc_arena.borrow_mut(), true) {
+            self.gc_cycles += 1;
+        }
+    }
+
+    /// Timffle: how many collection cycles have completed marking and started
+    /// sweeping so far (every library of a dead movie is released at that
+    /// point of a cycle).
+    pub fn gc_cycles(&self) -> usize {
+        self.gc_cycles
+    }
+
+    /// Timffle: the collector's current allocation debt (see
+    /// `gc_arena::metrics::Metrics::allocation_debt`), for diagnostics.
+    pub fn gc_allocation_debt(&self) -> f64 {
+        self.gc_arena.borrow().metrics().allocation_debt()
     }
 
     /// Timffle: drive the collector through one step (`full == false`, paced by
@@ -2484,7 +2505,10 @@ impl Player {
     /// libraries of dead movies are purged and the sweep starts. The pass is
     /// atomic with the start of the sweep, so no mutation can run between a
     /// library being kept and its contents being traced.
-    fn gc_step(arena: &mut GcArena, full: bool) {
+    ///
+    /// Returns `true` when this step finished marking and started a sweep,
+    /// i.e. one cycle's worth of dead movie libraries was just released.
+    fn gc_step(arena: &mut GcArena, full: bool) -> bool {
         use gc_arena::arena::CollectionPhase;
 
         if arena.collection_phase() == CollectionPhase::Sweeping {
@@ -2494,7 +2518,7 @@ impl Player {
                 // Sweep until the debt is paid; never cross into a new cycle
                 // here, because the next mark phase must end in finalization.
                 arena.cycle_debt();
-                return;
+                return false;
             }
         }
 
@@ -2506,7 +2530,7 @@ impl Player {
         let Some(mut marked) = marked else {
             // Debt paid while still marking (or sleeping without debt); the
             // next step continues from here.
-            return;
+            return false;
         };
 
         loop {
@@ -2537,6 +2561,7 @@ impl Player {
         } else {
             arena.cycle_debt();
         }
+        true
     }
 
     pub fn flush_shared_objects(&mut self) {
@@ -3184,6 +3209,7 @@ impl PlayerBuilder {
                 time_til_next_timer: None,
                 max_execution_duration: self.max_execution_duration,
                 actions_since_timeout_check: 0,
+                gc_cycles: 0,
 
                 // Input
                 input: InputManager::new(self.gamepad_button_mapping),

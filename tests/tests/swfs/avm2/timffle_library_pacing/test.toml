@@ -1,0 +1,9 @@
+# Timffle: a game that reloads SWFs all the time must not pile up dead movie libraries between
+# collections; the collector is told how much decoded data a library holds (core/common/src/tag_utils.rs
+# `decoded_tag_estimate`) so it starts a cycle sooner.
+# Source: Test.hx + child/Child.hx (Haxe 4.3.7), child/big.png is a generated 1024x1024 gradient:
+#   (cd child && haxe -cp . -main Child -swf loaded.swf -swf-version 17 -D swf-header=40:40:30:FFFFFF)
+#   haxe -cp . -main Test -swf test.swf -swf-version 17 -D swf-header=400:300:30:FFFFFF
+# The library count is checked by tests/tests/library_pacing/mod.rs, which runs this directory without
+# forcing any collection.
+num_frames = 60
