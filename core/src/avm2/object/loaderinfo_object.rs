@@ -347,6 +347,10 @@ impl<'gc> LoaderInfoObject<'gc> {
                 }
             }
 
+            // "Stage event listeners are removed. Event listeners for enterFrame,
+            // frameConstructed, exitFrame, activate and deactivate are removed."
+            crate::avm2::events::remove_listeners_of_movie(context, movie);
+
             let _ = gc;
         }
 
