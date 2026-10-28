@@ -8,6 +8,7 @@ use crate::{
     context::UpdateContext,
     display_object::{self, DisplayObject, MovieClip, TDisplayObject},
     string::AvmString,
+    tag_utils::SwfMovie,
 };
 use gc_arena::Collect;
 pub use ruffle_common::buffer::Substream;
@@ -677,6 +678,25 @@ impl<'gc> AudioManager<'gc> {
                 other = other_do.parent();
             }
             true
+        });
+    }
+
+    /// Timffle: stops every AVM2 sound whose `SoundChannel` was obtained by code of
+    /// `movie` (`Loader.unloadAndStop()`: "Sounds are stopped").
+    pub fn stop_sounds_owned_by_movie(
+        &mut self,
+        audio: &mut dyn AudioBackend,
+        movie: SwfMovie<'gc>,
+    ) {
+        self.sounds.retain(|sound| {
+            let owned = sound
+                .avm2_object
+                .and_then(|channel| channel.owner_movie())
+                .is_some_and(|owner| SwfMovie::ptr_eq(&owner, &movie));
+            if owned {
+                audio.stop_sound(sound.instance);
+            }
+            !owned
         });
     }
 

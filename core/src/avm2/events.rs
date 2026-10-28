@@ -5,8 +5,10 @@ use crate::avm2::activation::Activation;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::slots::flash_events_event_dispatcher as slots;
 use crate::avm2::object::{EventObject, FunctionObject, Object, TObject as _};
+use crate::context::UpdateContext;
 use crate::display_object::TDisplayObject;
 use crate::string::AvmString;
+use crate::tag_utils::SwfMovie;
 use fnv::FnvHashMap;
 use gc_arena::Collect;
 use std::collections::BTreeMap;
@@ -250,6 +252,33 @@ impl<'gc> DispatchList<'gc> {
         for set in self.get_event_mut(event).values_mut() {
             if let Some(pos) = set.iter().position(|h| *h == old_handler) {
                 set.remove(pos);
+            }
+        }
+    }
+
+    /// Timffle: removes every handler for which `owned` is true; `event`
+    /// restricts the removal to one event type, `None` means all of them.
+    /// Used by `Loader.unloadAndStop()` to drop the unloaded SWF's listeners.
+    pub fn remove_event_listeners_where(
+        &mut self,
+        event: Option<AvmString<'gc>>,
+        mut owned: impl FnMut(FunctionObject<'gc>) -> bool,
+    ) {
+        let mut remove_from = |sheaf: &mut BTreeMap<i32, Vec<EventHandler<'gc>>>| {
+            for set in sheaf.values_mut() {
+                set.retain(|handler| !owned(handler.handler));
+            }
+        };
+        match event {
+            Some(event) => {
+                if let Some(sheaf) = self.0.get_mut(&event) {
+                    remove_from(sheaf);
+                }
+            }
+            None => {
+                for sheaf in self.0.values_mut() {
+                    remove_from(sheaf);
+                }
             }
         }
     }
@@ -510,4 +539,46 @@ pub fn broadcast_event<'gc>(
         .set_phase(EventPhase::AtTarget);
 
     dispatch_event_to_target(activation, this, target, target, event, false);
+}
+
+/// Timffle: whether `handler` is code compiled into `movie` (its method's
+/// translation unit comes from that SWF). This is the "of the child SWF file"
+/// test `Loader.unloadAndStop()` applies to listeners; it does not depend on
+/// the ApplicationDomain the child was loaded into.
+pub fn handler_is_from_movie<'gc>(handler: FunctionObject<'gc>, movie: SwfMovie<'gc>) -> bool {
+    let owner = handler.executable().method().translation_unit().movie();
+    SwfMovie::ptr_eq(&owner, &movie)
+}
+
+/// Timffle: `Loader.unloadAndStop()`: "Stage event listeners are removed.
+/// Event listeners for enterFrame, frameConstructed, exitFrame, activate and
+/// deactivate are removed." Removes the listeners of `movie`'s code from the
+/// Stage (every event type) and the broadcast-event listeners it registered on
+/// any object (Ruffle keeps every object with such a listener in the AVM2
+/// broadcast list). Listeners on other objects/events stay, as in Flash.
+pub fn remove_listeners_of_movie<'gc>(context: &mut UpdateContext<'gc>, movie: SwfMovie<'gc>) {
+    let owned = |handler: FunctionObject<'gc>| handler_is_from_movie(handler, movie);
+
+    if let Some(stage) = context.stage.object2() {
+        let stage: Object<'gc> = stage.into();
+        if let Some(list) = stage
+            .get_slot(slots::DISPATCH_LIST)
+            .as_object()
+            .and_then(|o| o.as_dispatch_object())
+        {
+            list.dispatch_mut(context.gc())
+                .remove_event_listeners_where(None, owned);
+        }
+    }
+
+    for (event, object) in Avm2::broadcast_listeners(context) {
+        if let Some(list) = object
+            .get_slot(slots::DISPATCH_LIST)
+            .as_object()
+            .and_then(|o| o.as_dispatch_object())
+        {
+            list.dispatch_mut(context.gc())
+                .remove_event_listeners_where(Some(event), owned);
+        }
+    }
 }

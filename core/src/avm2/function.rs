@@ -53,6 +53,11 @@ impl<'gc> BoundMethod<'gc> {
         }
     }
 
+    /// Timffle: the method this executable runs.
+    pub fn method(&self) -> Method<'gc> {
+        self.method
+    }
+
     pub fn exec(
         &self,
         unbound_receiver: Value<'gc>,

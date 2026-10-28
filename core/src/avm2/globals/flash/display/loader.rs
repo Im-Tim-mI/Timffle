@@ -394,3 +394,24 @@ fn cancel_previous_load<'gc>(
         loader_info.reset_after_cancel(activation.context);
     }
 }
+
+/// Timffle: implements `Loader.unloadAndStop(gc)`.
+pub fn unload_and_stop<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let gc = args.get_bool(0);
+
+    let loader_info = this
+        .get_slot(loader_slots::_CONTENT_LOADER_INFO)
+        .as_object()
+        .unwrap();
+
+    let loader_info = loader_info.as_loader_info_object().unwrap();
+
+    loader_info.unload_and_stop(activation.context, gc);
+
+    Ok(Value::Undefined)
+}

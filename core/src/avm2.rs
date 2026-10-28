@@ -53,7 +53,7 @@ mod dynamic_map;
 mod e4x;
 pub mod error;
 pub mod error_messages;
-mod events;
+pub mod events;
 mod filters;
 mod flv;
 mod function;
@@ -419,6 +419,28 @@ impl<'gc> Avm2<'gc> {
         }
 
         bucket.push(object.downgrade());
+    }
+
+    /// Timffle: every (broadcast event, listening object) pair currently
+    /// registered, for `Loader.unloadAndStop()`. Adobe lists enterFrame,
+    /// frameConstructed and exitFrame (plus activate/deactivate, which Ruffle
+    /// never dispatches); `render` is deliberately left out.
+    pub fn broadcast_listeners(
+        context: &mut UpdateContext<'gc>,
+    ) -> Vec<(AvmString<'gc>, Object<'gc>)> {
+        let mc = context.gc();
+        let mut result = Vec::new();
+        for (event, bucket) in context.avm2.broadcast_list.iter() {
+            if event == b"render" {
+                continue;
+            }
+            for weak in bucket {
+                if let Some(object) = weak.upgrade(mc) {
+                    result.push((*event, object));
+                }
+            }
+        }
+        result
     }
 
     /// Dispatch an event on all objects in the current execution list.
