@@ -2,6 +2,21 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.0（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26313 — 2026-10-28（PRO_bata 分支，測試版）
+
+**接著 26312 的三項：回收器知道解碼後的大小、`Loader.unloadAndStop()` 完整實作、圖片與聲音的位元組不再存兩份。** 只改 Ruffle 核心（wasm）；擴充功能、小幫手（仍是 1.4.0，執行檔與 26311 相同）、文字、權限、設定都沒變。
+
+- **回收器知道一個 SWF 庫解碼後有多大**：gc-arena 只算物件數，26311 起只多報了 SWF 位元組；現在預載每個定義標籤時依類型估算解碼後的大小一起報給回收器——形狀／變形／字型／靜態文字 6 × 標籤長度、DoAbc 8 ×、圖片與聲音 1 ×，四種 DefineBits 另加精確的 寬 × 高 × 4。只改回收的**時機**，不改釋放什麼。沒有動全域的回收節奏（`sleep_factor`）：那會讓完全閒置的場景也多花一倍標記時間；按載入量計費則只在有載入時才加速。測試 `timffle_library_pacing`（連續載入 12 次含 1024×1024 圖的子 SWF，不強制回收）：原本整段只完成 1 次回收、13 個庫全堆著；現在 9 次、同時最多 4 個。
+- **`Loader.unloadAndStop(gc)` 不再只是 `unload()`**，依 Adobe 文件分四步：(a) 停掉子內容底下所有 `MovieClip` 時間軸與聲音（時間軸聲音，以及子 SWF 程式用 `Sound.play()` 拿到的每個 `SoundChannel`——`SoundChannel` 現在記得是哪個 SWF 建的）；(b) 移除子 SWF 建立的 `Timer`／`setTimeout`／`setInterval`（計時器記得建立者），其 `Timer.running` 讀到 false；(c) 從 Stage 拆掉子 SWF 註冊的所有監聽器，從每個廣播物件拆掉它的 `enterFrame`／`exitFrame`／`frameConstructed`（判定方式：監聽函式所屬的 SWF；`render` 與掛在其他物件上的監聽器照 Adobe 文件不動）；(d) `gc=true` 時這一幀結束的回收跑完整一輪（SWF 看不到半途狀態）。「子 SWF 的」以 SWF 身分判定而不是 ApplicationDomain，所以載進父層網域的內容也不會動到父層的監聽器、計時器、聲音；只停內容子樹的時間軸。**沒做**：activate／deactivate（Ruffle 本來就不派發）、Camera／Microphone、NetConnection／NetStream／Socket 的關閉（這些物件還沒有「誰建的」紀錄）。新測試 `avm2/timffle_unload_and_stop`（期望輸出依 Adobe 文件寫成，沒有用真實 Flash 比對）。
+- **內嵌圖片與聲音的壓縮位元組改成指向 SWF 資料的視圖**（`CharacterBytes`、`SoundData`），不再各複製一份；只有舊式 `DefineBits` 真的要把 `JPEGTables` 黏進去時才保留一份複本。解碼結果逐位元組相同（單元測試比對無損 v1/v2、含表 JPEG、含 alpha 的 JPEG3、三種 DefineSound，與 1 秒混音輸出）。量到的：`bitmapbuttons` 12 張圖原本多存 14,211 B、`sound_play` 3 個聲音多存 19,880 B，現在都是 0——一個庫從約 1.8–1.9 倍 SWF 大小變成 1 倍。取捨：movie 已被釋放但還在播的聲音，會在剩餘播放時間內留住整個 SWF 緩衝（之前是永遠留住 SWF 加一份聲音複本，所以每種狀態都比以前少）；無限迴圈的聲音由 `unloadAndStop()` 處理。
+- **測試**（合併後的樹）：`ruffle_core` 單元測試 135（含 `audio,mp3` 141）、`ruffle_common` 12、`swf` 95+33；**完整 SWF 回歸 4,271 項通過**，6 個失敗全是原本就標示的已知差異（3 個 Matrix3D 邊界、`textblock_recreateline`、`flash_net_classes`）與 `loader_duplicate_class`；`cargo fmt --check` 乾淨。注意：多個工作樹共用同一個 cargo target 時，`ruffle_core` 的 build script 輸出（playerglobal 與原生函式表）會互相覆蓋，驗證前要 `touch core/build.rs`。
+- **真實帳號第三次對照**（同帳號、同餐廳、同一套 10 回合步驟，31 分鐘；三版並列）：
+  - SWF 庫數：26311 漲到 184 不降；26312 每約 6 分鐘降回 71–73；**26313 每 4–5 分鐘降回 72–79**（回合內 5 次）。
+  - wasm：26311 479→1,783 MB；26312 487→1,041；**26313 441→930**（同樣回合數 +488 vs +554 MB，再少 12%；對 26311 少 60%）。**出現兩段整整 6 分鐘 wasm 一個位元組都沒漲**（含最後六個回合），閒置回合 +0；換地圖仍會漲。最大程序常駐 2,046 → 1,412 → **1,301 MB**。
+  - CPU：十回合腳本時間 506 → 473 秒（−6.5%），沒有量到更頻繁回收帶來的額外成本（單次量測，不當定論）。
+  - 食譜面板 6 個圖示齊全、員工都在、顧客會動、沒有凍結、Chrome 正常結束、沒有新的錯誤類別。遊戲載入次數不變（246 次／97 個網址）。
+- **還沒做**：Windows、macOS 實機（要作者實測）；NetConnection／Socket 的 `unloadAndStop` 關閉；更長時間（數小時）的餐廳場景。
+
 ## 0.8.0.26312 — 2026-10-28（PRO_bata 分支，測試版）
 
 **載入過的 SWF 現在會釋放了。** 這一版只改 Ruffle 核心（wasm）；擴充功能、小幫手（仍是 1.4.0，執行檔與 26311 相同）、文字、權限、設定都沒變。沒有任何一項改變 SWF 看得到的行為：還被 `Loader`／`LoaderInfo`／`ApplicationDomain`／顯示物件／類別引用的內容照常留著，`new 符號類別()` 仍可用，重新載入同一個 SWF 仍得到全新的類別與靜態變數（不會依網址或內容去重）。
