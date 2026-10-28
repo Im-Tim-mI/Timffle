@@ -16,7 +16,7 @@ use crate::backend::audio::{AudioManager, SoundInstanceHandle};
 use crate::backend::navigator::Request;
 use crate::backend::ui::MouseCursor;
 use crate::binary_data::BinaryData;
-use crate::character::{BitmapCharacter, Character, CompressedBitmap};
+use crate::character::{BitmapCharacter, Character, CharacterBytes, CompressedBitmap};
 use crate::context::{ActionType, RenderContext, UpdateContext};
 use crate::display_object::container::{ChildContainer, dispatch_removed_event};
 use crate::display_object::interactive::{
@@ -48,12 +48,11 @@ use ruffle_common::utils::HasPrefixField;
 use ruffle_macros::istr;
 use ruffle_render::perspective_projection::PerspectiveProjection;
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
 use std::cmp::max;
 use std::collections::HashMap;
 use swf::extensions::ReadSwfExt;
-use swf::{ClipEventFlag, DefineBitsLossless, FrameLabelData, TagCode, UTF_8};
+use swf::{ClipEventFlag, FrameLabelData, TagCode, UTF_8};
 
 use super::BitmapClass;
 use super::interactive::Avm2MousePick;
@@ -3492,14 +3491,14 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         let define_bits_lossless = reader.read_define_bits_lossless(version)?;
         let bitmap = Gc::new(
             context.gc(),
-            BitmapCharacter::new(CompressedBitmap::Lossless(DefineBitsLossless {
+            BitmapCharacter::new(CompressedBitmap::Lossless {
                 id: define_bits_lossless.id,
                 format: define_bits_lossless.format,
                 width: define_bits_lossless.width,
                 height: define_bits_lossless.height,
                 version: define_bits_lossless.version,
-                data: Cow::Owned(define_bits_lossless.data.into_owned()),
-            })),
+                data: CharacterBytes::from_movie_cow(&self.swf_data, define_bits_lossless.data),
+            }),
         );
         self.library_mut(context)
             .register_character(define_bits_lossless.id, Character::Bitmap(bitmap));
@@ -3617,13 +3616,14 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         let library = self.library_mut(context);
         let (id, jpeg_data) = reader.read_define_bits()?;
         let jpeg_tables = library.jpeg_tables();
-        let jpeg_data =
-            ruffle_render::utils::glue_tables_to_jpeg(jpeg_data, jpeg_tables).into_owned();
+        // Borrowed when there are no tables to glue (the bytes stay a view into the
+        // movie); owned only when the tables really change the bytes.
+        let jpeg_data = ruffle_render::utils::glue_tables_to_jpeg(jpeg_data, jpeg_tables);
         let (width, height) = ruffle_render::utils::decode_define_bits_jpeg_dimensions(&jpeg_data)?;
         let bitmap = Character::Bitmap(Gc::new(
             mc,
             BitmapCharacter::new(CompressedBitmap::Jpeg {
-                data: jpeg_data,
+                data: CharacterBytes::from_movie_cow(&self.swf_data, jpeg_data),
                 alpha: None,
                 width,
                 height,
@@ -3644,7 +3644,7 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         let bitmap = Character::Bitmap(Gc::new(
             context.gc(),
             BitmapCharacter::new(CompressedBitmap::Jpeg {
-                data: jpeg_data.to_owned(),
+                data: CharacterBytes::from_movie_slice(&self.swf_data, jpeg_data),
                 alpha: None,
                 width,
                 height,
@@ -3667,8 +3667,11 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         let bitmap = Character::Bitmap(Gc::new(
             context.gc(),
             BitmapCharacter::new(CompressedBitmap::Jpeg {
-                data: jpeg.data.to_owned(),
-                alpha: Some(jpeg.alpha_data.to_owned()),
+                data: CharacterBytes::from_movie_slice(&self.swf_data, jpeg.data),
+                alpha: Some(CharacterBytes::from_movie_slice(
+                    &self.swf_data,
+                    jpeg.alpha_data,
+                )),
                 width,
                 height,
             }),
@@ -3918,7 +3921,10 @@ impl<'gc, 'a> MovieClipShared<'gc> {
         reader: &mut SwfStream<'a>,
     ) -> Result<(), Error> {
         let sound = reader.read_define_sound()?;
-        if let Ok(handle) = context.audio.register_sound(&sound) {
+        if let Ok(handle) = context
+            .audio
+            .register_sound_from_movie(&sound, &self.swf_data)
+        {
             self.library_mut(context)
                 .register_character(sound.id, Character::Sound(handle));
         } else {

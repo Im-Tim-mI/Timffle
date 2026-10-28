@@ -482,6 +482,18 @@ impl<'gc> From<SwfMovie<'gc>> for SwfSlice {
     }
 }
 
+impl From<&SwfMovieData> for SwfSlice {
+    /// A slice over the whole data of a movie that is not (yet) in the GC arena.
+    fn from(movie: &SwfMovieData) -> Self {
+        Self {
+            entire_data: movie.data.clone(),
+            swf_version: movie.version(),
+            start: 0,
+            end: movie.data.len(),
+        }
+    }
+}
+
 impl AsRef<[u8]> for SwfSlice {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -553,6 +565,29 @@ impl SwfSlice {
         }
     }
 
+    /// Construct a new SwfSlice from a regular slice that must lie inside the
+    /// movie's data, without the empty-slice fallback of `to_unbounded_subslice`.
+    ///
+    /// Returns `None` when `slice` is not a view into this movie's data (for
+    /// example a buffer the caller allocated). Used to keep tag payloads such
+    /// as image and sound bytes as a view into the movie instead of a copy.
+    pub fn try_subslice(&self, slice: &[u8]) -> Option<Self> {
+        let self_pval = self.entire_data.as_ptr() as usize;
+        let self_len = self.entire_data.len();
+        let slice_pval = slice.as_ptr() as usize;
+
+        if self_pval <= slice_pval && slice_pval + slice.len() <= self_pval + self_len {
+            Some(Self {
+                entire_data: self.entire_data.clone(),
+                swf_version: self.swf_version,
+                start: slice_pval - self_pval,
+                end: (slice_pval - self_pval) + slice.len(),
+            })
+        } else {
+            None
+        }
+    }
+
     /// Construct a new SwfSlice from a SwfStream.
     ///
     /// This is intended to allow constructing references to the contents of a
@@ -621,5 +656,36 @@ mod pacing_tests {
             let expected = (1024 * 1024 / BYTES_PER_GC) as f64;
             assert!(big - small >= expected, "{small} -> {big}");
         });
+    }
+}
+
+#[cfg(test)]
+mod slice_tests {
+    use super::{SwfMovieData, SwfSlice};
+    use std::sync::Arc;
+
+    #[test]
+    fn try_subslice_only_accepts_views_into_the_movie() {
+        let mut movie = SwfMovieData::empty(10, None);
+        movie.data = Arc::new((0..64u8).collect());
+        let slice = SwfSlice::from(&movie);
+        assert_eq!(slice.len(), 64);
+
+        let inner = &movie.data()[10..20];
+        let view = slice.try_subslice(inner).expect("inside");
+        assert_eq!((view.start, view.end), (10, 20));
+        assert_eq!(view.data(), inner);
+        // The view shares the movie's buffer instead of copying it.
+        assert_eq!(view.entire_data().as_ptr(), movie.data().as_ptr());
+
+        // Empty slices at the very end are still inside.
+        let tail = &movie.data()[64..];
+        let view = slice.try_subslice(tail).expect("empty tail");
+        assert_eq!((view.start, view.end), (64, 64));
+
+        // A buffer that is not the movie's data is rejected.
+        let foreign = vec![0u8; 16];
+        assert!(slice.try_subslice(&foreign).is_none());
+        assert!(slice.try_subslice(&foreign[16..]).is_none());
     }
 }

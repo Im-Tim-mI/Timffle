@@ -150,7 +150,7 @@ struct Sound {
     /// The audio data of this sound.
     ///
     /// This will be compressed in the format indicated by `format.compression`.
-    data: Arc<[u8]>,
+    data: SoundData,
 
     /// Number of samples in this audio.
     /// This does not include `skip_sample_frames`.
@@ -510,7 +510,34 @@ impl AudioMixer {
     }
 
     /// Registers an embedded SWF sound with the audio mixer.
+    ///
+    /// The compressed bytes are copied; see `register_sound_from_movie` to share them
+    /// with the movie's data instead.
     pub fn register_sound(&mut self, swf_sound: &swf::Sound) -> Result<SoundHandle, RegisterError> {
+        self.register_sound_with(swf_sound, |data| SoundData::Owned(Arc::from(data)))
+    }
+
+    /// Registers an embedded SWF sound whose bytes were read from `movie`.
+    ///
+    /// Timffle: the sound keeps a view into the movie's data (which the library holds
+    /// anyway) instead of a second copy. Falls back to a copy when the bytes do not
+    /// point into `movie`.
+    pub fn register_sound_from_movie(
+        &mut self,
+        swf_sound: &swf::Sound,
+        movie: &SwfSlice,
+    ) -> Result<SoundHandle, RegisterError> {
+        self.register_sound_with(swf_sound, |data| match movie.try_subslice(data) {
+            Some(view) => SoundData::Movie(view),
+            None => SoundData::Owned(Arc::from(data)),
+        })
+    }
+
+    fn register_sound_with(
+        &mut self,
+        swf_sound: &swf::Sound,
+        store: impl FnOnce(&[u8]) -> SoundData,
+    ) -> Result<SoundHandle, RegisterError> {
         // Slice off latency seek for MP3 data.
         let (skip_sample_frames, data) = if swf_sound.format.compression == AudioCompression::Mp3 {
             if swf_sound.data.len() < 2 {
@@ -524,19 +551,31 @@ impl AudioMixer {
 
         let sound = Sound {
             format: swf_sound.format.clone(),
-            data: Arc::from(data),
+            data: store(data),
             num_sample_frames: swf_sound.num_samples,
             skip_sample_frames,
         };
         Ok(self.sounds.insert(sound))
     }
 
+    /// Compressed sound bytes the mixer keeps alive on its own, i.e. not shared with
+    /// a movie's data. Used by tests and memory diagnostics.
+    pub fn owned_sound_bytes(&self) -> usize {
+        self.sounds.values().map(|s| s.data.owned_len()).sum()
+    }
+
+    /// Compressed bytes of all registered sounds (what owned copies would cost).
+    pub fn total_sound_bytes(&self) -> usize {
+        self.sounds.values().map(|s| s.data.len()).sum()
+    }
+
     /// Registers an external MP3 with the audio mixer.
     #[cfg(feature = "mp3")]
     pub fn register_mp3(&mut self, data: &[u8]) -> Result<SoundHandle, DecodeError> {
-        let data = Arc::from(data);
+        let data: Arc<[u8]> = Arc::from(data);
         // Validate that this is actually MP3 data, and calculate duration and sample rate.
         let metadata = decoders::mp3_metadata(&data)?;
+        let data = SoundData::Owned(data);
         let sound = Sound {
             format: swf::SoundFormat {
                 compression: AudioCompression::Mp3,
@@ -590,7 +629,7 @@ impl AudioMixer {
         settings: &swf::SoundInfo,
     ) -> Result<SoundInstanceHandle, DecodeError> {
         let sound = &self.sounds[sound_handle];
-        let data = Cursor::new(ArcAsRef(Arc::clone(&sound.data)));
+        let data = Cursor::new(ArcAsRef(sound.data.clone()));
         // Create a stream that decodes and resamples the sound.
         let stream = if sound.skip_sample_frames == 0
             && settings.in_sample.is_none()
@@ -771,20 +810,64 @@ impl AudioMixerProxy {
     }
 }
 
-/// A dummy wrapper struct to implement `AsRef<[u8]>` for `Arc<Vec<u8>>`.
+/// The compressed bytes of a registered sound.
+///
+/// Timffle: `Movie` is a view into the SWF data that the library already keeps alive,
+/// so an embedded `DefineSound` no longer costs a second copy. `Owned` is used for
+/// external MP3s (`Sound.load`, `loadCompressedDataFromByteArray`) and as a fallback.
+///
+/// Note: a playing instance clones this value, so a sound that is still playing after
+/// its movie's library was released keeps the whole SWF buffer alive (not just the
+/// sound) until the instance ends. Accepted: that is bounded by the sound's remaining
+/// play time, and the same bytes were kept before through the library.
+#[derive(Clone, Debug)]
+pub enum SoundData {
+    Movie(SwfSlice),
+    Owned(Arc<[u8]>),
+}
+
+impl SoundData {
+    pub fn len(&self) -> usize {
+        self.as_ref().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Bytes this value keeps alive on its own (not shared with a movie).
+    pub fn owned_len(&self) -> usize {
+        match self {
+            SoundData::Movie(_) => 0,
+            SoundData::Owned(data) => data.len(),
+        }
+    }
+}
+
+impl AsRef<[u8]> for SoundData {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            SoundData::Movie(slice) => slice.data(),
+            SoundData::Owned(data) => data,
+        }
+    }
+}
+
+/// A dummy wrapper struct to implement `AsRef<[u8]>` for the shared sound bytes.
 /// Not having this trait causes problems when trying to use `Cursor<Vec<u8>>`.
-struct ArcAsRef(Arc<[u8]>);
+struct ArcAsRef(SoundData);
 
 impl AsRef<[u8]> for ArcAsRef {
     #[inline]
     fn as_ref(&self) -> &[u8] {
-        &self.0
+        self.0.as_ref()
     }
 }
 
 impl Default for ArcAsRef {
     fn default() -> Self {
-        ArcAsRef(Arc::new([]))
+        ArcAsRef(SoundData::Owned(Arc::new([])))
     }
 }
 
@@ -1081,6 +1164,15 @@ macro_rules! impl_audio_mixer_backend {
         }
 
         #[inline]
+        fn register_sound_from_movie(
+            &mut self,
+            swf_sound: &swf::Sound,
+            movie: &$crate::tag_utils::SwfSlice,
+        ) -> Result<SoundHandle, RegisterError> {
+            self.$mixer.register_sound_from_movie(swf_sound, movie)
+        }
+
+        #[inline]
         fn register_mp3(&mut self, data: &[u8]) -> Result<SoundHandle, DecodeError> {
             self.$mixer.register_mp3(data)
         }
@@ -1209,5 +1301,93 @@ mod tests {
         // A stale handle is ignored.
         mixer.unregister_sound(a);
         assert_eq!(mixer.sounds.len(), 1);
+    }
+
+    /// `DefineSound` bytes registered as a view into the movie are the same bytes,
+    /// mix to the same output, and cost no owned copy.
+    #[test]
+    fn movie_sound_views_match_owned_copies() {
+        use super::SoundData;
+        use crate::tag_utils::{SwfMovieData, SwfSlice};
+
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/tests/swfs/avm2/sound_play/test.swf"
+        );
+        let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        let movie =
+            SwfMovieData::from_data(&bytes, "file:///test.swf".to_string(), None, None).unwrap();
+        let slice = SwfSlice::from(&movie);
+
+        let mut owned = AudioMixer::new(2, 44100);
+        let mut shared = AudioMixer::new(2, 44100);
+        let mut handles = Vec::new();
+        let mut reader = slice.read_from(0);
+        while let Ok(tag) = reader.read_tag() {
+            match tag {
+                ::swf::Tag::DefineSound(sound) => {
+                    let a = owned.register_sound(&sound).unwrap();
+                    let b = shared.register_sound_from_movie(&sound, &slice).unwrap();
+                    handles.push((a, b));
+                }
+                ::swf::Tag::End => break,
+                _ => {}
+            }
+        }
+        assert!(handles.len() >= 3, "{}", handles.len());
+
+        for &(a, b) in &handles {
+            assert!(matches!(owned.sounds[a].data, SoundData::Owned(_)));
+            assert!(matches!(shared.sounds[b].data, SoundData::Movie(_)));
+            assert_eq!(
+                owned.sounds[a].data.as_ref(),
+                shared.sounds[b].data.as_ref()
+            );
+            assert_eq!(owned.get_sound_size(a), shared.get_sound_size(b));
+            assert_eq!(
+                owned.sounds[a].skip_sample_frames,
+                shared.sounds[b].skip_sample_frames
+            );
+        }
+        eprintln!(
+            "M4 sounds: {} sounds, movie data {} bytes, compressed sound bytes {}, \
+             owned copies now {} (before: {})",
+            handles.len(),
+            movie.data().len(),
+            shared.total_sound_bytes(),
+            shared.owned_sound_bytes(),
+            owned.owned_sound_bytes()
+        );
+        assert_eq!(shared.total_sound_bytes(), owned.owned_sound_bytes());
+        assert_eq!(shared.owned_sound_bytes(), 0);
+
+        // Decoding through the mixer gives the same samples.
+        let info = swf::SoundInfo {
+            event: swf::SoundEvent::Event,
+            in_sample: None,
+            out_sample: None,
+            num_loops: 1,
+            envelope: None,
+        };
+        let mut nonzero = false;
+        for &(a, b) in &handles {
+            owned.start_sound(a, &info).unwrap();
+            shared.start_sound(b, &info).unwrap();
+            let mut out_a = vec![0i16; 2 * 44100];
+            let mut out_b = vec![0i16; 2 * 44100];
+            owned.mix(&mut out_a);
+            shared.mix(&mut out_b);
+            eprintln!(
+                "  sound {:?} {} samples: max |sample| {}",
+                owned.sounds[a].format,
+                owned.sounds[a].num_sample_frames,
+                out_a.iter().map(|s| s.unsigned_abs()).max().unwrap_or(0)
+            );
+            assert_eq!(out_a, out_b);
+            nonzero |= out_a.iter().any(|&s| s != 0);
+            owned.stop_all_sounds();
+            shared.stop_all_sounds();
+        }
+        assert!(nonzero, "every sound mixed to silence");
     }
 }
