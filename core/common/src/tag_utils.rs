@@ -482,6 +482,18 @@ impl<'gc> From<SwfMovie<'gc>> for SwfSlice {
     }
 }
 
+impl From<&SwfMovieData> for SwfSlice {
+    /// A slice over the whole data of a movie that is not (yet) in the GC arena.
+    fn from(movie: &SwfMovieData) -> Self {
+        Self {
+            entire_data: movie.data.clone(),
+            swf_version: movie.version(),
+            start: 0,
+            end: movie.data.len(),
+        }
+    }
+}
+
 impl AsRef<[u8]> for SwfSlice {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -550,6 +562,29 @@ impl SwfSlice {
             }
         } else {
             self.copy_empty()
+        }
+    }
+
+    /// Construct a new SwfSlice from a regular slice that must lie inside the
+    /// movie's data, without the empty-slice fallback of `to_unbounded_subslice`.
+    ///
+    /// Returns `None` when `slice` is not a view into this movie's data (for
+    /// example a buffer the caller allocated). Used to keep tag payloads such
+    /// as image and sound bytes as a view into the movie instead of a copy.
+    pub fn try_subslice(&self, slice: &[u8]) -> Option<Self> {
+        let self_pval = self.entire_data.as_ptr() as usize;
+        let self_len = self.entire_data.len();
+        let slice_pval = slice.as_ptr() as usize;
+
+        if self_pval <= slice_pval && slice_pval + slice.len() <= self_pval + self_len {
+            Some(Self {
+                entire_data: self.entire_data.clone(),
+                swf_version: self.swf_version,
+                start: slice_pval - self_pval,
+                end: (slice_pval - self_pval) + slice.len(),
+            })
+        } else {
+            None
         }
     }
 

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::OnceCell;
 
 use crate::backend::audio::SoundHandle;
@@ -6,6 +7,7 @@ use crate::display_object::{
     Avm1Button, Avm2Button, BitmapClass, EditText, Graphic, MorphShape, MovieClip, Text, Video,
 };
 use crate::font::Font;
+use crate::tag_utils::SwfSlice;
 use gc_arena::barrier::unlock;
 use gc_arena::lock::Lock;
 use gc_arena::{Collect, Gc, Mutation};
@@ -81,6 +83,67 @@ impl<'gc> BitmapCharacter<'gc> {
     }
 }
 
+/// The payload bytes of a character definition tag.
+///
+/// Timffle: image and sound payloads used to be copied out of the tag into an owned
+/// `Vec<u8>`, while the library already keeps the whole decompressed SWF alive
+/// (`SwfMovieData.data`). Asset SWFs are mostly images and sounds, so each library
+/// entry cost close to twice the SWF size. A `Movie` view shares the movie's
+/// `Arc<Vec<u8>>` and adds no retention of its own; `Owned` is used only when the
+/// bytes do not exist in the movie in this form (JPEG data glued to `JPEGTables`,
+/// or a tag that was not read from the movie's own buffer).
+#[derive(Clone, Debug)]
+pub enum CharacterBytes {
+    Movie(SwfSlice),
+    Owned(Box<[u8]>),
+}
+
+impl CharacterBytes {
+    /// Keeps `slice` as a view into `movie` when it points into the movie's data,
+    /// otherwise copies it.
+    pub fn from_movie_slice(movie: &SwfSlice, slice: &[u8]) -> Self {
+        match movie.try_subslice(slice) {
+            Some(view) => CharacterBytes::Movie(view),
+            None => CharacterBytes::Owned(slice.into()),
+        }
+    }
+
+    /// Like `from_movie_slice`, but a `Cow::Owned` (bytes that were rewritten
+    /// after reading, e.g. glued JPEG tables) is stored as an owned copy.
+    pub fn from_movie_cow(movie: &SwfSlice, bytes: Cow<'_, [u8]>) -> Self {
+        match bytes {
+            Cow::Borrowed(slice) => Self::from_movie_slice(movie, slice),
+            Cow::Owned(vec) => CharacterBytes::Owned(vec.into_boxed_slice()),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.as_ref().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Bytes this value keeps alive on its own, i.e. not shared with the movie data.
+    pub fn owned_len(&self) -> usize {
+        match self {
+            CharacterBytes::Movie(_) => 0,
+            CharacterBytes::Owned(data) => data.len(),
+        }
+    }
+}
+
+impl AsRef<[u8]> for CharacterBytes {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            CharacterBytes::Movie(slice) => slice.data(),
+            CharacterBytes::Owned(data) => data,
+        }
+    }
+}
+
 /// Holds a bitmap from an SWF tag, plus the decoded width/height.
 /// We avoid decompressing the image until it's actually needed - some pathological SWFS
 /// like 'House' have thousands of highly-compressed (mostly empty) bitmaps, which can
@@ -88,12 +151,21 @@ impl<'gc> BitmapCharacter<'gc> {
 #[derive(Clone, Debug)]
 pub enum CompressedBitmap {
     Jpeg {
-        data: Vec<u8>,
-        alpha: Option<Vec<u8>>,
+        data: CharacterBytes,
+        alpha: Option<CharacterBytes>,
         width: u32,
         height: u32,
     },
-    Lossless(DefineBitsLossless<'static>),
+    /// The fields of a `DefineBitsLossless` tag, with the (still zlib-compressed)
+    /// pixel data as a view into the movie.
+    Lossless {
+        version: u8,
+        id: swf::CharacterId,
+        format: swf::BitmapFormat,
+        width: u16,
+        height: u16,
+        data: CharacterBytes,
+    },
 }
 
 impl CompressedBitmap {
@@ -103,9 +175,9 @@ impl CompressedBitmap {
                 width: *width,
                 height: *height,
             },
-            CompressedBitmap::Lossless(define_bits_lossless) => BitmapSize {
-                width: define_bits_lossless.width.into(),
-                height: define_bits_lossless.height.into(),
+            CompressedBitmap::Lossless { width, height, .. } => BitmapSize {
+                width: (*width).into(),
+                height: (*height).into(),
             },
         }
     }
@@ -116,10 +188,45 @@ impl CompressedBitmap {
                 alpha,
                 width: _,
                 height: _,
-            } => ruffle_render::utils::decode_define_bits_jpeg(data, alpha.as_deref()),
-            CompressedBitmap::Lossless(define_bits_lossless) => {
-                ruffle_render::utils::decode_define_bits_lossless(define_bits_lossless)
+            } => ruffle_render::utils::decode_define_bits_jpeg(
+                data.as_ref(),
+                alpha.as_ref().map(|a| a.as_ref()),
+            ),
+            CompressedBitmap::Lossless {
+                version,
+                id,
+                format,
+                width,
+                height,
+                data,
+            } => ruffle_render::utils::decode_define_bits_lossless(&DefineBitsLossless {
+                version: *version,
+                id: *id,
+                format: *format,
+                width: *width,
+                height: *height,
+                data: Cow::Borrowed(data.as_ref()),
+            }),
+        }
+    }
+
+    /// Compressed bytes this bitmap keeps alive on its own (not shared with the movie).
+    pub fn owned_len(&self) -> usize {
+        match self {
+            CompressedBitmap::Jpeg { data, alpha, .. } => {
+                data.owned_len() + alpha.as_ref().map_or(0, |a| a.owned_len())
             }
+            CompressedBitmap::Lossless { data, .. } => data.owned_len(),
+        }
+    }
+
+    /// Total compressed bytes of this bitmap (what an owned copy would cost).
+    pub fn compressed_len(&self) -> usize {
+        match self {
+            CompressedBitmap::Jpeg { data, alpha, .. } => {
+                data.len() + alpha.as_ref().map_or(0, |a| a.len())
+            }
+            CompressedBitmap::Lossless { data, .. } => data.len(),
         }
     }
 }
