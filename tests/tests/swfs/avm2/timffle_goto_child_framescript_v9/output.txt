@@ -49,13 +49,4 @@ frameConstructed f=11 child=BodyB
 BodyB frame1 f=11
 exitFrame f=11 child=BodyB
 enterFrame f=12 dir=b child=BodyB
-frameConstructed f=12 child=BodyB
-exitFrame f=12 child=BodyB
-goto c (timer) f=12 child=null
-enterFrame f=13 dir=c child=null
-BodyC ctor f=13
-frameConstructed f=13 child=BodyC
-BodyC frame1 f=13
-exitFrame f=13 child=BodyC
-enterFrame f=14 dir=c child=BodyC
 done

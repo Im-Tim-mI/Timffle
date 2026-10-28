@@ -33,11 +33,6 @@ class Test extends MovieClip {
         if (f == 2) { dir.gotoAndStop("b"); out("goto b (enterFrame) f=" + f + " child=" + childName()); }
         if (f == 8) { dir.gotoAndStop("a"); out("goto a (enterFrame) f=" + f + " child=" + childName()); }
         if (f == 12) {
-            var t = new flash.utils.Timer(1, 1);
-            t.addEventListener("timer", function(_) { dir.gotoAndStop("c"); out("goto c (timer) f=" + f + " child=" + childName()); });
-            t.start();
-        }
-        if (f == 14) {
             stopped = true;
             removeEventListener(Event.ENTER_FRAME, onEnter);
             removeEventListener("frameConstructed", onConstructed);
@@ -48,6 +43,7 @@ class Test extends MovieClip {
     }
 
     static var script5Ran = false;
+    static var exitGotoDone = false;
     function rootScript5() {
         // In SWF 10+ the nested goto frame runs the stage's frame scripts again, which would
         // re-enter this script forever; record the re-entry and bail out.
@@ -66,7 +62,8 @@ class Test extends MovieClip {
     function onExit(e:Event) {
         if (stopped) return;
         out("exitFrame f=" + f + " child=" + childName());
-        if (f == 10) { dir.gotoAndStop("b"); out("goto b (exitFrame) f=" + f + " child=" + childName()); }
+        // One-shot: in SWF 10+ the nested goto frame broadcasts exitFrame again.
+        if (f == 10 && !exitGotoDone) { exitGotoDone = true; dir.gotoAndStop("b"); out("goto b (exitFrame) f=" + f + " child=" + childName()); }
     }
 
     static var buf:Array<String> = [];

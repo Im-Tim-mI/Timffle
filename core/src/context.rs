@@ -243,6 +243,11 @@ pub struct UpdateContext<'gc> {
     // Movie clips whose frame scripts were registered during frame script phase
     // requires a separate clean-up pass when running frame-scripts instead of executing them in place
     pub frame_script_cleanup_queue: VecDeque<MovieClip<'gc>>,
+
+    // Timffle: SWF 9 clips whose script-initiated goto happened during the frame script phase.
+    // Real Flash constructs the children that goto placed (and runs their frame-1 scripts) before
+    // `exitFrame` of the same frame; see `run_inner_goto_frame`.
+    pub goto_construct_queue: VecDeque<MovieClip<'gc>>,
 }
 
 impl<'gc> HasStringContext<'gc> for UpdateContext<'gc> {

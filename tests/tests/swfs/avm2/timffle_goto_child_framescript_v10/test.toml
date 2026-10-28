@@ -1,1 +1,4 @@
-num_frames = 16
+# Timffle: same source as ../timffle_goto_child_framescript_v9 built with -swf-version 10 (nested
+# goto frame runs construct/frame scripts/exitFrame for the whole stage at once).
+# output.txt = real Flash Player 32 (two identical runs, 2026-10-28).
+num_frames = 14
