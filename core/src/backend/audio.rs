@@ -446,6 +446,19 @@ impl<'gc> AudioManager<'gc> {
         }
     }
 
+    /// Queue sounds that no longer belong to anyone (for example the
+    /// `DefineSound` characters of a movie library the collector removed).
+    /// They are unregistered by the next `release_sounds`, once nothing is
+    /// playing them.
+    pub fn release_orphaned_sounds(&mut self, sounds: Vec<SoundHandle>) {
+        if sounds.is_empty() {
+            return;
+        }
+        if let Ok(mut queue) = self.released_sounds.try_borrow_mut() {
+            queue.extend(sounds);
+        }
+    }
+
     /// Unregister released sounds from the audio backend. A sound that still
     /// has a playing instance stays queued until that instance has ended, so
     /// everything that looks a playing sound up by its handle keeps working.
