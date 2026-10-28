@@ -131,7 +131,8 @@ impl<'gc> Avm2ClassRegistry<'gc> {
 
     /// Remove the entries of dead classes and reset for the next cycle.
     fn finalize_purge(&mut self) {
-        self.class_map.retain(|_, entry| std::mem::take(&mut entry.live));
+        self.class_map
+            .retain(|_, entry| std::mem::take(&mut entry.live));
     }
 
     /// Associate an AVM2 class definition with a given library symbol.
