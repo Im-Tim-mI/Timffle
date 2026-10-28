@@ -1,0 +1,12 @@
+# Timffle: a script-initiated gotoAndStop on a SWF 9 timeline clip. Real Flash 32 constructs the
+# new keyframe's child and runs its frame-1 script (addFrameScript in the symbol's constructor)
+# before exitFrame of the same frame when the goto comes from another clip's frame script; gotos
+# from enterFrame/exitFrame are deferred to the next frame's construct/script phases. Ruffle used
+# to defer the frame-script case by one frame (摩爾莊園 lamu body drawn uncoloured for a frame).
+# Source: Test.hx, Dir.hx, BodyA/B/C.hx + make_swf.py (Haxe 4.3.7; the Dir timeline symbol is
+# assembled by the script, Haxe cannot author keyframes):
+#   haxe -cp . -main Test -swf code9.swf -swf-version 9 -D swf-header=400:300:30:FFFFFF
+#   python3 -I make_swf.py code9.swf test.swf
+# ../timffle_goto_child_framescript_v10 is the same source built with -swf-version 10.
+# output.txt = real Flash Player 32 (two identical runs, 2026-10-28).
+num_frames = 14

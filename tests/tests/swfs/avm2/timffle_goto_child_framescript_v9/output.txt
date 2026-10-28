@@ -1,0 +1,52 @@
+Test ctor
+BodyA ctor f=0
+Dir added, currentLabel=a child=BodyA
+frameConstructed f=0 child=BodyA
+BodyA frame1 f=0
+exitFrame f=0 child=BodyA
+enterFrame f=1 dir=a child=BodyA
+frameConstructed f=1 child=BodyA
+exitFrame f=1 child=BodyA
+enterFrame f=2 dir=b child=null
+goto b (enterFrame) f=2 child=null
+BodyB ctor f=2
+frameConstructed f=2 child=BodyB
+BodyB frame1 f=2
+exitFrame f=2 child=BodyB
+enterFrame f=3 dir=b child=BodyB
+frameConstructed f=3 child=BodyB
+exitFrame f=3 child=BodyB
+enterFrame f=4 dir=b child=BodyB
+frameConstructed f=4 child=BodyB
+root framescript f=4
+goto c (framescript) f=4 child=null
+BodyC ctor f=4
+BodyC frame1 f=4
+exitFrame f=4 child=BodyC
+enterFrame f=5 dir=c child=BodyC
+frameConstructed f=5 child=BodyC
+exitFrame f=5 child=BodyC
+enterFrame f=6 dir=c child=BodyC
+frameConstructed f=6 child=BodyC
+exitFrame f=6 child=BodyC
+enterFrame f=7 dir=c child=BodyC
+frameConstructed f=7 child=BodyC
+exitFrame f=7 child=BodyC
+enterFrame f=8 dir=c child=BodyC
+goto a (enterFrame) f=8 child=BodyC
+frameConstructed f=8 child=BodyC
+exitFrame f=8 child=BodyC
+enterFrame f=9 dir=a child=BodyC
+frameConstructed f=9 child=BodyC
+exitFrame f=9 child=BodyC
+enterFrame f=10 dir=a child=BodyC
+frameConstructed f=10 child=BodyC
+exitFrame f=10 child=BodyC
+goto b (exitFrame) f=10 child=null
+enterFrame f=11 dir=b child=null
+BodyB ctor f=11
+frameConstructed f=11 child=BodyB
+BodyB frame1 f=11
+exitFrame f=11 child=BodyB
+enterFrame f=12 dir=b child=BodyB
+done

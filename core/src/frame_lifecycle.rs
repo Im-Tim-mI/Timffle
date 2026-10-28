@@ -131,6 +131,18 @@ pub fn run_inner_goto_frame<'gc>(
         // queued for our target frame.
         initial_clip.base().set_skip_next_enter_frame(true);
 
+        // Timffle: SWF 9 movies get no nested goto frame, so children placed by this goto are
+        // normally constructed in the next frame's construct phase. Real Flash does exactly that
+        // for gotos started from `enterFrame`, `exitFrame` or outside the frame loop, but when the
+        // goto is started from another clip's frame script it constructs the new children and
+        // runs their frame-1 scripts after that script returns, still before `exitFrame` of the
+        // same frame (tests/tests/swfs/avm2/timffle_goto_child_framescript_v9, real Flash 32).
+        // Without this a body symbol whose frame-1 script applies its colour is drawn once
+        // uncoloured (摩爾莊園 lamu flash).
+        if *context.frame_phase == FramePhase::FrameScripts {
+            context.goto_construct_queue.push_back(initial_clip);
+        }
+
         return;
     }
 
@@ -199,6 +211,12 @@ pub fn broadcast_frame_exited<'gc>(context: &mut UpdateContext<'gc>) {
 /// Empty the `context.frame_script_cleanup_queue` by running frame scripts for
 /// each clip in the queue.
 fn run_frame_script_cleanup<'gc>(context: &mut UpdateContext<'gc>) {
+    // Timffle: construct children placed by SWF 9 gotos started during this phase; their
+    // `addFrameScript` calls land in `frame_script_cleanup_queue`, which is drained below.
+    while let Some(clip) = context.goto_construct_queue.pop_front() {
+        clip.construct_frame(context);
+    }
+
     while let Some(clip) = context.frame_script_cleanup_queue.pop_front() {
         clip.set_has_pending_script(true);
         clip.set_last_queued_script_frame(None);
