@@ -2,6 +2,16 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26317 — 2026-10-28（PRO_bata 分支，測試版）
+
+**看不見的影片改以低影格率運行：`backgroundFrameRate`（預設 4 fps）。** 改 Ruffle 核心、web 膠合層與設定。
+
+- **起因**：分頁隱藏或 App 退到背景時，`backgroundExecutionMode = mainThread` 用背景 worker 以影片原本的影格率（摩爾莊園 24 fps）繼續跑整個影片，為的只是讓有連線的遊戲持續送心跳；量測（Android 模擬器、本機私服登入後按 HOME）渲染程序主執行緒在背景吃 19% CPU，比前景還高。Flash Player 本身對最小化／隱藏視窗的內容只跑 2 fps。
+- **做法**：核心新增 `Player::tick_background(dt)`（`tick` 的變體：每次最多跑 1 幀、不補幀、丟掉積欠的幀；計時器、Socket、NetConnection、串流仍看到真實經過的時間，所以以 `Timer` 排程的心跳照常）。web 的 `tick` 在 `background_tick_mode` 時改呼叫它；`inner.tsx` 的背景 worker 以 `min(影片影格率, backgroundFrameRate)` 的間隔 tick。新設定 `backgroundFrameRate?: number | null`（`BaseLoadOptions`，預設 4，`0`／`null` ＝ 不限制），對任何網站、任何遊戲一體適用。
+- **影響**：以幀數計時的邏輯在背景會變慢（Flash 最小化時亦然）；以 `Timer`／`setInterval` 計時的不受影響。回到前景立即恢復原本影格率。
+- **檔案**：`core/src/player.rs`、`web/src/lib.rs`、`web/packages/core/src/internal/player/inner.tsx`、`public/config/load-options.ts`、`public/config/default.ts`。
+- 量測數字見 Timffle Browser 0.1.41 的更新紀錄。
+
 ## 0.8.0.26316 — 2026-10-28（正式版）
 
 **正式版：把 `PRO_bata` 的 0.8.0.26311–26315（記憶體優化、載入過的 SWF 會釋放、`Loader.unloadAndStop()`、摩爾莊園餐廳員工拉姆閃白）合併回主線發行。小幫手有更新（1.4.1）**：版本字串從 1.4.0 改成 1.4.1，安裝檔重新發佈到 `Im-Tim-mI/Timffle-Helper` 的 `v1.4.1`；程式的改動就是 26311 記的那些（每筆資料往返的配置大幅減少、讀取緩衝延後配置、拒絕連線依 errno 判斷、同版本重裝不動執行中的檔案），通訊協定仍是 2，**和 1.4.0 完全互通**：1.4.0 的小幫手配這一版的擴充功能照樣能用（區網架站要求的最低版本仍是 1.4.0），重跑安裝程式只是換成較省記憶體的版本，不是必要。**沒有新權限、沒有新設定、沒有新文字**。

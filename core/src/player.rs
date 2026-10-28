@@ -561,6 +561,20 @@ impl Player {
     }
 
     pub fn tick(&mut self, dt: FloatDuration) {
+        self.tick_with_frame_limit(dt, None);
+    }
+
+    /// Timffle: a tick for a movie whose document is hidden. At most one frame
+    /// runs per call and any backlog is dropped, so the movie advances at the
+    /// caller's tick rate instead of catching up to its own frame rate (Flash
+    /// Player ran content in a minimized or hidden window at 2 fps). Timers,
+    /// sockets, net connections and streams still see the real elapsed `dt`,
+    /// so a game's keep-alive keeps its time.
+    pub fn tick_background(&mut self, dt: FloatDuration) {
+        self.tick_with_frame_limit(dt, Some(1));
+    }
+
+    fn tick_with_frame_limit(&mut self, dt: FloatDuration, frame_limit: Option<u32>) {
         if !self.is_playing() {
             return;
         }
@@ -568,7 +582,7 @@ impl Player {
         self.frame_accumulator += dt;
         let frame_duration = self.frame_duration();
 
-        let max_frames_per_tick = self.max_frames_per_tick();
+        let max_frames_per_tick = frame_limit.unwrap_or_else(|| self.max_frames_per_tick());
         let mut frame = 0;
 
         while frame < max_frames_per_tick && self.frame_accumulator >= frame_duration {

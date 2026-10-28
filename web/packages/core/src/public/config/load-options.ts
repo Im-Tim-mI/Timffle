@@ -836,6 +836,18 @@ export interface BaseLoadOptions {
      * @default BackgroundExecutionMode.MainThread
      */
     backgroundExecutionMode?: BackgroundExecutionMode;
+
+    /**
+     * Timffle: the frame rate a movie runs at while the browser tab is hidden
+     * and `backgroundExecutionMode` keeps it running (the movie's own frame
+     * rate if that is lower). Flash Player ran content in a minimized or
+     * hidden window at 2 fps. Timers, sockets and streaming keep real time,
+     * so an online game's keep-alive still goes out; frame-counted logic runs
+     * slower, as it did in Flash Player. `0` or `null` removes the limit.
+     *
+     * @default 4
+     */
+    backgroundFrameRate?: number | null;
 }
 
 /**

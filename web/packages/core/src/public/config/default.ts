@@ -60,4 +60,5 @@ export const DEFAULT_CONFIG: Required<BaseLoadOptions> = {
     scrollingBehavior: ScrollingBehavior.Smart,
     deviceFontRenderer: DeviceFontRenderer.Embedded,
     backgroundExecutionMode: BackgroundExecutionMode.MainThread,
+    backgroundFrameRate: 4,
 };

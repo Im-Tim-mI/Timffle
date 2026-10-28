@@ -538,7 +538,16 @@ export class InnerPlayer {
      * Starts a background tick loop while the tab is hidden.
      */
     private startBackgroundTick(): void {
-        const intervalMs = 1000 / (this.metadata?.frameRate || 24);
+        // Timffle: hidden movies tick at `backgroundFrameRate` (one frame per
+        // tick, see `tick_background` in web/src/lib.rs), never faster than
+        // the movie's own rate.
+        const movieRate = this.metadata?.frameRate || 24;
+        const limit = this.loadedConfig?.backgroundFrameRate;
+        const rate =
+            typeof limit === "number" && limit > 0
+                ? Math.min(movieRate, limit)
+                : movieRate;
+        const intervalMs = 1000 / rate;
 
         // intervalMs is always a number (dividing 1000 by anything yields a number
         // or NaN), so no code injection via the template literal is possible.

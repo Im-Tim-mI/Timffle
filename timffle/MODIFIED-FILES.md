@@ -217,6 +217,7 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | changed | `web/packages/core/src/internal/ui/shadow-template.tsx` |
 | changed | `web/packages/core/src/internal/ui/splash-screen.tsx` |
 | changed | `web/packages/core/src/polyfills.ts` |
+| changed | `web/packages/core/src/public/config/default.ts` |
 | changed | `web/packages/core/src/public/config/load-options.ts` |
 | added by Timffle | `web/packages/core/test/inner-player-lifecycle.ts` |
 | added by Timffle | `web/packages/core/test/polyfills-mutations.ts` |

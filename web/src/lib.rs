@@ -1251,7 +1251,13 @@ impl RuffleHandle {
                 });
             }
 
-            core.tick(FloatDuration::from_millis(dt));
+            if background {
+                // Timffle: hidden documents tick at the configured background
+                // frame rate (one frame per tick, no catch-up); see inner.tsx.
+                core.tick_background(FloatDuration::from_millis(dt));
+            } else {
+                core.tick(FloatDuration::from_millis(dt));
+            }
 
             // Render if the core signals a new frame, or if we resized.
             let wants_render = core.needs_render() || new_dimensions.is_some() || render_pending;
