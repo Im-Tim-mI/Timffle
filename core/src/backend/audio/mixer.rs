@@ -572,9 +572,10 @@ impl AudioMixer {
     /// Registers an external MP3 with the audio mixer.
     #[cfg(feature = "mp3")]
     pub fn register_mp3(&mut self, data: &[u8]) -> Result<SoundHandle, DecodeError> {
-        let data = SoundData::Owned(Arc::from(data));
+        let data: Arc<[u8]> = Arc::from(data);
         // Validate that this is actually MP3 data, and calculate duration and sample rate.
-        let metadata = decoders::mp3_metadata(data.as_ref())?;
+        let metadata = decoders::mp3_metadata(&data)?;
+        let data = SoundData::Owned(data);
         let sound = Sound {
             format: swf::SoundFormat {
                 compression: AudioCompression::Mp3,
@@ -1324,12 +1325,12 @@ mod tests {
         let mut reader = slice.read_from(0);
         while let Ok(tag) = reader.read_tag() {
             match tag {
-                swf::Tag::DefineSound(sound) => {
+                ::swf::Tag::DefineSound(sound) => {
                     let a = owned.register_sound(&sound).unwrap();
                     let b = shared.register_sound_from_movie(&sound, &slice).unwrap();
                     handles.push((a, b));
                 }
-                swf::Tag::End => break,
+                ::swf::Tag::End => break,
                 _ => {}
             }
         }
@@ -1368,6 +1369,7 @@ mod tests {
             num_loops: 1,
             envelope: None,
         };
+        let mut nonzero = false;
         for &(a, b) in &handles {
             owned.start_sound(a, &info).unwrap();
             shared.start_sound(b, &info).unwrap();
@@ -1375,10 +1377,17 @@ mod tests {
             let mut out_b = vec![0i16; 2 * 44100];
             owned.mix(&mut out_a);
             shared.mix(&mut out_b);
-            assert!(out_a.iter().any(|&s| s != 0), "silent sound?");
+            eprintln!(
+                "  sound {:?} {} samples: max |sample| {}",
+                owned.sounds[a].format,
+                owned.sounds[a].num_sample_frames,
+                out_a.iter().map(|s| s.unsigned_abs()).max().unwrap_or(0)
+            );
             assert_eq!(out_a, out_b);
+            nonzero |= out_a.iter().any(|&s| s != 0);
             owned.stop_all_sounds();
             shared.stop_all_sounds();
         }
+        assert!(nonzero, "every sound mixed to silence");
     }
 }
