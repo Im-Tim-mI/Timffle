@@ -1,0 +1,8 @@
+# Timffle: Loader.unloadAndStop() must stop the loaded SWF's timelines, sounds, timers and
+# stage/enterFrame listeners and leave the parent's alone (Adobe's Loader.unloadAndStop text).
+# Source: Test.hx + child/Child.hx (Haxe 4.3.7):
+#   (cd child && haxe -cp . -main Child -swf loaded.swf -swf-version 17 -D swf-header=40:40:30:FFFFFF)
+#   haxe -cp .. -cp . -main Test -swf test.swf -swf-version 17 -D swf-header=400:300:30:FFFFFF
+# output.txt encodes the documented behaviour (no real Flash run available here); the sound stop is
+# not observable through trace with the test audio backend and is covered by code review only.
+num_frames = 16
