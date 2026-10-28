@@ -336,6 +336,10 @@ pub struct Player {
     run_state: RunState,
     needs_render: bool,
 
+    /// Timffle: `Loader.unloadAndStop(true)` asked for a full collection; the
+    /// next GC step after the current update runs a whole cycle.
+    full_gc_requested: bool,
+
     renderer: Box<dyn RenderBackend>,
     audio: Box<dyn AudioBackend>,
     navigator: Box<dyn NavigatorBackend>,
@@ -2363,6 +2367,7 @@ impl Player {
                 timers,
                 current_context_menu,
                 needs_render: &mut this.needs_render,
+                full_gc_requested: &mut this.full_gc_requested,
                 avm1,
                 avm2,
                 external_interface,
@@ -2459,7 +2464,8 @@ impl Player {
         self.update_mouse_state(EnumSet::empty(), false, &mut false);
 
         // GC
-        Self::gc_step(&mut self.gc_arena.borrow_mut(), false);
+        let full = std::mem::take(&mut self.full_gc_requested);
+        Self::gc_step(&mut self.gc_arena.borrow_mut(), full);
 
         rval
     }
@@ -3209,6 +3215,7 @@ impl PlayerBuilder {
                     RunState::Suspended
                 },
                 needs_render: true,
+                full_gc_requested: false,
                 self_reference: self_ref.clone(),
                 load_behavior: self.load_behavior,
                 spoofed_url: self.spoofed_url.clone(),

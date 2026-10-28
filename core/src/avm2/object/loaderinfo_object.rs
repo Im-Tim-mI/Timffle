@@ -350,11 +350,16 @@ impl<'gc> LoaderInfoObject<'gc> {
             // "Stage event listeners are removed. Event listeners for enterFrame,
             // frameConstructed, exitFrame, activate and deactivate are removed."
             crate::avm2::events::remove_listeners_of_movie(context, movie);
-
-            let _ = gc;
         }
 
         self.unload(context);
+
+        // gc: "Provides a hint to the garbage collector to run on the child SWF
+        // objects (true) or not (false)." A whole cycle runs after this update,
+        // so the SWF never observes a half-collected arena.
+        if gc {
+            *context.full_gc_requested = true;
+        }
     }
 
     /// Puts this loader info (and its `Loader`) back into the state of a `Loader` that has never
