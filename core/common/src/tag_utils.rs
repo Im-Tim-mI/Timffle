@@ -658,3 +658,34 @@ mod pacing_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod slice_tests {
+    use super::{SwfMovieData, SwfSlice};
+    use std::sync::Arc;
+
+    #[test]
+    fn try_subslice_only_accepts_views_into_the_movie() {
+        let mut movie = SwfMovieData::empty(10, None);
+        movie.data = Arc::new((0..64u8).collect());
+        let slice = SwfSlice::from(&movie);
+        assert_eq!(slice.len(), 64);
+
+        let inner = &movie.data()[10..20];
+        let view = slice.try_subslice(inner).expect("inside");
+        assert_eq!((view.start, view.end), (10, 20));
+        assert_eq!(view.data(), inner);
+        // The view shares the movie's buffer instead of copying it.
+        assert_eq!(view.entire_data().as_ptr(), movie.data().as_ptr());
+
+        // Empty slices at the very end are still inside.
+        let tail = &movie.data()[64..];
+        let view = slice.try_subslice(tail).expect("empty tail");
+        assert_eq!((view.start, view.end), (64, 64));
+
+        // A buffer that is not the movie's data is rejected.
+        let foreign = vec![0u8; 16];
+        assert!(slice.try_subslice(&foreign).is_none());
+        assert!(slice.try_subslice(&foreign[16..]).is_none());
+    }
+}

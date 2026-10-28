@@ -1301,4 +1301,84 @@ mod tests {
         mixer.unregister_sound(a);
         assert_eq!(mixer.sounds.len(), 1);
     }
+
+    /// `DefineSound` bytes registered as a view into the movie are the same bytes,
+    /// mix to the same output, and cost no owned copy.
+    #[test]
+    fn movie_sound_views_match_owned_copies() {
+        use super::SoundData;
+        use crate::tag_utils::{SwfMovieData, SwfSlice};
+
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/tests/swfs/avm2/sound_play/test.swf"
+        );
+        let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        let movie =
+            SwfMovieData::from_data(&bytes, "file:///test.swf".to_string(), None, None).unwrap();
+        let slice = SwfSlice::from(&movie);
+
+        let mut owned = AudioMixer::new(2, 44100);
+        let mut shared = AudioMixer::new(2, 44100);
+        let mut handles = Vec::new();
+        let mut reader = slice.read_from(0);
+        while let Ok(tag) = reader.read_tag() {
+            match tag {
+                swf::Tag::DefineSound(sound) => {
+                    let a = owned.register_sound(&sound).unwrap();
+                    let b = shared.register_sound_from_movie(&sound, &slice).unwrap();
+                    handles.push((a, b));
+                }
+                swf::Tag::End => break,
+                _ => {}
+            }
+        }
+        assert!(handles.len() >= 3, "{}", handles.len());
+
+        for &(a, b) in &handles {
+            assert!(matches!(owned.sounds[a].data, SoundData::Owned(_)));
+            assert!(matches!(shared.sounds[b].data, SoundData::Movie(_)));
+            assert_eq!(
+                owned.sounds[a].data.as_ref(),
+                shared.sounds[b].data.as_ref()
+            );
+            assert_eq!(owned.get_sound_size(a), shared.get_sound_size(b));
+            assert_eq!(
+                owned.sounds[a].skip_sample_frames,
+                shared.sounds[b].skip_sample_frames
+            );
+        }
+        eprintln!(
+            "M4 sounds: {} sounds, movie data {} bytes, compressed sound bytes {}, \
+             owned copies now {} (before: {})",
+            handles.len(),
+            movie.data().len(),
+            shared.total_sound_bytes(),
+            shared.owned_sound_bytes(),
+            owned.owned_sound_bytes()
+        );
+        assert_eq!(shared.total_sound_bytes(), owned.owned_sound_bytes());
+        assert_eq!(shared.owned_sound_bytes(), 0);
+
+        // Decoding through the mixer gives the same samples.
+        let info = swf::SoundInfo {
+            event: swf::SoundEvent::Event,
+            in_sample: None,
+            out_sample: None,
+            num_loops: 1,
+            envelope: None,
+        };
+        for &(a, b) in &handles {
+            owned.start_sound(a, &info).unwrap();
+            shared.start_sound(b, &info).unwrap();
+            let mut out_a = vec![0i16; 2 * 44100];
+            let mut out_b = vec![0i16; 2 * 44100];
+            owned.mix(&mut out_a);
+            shared.mix(&mut out_b);
+            assert!(out_a.iter().any(|&s| s != 0), "silent sound?");
+            assert_eq!(out_a, out_b);
+            owned.stop_all_sounds();
+            shared.stop_all_sounds();
+        }
+    }
 }
