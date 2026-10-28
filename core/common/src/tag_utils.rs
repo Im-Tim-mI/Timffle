@@ -1,7 +1,7 @@
 use crate::sandbox::SandboxType;
 
 use gc_arena::metrics::Metrics;
-use gc_arena::{Collect, Gc, GcWeak, Mutation};
+use gc_arena::{Collect, Finalization, Gc, GcWeak, Mutation};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -52,6 +52,18 @@ impl<'gc> SwfMovie<'gc> {
 
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         std::ptr::eq(this.as_ptr(), other.as_ptr())
+    }
+
+    /// Whether marking found no strong path to this movie (see `Gc::is_dead`).
+    /// Only meaningful inside a finalization callback of a fully marked arena.
+    pub fn is_dead(self, fc: &Finalization<'gc>) -> bool {
+        Gc::is_dead(fc, self.0)
+    }
+
+    /// Mark this movie (and everything it holds) as reachable for the current
+    /// collection cycle (see `Gc::resurrect`).
+    pub fn resurrect(self, fc: &Finalization<'gc>) {
+        Gc::resurrect(fc, self.0)
     }
 }
 

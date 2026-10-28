@@ -1,0 +1,9 @@
+# Timffle: the libraries of SWFs a game loads with Loader must die with the content (see core/src/library.rs).
+# Source: Test.hx + child/Child.hx (Haxe 4.3.7):
+#   (cd child && haxe -cp . -main Child -swf loaded.swf -swf-version 17 -D swf-header=40:40:30:FFFFFF)
+#   haxe -cp . -main Test -swf test.swf -swf-version 17 -D swf-header=400:300:30:FFFFFF
+# output.txt is what Ruffle/Timffle prints; the Flash rules it encodes (fresh statics per load, a kept copy's
+# symbol class keeps working, unload of one copy leaves the others alone) are the documented ones.
+# The library count itself is checked by tests/tests/library_release/mod.rs, which runs this directory with a
+# full GC after every tick.
+num_frames = 40

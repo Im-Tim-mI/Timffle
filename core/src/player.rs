@@ -2439,7 +2439,10 @@ impl Player {
         F: for<'gc> FnOnce(&mut UpdateContext<'gc>) -> R,
     {
         let rval = self.mutate_with_update_context(|context| {
-            // Free sounds whose `Sound` objects were collected since the last update.
+            // Free sounds whose `Sound` objects were collected since the last update,
+            // and the `DefineSound`s of movie libraries the collector removed.
+            let orphaned = context.library.take_released_sounds();
+            context.audio_manager.release_orphaned_sounds(orphaned);
             context.audio_manager.release_sounds(context.audio);
 
             let rval = func(context);
@@ -2456,9 +2459,84 @@ impl Player {
         self.update_mouse_state(EnumSet::empty(), false, &mut false);
 
         // GC
-        self.gc_arena.borrow_mut().collect_debt();
+        Self::gc_step(&mut self.gc_arena.borrow_mut(), false);
 
         rval
+    }
+
+    /// Run a complete collection cycle now: finish the current one if there is
+    /// one, then mark, finalize and sweep a new one. Everything unreachable at
+    /// this point, including the libraries of unreferenced movies, is freed
+    /// when this returns. Meant for tests and debugging; the SWF cannot
+    /// trigger it.
+    pub fn force_full_gc(&mut self) {
+        Self::gc_step(&mut self.gc_arena.borrow_mut(), true);
+    }
+
+    /// Timffle: drive the collector through one step (`full == false`, paced by
+    /// allocation debt like `Arena::collect_debt`) or a whole cycle.
+    ///
+    /// The difference from `collect_debt` is the finalization pass between
+    /// marking and sweeping: movie libraries are ephemerons (see
+    /// `library.rs`), so once the arena is fully marked `Library::finalize_round`
+    /// keeps the libraries of reachable movies alive, marking resumes for
+    /// what they reach, and this repeats until nothing changes; then the
+    /// libraries of dead movies are purged and the sweep starts. The pass is
+    /// atomic with the start of the sweep, so no mutation can run between a
+    /// library being kept and its contents being traced.
+    fn gc_step(arena: &mut GcArena, full: bool) {
+        use gc_arena::arena::CollectionPhase;
+
+        if arena.collection_phase() == CollectionPhase::Sweeping {
+            if full {
+                arena.finish_cycle();
+            } else {
+                // Sweep until the debt is paid; never cross into a new cycle
+                // here, because the next mark phase must end in finalization.
+                arena.cycle_debt();
+                return;
+            }
+        }
+
+        let marked = if full {
+            arena.finish_marking()
+        } else {
+            arena.mark_debt()
+        };
+        let Some(mut marked) = marked else {
+            // Debt paid while still marking (or sleeping without debt); the
+            // next step continues from here.
+            return;
+        };
+
+        loop {
+            let changed = marked.finalize(|fc, root| {
+                let mut data = root.data.borrow_mut(fc);
+                let changed = data.library.finalize_round(fc);
+                if !changed {
+                    let purged = data.library.finalize_purge();
+                    if purged > 0 {
+                        tracing::debug!("GC: released {purged} movie libraries");
+                    }
+                }
+                changed
+            });
+            // Trace what finalization resurrected (and the root, which the
+            // `borrow_mut` above re-grayed). This cannot start sweeping.
+            marked = arena
+                .finish_marking()
+                .expect("arena must still be marking after finalization");
+            if !changed {
+                break;
+            }
+        }
+        marked.start_sweeping();
+
+        if full {
+            arena.finish_cycle();
+        } else {
+            arena.cycle_debt();
+        }
     }
 
     pub fn flush_shared_objects(&mut self) {

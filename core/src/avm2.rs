@@ -104,7 +104,7 @@ pub use crate::avm2::call_stack::CallStack;
 pub const MAX_CALL_DEPTH: usize = 900;
 #[cfg(not(target_family = "wasm"))]
 pub const MAX_CALL_DEPTH: usize = usize::MAX;
-pub use crate::avm2::class::Class;
+pub use crate::avm2::class::{Class, ClassWeak};
 #[allow(unused)] // For debug_ui
 pub use crate::avm2::domain::{Domain, DomainPtr};
 pub use crate::avm2::error::Error;

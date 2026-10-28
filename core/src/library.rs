@@ -1,5 +1,5 @@
 use crate::avm1::{PropertyMap as Avm1PropertyMap, PropertyMap};
-use crate::avm2::{Class as Avm2Class, Domain as Avm2Domain};
+use crate::avm2::{Class as Avm2Class, ClassWeak as Avm2ClassWeak, Domain as Avm2Domain};
 use crate::backend::audio::SoundHandle;
 use crate::character::Character;
 
@@ -7,8 +7,9 @@ use crate::display_object::{Bitmap, Graphic, MorphShape, Text};
 use crate::font::{Font, FontDescriptor, FontLike, FontQuery, FontType};
 use crate::prelude::*;
 use crate::string::AvmString;
-use crate::tag_utils::SwfMovie;
-use gc_arena::{Collect, Mutation};
+use crate::tag_utils::{SwfMovie, SwfMovieData};
+use gc_arena::collect::Trace;
+use gc_arena::{Collect, Finalization, Gc, Mutation};
 use ruffle_render::backend::RenderBackend;
 use ruffle_render::bitmap::BitmapHandle;
 use ruffle_render::utils::remove_invalid_jpeg_data;
@@ -18,19 +19,74 @@ use crate::backend::ui::{FontDefinition, UiBackend};
 use crate::font::DefaultFont;
 use fnv::{FnvHashMap, FnvHashSet};
 use std::collections::HashMap;
+use std::ptr::NonNull;
 
-#[derive(Clone, Collect)]
-#[collect(no_drop)]
-struct MovieSymbol<'gc>(SwfMovie<'gc>, CharacterId);
+// Timffle: movie libraries and the class→symbol registry no longer keep their
+// movies alive on their own.
+//
+// Upstream, `MovieLibraries` is a strong map and nothing ever removes an entry,
+// so every SWF a game ever loads (panels, maps, effects) stays in memory for
+// the whole session together with its parsed shapes, bitmaps, fonts, sounds,
+// classes and `ApplicationDomain`. The values point back at their key (every
+// character, `Graphic`/`MovieClip` shared data, `TranslationUnit`, `Script`
+// and class carries the `SwfMovie`), so a plain weak key would never die.
+//
+// Instead the maps are *ephemerons*: the collector traces a key weakly and
+// traces the value only when marking has found the key through some other
+// path. This happens in a finalization pass over the fully marked arena (see
+// `Library::finalize_round` and `Player::gc_step`):
+//
+//   1. an entry whose movie is otherwise reachable gets its value traced
+//      ("resurrected"); that may reach other movies (parent domains, super
+//      classes, symbols registered on a class of another movie), so the pass
+//      repeats until nothing changes;
+//   2. the remaining entries belong to movies nothing references any more;
+//      they are removed before sweeping starts, so no dangling pointer ever
+//      survives into the next mutation.
+//
+// What a SWF can observe is unchanged: content that is still referenced by a
+// `Loader`, `LoaderInfo`, `ApplicationDomain`, a display object or a class
+// keeps its library, `new SymbolClass()` keeps working on it, and every load
+// still gets its own fresh library, classes and statics.
+
+/// A symbol registered through `SymbolClass` for one class.
+struct ClassSymbolEntry<'gc> {
+    /// The class, traced weakly: the entry lives exactly as long as the class.
+    class: Avm2ClassWeak<'gc>,
+
+    /// The movie the symbol belongs to. Not traced on its own: it is kept
+    /// alive in `finalize_round` while the class is alive and the entry is
+    /// removed before sweeping otherwise.
+    movie: SwfMovie<'gc>,
+
+    symbol: CharacterId,
+
+    /// Set in the current finalization pass once the class was found alive.
+    live: bool,
+}
+
+unsafe impl<'gc> Collect<'gc> for ClassSymbolEntry<'gc> {
+    fn trace<T: Trace<'gc>>(&self, cc: &mut T) {
+        self.class.trace(cc);
+        self.movie.downgrade().trace(cc);
+    }
+}
 
 /// The mappings between class objects and library characters defined by
 /// `SymbolClass`.
-#[derive(Collect)]
-#[collect(no_drop)]
 pub struct Avm2ClassRegistry<'gc> {
     /// A list of AVM2 class objects and the character IDs they are expected to
-    /// instantiate.
-    class_map: HashMap<Avm2Class<'gc>, MovieSymbol<'gc>>,
+    /// instantiate, keyed by class pointer. Entries are dropped when their
+    /// class dies (see the module comment).
+    class_map: HashMap<*const (), ClassSymbolEntry<'gc>>,
+}
+
+unsafe impl<'gc> Collect<'gc> for Avm2ClassRegistry<'gc> {
+    fn trace<T: Trace<'gc>>(&self, cc: &mut T) {
+        for entry in self.class_map.values() {
+            entry.trace(cc);
+        }
+    }
 }
 
 impl Default for Avm2ClassRegistry<'_> {
@@ -51,10 +107,31 @@ impl<'gc> Avm2ClassRegistry<'gc> {
     /// A value of `None` indicates that this AVM2 class is not associated with
     /// a library symbol.
     pub fn class_symbol(&self, class_def: Avm2Class<'gc>) -> Option<(SwfMovie<'gc>, CharacterId)> {
-        match self.class_map.get(&class_def) {
-            Some(MovieSymbol(movie, symbol)) => Some((*movie, *symbol)),
-            None => None,
+        self.class_map
+            .get(&class_def.as_ptr())
+            .map(|entry| (entry.movie, entry.symbol))
+    }
+
+    /// One finalization pass. Returns `true` when a movie was newly kept alive
+    /// for a live class, in which case marking must resume before the next pass.
+    fn finalize_round(&mut self, fc: &Finalization<'gc>) -> bool {
+        let mut changed = false;
+        for entry in self.class_map.values_mut() {
+            if entry.live || entry.class.is_dead(fc) {
+                continue;
+            }
+            entry.live = true;
+            if entry.movie.is_dead(fc) {
+                entry.movie.resurrect(fc);
+                changed = true;
+            }
         }
+        changed
+    }
+
+    /// Remove the entries of dead classes and reset for the next cycle.
+    fn finalize_purge(&mut self) {
+        self.class_map.retain(|_, entry| std::mem::take(&mut entry.live));
     }
 
     /// Associate an AVM2 class definition with a given library symbol.
@@ -64,8 +141,8 @@ impl<'gc> Avm2ClassRegistry<'gc> {
         movie: SwfMovie<'gc>,
         symbol: CharacterId,
     ) {
-        if let Some(old) = self.class_map.get(&class_def) {
-            if SwfMovie::ptr_eq(&movie, &old.0) && symbol != old.1 {
+        if let Some(old) = self.class_map.get(&class_def.as_ptr()) {
+            if SwfMovie::ptr_eq(&movie, &old.movie) && symbol != old.symbol {
                 // Flash player actually allows using the same class in multiple SymbolClass
                 // entries in the same swf, with *different* symbol ids. Whichever one
                 // is processed first will *win*, and the second one will be ignored.
@@ -74,7 +151,7 @@ impl<'gc> Avm2ClassRegistry<'gc> {
                 tracing::warn!(
                     "Tried to overwrite class {:?} id={:?} with symbol id={:?} from same movie",
                     class_def,
-                    old.1,
+                    old.symbol,
                     symbol,
                 );
             }
@@ -85,7 +162,15 @@ impl<'gc> Avm2ClassRegistry<'gc> {
             // instantiates the clip on the timeline.
             return;
         }
-        self.class_map.insert(class_def, MovieSymbol(movie, symbol));
+        self.class_map.insert(
+            class_def.as_ptr(),
+            ClassSymbolEntry {
+                class: class_def.downgrade(),
+                movie,
+                symbol,
+                live: false,
+            },
+        );
     }
 }
 
@@ -373,27 +458,170 @@ impl ruffle_render::bitmap::BitmapSource for MovieLibrarySource<'_, '_> {
     }
 }
 
-#[derive(Collect)]
-#[collect(no_drop)]
-struct MovieLibraries<'gc>(HashMap<SwfMovie<'gc>, MovieLibrary<'gc>>);
+/// The collector's handle on one `MovieLibrary` (see the module comment).
+///
+/// Nothing traces the anchor on its own: it is white at the end of every mark
+/// phase, and `Library::finalize_round` resurrects it when the library's movie
+/// is reachable. Only then is the library's content traced, through this
+/// pointer. An anchor that is not resurrected is dropped by the sweep, and its
+/// entry has already been removed by then, so the pointer is never read again.
+struct LibraryAnchor<'gc> {
+    library: NonNull<MovieLibrary<'gc>>,
+}
+
+unsafe impl<'gc> Collect<'gc> for LibraryAnchor<'gc> {
+    fn trace<T: Trace<'gc>>(&self, cc: &mut T) {
+        // SAFETY: the pointee is owned by the `LibraryEntry` that owns this
+        // anchor. The entry is only removed while its anchor is dead, and a
+        // dead anchor is never traced; see `LibraryEntry`.
+        unsafe { self.library.as_ref().trace(cc) }
+    }
+}
+
+/// One movie's library plus the bookkeeping that lets it die.
+struct LibraryEntry<'gc> {
+    /// The key. Traced weakly, so marking tells us whether anything else
+    /// still references the movie.
+    movie: SwfMovie<'gc>,
+
+    /// The library itself, heap-allocated so its address is stable for the
+    /// anchor. Owned by this entry (freed in `Drop`); only ever accessed
+    /// through this raw pointer or through the anchor's copy of it.
+    library: NonNull<MovieLibrary<'gc>>,
+
+    /// Allocated lazily in the first finalization pass that finds the movie
+    /// alive (allocation needs a `Mutation`, which the plain accessors do not
+    /// have). Not traced strongly by anyone; see `LibraryAnchor`.
+    anchor: Option<Gc<'gc, LibraryAnchor<'gc>>>,
+
+    /// Set in the current finalization pass once the movie was found alive.
+    live: bool,
+}
+
+impl<'gc> LibraryEntry<'gc> {
+    fn new(movie: SwfMovie<'gc>) -> Self {
+        Self {
+            movie,
+            library: NonNull::from(Box::leak(Box::new(MovieLibrary::new(movie)))),
+            anchor: None,
+            live: false,
+        }
+    }
+
+    fn library(&self) -> &MovieLibrary<'gc> {
+        // SAFETY: owned by `self`, freed only in `Drop`; exclusive access goes
+        // through `library_mut(&mut self)`.
+        unsafe { self.library.as_ref() }
+    }
+
+    fn library_mut(&mut self) -> &mut MovieLibrary<'gc> {
+        // SAFETY: as above. The collector reads the library through the anchor
+        // only while no mutation is running, so there is no aliasing `&mut`.
+        unsafe { self.library.as_mut() }
+    }
+}
+
+impl Drop for LibraryEntry<'_> {
+    fn drop(&mut self) {
+        // SAFETY: created by `Box::leak` in `new`, dropped exactly once here.
+        // `MovieLibrary` only owns plain data and `Gc` *pointers*; dropping it
+        // dereferences nothing in the arena.
+        unsafe { drop(Box::from_raw(self.library.as_ptr())) }
+    }
+}
+
+unsafe impl<'gc> Collect<'gc> for LibraryEntry<'gc> {
+    fn trace<T: Trace<'gc>>(&self, cc: &mut T) {
+        // Only the key, weakly. The library's content is traced through the
+        // anchor once the key is known to be alive.
+        self.movie.downgrade().trace(cc);
+    }
+}
+
+struct MovieLibraries<'gc> {
+    /// Keyed by movie pointer. An entry is removed in the collection cycle in
+    /// which the movie becomes unreachable, before the sweep frees it, so the
+    /// address can never be reused while a stale entry exists.
+    entries: HashMap<*const SwfMovieData, LibraryEntry<'gc>>,
+
+    /// `DefineSound` handles of libraries that were purged, waiting to be
+    /// given back to the audio backend by the player.
+    released_sounds: Vec<SoundHandle>,
+}
+
+unsafe impl<'gc> Collect<'gc> for MovieLibraries<'gc> {
+    fn trace<T: Trace<'gc>>(&self, cc: &mut T) {
+        for entry in self.entries.values() {
+            entry.trace(cc);
+        }
+    }
+}
 
 impl<'gc> MovieLibraries<'gc> {
     fn new() -> Self {
-        Self(HashMap::new())
+        Self {
+            entries: HashMap::new(),
+            released_sounds: Vec::new(),
+        }
     }
 
     fn get(&self, key: SwfMovie<'gc>) -> Option<&MovieLibrary<'gc>> {
-        self.0.get(&key)
+        self.entries.get(&key.as_ptr()).map(LibraryEntry::library)
     }
 
     fn get_or_insert_mut(&mut self, movie: SwfMovie<'gc>) -> &mut MovieLibrary<'gc> {
-        self.0
-            .entry(movie)
-            .or_insert_with(|| MovieLibrary::new(movie))
+        self.entries
+            .entry(movie.as_ptr())
+            .or_insert_with(|| LibraryEntry::new(movie))
+            .library_mut()
     }
 
     fn known_movies(&self) -> impl Iterator<Item = SwfMovie<'gc>> {
-        self.0.keys().copied()
+        self.entries.values().map(|entry| entry.movie)
+    }
+
+    /// One finalization pass: keep (trace) the libraries of movies that
+    /// marking found alive. Returns `true` if any library was newly kept,
+    /// in which case marking must resume and the pass be repeated, because
+    /// that library's content may reach other movies.
+    fn finalize_round(&mut self, fc: &Finalization<'gc>) -> bool {
+        let mut changed = false;
+        for entry in self.entries.values_mut() {
+            if entry.live || entry.movie.is_dead(fc) {
+                continue;
+            }
+            entry.live = true;
+            changed = true;
+            let anchor = *entry.anchor.get_or_insert_with(|| {
+                Gc::new(
+                    fc,
+                    LibraryAnchor {
+                        library: entry.library,
+                    },
+                )
+            });
+            Gc::resurrect(fc, anchor);
+        }
+        changed
+    }
+
+    /// Remove the libraries of dead movies and reset for the next cycle.
+    /// Returns how many were removed.
+    fn finalize_purge(&mut self) -> usize {
+        let before = self.entries.len();
+        let released = &mut self.released_sounds;
+        self.entries.retain(|_, entry| {
+            if std::mem::take(&mut entry.live) {
+                return true;
+            }
+            for character in entry.library().characters.values() {
+                if let Character::Sound(sound) = character {
+                    released.push(*sound);
+                }
+            }
+            false
+        });
+        before - self.entries.len()
     }
 }
 
@@ -454,6 +682,30 @@ impl<'gc> Library<'gc> {
 
     pub fn known_movies(&self) -> impl Iterator<Item = SwfMovie<'gc>> {
         self.movie_libraries.known_movies()
+    }
+
+    /// One pass of the ephemeron finalization described at the top of this
+    /// file. Must be called on a fully marked arena. Returns `true` when it
+    /// made more objects reachable: the caller then resumes marking and calls
+    /// again; once it returns `false` the caller must call `finalize_purge`
+    /// before letting the sweep run.
+    pub fn finalize_round(&mut self, fc: &Finalization<'gc>) -> bool {
+        let classes = self.avm2_class_registry.finalize_round(fc);
+        let libraries = self.movie_libraries.finalize_round(fc);
+        classes || libraries
+    }
+
+    /// Drop the libraries and symbol registrations of movies that the last
+    /// `finalize_round` left dead. Returns the number of libraries removed.
+    pub fn finalize_purge(&mut self) -> usize {
+        self.avm2_class_registry.finalize_purge();
+        self.movie_libraries.finalize_purge()
+    }
+
+    /// `DefineSound` handles of libraries purged since the last call. The
+    /// player hands them to the audio backend once they are no longer playing.
+    pub fn take_released_sounds(&mut self) -> Vec<SoundHandle> {
+        std::mem::take(&mut self.movie_libraries.released_sounds)
     }
 
     /// Returns the default Font implementations behind the built in names (ie `_sans`)

@@ -1,0 +1,13 @@
+loaded 0 count=1 pix=4x4 content=true
+loaded 1 count=1 pix=4x4 content=true
+loaded 2 count=1 pix=4x4 content=true
+loaded 3 count=1 pix=4x4 content=true
+again 0 count=2 pix=4x4 content=true
+again 1 count=2 pix=4x4 content=true
+again 2 count=2 pix=4x4 content=true
+again 3 count=2 pix=4x4 content=true
+released 3 copies, kept 0
+kept count=3 pix=4x4 content=true
+kept count=4 pix=4x4 content=true
+kept count=5 pix=4x4 content=true
+released the kept copy

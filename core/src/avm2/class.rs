@@ -22,7 +22,7 @@ use bitflags::bitflags;
 use fnv::FnvHashMap;
 use gc_arena::barrier::unlock;
 use gc_arena::lock::{OnceLock, RefLock};
-use gc_arena::{Collect, Gc, Lock, Mutation};
+use gc_arena::{Collect, Finalization, Gc, GcWeak, Lock, Mutation};
 use swf::avm2::types::Trait as AbcTrait;
 
 use std::cell::{Cell, Ref};
@@ -100,6 +100,19 @@ enum ClassLink<'gc> {
 #[derive(Collect, Clone, Copy)]
 #[collect(no_drop)]
 pub struct Class<'gc>(Gc<'gc, ClassData<'gc>>);
+
+/// A weak reference to a `Class`.
+#[derive(Collect, Clone, Copy)]
+#[collect(no_drop)]
+pub struct ClassWeak<'gc>(GcWeak<'gc, ClassData<'gc>>);
+
+impl<'gc> ClassWeak<'gc> {
+    /// Whether marking found no strong path to the class (see `GcWeak::is_dead`).
+    /// Only meaningful inside a finalization callback of a fully marked arena.
+    pub fn is_dead(self, fc: &Finalization<'gc>) -> bool {
+        self.0.is_dead(fc)
+    }
+}
 
 /// A loaded ABC Class which can be used to construct objects with.
 #[derive(Collect)]
@@ -244,6 +257,16 @@ impl<'gc> ClassData<'gc> {
 impl<'gc> Class<'gc> {
     pub fn as_ptr(self) -> *const () {
         Gc::as_ptr(self.0).cast()
+    }
+
+    pub fn downgrade(self) -> ClassWeak<'gc> {
+        ClassWeak(Gc::downgrade(self.0))
+    }
+
+    /// Whether marking found no strong path to this class (see `Gc::is_dead`).
+    /// Only meaningful inside a finalization callback of a fully marked arena.
+    pub fn is_dead(self, fc: &Finalization<'gc>) -> bool {
+        Gc::is_dead(fc, self.0)
     }
 
     /// Create an unlinked class from its name, superclass, and traits.
