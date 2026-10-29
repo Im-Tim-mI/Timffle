@@ -405,8 +405,20 @@
     position: absolute;
     opacity: 0;
     top: -100px;
+    left: 0;
     width: 1px;
     height: 1px;
+    /* Timffle: it is moved over the focused text field so the input method's
+       candidate window opens there; it must never swallow clicks or add size. */
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+    box-sizing: border-box;
 }
 
 .modal {

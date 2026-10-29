@@ -156,6 +156,9 @@ export class InnerPlayer {
     private readonly unmuteOverlay: HTMLElement;
     private readonly splashScreen: HTMLElement;
     private readonly virtualKeyboard: HTMLInputElement;
+    // Timffle: true between compositionstart and compositionend on the
+    // hidden input (the browser's input method is composing CJK text).
+    private imeComposing = false;
     private readonly saveManager: HTMLDivElement;
     private readonly volumeControls: HTMLDivElement;
     private readonly videoModal: HTMLDivElement;
@@ -247,6 +250,29 @@ export class InnerPlayer {
         this.virtualKeyboard.addEventListener(
             "input",
             this.virtualKeyboardInput.bind(this),
+        );
+        // Timffle: input method (IME) composition. The hidden input is the
+        // element the browser composes into; the composed text is mirrored
+        // into the focused Flash text field as a preedit and committed at the end.
+        this.virtualKeyboard.addEventListener("compositionstart", () => {
+            this.imeComposing = true;
+        });
+        this.virtualKeyboard.addEventListener(
+            "compositionupdate",
+            (event: CompositionEvent) => {
+                this.imeComposing = true;
+                this.imePreedit(event.data ?? "");
+            },
+        );
+        this.virtualKeyboard.addEventListener(
+            "compositionend",
+            (event: CompositionEvent) => {
+                this.imeComposing = false;
+                this.instance?.ime_commit(event.data ?? "");
+                // Whatever the browser leaves in the input is the committed
+                // text; a trailing `input` event must not type it again.
+                this.virtualKeyboard.value = "";
+            },
         );
         this.saveManager = this.shadow.getElementById(
             "save-manager",
@@ -1536,7 +1562,20 @@ export class InnerPlayer {
         }
     }
 
-    private virtualKeyboardInput() {
+    private virtualKeyboardInput(event?: Event) {
+        // Timffle: while the browser's input method is composing (CJK IME),
+        // the text in the input is a preedit, not typed characters. It is
+        // forwarded by the composition handlers; forwarding it here as well
+        // doubled every symbol and clearing the input broke the composition.
+        const inputEvent = event as InputEvent | undefined;
+        if (
+            this.imeComposing ||
+            inputEvent?.isComposing ||
+            inputEvent?.inputType === "insertCompositionText" ||
+            inputEvent?.inputType === "deleteCompositionText"
+        ) {
+            return;
+        }
         const input = this.virtualKeyboard;
         const string = input.value;
         for (const char of string) {
@@ -1589,6 +1628,96 @@ export class InnerPlayer {
 
     protected isVirtualKeyboardFocused(): boolean {
         return this.shadow.activeElement === this.virtualKeyboard;
+    }
+
+    /**
+     * Timffle: forwards the current composition text to the player.
+     * The caret offset is converted to UTF-8 bytes, which is what the core expects.
+     *
+     * @param text The text being composed (`CompositionEvent.data`).
+     */
+    private imePreedit(text: string): void {
+        let cursor: number | undefined;
+        const selection = this.virtualKeyboard.selectionStart;
+        if (selection !== null && selection !== undefined) {
+            const caret = Math.max(0, Math.min(selection, text.length));
+            cursor = new TextEncoder().encode(text.slice(0, caret)).length;
+        } else {
+            cursor = new TextEncoder().encode(text).length;
+        }
+        this.instance?.ime_preedit(text, cursor);
+    }
+
+    /**
+     * Timffle: called by the core when an editable text field gets the focus.
+     * Moves the hidden input over the field so the input method's candidate
+     * window opens next to it, and disables the IME for password fields.
+     *
+     * @param password Whether the field is a password field.
+     * @param x Left edge of the field, CSS pixels relative to the canvas.
+     * @param y Top edge of the field, CSS pixels relative to the canvas.
+     * @param width Width of the field in CSS pixels.
+     * @param height Height of the field in CSS pixels.
+     */
+    protected imeReady(
+        password: boolean,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+    ): void {
+        this.imeSetPurpose(password);
+        this.imeSetCursorArea(x, y, width, height);
+    }
+
+    /**
+     * Timffle: called by the core when the focused text field loses the focus.
+     */
+    protected imeNotReady(): void {
+        this.imeComposing = false;
+        this.virtualKeyboard.value = "";
+    }
+
+    /**
+     * Timffle: switches the hidden input between text and password mode.
+     * Browsers disable input methods for password fields, like Flash did.
+     *
+     * @param password Whether the field is a password field.
+     */
+    protected imeSetPurpose(password: boolean): void {
+        const type = password ? "password" : "text";
+        if (this.virtualKeyboard.type !== type) {
+            this.virtualKeyboard.type = type;
+        }
+    }
+
+    /**
+     * Timffle: positions the hidden input over the focused text field.
+     *
+     * @param x Left edge of the field, CSS pixels relative to the canvas.
+     * @param y Top edge of the field, CSS pixels relative to the canvas.
+     * @param width Width of the field in CSS pixels.
+     * @param height Height of the field in CSS pixels.
+     */
+    protected imeSetCursorArea(
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+    ): void {
+        const style = this.virtualKeyboard.style;
+        if (![x, y, width, height].every(Number.isFinite)) {
+            return;
+        }
+        const h = Math.max(1, Math.round(height));
+        style.left = `${Math.round(x)}px`;
+        style.top = `${Math.round(y)}px`;
+        style.width = `${Math.max(1, Math.round(width))}px`;
+        style.height = `${h}px`;
+        // The candidate window is placed under the caret rectangle, which is
+        // the line box of the input: make it as tall as the text field.
+        style.fontSize = `${Math.max(8, Math.min(h, 48))}px`;
+        style.lineHeight = `${h}px`;
     }
 
     private contextMenuItems(): Array<ContextMenuItem | null> {

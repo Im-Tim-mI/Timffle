@@ -10,7 +10,7 @@ use ruffle_core::backend::storage::{MemoryStorageBackend, StorageBackend};
 use ruffle_core::backend::ui::FontDefinition;
 use ruffle_core::compatibility_rules::CompatibilityRules;
 use ruffle_core::config::{Letterbox, NetworkingAccessMode};
-use ruffle_core::events::{GamepadButton, KeyCode};
+use ruffle_core::events::{GamepadButton, KeyCode, PlayerNotification};
 use ruffle_core::font::{DefaultFont, FontFileData};
 use ruffle_core::ttf_parser;
 use ruffle_core::{Color, Player, PlayerBuilder, PlayerRuntime, StageAlign, StageScaleMode, swf};
@@ -756,7 +756,12 @@ impl RuffleInstanceBuilder {
         let trace_observer: Rc<RefCell<JsValue>> = Rc::new(RefCell::new(JsValue::UNDEFINED));
         let use_canvas_font_renderer =
             matches!(self.device_font_renderer, DeviceFontRenderer::Canvas);
+        // Timffle: the core tells us when an editable text field is focused
+        // (IME ready, purpose, cursor area); the web player uses it to drive
+        // the browser's input method (CJK composition) through a hidden input.
+        let (notification_sender, notification_receiver) = async_channel::unbounded();
         let core = builder
+            .with_notification_sender(notification_sender)
             .with_log(log_adapter::WebLogBackend::new(trace_observer.clone()))
             .with_ui(ui::WebUiBackend::new(
                 js_player.clone(),
@@ -806,6 +811,7 @@ impl RuffleInstanceBuilder {
             core,
             canvas,
             trace_observer,
+            notification_receiver,
         })
     }
 }
@@ -814,4 +820,7 @@ pub struct BuiltPlayer {
     pub core: Arc<Mutex<Player>>,
     pub canvas: HtmlCanvasElement,
     pub trace_observer: Rc<RefCell<JsValue>>,
+    /// Timffle: IME readiness / cursor-area notifications from the core,
+    /// drained once per tick and forwarded to the JS player.
+    pub notification_receiver: async_channel::Receiver<PlayerNotification>,
 }

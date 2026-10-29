@@ -17,7 +17,11 @@ use input::{web_input_to_ruffle_key_descriptor, web_to_ruffle_text_control};
 use js_sys::{Error as JsError, Uint8Array};
 use ruffle_core::context::UpdateContext;
 use ruffle_core::context_menu::ContextMenuCallback;
-use ruffle_core::events::{GamepadButton, MouseButton, MouseWheelDelta, TextControlCode};
+use ruffle_core::events::{
+    GamepadButton, ImeCursorArea, ImeEvent, ImeNotification, ImePurpose, MouseButton,
+    MouseWheelDelta, PlayerNotification, TextControlCode,
+};
+use ruffle_core::swf::{Rectangle, Twips};
 use ruffle_core::tag_utils::SwfMovieData;
 use ruffle_core::{FloatDuration, Player, PlayerEvent, StaticCallstack, ViewportDimensions};
 use ruffle_web_common::JsResult;
@@ -147,6 +151,8 @@ struct RuffleInstance {
     trace_observer: Rc<RefCell<JsValue>>,
     log_subscriber: Arc<Layered<WASMLayer, Registry>>,
     pressed_buttons: Vec<GamepadButton>,
+    /// Timffle: IME notifications from the core (see `tick`).
+    notification_receiver: async_channel::Receiver<PlayerNotification>,
 }
 
 #[wasm_bindgen(raw_module = "./internal/player/inner.js")]
@@ -197,6 +203,20 @@ unsafe extern "C" {
 
     #[wasm_bindgen(method, js_name = "isVirtualKeyboardFocused")]
     fn is_virtual_keyboard_focused(this: &JavascriptPlayer) -> bool;
+
+    // Timffle: input method (IME) support. Coordinates are CSS pixels
+    // relative to the player's canvas.
+    #[wasm_bindgen(method, js_name = "imeReady")]
+    fn ime_ready(this: &JavascriptPlayer, password: bool, x: f64, y: f64, width: f64, height: f64);
+
+    #[wasm_bindgen(method, js_name = "imeNotReady")]
+    fn ime_not_ready(this: &JavascriptPlayer);
+
+    #[wasm_bindgen(method, js_name = "imeSetPurpose")]
+    fn ime_set_purpose(this: &JavascriptPlayer, password: bool);
+
+    #[wasm_bindgen(method, js_name = "imeSetCursorArea")]
+    fn ime_set_cursor_area(this: &JavascriptPlayer, x: f64, y: f64, width: f64, height: f64);
 
     #[wasm_bindgen(method, js_name = "displayUnsupportedVideo")]
     fn display_unsupported_video(this: &JavascriptPlayer, url: &str);
@@ -323,6 +343,32 @@ impl RuffleHandle {
 
     pub fn is_playing(&self) -> bool {
         self.with_core(|core| core.is_playing()).unwrap_or_default()
+    }
+
+    /// Timffle: the browser's input method changed the text being composed
+    /// (`compositionupdate`). `cursor` is a UTF-8 byte offset into `text`;
+    /// `None` hides the caret. An empty `text` cancels the composition.
+    pub fn ime_preedit(&self, text: String, cursor: Option<usize>) {
+        let _ = self.with_core_mut(|core| {
+            core.handle_event(PlayerEvent::Ime(ImeEvent::Preedit(
+                text,
+                cursor.map(|c| (c, c)),
+            )));
+        });
+    }
+
+    /// Timffle: the browser's input method committed `text` (`compositionend`).
+    pub fn ime_commit(&self, text: String) {
+        let _ = self.with_core_mut(|core| {
+            // Like winit, clear the preedit first: `Commit` alone leaves the
+            // composed text (and its IME range) in the field, so the committed
+            // text would be typed twice and the next composition would overwrite
+            // the previous character. An empty `text` (Escape) just cancels.
+            core.handle_event(PlayerEvent::Ime(ImeEvent::Preedit(String::new(), None)));
+            if !text.is_empty() {
+                core.handle_event(PlayerEvent::Ime(ImeEvent::Commit(text)));
+            }
+        });
     }
 
     /// Switches to background tick mode, pausing the normal animation loop.
@@ -576,6 +622,7 @@ impl RuffleHandle {
             trace_observer: player.trace_observer,
             log_subscriber,
             pressed_buttons: vec![],
+            notification_receiver: player.notification_receiver,
         };
 
         // Prevent touch-scrolling on canvas.
@@ -773,6 +820,14 @@ impl RuffleHandle {
                 "keydown",
                 false,
                 move |js_event: KeyboardEvent| {
+                    // Timffle: keys consumed by the input method (CJK composition)
+                    // reach the player through the composition events on the
+                    // hidden input element instead; forwarding them here typed the
+                    // raw key (e.g. a lone Bopomofo symbol) and prevent_default()
+                    // broke the composition.
+                    if is_ime_key(&js_event) {
+                        return;
+                    }
                     let _ = ruffle.with_instance(|instance| {
                         if instance.has_focus {
                             let mut paste_event = false;
@@ -842,6 +897,9 @@ impl RuffleHandle {
                 "keyup",
                 false,
                 move |js_event: KeyboardEvent| {
+                    if is_ime_key(&js_event) {
+                        return;
+                    }
                     let _ = ruffle.with_instance(|instance| {
                         if instance.has_focus {
                             let _ = instance.with_core_mut(|core| {
@@ -1128,9 +1186,21 @@ impl RuffleHandle {
         let mut gamepad_button_events = Vec::new();
         let mut background = false;
         let mut render_pending = false;
+        let mut ime_notifications = Vec::new();
+        let mut ime_js_player = None;
         let _ = self.with_instance_mut(|instance| {
             background = instance.background_tick_mode;
             render_pending = instance.render_pending;
+
+            // Timffle: collect IME notifications the core sent since the last tick.
+            while let Ok(PlayerNotification::ImeNotification(notification)) =
+                instance.notification_receiver.try_recv()
+            {
+                ime_notifications.push(notification);
+            }
+            if !ime_notifications.is_empty() {
+                ime_js_player = Some((instance.js_player.clone(), instance.device_pixel_ratio));
+            }
 
             // Check for canvas resize.
             let canvas_width = instance.canvas.client_width();
@@ -1253,6 +1323,58 @@ impl RuffleHandle {
 
             core.tick(FloatDuration::from_millis(dt));
 
+            // Timffle: forward IME state to the JS player (hidden input element).
+            if let Some((js_player, device_pixel_ratio)) = ime_js_player {
+                let view_matrix =
+                    core.mutate_with_update_context(|context| context.stage.view_matrix());
+                let to_css = |area: ImeCursorArea| -> (f64, f64, f64, f64) {
+                    // Stage pixels -> viewport (device) pixels -> CSS pixels.
+                    let rect = view_matrix
+                        * Rectangle {
+                            x_min: Twips::from_pixels(area.x),
+                            y_min: Twips::from_pixels(area.y),
+                            x_max: Twips::from_pixels(area.x + area.width),
+                            y_max: Twips::from_pixels(area.y + area.height),
+                        };
+                    let scale = if device_pixel_ratio > 0.0 {
+                        device_pixel_ratio
+                    } else {
+                        1.0
+                    };
+                    (
+                        rect.x_min.to_pixels() / scale,
+                        rect.y_min.to_pixels() / scale,
+                        rect.width().to_pixels() / scale,
+                        rect.height().to_pixels() / scale,
+                    )
+                };
+                for notification in ime_notifications {
+                    match notification {
+                        ImeNotification::ImeReady {
+                            purpose,
+                            cursor_area,
+                        } => {
+                            let (x, y, w, h) = to_css(cursor_area);
+                            js_player.ime_ready(
+                                matches!(purpose, ImePurpose::Password),
+                                x,
+                                y,
+                                w,
+                                h,
+                            );
+                        }
+                        ImeNotification::ImePurposeUpdated(purpose) => {
+                            js_player.ime_set_purpose(matches!(purpose, ImePurpose::Password));
+                        }
+                        ImeNotification::ImeCursorAreaUpdated(cursor_area) => {
+                            let (x, y, w, h) = to_css(cursor_area);
+                            js_player.ime_set_cursor_area(x, y, w, h);
+                        }
+                        ImeNotification::ImeNotReady => js_player.ime_not_ready(),
+                    }
+                }
+            }
+
             // Render if the core signals a new frame, or if we resized.
             let wants_render = core.needs_render() || new_dimensions.is_some() || render_pending;
             if background {
@@ -1358,6 +1480,15 @@ pub enum RuffleInstanceError {
     TryLockError,
     #[error("Ruffle Instance ID does not exist")]
     InstanceNotFound,
+}
+
+/// Timffle: is this key event part of an input-method composition?
+///
+/// Chrome/Safari report IME-consumed keys with `keyCode` 229 (and `key`
+/// "Process" on most platforms); the first key of a composition arrives
+/// before `compositionstart`, so `isComposing` alone is not enough.
+fn is_ime_key(event: &KeyboardEvent) -> bool {
+    event.is_composing() || event.key_code() == 229 || event.key() == "Process"
 }
 
 fn parse_movie_parameters(input: &JsValue) -> Vec<(String, String)> {
