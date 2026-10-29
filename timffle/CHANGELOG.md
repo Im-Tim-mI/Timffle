@@ -2,6 +2,17 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26318 — 2026-10-29（PRO_bata 分支，測試版）
+
+**從上游 Ruffle（2026-10-15～10-20 之間）撿回 4 項小而獨立的修正，一項省 CPU、一項省記憶體、兩項修當機與消失。** 只改 Ruffle 核心（wasm）：4 個程式檔共約 46 行，另加 4 個上游的回歸測試；擴充功能、小幫手（仍是 1.4.1）、文字、權限、設定都沒變。這些都是通用的 Flash 行為，與任何特定網站無關。每個 commit 保留上游作者與 `(cherry picked from commit …)` 標記。26317 這個號碼留給擱置中的「背景幀率」分支（`bg-framerate-26317`），沒有發行也不併入。
+
+- **舞台外的靜態文字不再送去畫**（上游 `06957005b`，Redu667）：`Graphic`、`EditText`、`Bitmap`、`Video` 畫之前本來就會先看世界範圍有沒有碰到舞台，只有 `DefineText` 的靜態文字每一幀都把每個字形送給渲染器；現在一樣先檢查。真實 Flash 也是用 `DefineText` 標籤裡存的範圍跳過舞台外的文字。對捲動清單、超出畫面的介面省下每幀的繪製呼叫。
+- **錯誤的堆疊追蹤最多留 64 層**（上游 `e9bc6242c`，Kamil Jarosz）：真實 Flash 擷取堆疊時只留最內層 64 幀（含原生幀）；Ruffle 原本整條都存，深遞迴丟出的錯誤會帶著幾千層字串。新測試 `avm2/error_stack_trace_limit`。
+- **有 `scrollRect` 的物件的世界範圍不再把捲動位移算兩次**（上游 `5e2d01f73`，Kamil Jarosz）：範圍被移到看不見的位置，結果這類物件會被剔除而消失，`hitTestPoint`／`hitTestObject` 也對不到。Timffle 這裡的 `world_bounds` 多了 3D 投影分支（26311），這一段是手動合進去的：3D 路徑不變，2D 路徑改用不含自身捲動位移的矩陣。新測試 `avm2/hit_test_scroll_rect`、`visual/scroll_rect_culling`（視覺測試需要 GPU，在本機標 ignored）。
+- **`Array.join`／`Vector.join` 期間元素的 `toString` 改動陣列不再 panic**（上游 `308ad70ae`，Kamil Jarosz）：原本一邊借著儲存區一邊轉字串，`toString` 裡改陣列就撞 RefCell；現在照 Flash 的做法先讀一次長度、逐個取元素，`Vector` 缺元素丟 RangeError #1125。新測試 `avm2/array_join_reentrant`、`avm2/vector_join_reentrant`。
+- **驗證**：`cargo fmt --check` 乾淨；`ruffle_core` 單元測試 135；完整 SWF 回歸 **4,277 通過**（4,273 + 4 新），6 個失敗仍是原本的已知差異（3 個 Matrix3D、`textblock_recreateline`、`flash_net_classes`、`loader_duplicate_class`）。**沒有**跑真實帳號測試、沒有量 CPU 數字——這一版的改動都是上游已合併、行為對照真實 Flash 的修正，風險在於 Timffle 自己的 3D 範圖分支，而 3D 測試（38 項）與 Timffle 的 5 個測試都過。
+- **看過但沒撿的上游改動**（同一段期間共 129 個 commit）：wgpu 渲染器合併繪製呼叫的整組重構（Nathan Adams，約 40 個 commit，與 Timffle 的「低 uniform 上限 GPU」修補在同一處 `MAX_TRANSFORMS_PER_CHUNK` 相撞，要等下次整批跟進上游）；`removeChild`／`removeChildren` 事件順序與 Error #2094（改變遊戲可觀察的行為，需要先對真實 Flash 比對）；`Context3D` 修正（摩爾莊園等不用 Stage3D）；AVM1 的 `BitmapData.hitTest` 預設值、`ExternalInterface` 搬到 AS；文字格式索引修正（`setTextFormat`／`getTextFormat`，共 6 個 commit，可能影響聊天框，下一輪連測試一起撿）。
+
 ## 0.8.0.26316 — 2026-10-28（正式版）
 
 **正式版：把 `PRO_bata` 的 0.8.0.26311–26315（記憶體優化、載入過的 SWF 會釋放、`Loader.unloadAndStop()`、摩爾莊園餐廳員工拉姆閃白）合併回主線發行。小幫手有更新（1.4.1）**：版本字串從 1.4.0 改成 1.4.1，安裝檔重新發佈到 `Im-Tim-mI/Timffle-Helper` 的 `v1.4.1`；程式的改動就是 26311 記的那些（每筆資料往返的配置大幅減少、讀取緩衝延後配置、拒絕連線依 errno 判斷、同版本重裝不動執行中的檔案），通訊協定仍是 2，**和 1.4.0 完全互通**：1.4.0 的小幫手配這一版的擴充功能照樣能用（區網架站要求的最低版本仍是 1.4.0），重跑安裝程式只是換成較省記憶體的版本，不是必要。**沒有新權限、沒有新設定、沒有新文字**。
