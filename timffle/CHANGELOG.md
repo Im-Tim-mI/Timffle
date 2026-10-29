@@ -2,6 +2,16 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26319 — 2026-10-29（PRO_bata 分支，測試版）
+
+**接著 26318 再從上游撿回 `TextField` 文字格式的 7 項修正與 AVM1 `BitmapData.hitTest` 的預設值，連同上游的 7 個回歸測試。** 只改 Ruffle 核心（wasm）：8 個程式 commit，擴充功能、小幫手（仍是 1.4.1）、文字、權限、設定都沒變。都是通用的 Flash 行為修正（Kamil Jarosz、Ethan Sifferman，2026-10-18～10-23 合併上游），保留上游作者與 `(cherry picked from …)` 標記。
+
+- **`setTextFormat`／`getTextFormat` 的索引處理照真實 Flash**（AVM1 與 AVM2 各一組）：負數、超出長度、`beginIndex > endIndex`、非整數的索引原本有的被夾到錯的範圍、有的套到整段文字；現在與 Flash 一致，空範圍不動格式（`FormatSpans::set_text_format`）。聊天框、公告這類一邊打字一邊套格式的文字欄位最常碰到。AVM2 版對 `null` 格式與 `defaultTextFormat = null` 改成丟 TypeError #2007，之前是默默當成沒事。
+- **AVM1 `BitmapData.hitTest` 的 `secondAlphaThreshold` 預設值改為 1**（上游 `8b25621fc`）：原本預設 0，任何透明像素都算打到。
+- **沒撿**：`eb1384150`「堆疊追蹤不印非 public 的類別命名空間」及其測試——它的期望輸出依賴另一個尚未撿的 `Array.sort`／`Vector.sort` 改動（`a3fb7a350`），測試檔衝突；屬外觀，等整批跟進上游。
+- **驗證**：`cargo fmt --check` 乾淨；完整 SWF 回歸 **4,284 通過**（4,277 + 7 新：`avm1/textfield_set_text_format_args`、`avm1/textfield_set_text_format_text_change`、`avm1/textfield_get_text_format_args`、`avm2/textfield_set_text_format_args`、`avm2/textfield_get_text_format_args`、`avm2/textfield_default_text_format_null`，以及 hitTest 那個），6 個失敗仍是原本的已知差異。沒有真實帳號測試。
+- **看過、刻意不改**：Timffle 的 `world_bounds` 3D 分支（26311）對純 2D 物件每幀多走一次父鏈判斷有沒有 3D（`chain_has_3d`），和原本算 `local_to_global_matrix` 的那次走訪深度相同、只是指標比較，剔除時的額外成本遠小於畫一次；不值得為它合併兩次走訪。
+
 ## 0.8.0.26318 — 2026-10-29（PRO_bata 分支，測試版）
 
 **從上游 Ruffle（2026-10-15～10-20 之間）撿回 4 項小而獨立的修正，一項省 CPU、一項省記憶體、兩項修當機與消失。** 只改 Ruffle 核心（wasm）：4 個程式檔共約 46 行，另加 4 個上游的回歸測試；擴充功能、小幫手（仍是 1.4.1）、文字、權限、設定都沒變。這些都是通用的 Flash 行為，與任何特定網站無關。每個 commit 保留上游作者與 `(cherry picked from commit …)` 標記。26317 這個號碼留給擱置中的「背景幀率」分支（`bg-framerate-26317`），沒有發行也不併入。
