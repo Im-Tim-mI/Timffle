@@ -2,6 +2,14 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26320 — 2026-10-29（PRO_bata 分支，測試版）
+
+**修正中文輸入法：在 Flash 文字欄位用注音（或倉頡、拼音、日文、韓文等任何組字式輸入法）打字，原本只會跑出重複的注音符號（「ㄅㄅ」）、永遠選不了字；現在組字過程會顯示在欄位裡，選字後正確送入。** 只改網頁播放器（wasm 的 `web/src` 與 `web/packages/core`）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。這是通用的修正，對任何 Flash 網站、任何瀏覽器（Chrome／Edge／Safari／Firefox）與 Android WebView 都一樣；Timffle Browser 更新子模組後也會得到。
+
+- **原因**：Ruffle 的網頁版只把 `keydown` 當文字輸入，沒有接瀏覽器的組字事件。tim 在 macOS 上打注音時，輸入法已經處理掉的按鍵仍被當成一般按鍵送進 Flash（第一個「ㄅ」），接著原本給手機虛擬鍵盤用的隱藏 `<input>` 收到組字中的文字又把它當成按鍵重送一次（第二個「ㄅ」），然後把 `<input>` 清空、組字就被打斷，所以候選字永遠出不來。
+- **做法**：Ruffle 核心本來就有桌面版用的 IME 事件（`ImeEvent::Preedit`／`Commit`）與「文字欄位取得焦點」的通知（`ImeNotification`），這版把它們接到網頁版：(1) 輸入法消耗掉的按鍵（`isComposing`、`keyCode` 229、`key === "Process"`）不再送進 Flash、也不再 `preventDefault()`（`web/src/lib.rs`）；(2) 隱藏 `<input>` 的 `compositionstart`／`compositionupdate`／`compositionend` 轉成 `ime_preedit`／`ime_commit`，組字期間的 `input` 事件不再重放成按鍵（`inner.tsx`）；(3) 核心的 IME 通知透過新的通知通道在每個 tick 轉給 JS（`builder.rs`／`lib.rs`），隱藏 `<input>` 會被移到文字欄位的位置（舞台座標經視圖矩陣與 devicePixelRatio 換算成 CSS px），所以候選字視窗會出現在欄位旁邊；密碼欄位會把 `<input>` 切成 `type=password`，瀏覽器會照慣例停用輸入法，和 Flash 一樣；(4) 隱藏 `<input>` 加上 `pointer-events: none` 等樣式，移到欄位上也不會擋住滑鼠。取消組字（Esc）會把預覽文字收回；焦點離開欄位時核心照舊把組字中的文字提交。
+- **驗證**：`cargo check`（wasm32）與 `cargo fmt --check` 乾淨；`ruffle-core` 的 mocha 單元測試 **90 通過**（86 + 4 新：`test/ime-composition.ts`，用 jsdom 重演「ㄅ→ㄅㄚ→巴」的事件流、取消組字、虛擬鍵盤純文字輸入、`<input>` 定位與密碼模式）；eslint／prettier 乾淨。沒有在真的 macOS 上測——tim 測試後補記在下面。
+
 ## 0.8.0.26319 — 2026-10-29（PRO_bata 分支，測試版）
 
 **接著 26318 再從上游撿回 `TextField` 文字格式的 7 項修正與 AVM1 `BitmapData.hitTest` 的預設值，連同上游的 7 個回歸測試。** 只改 Ruffle 核心（wasm）：8 個程式 commit，擴充功能、小幫手（仍是 1.4.1）、文字、權限、設定都沒變。都是通用的 Flash 行為修正（Kamil Jarosz、Ethan Sifferman，2026-10-18～10-23 合併上游），保留上游作者與 `(cherry picked from …)` 標記。
