@@ -119,7 +119,20 @@ impl CanvasFontRenderer {
 
         let canvas = OffscreenCanvas::new(1, 1)?;
 
-        let ctx = canvas.get_context("2d")?.expect("2d context");
+        // Timffle: every glyph is drawn once and read back with getImageData.
+        // On a GPU-backed 2D canvas each readback is a full pipeline sync
+        // with the game's own WebGL frames (seconds under a software GPU,
+        // a frame hitch on real hardware, and Chrome warns about it);
+        // willReadFrequently keeps this scratch canvas in CPU memory.
+        let context_options = js_sys::Object::new();
+        let _ = js_sys::Reflect::set(
+            &context_options,
+            &"willReadFrequently".into(),
+            &JsValue::from_bool(true),
+        );
+        let ctx = canvas
+            .get_context_with_context_options("2d", &context_options)?
+            .expect("2d context");
         let ctx = ctx
             .dyn_into::<OffscreenCanvasRenderingContext2d>()
             .map_err(|err| JsValue::from_str(&format!("Not a 2d context: {err:?}")))?;
