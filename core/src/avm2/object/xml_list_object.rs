@@ -18,7 +18,7 @@ use gc_arena::{
 };
 use ruffle_common::utils::HasPrefixField;
 use ruffle_macros::istr;
-use ruffle_wstr::WString;
+use ruffle_wstr::{WStr, WString};
 use std::cell::{Cell, Ref, RefMut};
 use std::fmt::{self, Debug};
 
@@ -340,6 +340,21 @@ impl<'gc> XmlListObject<'gc> {
         }
 
         if self.length() == 1 {
+            // Timffle: `list[i].@id == value` with a non-XML `value` is the
+            // usual way scripts search an XML table. Compare the node directly
+            // (the same steps as `XmlObject::abstract_eq` for a non-XML
+            // operand) instead of creating an `XML` object for it first.
+            let other_is_xml = matches!(other, Value::Object(obj)
+                if obj.as_xml_object().is_some() || obj.as_xml_list_object().is_some());
+            if !other_is_xml {
+                let node = self.node_child(0).unwrap();
+                if !node.has_simple_content() {
+                    return Ok(false);
+                }
+                let text = node.xml_to_string(activation);
+                return string_eq_value(text, other, activation);
+            }
+
             return self
                 .xml_object_child(0, activation)
                 .unwrap()
@@ -348,6 +363,34 @@ impl<'gc> XmlListObject<'gc> {
 
         Ok(false)
     }
+}
+
+/// Timffle: `ToString(value) == text` without allocating a string for an
+/// integer `value` (the common case when scripts compare XML ids to ints).
+pub fn string_eq_value<'gc>(
+    text: AvmString<'gc>,
+    other: &Value<'gc>,
+    activation: &mut Activation<'_, 'gc>,
+) -> Result<bool, Error<'gc>> {
+    if let Value::Integer(i) = other {
+        let mut buf = [0u8; 11];
+        let mut pos = buf.len();
+        let mut n = i.unsigned_abs();
+        loop {
+            pos -= 1;
+            buf[pos] = b'0' + (n % 10) as u8;
+            n /= 10;
+            if n == 0 {
+                break;
+            }
+        }
+        if *i < 0 {
+            pos -= 1;
+            buf[pos] = b'-';
+        }
+        return Ok(*text == *WStr::from_units(&buf[pos..]));
+    }
+    Ok(text == other.coerce_to_string(activation)?)
 }
 
 #[derive(Clone, Collect, HasPrefixField)]
@@ -385,7 +428,7 @@ impl<'gc> E4XOrXml<'gc> {
     pub fn get_or_create_xml(&mut self, activation: &mut Activation<'_, 'gc>) -> XmlObject<'gc> {
         match self {
             E4XOrXml::E4X(node) => {
-                let xml = XmlObject::new(*node, activation);
+                let xml = node.xml_object(activation);
                 *self = E4XOrXml::Xml(xml);
                 xml
             }

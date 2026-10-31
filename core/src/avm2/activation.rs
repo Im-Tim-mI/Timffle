@@ -1249,6 +1249,22 @@ impl<'a, 'gc> Activation<'a, 'gc> {
 
                         return Ok(());
                     }
+
+                    // Timffle: `list[i]` on an XMLList (step 1 of its [[Get]]:
+                    // the i-th element, or undefined past the end) without
+                    // turning `i` into a string name and parsing it back.
+                    if let Some(index) = name_value.try_as_index()
+                        && let Some(list) = object.as_xml_list_object()
+                    {
+                        let value = list
+                            .xml_object_child(index, self)
+                            .map_or(Value::Undefined, |xml| xml.into());
+                        let _ = self.pop_stack();
+                        let _ = self.pop_stack();
+                        self.push_stack(value);
+
+                        return Ok(());
+                    }
                 }
                 Value::Object(name_object) => {
                     if let Some(dictionary) = object.as_dictionary_object() {

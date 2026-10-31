@@ -1,0 +1,17 @@
+length 3
+int index 7 number index -5 uint index 12
+past end undefined true
+fractional 
+negative 
+string index -5
+same node === true true
+attr == int true true true
+attr == leading zero false true
+attr == number true false
+attr != int true
+missing attr false true
+complex content false simple true
+list of two false
+xml vs list true
+search <Item ID="12"> <sub>3</sub> </Item>
+after set 8 8 true

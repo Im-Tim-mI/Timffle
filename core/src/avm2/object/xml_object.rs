@@ -285,7 +285,8 @@ impl<'gc> XmlObject<'gc> {
         // 4. If (Type(x) is XML and x.hasSimpleContent() == true)
         if self.node().has_simple_content() {
             // 4.a. Return the result of the comparison ToString(x) == ToString(y)
-            return Ok(self.node().xml_to_string(activation) == other.coerce_to_string(activation)?);
+            let text = self.node().xml_to_string(activation);
+            return super::xml_list_object::string_eq_value(text, other, activation);
         }
 
         // It seems like everything else will just ultimately fall-through to the last step.

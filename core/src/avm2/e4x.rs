@@ -4,7 +4,7 @@ use crate::avm2::error::{
 };
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::multiname::NamespaceSet;
-use crate::avm2::object::{E4XOrXml, FunctionObject, NamespaceObject};
+use crate::avm2::object::{E4XOrXml, FunctionObject, NamespaceObject, XmlObject, XmlObjectWeak};
 use crate::avm2::{Activation, Error, Multiname, Namespace, Value};
 use crate::string::{AvmString, StringContext, WStr, WString};
 
@@ -103,6 +103,12 @@ pub struct E4XNodeData<'gc> {
     local_name: Lock<Option<AvmString<'gc>>>,
     kind: RefLock<E4XNodeKind<'gc>>,
     notification: Lock<Option<FunctionObject<'gc>>>,
+    /// Timffle: the `XML` object last created for this node, kept weakly so
+    /// that repeated accesses (`list[i]`, `xml.@attr`) reuse it while it is
+    /// alive instead of allocating a new wrapper every time. Two `XML`
+    /// objects for the same node are indistinguishable to scripts: `===`
+    /// compares nodes and the node holds all of the state.
+    xml_object: Lock<Option<XmlObjectWeak<'gc>>>,
 }
 
 impl Debug for E4XNodeData<'_> {
@@ -205,6 +211,7 @@ impl<'gc> E4XNode<'gc> {
                     namespaces: vec![],
                 }),
                 notification: Lock::new(None),
+                xml_object: Lock::new(None),
             },
         ))
     }
@@ -218,6 +225,7 @@ impl<'gc> E4XNode<'gc> {
                 local_name: Lock::new(None),
                 kind: RefLock::new(E4XNodeKind::Text(text)),
                 notification: Lock::new(None),
+                xml_object: Lock::new(None),
             },
         ))
     }
@@ -240,6 +248,7 @@ impl<'gc> E4XNode<'gc> {
                     namespaces: vec![],
                 }),
                 notification: Lock::new(None),
+                xml_object: Lock::new(None),
             },
         ))
     }
@@ -259,6 +268,7 @@ impl<'gc> E4XNode<'gc> {
                 local_name: Lock::new(Some(name)),
                 kind: RefLock::new(E4XNodeKind::Attribute(value)),
                 notification: Lock::new(None),
+                xml_object: Lock::new(None),
             },
         ))
     }
@@ -369,6 +379,7 @@ impl<'gc> E4XNode<'gc> {
                 local_name: Lock::new(self.local_name()),
                 kind: RefLock::new(kind),
                 notification: Lock::new(None),
+                xml_object: Lock::new(None),
             },
         ));
 
@@ -856,6 +867,7 @@ impl<'gc> E4XNode<'gc> {
                             E4XNodeKind::CData(text)
                         }),
                         notification: Lock::new(None),
+                        xml_object: Lock::new(None),
                     },
                 ));
                 push_childless_node(node, open_tags, top_level, activation);
@@ -965,6 +977,7 @@ impl<'gc> E4XNode<'gc> {
                             local_name: Lock::new(None),
                             kind: RefLock::new(E4XNodeKind::Comment(text)),
                             notification: Lock::new(None),
+                            xml_object: Lock::new(None),
                         },
                     ));
 
@@ -1000,6 +1013,7 @@ impl<'gc> E4XNode<'gc> {
                             local_name: Lock::new(Some(name)),
                             kind: RefLock::new(E4XNodeKind::ProcessingInstruction(value)),
                             notification: Lock::new(None),
+                            xml_object: Lock::new(None),
                         },
                     ));
 
@@ -1101,6 +1115,7 @@ impl<'gc> E4XNode<'gc> {
                     local_name: Lock::new(Some(name)),
                     kind: RefLock::new(E4XNodeKind::Attribute(value)),
                     notification: Lock::new(None),
+                    xml_object: Lock::new(None),
                 },
             ));
             attribute_nodes.push(attribute);
@@ -1154,6 +1169,7 @@ impl<'gc> E4XNode<'gc> {
                     namespaces,
                 }),
                 notification: Lock::new(None),
+                xml_object: Lock::new(None),
             },
         ));
 
@@ -1197,6 +1213,26 @@ impl<'gc> E4XNode<'gc> {
 
     pub fn notification(self) -> Option<FunctionObject<'gc>> {
         self.0.notification.get()
+    }
+
+    /// Timffle: returns an `XML` object for this node, reusing the one
+    /// created last time if it is still alive.
+    pub fn xml_object(self, activation: &mut Activation<'_, 'gc>) -> XmlObject<'gc> {
+        let mc = activation.gc();
+        if let Some(weak) = self.0.xml_object.get()
+            && let Some(strong) = weak.0.upgrade(mc)
+        {
+            let xml = XmlObject(strong);
+            // `XML()`'s constructor can retarget a fresh object; only reuse
+            // a wrapper that still points at this node.
+            if E4XNode::ptr_eq(xml.node(), self) {
+                return xml;
+            }
+        }
+        let xml = XmlObject::new(self, activation);
+        unlock!(Gc::write(activation.gc(), self.0), E4XNodeData, xml_object)
+            .set(Some(XmlObjectWeak(Gc::downgrade(xml.0))));
+        xml
     }
 
     // 13.3.5.4 [[GetNamespace]] ( [ InScopeNamespaces ] )
