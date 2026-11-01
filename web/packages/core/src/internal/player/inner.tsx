@@ -159,10 +159,14 @@ export class InnerPlayer {
     // Timffle: true between compositionstart and compositionend on the
     // hidden input (the browser's input method is composing CJK text).
     private imeComposing = false;
-    // Timffle: the IME composition path is used on Apple devices only
-    // (confirmed working on macOS); everywhere else the hidden input behaves
-    // exactly like upstream Ruffle.
-    private readonly imeEnabled = isAppleDevice();
+    // Timffle: the IME composition path is used on every platform (it was
+    // Apple-only in 0.8.0.26325). The flag stays so a platform can be switched
+    // back to upstream Ruffle's behaviour in one place.
+    private readonly imeEnabled = true;
+    // Timffle: on-screen keyboards (Android, iPhone, iPad) lock to Latin input
+    // when the hidden input becomes type=password and do not unlock when it
+    // changes back while focused, so the type is only switched on desktops.
+    private readonly imePasswordSwitch = !isOnScreenKeyboardDevice();
     // Timffle: the composition last sent to the player, and the frame
     // request that follows the caret while composing.
     private imeLastPreedit: string | null = null;
@@ -259,7 +263,7 @@ export class InnerPlayer {
             "input",
             this.virtualKeyboardInput.bind(this),
         );
-        // Timffle: input method (IME) composition, Apple devices only. The
+        // Timffle: input method (IME) composition (see imeEnabled). The
         // hidden input is the element the browser composes into; the composed
         // text is mirrored into the focused Flash text field as a preedit and
         // committed at the end.
@@ -859,7 +863,7 @@ export class InnerPlayer {
             return false;
         }
         this.instance = instance;
-        // Timffle: IME composition only on Apple devices (see imeEnabled).
+        // Timffle: IME composition (see imeEnabled).
         instance.set_ime_composition(this.imeEnabled);
 
         this.rendererDebugInfo = this.instance!.renderer_debug_info();
@@ -1590,7 +1594,7 @@ export class InnerPlayer {
         // the text in the input is a preedit, not typed characters. It is
         // forwarded by the composition handlers; forwarding it here as well
         // doubled every symbol and clearing the input broke the composition.
-        // Only on Apple devices; elsewhere this is upstream Ruffle's handler.
+        // With imeEnabled off this is upstream Ruffle's handler.
         const inputEvent = event as InputEvent | undefined;
         if (
             this.imeEnabled &&
@@ -1796,7 +1800,7 @@ export class InnerPlayer {
      * @param password Whether the field is a password field.
      */
     protected imeSetPurpose(password: boolean): void {
-        if (!this.imeEnabled) {
+        if (!this.imeEnabled || !this.imePasswordSwitch) {
             return;
         }
         const type = password ? "password" : "text";
@@ -2980,25 +2984,29 @@ function detectBrowserDirection(): string {
 }
 
 /**
- * Timffle: is this an Apple device (macOS, iOS, iPadOS)? The input-method
- * composition path is only used there; on Windows and Android it broke
- * Chinese input, so those keep upstream Ruffle's behaviour.
+ * Timffle: does this device type with an on-screen keyboard (Android, iPhone,
+ * iPad)? Those keyboards cannot switch to Chinese after the hidden input was
+ * a password field, so it never becomes one there.
  *
- * @returns Whether the browser runs on an Apple device.
+ * @returns Whether the browser runs on a phone or tablet.
  */
-export function isAppleDevice(): boolean {
+export function isOnScreenKeyboardDevice(): boolean {
     if (typeof navigator === "undefined") {
         return false;
     }
     const uaData = (
-        navigator as Navigator & { userAgentData?: { platform?: string } }
+        navigator as Navigator & {
+            userAgentData?: { platform?: string; mobile?: boolean };
+        }
     ).userAgentData;
-    const platform = uaData?.platform || navigator.platform || "";
-    if (/^(mac|iphone|ipad|ipod)/i.test(platform)) {
+    if (uaData?.mobile) {
         return true;
     }
-    if (/android|win|linux|cros/i.test(platform)) {
-        return false;
+    const platform = uaData?.platform || navigator.platform || "";
+    const ua = navigator.userAgent ?? "";
+    if (/android|iphone|ipad|ipod/i.test(platform + " " + ua)) {
+        return true;
     }
-    return /Macintosh|iPhone|iPad|iPod/.test(navigator.userAgent ?? "");
+    // iPadOS reports itself as a Mac; only the touch points tell it apart.
+    return /^mac/i.test(platform) && (navigator.maxTouchPoints ?? 0) > 1;
 }

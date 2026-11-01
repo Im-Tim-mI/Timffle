@@ -340,20 +340,44 @@ describe("InnerPlayer IME composition", function () {
         assert.deepEqual(handle.imeCalls, []);
     });
 
-    for (const platform of ["Win32", "Linux armv8l"]) {
-        it(`keeps upstream behaviour on ${platform}`, async function () {
-            const { player, handle, input, typed } = await makePlayer(platform);
-            assert.ok(!input.classList.contains("timffle-ime"));
-            composition(input, "compositionstart", "");
-            input.value = "ㄅ";
-            composition(input, "compositionupdate", "ㄅ");
-            inputEvent(input, true, "insertCompositionText");
-            // Upstream Ruffle replays the input as key presses.
-            assert.deepEqual(handle.imeCalls, []);
-            assert.deepEqual(typed, ["ㄅ"]);
-            player.imeReady(false, 10, 20, 200, 24);
-            assert.equal(input.style.left, "");
-            assert.equal(input.style.top, "");
+    it("uses the IME path on Windows too", async function () {
+        const { handle, input, typed } = await makePlayer("Win32");
+        assert.ok(input.classList.contains("timffle-ime"));
+        composition(input, "compositionstart", "");
+        composition(input, "compositionupdate", "ㄅ");
+        input.value = "ㄅ";
+        inputEvent(input, true, "insertCompositionText");
+        composition(input, "compositionend", "ㄅ");
+        assert.deepEqual(handle.imeCalls, [
+            { kind: "preedit", text: "ㄅ", cursor: 3, cursorEnd: 3 },
+            { kind: "commit", text: "ㄅ" },
+        ]);
+        assert.deepEqual(typed, []);
+    });
+
+    it("switches to password type on desktops only", async function () {
+        const desktop = await makePlayer("Win32");
+        desktop.player.imeReady(true, 0, 0, 100, 20);
+        assert.equal(desktop.input.type, "password");
+        desktop.player.imeReady(false, 0, 0, 100, 20);
+        assert.equal(desktop.input.type, "text");
+
+        // Android: the keyboard would stay locked to Latin input.
+        const ua = dom.window.navigator.userAgent;
+        Object.defineProperty(dom.window.navigator, "userAgent", {
+            value: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36",
+            configurable: true,
         });
-    }
+        try {
+            const phone = await makePlayer("Linux armv8l");
+            assert.ok(phone.input.classList.contains("timffle-ime"));
+            phone.player.imeReady(true, 0, 0, 100, 20);
+            assert.equal(phone.input.type, "text");
+        } finally {
+            Object.defineProperty(dom.window.navigator, "userAgent", {
+                value: ua,
+                configurable: true,
+            });
+        }
+    });
 });

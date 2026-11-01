@@ -348,8 +348,8 @@ impl RuffleHandle {
 
     /// Timffle: turns the input-method (IME) composition path on or off.
     ///
-    /// Only enabled on Apple devices (macOS, iOS, iPadOS), where it was
-    /// confirmed to work; elsewhere keys reach the player exactly as before.
+    /// The web player turns it on for every platform; when off, keys reach
+    /// the player exactly like in upstream Ruffle.
     pub fn set_ime_composition(&self, enabled: bool) {
         IME_COMPOSITION.store(enabled, Ordering::Relaxed);
     }
@@ -1503,7 +1503,7 @@ fn is_ime_key(event: &KeyboardEvent) -> bool {
         && (event.is_composing() || event.key_code() == 229 || event.key() == "Process")
 }
 
-/// Timffle: whether the IME composition path is on (Apple devices only, see
+/// Timffle: whether the IME composition path is on (set by the web player, see
 /// `RuffleHandle::set_ime_composition`).
 static IME_COMPOSITION: AtomicBool = AtomicBool::new(false);
 
