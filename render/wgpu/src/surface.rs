@@ -1,3 +1,4 @@
+mod bounds;
 mod commands;
 pub mod target;
 
@@ -85,6 +86,7 @@ impl Surface {
             staging_belt,
             dynamic_transforms,
             draw_encoder,
+            (0, 0),
             layer,
             texture_pool,
         );
@@ -111,6 +113,7 @@ impl Surface {
         staging_belt: &'encoder mut wgpu::util::StagingBelt,
         dynamic_transforms: &'encoder DynamicTransforms,
         draw_encoder: &'encoder mut Scope<'global, wgpu::CommandEncoder>,
+        origin: (i32, i32),
         nearest_layer: LayerRef<'encoder>,
         texture_pool: &'encoder mut TexturePool,
     ) -> CommandTarget {
@@ -136,6 +139,7 @@ impl Surface {
             self.quality,
             target.width(),
             target.height(),
+            origin,
             match nearest_layer {
                 LayerRef::Current => LayerRef::Parent(&target),
                 layer => layer,
@@ -198,8 +202,13 @@ impl Surface {
                     texture,
                     blend_mode: ChunkBlendMode::Shader(shader),
                     needs_stencil,
+                    rect,
                 } => {
                     assert!(!needs_stencil, "Shader blend mode not implemented in masks");
+                    assert!(
+                        rect.is_none(),
+                        "Shader blends always use a full-size surface"
+                    );
                     let parent_blend_buffer =
                         target.update_blend_buffer(descriptors, texture_pool, draw_encoder);
                     run_pixelbender_shader_impl(
@@ -234,6 +243,7 @@ impl Surface {
                     texture,
                     blend_mode: ChunkBlendMode::Complex(blend_mode),
                     needs_stencil,
+                    rect,
                 } => {
                     let parent = match blend_mode {
                         ComplexBlend::Alpha | ComplexBlend::Erase => {
@@ -249,8 +259,20 @@ impl Surface {
                         _ => &target,
                     };
 
-                    let parent_blend_buffer =
-                        parent.update_blend_buffer(descriptors, texture_pool, draw_encoder);
+                    // Timffle: a blend surface smaller than the parent is paired with a
+                    // copy of just that part of the parent, and drawn with the viewport
+                    // set to that part, so the blend shaders stay unchanged. (Alpha and
+                    // Erase never get a smaller surface, so `parent` is `target` here.)
+                    let region_buffer;
+                    let parent_blend_view = if let Some(rect) = rect {
+                        region_buffer =
+                            parent.copy_region(descriptors, texture_pool, draw_encoder, rect);
+                        region_buffer.view()
+                    } else {
+                        parent
+                            .update_blend_buffer(descriptors, texture_pool, draw_encoder)
+                            .view()
+                    };
 
                     let blend_bind_group =
                         descriptors
@@ -271,7 +293,7 @@ impl Surface {
                                     wgpu::BindGroupEntry {
                                         binding: 0,
                                         resource: wgpu::BindingResource::TextureView(
-                                            parent_blend_buffer.view(),
+                                            parent_blend_view,
                                         ),
                                     },
                                     wgpu::BindGroupEntry {
@@ -310,6 +332,16 @@ impl Surface {
                             ..Default::default()
                         });
                     render_pass.set_bind_group(0, target.globals().bind_group(), &[]);
+                    if let Some(rect) = rect {
+                        render_pass.set_viewport(
+                            rect.x as f32,
+                            rect.y as f32,
+                            rect.width as f32,
+                            rect.height as f32,
+                            0.0,
+                            1.0,
+                        );
+                    }
 
                     if needs_stencil {
                         match mask_state {

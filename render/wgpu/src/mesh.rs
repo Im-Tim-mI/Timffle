@@ -19,6 +19,10 @@ pub struct Mesh {
     pub draws: Vec<Draw>,
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
+    /// The smallest box holding every tessellated vertex, in the shape's own
+    /// coordinates (`x_min, y_min, x_max, y_max`), or `None` for an empty shape.
+    /// Used to keep blend surfaces as small as the object being blended.
+    pub bounds: Option<[f32; 4]>,
 }
 
 impl ShapeHandleImpl for Mesh {}

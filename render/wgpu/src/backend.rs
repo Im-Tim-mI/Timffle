@@ -307,6 +307,15 @@ impl<T: RenderTarget> WgpuRenderBackend<T> {
             self.shape_tessellator
                 .tessellate_shape_with_scale(shape, bitmap_source, scale);
 
+        let mut bounds: Option<[f32; 4]> = None;
+        for vertex in lyon_mesh.draws.iter().flat_map(|draw| draw.vertices.iter()) {
+            let b = bounds.get_or_insert([vertex.x, vertex.y, vertex.x, vertex.y]);
+            b[0] = b[0].min(vertex.x);
+            b[1] = b[1].min(vertex.y);
+            b[2] = b[2].max(vertex.x);
+            b[3] = b[3].max(vertex.y);
+        }
+
         let mut draws = Vec::with_capacity(lyon_mesh.draws.len());
         let mut uniform_buffer = BufferBuilder::new(
             &self.descriptors.limits,
@@ -364,6 +373,7 @@ impl<T: RenderTarget> WgpuRenderBackend<T> {
             draws,
             vertex_buffer,
             index_buffer,
+            bounds,
         }
     }
 
@@ -600,6 +610,7 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
                     &mut self
                         .profiler
                         .scope("Draw to CAB", &mut self.active_frame.command_encoder),
+                    (0, 0),
                     LayerRef::None,
                     &mut self.offscreen_texture_pool,
                 );
@@ -627,6 +638,7 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
                     &mut self.active_frame.staging_belt,
                     &self.dynamic_transforms,
                     &mut scope.scope("Draw to CAB"),
+                    (0, 0),
                     LayerRef::None,
                     &mut self.offscreen_texture_pool,
                 );

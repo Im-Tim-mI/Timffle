@@ -7,6 +7,7 @@ use crate::buffer_pool::TexturePool;
 use crate::dynamic_transforms::DynamicTransforms;
 use crate::mesh::{DrawType, Mesh, as_mesh};
 use crate::surface::Surface;
+use crate::surface::bounds::{SurfaceRect, blend_can_shrink, blend_rect, command_list_extent};
 use crate::surface::target::CommandTarget;
 use crate::{Descriptors, MaskState, Pipelines, PosUvVertex, Transforms, as_texture};
 use ruffle_render::backend::ShapeHandle;
@@ -415,6 +416,9 @@ pub enum Chunk {
         texture: PoolOrArcTexture,
         blend_mode: ChunkBlendMode,
         needs_stencil: bool,
+        /// Where `texture` goes in the parent, when it is smaller than the parent
+        /// (Timffle); `None` means it covers the whole parent.
+        rect: Option<SurfaceRect>,
     },
 }
 
@@ -503,6 +507,7 @@ pub fn chunk_blends<'encoder, 'global: 'encoder>(
     quality: StageQuality,
     width: u32,
     height: u32,
+    origin: (i32, i32),
     nearest_layer: LayerRef,
     texture_pool: &'encoder mut TexturePool,
 ) -> Vec<Chunk> {
@@ -515,6 +520,7 @@ pub fn chunk_blends<'encoder, 'global: 'encoder>(
         quality,
         width,
         height,
+        origin,
         nearest_layer,
         texture_pool,
     )
@@ -526,6 +532,9 @@ struct WgpuCommandHandler<'encoder, 'global: 'encoder> {
     quality: StageQuality,
     width: u32,
     height: u32,
+    /// Where this surface's top-left pixel is, in the coordinates the commands
+    /// are drawn in (Timffle: blend surfaces may cover only part of the stage).
+    origin: (i32, i32),
     nearest_layer: LayerRef<'encoder>,
     meshes: &'encoder Vec<Mesh>,
     staging_belt: &'encoder mut wgpu::util::StagingBelt,
@@ -553,6 +562,7 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
         quality: StageQuality,
         width: u32,
         height: u32,
+        origin: (i32, i32),
         nearest_layer: LayerRef<'encoder>,
         texture_pool: &'encoder mut TexturePool,
     ) -> Self {
@@ -569,6 +579,7 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
             quality,
             width,
             height,
+            origin,
             nearest_layer,
             meshes,
             staging_belt,
@@ -654,6 +665,16 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
         vertices: Option<&[PosUvVertex]>,
         command_builder: impl FnOnce(u32, Option<wgpu::BufferAddress>) -> DrawCommand,
     ) {
+        let mut world_matrix = world_matrix;
+        if self.origin != (0, 0) {
+            // Move into this surface: translate by -origin after the world matrix
+            // (homogeneous, so it is also right for projected matrices).
+            let (ox, oy) = (self.origin.0 as f32, self.origin.1 as f32);
+            for column in &mut world_matrix {
+                column[0] -= ox * column[3];
+                column[1] -= oy * column[3];
+            }
+        }
         let transform = Transforms {
             world_matrix,
             mult_color: color_transform.mult_rgba_normalized(),
@@ -699,11 +720,37 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
 
 impl CommandHandler for WgpuCommandHandler<'_, '_> {
     fn blend(&mut self, commands: CommandList, blend_mode: RenderBlendMode) {
+        // Timffle: draw the blended object into a surface only as large as the
+        // object, instead of one as large as the whole parent.
+        let rect = if blend_can_shrink(&blend_mode) {
+            let is_layer = matches!(blend_mode, RenderBlendMode::Builtin(BlendMode::Layer));
+            match blend_rect(
+                command_list_extent(&commands, is_layer),
+                self.origin,
+                self.width,
+                self.height,
+            ) {
+                // Nothing of it lands on this surface.
+                Ok(None) => return,
+                Ok(Some(rect)) => Some(rect),
+                Err(()) => None,
+            }
+        } else {
+            None
+        };
+        let (width, height, origin) = match rect {
+            Some(rect) => (
+                rect.width,
+                rect.height,
+                (self.origin.0 + rect.x as i32, self.origin.1 + rect.y as i32),
+            ),
+            None => (self.width, self.height, self.origin),
+        };
         let surface = Surface::new(
             self.descriptors,
             self.quality,
-            self.width,
-            self.height,
+            width,
+            height,
             wgpu::TextureFormat::Rgba8Unorm,
         );
         let target_layer = if let RenderBlendMode::Builtin(BlendMode::Layer) = &blend_mode {
@@ -721,6 +768,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             self.staging_belt,
             self.dynamic_transforms,
             self.draw_encoder,
+            origin,
             target_layer,
             self.texture_pool,
         );
@@ -741,7 +789,13 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
         match blend_type {
             BlendType::Trivial(blend_mode) => {
                 let transform = Transform {
-                    matrix: Matrix::scale(target.width() as f32, target.height() as f32),
+                    matrix: Matrix {
+                        a: target.width() as f32,
+                        d: target.height() as f32,
+                        tx: Twips::from_pixels_i32(origin.0),
+                        ty: Twips::from_pixels_i32(origin.1),
+                        ..Default::default()
+                    },
                     color_transform: Default::default(),
                     ..Default::default()
                 };
@@ -800,6 +854,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
                     texture: target.take_color_texture(),
                     blend_mode: chunk_blend_mode,
                     needs_stencil: self.num_masks > 0,
+                    rect,
                 });
                 self.needs_stencil = self.num_masks > 0;
             }
@@ -970,11 +1025,18 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             self.staging_belt,
             self.dynamic_transforms,
             self.draw_encoder,
+            self.origin,
             LayerRef::None,
             self.texture_pool,
         );
         maskee.ensure_cleared(self.draw_encoder);
-        let matrix = Matrix::scale(maskee.width() as f32, maskee.height() as f32);
+        let matrix = Matrix {
+            a: maskee.width() as f32,
+            d: maskee.height() as f32,
+            tx: Twips::from_pixels_i32(self.origin.0),
+            ty: Twips::from_pixels_i32(self.origin.1),
+            ..Default::default()
+        };
         let maskee = maskee.take_color_texture();
 
         let mask = surface.draw_commands(
@@ -985,6 +1047,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             self.staging_belt,
             self.dynamic_transforms,
             self.draw_encoder,
+            self.origin,
             LayerRef::None,
             self.texture_pool,
         );

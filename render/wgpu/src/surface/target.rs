@@ -427,6 +427,53 @@ impl CommandTarget {
         blend_buffer
     }
 
+    /// Copies one rectangle of this target into a new texture of that size
+    /// (Timffle: the parent side of a blend whose surface covers only part of
+    /// this target).
+    pub fn copy_region(
+        &self,
+        descriptors: &Descriptors,
+        pool: &mut TexturePool,
+        encoder: &mut wgpu::CommandEncoder,
+        rect: crate::surface::bounds::SurfaceRect,
+    ) -> BlendBuffer {
+        let size = wgpu::Extent3d {
+            width: rect.width,
+            height: rect.height,
+            depth_or_array_layers: 1,
+        };
+        let buffer = BlendBuffer::new(
+            descriptors,
+            size,
+            self.format,
+            wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC,
+            pool,
+        );
+        self.ensure_cleared(encoder);
+        encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: self.color_texture(),
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: rect.x,
+                    y: rect.y,
+                    z: 0,
+                },
+                aspect: Default::default(),
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: buffer.texture(),
+                mip_level: 0,
+                origin: Default::default(),
+                aspect: Default::default(),
+            },
+            size,
+        );
+        buffer
+    }
+
     pub fn color_view(&self) -> &wgpu::TextureView {
         self.resolve_buffer
             .as_ref()
