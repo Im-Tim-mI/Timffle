@@ -31,6 +31,7 @@ use std::any::Any;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Once;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{cell::RefCell, error::Error, num::NonZeroI32};
 use tracing_subscriber::layer::{Layered, SubscriberExt};
@@ -345,14 +346,24 @@ impl RuffleHandle {
         self.with_core(|core| core.is_playing()).unwrap_or_default()
     }
 
+    /// Timffle: turns the input-method (IME) composition path on or off.
+    ///
+    /// Only enabled on Apple devices (macOS, iOS, iPadOS), where it was
+    /// confirmed to work; elsewhere keys reach the player exactly as before.
+    pub fn set_ime_composition(&self, enabled: bool) {
+        IME_COMPOSITION.store(enabled, Ordering::Relaxed);
+    }
+
     /// Timffle: the browser's input method changed the text being composed
-    /// (`compositionupdate`). `cursor` is a UTF-8 byte offset into `text`;
-    /// `None` hides the caret. An empty `text` cancels the composition.
-    pub fn ime_preedit(&self, text: String, cursor: Option<usize>) {
+    /// or moved the caret inside it. `cursor` and `cursor_end` are UTF-8 byte
+    /// offsets into `text` (the caret, or the selected part of the
+    /// composition); `None` hides the caret. An empty `text` cancels the
+    /// composition.
+    pub fn ime_preedit(&self, text: String, cursor: Option<usize>, cursor_end: Option<usize>) {
         let _ = self.with_core_mut(|core| {
             core.handle_event(PlayerEvent::Ime(ImeEvent::Preedit(
                 text,
-                cursor.map(|c| (c, c)),
+                cursor.map(|c| (c, cursor_end.unwrap_or(c))),
             )));
         });
     }
@@ -1198,7 +1209,7 @@ impl RuffleHandle {
             {
                 ime_notifications.push(notification);
             }
-            if !ime_notifications.is_empty() {
+            if !ime_notifications.is_empty() && IME_COMPOSITION.load(Ordering::Relaxed) {
                 ime_js_player = Some((instance.js_player.clone(), instance.device_pixel_ratio));
             }
 
@@ -1488,8 +1499,13 @@ pub enum RuffleInstanceError {
 /// "Process" on most platforms); the first key of a composition arrives
 /// before `compositionstart`, so `isComposing` alone is not enough.
 fn is_ime_key(event: &KeyboardEvent) -> bool {
-    event.is_composing() || event.key_code() == 229 || event.key() == "Process"
+    IME_COMPOSITION.load(Ordering::Relaxed)
+        && (event.is_composing() || event.key_code() == 229 || event.key() == "Process")
 }
+
+/// Timffle: whether the IME composition path is on (Apple devices only, see
+/// `RuffleHandle::set_ime_composition`).
+static IME_COMPOSITION: AtomicBool = AtomicBool::new(false);
 
 fn parse_movie_parameters(input: &JsValue) -> Vec<(String, String)> {
     let mut params = Vec::new();

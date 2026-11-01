@@ -159,6 +159,14 @@ export class InnerPlayer {
     // Timffle: true between compositionstart and compositionend on the
     // hidden input (the browser's input method is composing CJK text).
     private imeComposing = false;
+    // Timffle: the IME composition path is used on Apple devices only
+    // (confirmed working on macOS); everywhere else the hidden input behaves
+    // exactly like upstream Ruffle.
+    private readonly imeEnabled = isAppleDevice();
+    // Timffle: the composition last sent to the player, and the frame
+    // request that follows the caret while composing.
+    private imeLastPreedit: string | null = null;
+    private imeFrame: number | null = null;
     private readonly saveManager: HTMLDivElement;
     private readonly volumeControls: HTMLDivElement;
     private readonly videoModal: HTMLDivElement;
@@ -251,29 +259,42 @@ export class InnerPlayer {
             "input",
             this.virtualKeyboardInput.bind(this),
         );
-        // Timffle: input method (IME) composition. The hidden input is the
-        // element the browser composes into; the composed text is mirrored
-        // into the focused Flash text field as a preedit and committed at the end.
-        this.virtualKeyboard.addEventListener("compositionstart", () => {
-            this.imeComposing = true;
-        });
-        this.virtualKeyboard.addEventListener(
-            "compositionupdate",
-            (event: CompositionEvent) => {
+        // Timffle: input method (IME) composition, Apple devices only. The
+        // hidden input is the element the browser composes into; the composed
+        // text is mirrored into the focused Flash text field as a preedit and
+        // committed at the end.
+        if (this.imeEnabled) {
+            this.virtualKeyboard.classList.add("timffle-ime");
+            this.virtualKeyboard.addEventListener("compositionstart", () => {
                 this.imeComposing = true;
-                this.imePreedit(event.data ?? "");
-            },
-        );
-        this.virtualKeyboard.addEventListener(
-            "compositionend",
-            (event: CompositionEvent) => {
-                this.imeComposing = false;
-                this.instance?.ime_commit(event.data ?? "");
-                // Whatever the browser leaves in the input is the committed
-                // text; a trailing `input` event must not type it again.
-                this.virtualKeyboard.value = "";
-            },
-        );
+                this.imeLastPreedit = null;
+                this.imeFollowCaret();
+            });
+            this.virtualKeyboard.addEventListener(
+                "compositionupdate",
+                (event: CompositionEvent) => {
+                    this.imeComposing = true;
+                    this.imePreedit(event.data ?? "");
+                },
+            );
+            this.virtualKeyboard.addEventListener(
+                "compositionend",
+                (event: CompositionEvent) => {
+                    this.imeStopComposing();
+                    this.instance?.ime_commit(event.data ?? "");
+                    // Whatever the browser leaves in the input is the
+                    // committed text; a trailing `input` event must not
+                    // type it again.
+                    this.virtualKeyboard.value = "";
+                },
+            );
+            // Caret moves inside the composition (left/right while choosing
+            // characters) fire no compositionupdate.
+            const syncCaret = () => this.imeSyncCaret();
+            this.virtualKeyboard.addEventListener("selectionchange", syncCaret);
+            this.virtualKeyboard.addEventListener("keyup", syncCaret);
+            this.virtualKeyboard.addEventListener("select", syncCaret);
+        }
         this.saveManager = this.shadow.getElementById(
             "save-manager",
         )! as HTMLDivElement;
@@ -838,6 +859,8 @@ export class InnerPlayer {
             return false;
         }
         this.instance = instance;
+        // Timffle: IME composition only on Apple devices (see imeEnabled).
+        instance.set_ime_composition(this.imeEnabled);
 
         this.rendererDebugInfo = this.instance!.renderer_debug_info();
 
@@ -1567,13 +1590,20 @@ export class InnerPlayer {
         // the text in the input is a preedit, not typed characters. It is
         // forwarded by the composition handlers; forwarding it here as well
         // doubled every symbol and clearing the input broke the composition.
+        // Only on Apple devices; elsewhere this is upstream Ruffle's handler.
         const inputEvent = event as InputEvent | undefined;
         if (
-            this.imeComposing ||
-            inputEvent?.isComposing ||
-            inputEvent?.inputType === "insertCompositionText" ||
-            inputEvent?.inputType === "deleteCompositionText"
+            this.imeEnabled &&
+            (this.imeComposing ||
+                inputEvent?.isComposing ||
+                inputEvent?.inputType === "insertCompositionText" ||
+                inputEvent?.inputType === "deleteCompositionText")
         ) {
+            // The input now holds the updated composition and caret
+            // (compositionupdate fires before the input is changed).
+            if (this.imeComposing) {
+                this.imeSyncCaret();
+            }
             return;
         }
         const input = this.virtualKeyboard;
@@ -1632,20 +1662,95 @@ export class InnerPlayer {
 
     /**
      * Timffle: forwards the current composition text to the player.
-     * The caret offset is converted to UTF-8 bytes, which is what the core expects.
+     *
+     * `compositionupdate` fires before the browser updates the input, so its
+     * caret is not known yet: the caret goes to the end of the text for now
+     * and {@link imeSyncCaret} moves it once the input has been updated.
      *
      * @param text The text being composed (`CompositionEvent.data`).
      */
     private imePreedit(text: string): void {
-        let cursor: number | undefined;
-        const selection = this.virtualKeyboard.selectionStart;
-        if (selection !== null && selection !== undefined) {
-            const caret = Math.max(0, Math.min(selection, text.length));
-            cursor = new TextEncoder().encode(text.slice(0, caret)).length;
+        const input = this.virtualKeyboard;
+        if (input.value === text) {
+            this.imeSendPreedit(text, input.selectionStart, input.selectionEnd);
         } else {
-            cursor = new TextEncoder().encode(text).length;
+            this.imeSendPreedit(text, text.length, text.length);
         }
-        this.instance?.ime_preedit(text, cursor);
+    }
+
+    /**
+     * Timffle: sends the caret (or the selected part) of the composition
+     * again when the input method moved it, e.g. with the left/right arrow
+     * keys while choosing characters, which fires no `compositionupdate`.
+     */
+    private imeSyncCaret(): void {
+        if (!this.imeComposing) {
+            return;
+        }
+        const input = this.virtualKeyboard;
+        this.imeSendPreedit(
+            input.value,
+            input.selectionStart,
+            input.selectionEnd,
+        );
+    }
+
+    private imeSendPreedit(
+        text: string,
+        start: number | null,
+        end: number | null,
+    ): void {
+        const clamp = (value: number | null) =>
+            Math.max(0, Math.min(value ?? text.length, text.length));
+        let from = clamp(start);
+        let to = clamp(end ?? start);
+        if (to < from) {
+            [from, to] = [to, from];
+        }
+        const key = `${from}:${to}:${text}`;
+        if (key === this.imeLastPreedit) {
+            return;
+        }
+        this.imeLastPreedit = key;
+        // The core expects UTF-8 byte offsets.
+        const encoder = new TextEncoder();
+        const fromBytes = encoder.encode(text.slice(0, from)).length;
+        const toBytes = encoder.encode(text.slice(0, to)).length;
+        this.instance?.ime_preedit(text, fromBytes, toBytes);
+    }
+
+    /**
+     * Timffle: while composing, checks the caret once per frame; browsers do
+     * not reliably report caret moves inside a composition.
+     */
+    private imeFollowCaret(): void {
+        if (
+            this.imeFrame !== null ||
+            typeof requestAnimationFrame !== "function"
+        ) {
+            return;
+        }
+        const step = () => {
+            this.imeFrame = null;
+            if (!this.imeComposing) {
+                return;
+            }
+            this.imeSyncCaret();
+            this.imeFrame = requestAnimationFrame(step);
+        };
+        this.imeFrame = requestAnimationFrame(step);
+    }
+
+    private imeStopComposing(): void {
+        this.imeComposing = false;
+        this.imeLastPreedit = null;
+        if (
+            this.imeFrame !== null &&
+            typeof cancelAnimationFrame === "function"
+        ) {
+            cancelAnimationFrame(this.imeFrame);
+        }
+        this.imeFrame = null;
     }
 
     /**
@@ -1666,6 +1771,9 @@ export class InnerPlayer {
         width: number,
         height: number,
     ): void {
+        if (!this.imeEnabled) {
+            return;
+        }
         this.imeSetPurpose(password);
         this.imeSetCursorArea(x, y, width, height);
     }
@@ -1674,7 +1782,10 @@ export class InnerPlayer {
      * Timffle: called by the core when the focused text field loses the focus.
      */
     protected imeNotReady(): void {
-        this.imeComposing = false;
+        if (!this.imeEnabled) {
+            return;
+        }
+        this.imeStopComposing();
         this.virtualKeyboard.value = "";
     }
 
@@ -1685,6 +1796,9 @@ export class InnerPlayer {
      * @param password Whether the field is a password field.
      */
     protected imeSetPurpose(password: boolean): void {
+        if (!this.imeEnabled) {
+            return;
+        }
         const type = password ? "password" : "text";
         if (this.virtualKeyboard.type !== type) {
             this.virtualKeyboard.type = type;
@@ -1706,7 +1820,7 @@ export class InnerPlayer {
         height: number,
     ): void {
         const style = this.virtualKeyboard.style;
-        if (![x, y, width, height].every(Number.isFinite)) {
+        if (!this.imeEnabled || ![x, y, width, height].every(Number.isFinite)) {
             return;
         }
         const h = Math.max(1, Math.round(height));
@@ -2863,4 +2977,28 @@ function detectBrowserDirection(): string {
     }
 
     return "ltr";
+}
+
+/**
+ * Timffle: is this an Apple device (macOS, iOS, iPadOS)? The input-method
+ * composition path is only used there; on Windows and Android it broke
+ * Chinese input, so those keep upstream Ruffle's behaviour.
+ *
+ * @returns Whether the browser runs on an Apple device.
+ */
+export function isAppleDevice(): boolean {
+    if (typeof navigator === "undefined") {
+        return false;
+    }
+    const uaData = (
+        navigator as Navigator & { userAgentData?: { platform?: string } }
+    ).userAgentData;
+    const platform = uaData?.platform || navigator.platform || "";
+    if (/^(mac|iphone|ipad|ipod)/i.test(platform)) {
+        return true;
+    }
+    if (/android|win|linux|cros/i.test(platform)) {
+        return false;
+    }
+    return /Macintosh|iPhone|iPad|iPod/.test(navigator.userAgent ?? "");
 }

@@ -34,6 +34,7 @@ interface ImeCall {
     kind: "preedit" | "commit";
     text: string;
     cursor?: number;
+    cursorEnd?: number;
 }
 
 interface FakeHandle {
@@ -52,8 +53,8 @@ function fakeHandle(): FakeHandle {
         renderer_name: () => "fake",
         audio_context: () => ({ state: "running", resume() {} }),
         constructor: { is_wasm_simd_used: () => false },
-        ime_preedit: (text: string, cursor?: number) => {
-            state.imeCalls.push({ kind: "preedit", text, cursor });
+        ime_preedit: (text: string, cursor?: number, cursorEnd?: number) => {
+            state.imeCalls.push({ kind: "preedit", text, cursor, cursorEnd });
         },
         ime_commit: (text: string) => {
             state.imeCalls.push({ kind: "commit", text });
@@ -138,7 +139,15 @@ describe("InnerPlayer IME composition", function () {
         console.error = originalError;
     });
 
-    async function makePlayer() {
+    function setPlatform(platform: string) {
+        Object.defineProperty(dom.window.navigator, "platform", {
+            value: platform,
+            configurable: true,
+        });
+    }
+
+    async function makePlayer(platform = "MacIntel") {
+        setPlatform(platform);
         const element = dom.window.document.createElement("div");
         dom.window.document.body.appendChild(element);
         const handles: FakeHandle[] = [];
@@ -224,9 +233,9 @@ describe("InnerPlayer IME composition", function () {
         inputEvent(input, false, "insertCompositionText");
 
         assert.deepEqual(handle.imeCalls, [
-            { kind: "preedit", text: "ㄅ", cursor: 3 },
-            { kind: "preedit", text: "ㄅㄚ", cursor: 6 },
-            { kind: "preedit", text: "巴", cursor: 3 },
+            { kind: "preedit", text: "ㄅ", cursor: 3, cursorEnd: 3 },
+            { kind: "preedit", text: "ㄅㄚ", cursor: 6, cursorEnd: 6 },
+            { kind: "preedit", text: "巴", cursor: 3, cursorEnd: 3 },
             { kind: "commit", text: "巴" },
         ]);
         // Nothing was replayed as key presses (that was the "ㄅㄅ" bug)...
@@ -244,7 +253,7 @@ describe("InnerPlayer IME composition", function () {
         input.value = "";
         composition(input, "compositionend", "");
         assert.deepEqual(handle.imeCalls, [
-            { kind: "preedit", text: "ㄅ", cursor: 3 },
+            { kind: "preedit", text: "ㄅ", cursor: 3, cursorEnd: 3 },
             { kind: "commit", text: "" },
         ]);
         assert.deepEqual(typed, []);
@@ -287,4 +296,64 @@ describe("InnerPlayer IME composition", function () {
         inputEvent(input, false, "insertText");
         assert.equal(input.value, "");
     });
+
+    it("moves the caret when compositionupdate comes before the input changes", async function () {
+        const { handle, input } = await makePlayer();
+        composition(input, "compositionstart", "");
+        // Real browsers fire compositionupdate before updating the input.
+        composition(input, "compositionupdate", "ㄅ");
+        input.value = "ㄅ";
+        inputEvent(input, true, "insertCompositionText");
+        composition(input, "compositionupdate", "ㄅㄚ");
+        input.value = "ㄅㄚ";
+        inputEvent(input, true, "insertCompositionText");
+        assert.deepEqual(handle.imeCalls, [
+            { kind: "preedit", text: "ㄅ", cursor: 3, cursorEnd: 3 },
+            { kind: "preedit", text: "ㄅㄚ", cursor: 6, cursorEnd: 6 },
+        ]);
+    });
+
+    it("follows the caret when the input method moves it while choosing", async function () {
+        const { handle, input } = await makePlayer();
+        composition(input, "compositionstart", "");
+        input.value = "巴拉";
+        composition(input, "compositionupdate", "巴拉");
+        handle.imeCalls.length = 0;
+        // Left arrow inside the composition: only the selection changes.
+        input.setSelectionRange(1, 1);
+        input.dispatchEvent(new dom.window.Event("selectionchange"));
+        // The input method selects the second character.
+        input.setSelectionRange(1, 2);
+        input.dispatchEvent(
+            new dom.window.KeyboardEvent("keyup", { keyCode: 229 }),
+        );
+        // Nothing changed: nothing sent.
+        input.dispatchEvent(new dom.window.Event("selectionchange"));
+        assert.deepEqual(handle.imeCalls, [
+            { kind: "preedit", text: "巴拉", cursor: 3, cursorEnd: 3 },
+            { kind: "preedit", text: "巴拉", cursor: 3, cursorEnd: 6 },
+        ]);
+        composition(input, "compositionend", "巴拉");
+        handle.imeCalls.length = 0;
+        // After the composition, caret moves are not forwarded.
+        input.dispatchEvent(new dom.window.Event("selectionchange"));
+        assert.deepEqual(handle.imeCalls, []);
+    });
+
+    for (const platform of ["Win32", "Linux armv8l"]) {
+        it(`keeps upstream behaviour on ${platform}`, async function () {
+            const { player, handle, input, typed } = await makePlayer(platform);
+            assert.ok(!input.classList.contains("timffle-ime"));
+            composition(input, "compositionstart", "");
+            input.value = "ㄅ";
+            composition(input, "compositionupdate", "ㄅ");
+            inputEvent(input, true, "insertCompositionText");
+            // Upstream Ruffle replays the input as key presses.
+            assert.deepEqual(handle.imeCalls, []);
+            assert.deepEqual(typed, ["ㄅ"]);
+            player.imeReady(false, 10, 20, 200, 24);
+            assert.equal(input.style.left, "");
+            assert.equal(input.style.top, "");
+        });
+    }
 });
