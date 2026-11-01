@@ -86,7 +86,16 @@ impl<'gc> XmlObject<'gc> {
         activation: &mut Activation<'_, 'gc>,
         name: &Multiname<'gc>,
     ) -> XmlListObject<'gc> {
-        let matched_children = if let E4XNodeKind::Element {
+        let matched_children = if !name.is_attribute() {
+            // Timffle: reuses the previous identical lookup while no XML changed.
+            self.0
+                .node
+                .get()
+                .children_named(activation.gc(), name)
+                .into_iter()
+                .map(E4XOrXml::E4X)
+                .collect::<Vec<_>>()
+        } else if let E4XNodeKind::Element {
             children,
             attributes,
             ..
@@ -126,6 +135,78 @@ impl<'gc> XmlObject<'gc> {
         }
 
         list
+    }
+
+    /// Timffle: the result of `self.@name == other` (an attribute lookup whose
+    /// XMLList is only compared and then thrown away), without creating that
+    /// XMLList. Returns `None` when the shortcut does not apply and the normal
+    /// `get_property` + `abstract_eq` path must be used.
+    ///
+    /// Gives the same answer as `XmlListObject::equals` on the list that
+    /// `get_child_list` would have built: no match equals only `undefined`, one
+    /// match compares its text (attributes always have simple content), more
+    /// than one match equals nothing that is not an XMLList.
+    pub fn attribute_equals(
+        self,
+        name: &Multiname<'gc>,
+        other: &Value<'gc>,
+        activation: &mut Activation<'_, 'gc>,
+    ) -> Option<Result<bool, Error<'gc>>> {
+        if !name.is_attribute() {
+            return None;
+        }
+        // `get_property_local` treats a numeric local name as an index first.
+        if !name.has_explicit_namespace()
+            && name.local_name().is_some_and(|local| {
+                local
+                    .get(0)
+                    .is_some_and(|c| (u16::from(b'0')..=u16::from(b'9')).contains(&c))
+                    && local.parse::<usize>().is_ok()
+            })
+        {
+            return None;
+        }
+        if let Value::Object(obj) = other
+            && (obj.as_xml_object().is_some() || obj.as_xml_list_object().is_some())
+        {
+            return None;
+        }
+
+        let mut first = None;
+        let mut count = 0;
+        // A cheap local-name test first; `matches_name` checks the rest.
+        let local_name = if name.is_any_name() {
+            None
+        } else {
+            name.local_name()
+        };
+        if let E4XNodeKind::Element { attributes, .. } = &*self.0.node.get().kind() {
+            for attribute in attributes.iter() {
+                if local_name.is_some() && attribute.local_name() != local_name {
+                    continue;
+                }
+                if attribute.matches_name(name) {
+                    count += 1;
+                    if count > 1 {
+                        break;
+                    }
+                    first = Some(*attribute);
+                }
+            }
+        }
+
+        Some(match (count, first) {
+            (0, _) => Ok(matches!(other, Value::Undefined)),
+            (1, Some(attribute)) => {
+                if attribute.has_simple_content() {
+                    let text = attribute.xml_to_string(activation);
+                    super::xml_list_object::string_eq_value(text, other, activation)
+                } else {
+                    Ok(false)
+                }
+            }
+            _ => Ok(false),
+        })
     }
 
     // 13.4.4.6 XML.prototype.child ( propertyName )

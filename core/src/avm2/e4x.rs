@@ -25,6 +25,7 @@ use ruffle_macros::istr;
 
 use std::cell::{Ref, RefMut};
 use std::fmt::{self, Debug};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 mod is_xml_name;
 
@@ -109,6 +110,43 @@ pub struct E4XNodeData<'gc> {
     /// objects for the same node are indistinguishable to scripts: `===`
     /// compares nodes and the node holds all of the state.
     xml_object: Lock<Option<XmlObjectWeak<'gc>>>,
+    /// Timffle: the children found by the last `children_named` lookup on
+    /// this node, valid while no XML anywhere has been changed since.
+    child_cache: RefLock<Option<ChildCache<'gc>>>,
+}
+
+/// Timffle: bumped by every change to any E4X node (children, attributes,
+/// names, namespaces), so cached child lookups know when they may be stale.
+static XML_GENERATION: AtomicU64 = AtomicU64::new(1);
+
+fn xml_changed() {
+    XML_GENERATION.fetch_add(1, Ordering::Relaxed);
+}
+
+/// Timffle: one remembered `xml.name` child lookup (see `children_named`).
+#[derive(Collect)]
+#[collect(no_drop)]
+struct ChildCache<'gc> {
+    #[collect(require_static)]
+    generation: u64,
+    local_name: AvmString<'gc>,
+    /// For each namespace of the looked-up name: whether it is a real
+    /// namespace and its URI. These are the only parts of the name
+    /// `matches_name` looks at besides the local name.
+    namespaces: Vec<(bool, Option<AvmString<'gc>>)>,
+    children: Vec<E4XNode<'gc>>,
+}
+
+impl<'gc> ChildCache<'gc> {
+    fn is_for(&self, local_name: AvmString<'gc>, name: &Multiname<'gc>) -> bool {
+        self.local_name == local_name
+            && self.namespaces.len() == name.namespace_set().len()
+            && self
+                .namespaces
+                .iter()
+                .zip(name.namespace_set().iter())
+                .all(|(&(is_ns, uri), ns)| is_ns == ns.is_namespace() && uri == ns.as_uri_opt())
+    }
 }
 
 impl Debug for E4XNodeData<'_> {
@@ -212,6 +250,7 @@ impl<'gc> E4XNode<'gc> {
                 }),
                 notification: Lock::new(None),
                 xml_object: Lock::new(None),
+                child_cache: RefLock::new(None),
             },
         ))
     }
@@ -226,6 +265,7 @@ impl<'gc> E4XNode<'gc> {
                 kind: RefLock::new(E4XNodeKind::Text(text)),
                 notification: Lock::new(None),
                 xml_object: Lock::new(None),
+                child_cache: RefLock::new(None),
             },
         ))
     }
@@ -249,6 +289,7 @@ impl<'gc> E4XNode<'gc> {
                 }),
                 notification: Lock::new(None),
                 xml_object: Lock::new(None),
+                child_cache: RefLock::new(None),
             },
         ))
     }
@@ -269,6 +310,7 @@ impl<'gc> E4XNode<'gc> {
                 kind: RefLock::new(E4XNodeKind::Attribute(value)),
                 notification: Lock::new(None),
                 xml_object: Lock::new(None),
+                child_cache: RefLock::new(None),
             },
         ))
     }
@@ -380,6 +422,7 @@ impl<'gc> E4XNode<'gc> {
                 kind: RefLock::new(kind),
                 notification: Lock::new(None),
                 xml_object: Lock::new(None),
+                child_cache: RefLock::new(None),
             },
         ));
 
@@ -868,6 +911,7 @@ impl<'gc> E4XNode<'gc> {
                         }),
                         notification: Lock::new(None),
                         xml_object: Lock::new(None),
+                        child_cache: RefLock::new(None),
                     },
                 ));
                 push_childless_node(node, open_tags, top_level, activation);
@@ -978,6 +1022,7 @@ impl<'gc> E4XNode<'gc> {
                             kind: RefLock::new(E4XNodeKind::Comment(text)),
                             notification: Lock::new(None),
                             xml_object: Lock::new(None),
+                            child_cache: RefLock::new(None),
                         },
                     ));
 
@@ -1014,6 +1059,7 @@ impl<'gc> E4XNode<'gc> {
                             kind: RefLock::new(E4XNodeKind::ProcessingInstruction(value)),
                             notification: Lock::new(None),
                             xml_object: Lock::new(None),
+                            child_cache: RefLock::new(None),
                         },
                     ));
 
@@ -1116,6 +1162,7 @@ impl<'gc> E4XNode<'gc> {
                     kind: RefLock::new(E4XNodeKind::Attribute(value)),
                     notification: Lock::new(None),
                     xml_object: Lock::new(None),
+                    child_cache: RefLock::new(None),
                 },
             ));
             attribute_nodes.push(attribute);
@@ -1170,6 +1217,7 @@ impl<'gc> E4XNode<'gc> {
                 }),
                 notification: Lock::new(None),
                 xml_object: Lock::new(None),
+                child_cache: RefLock::new(None),
             },
         ));
 
@@ -1184,6 +1232,7 @@ impl<'gc> E4XNode<'gc> {
     }
 
     pub fn set_namespace(&self, namespace: Option<E4XNamespace<'gc>>, mc: &Mutation<'gc>) {
+        xml_changed();
         unlock!(Gc::write(mc, self.0), E4XNodeData, namespace).set(namespace);
     }
 
@@ -1192,6 +1241,7 @@ impl<'gc> E4XNode<'gc> {
     }
 
     pub fn set_local_name(&self, name: AvmString<'gc>, mc: &Mutation<'gc>) {
+        xml_changed();
         unlock!(Gc::write(mc, self.0), E4XNodeData, local_name).set(Some(name));
     }
 
@@ -1466,11 +1516,66 @@ impl<'gc> E4XNode<'gc> {
         to_xml_string(E4XOrXml::E4X(self), activation)
     }
 
+    /// Timffle: the element children that `name` matches (`matches_name`), as
+    /// `xml.name` needs them. A script that reads the same child list over
+    /// and over (`for (...) { list = table.Item; ... }`) gets the result of
+    /// the previous lookup while no XML has changed since, instead of
+    /// comparing every child's name again.
+    pub fn children_named(&self, mc: &Mutation<'gc>, name: &Multiname<'gc>) -> Vec<E4XNode<'gc>> {
+        let compute = || {
+            if let E4XNodeKind::Element { children, .. } = &*self.kind() {
+                children
+                    .iter()
+                    .filter(|child| child.matches_name(name))
+                    .copied()
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        };
+        let local_name = match name.local_name() {
+            Some(local_name)
+                if !name.is_attribute() && !name.is_any_name() && !name.is_any_namespace() =>
+            {
+                local_name
+            }
+            _ => return compute(),
+        };
+        let generation = XML_GENERATION.load(Ordering::Relaxed);
+        if let Some(cache) = &*self.0.child_cache.borrow()
+            && cache.generation == generation
+            && cache.is_for(local_name, name)
+        {
+            return cache.children.clone();
+        }
+        let children = compute();
+        // Small results are cheap to find again; only remember big scans.
+        let scanned = match &*self.kind() {
+            E4XNodeKind::Element { children, .. } => children.len(),
+            _ => 0,
+        };
+        if scanned >= 64 {
+            *unlock!(Gc::write(mc, self.0), E4XNodeData, child_cache).borrow_mut() =
+                Some(ChildCache {
+                    generation,
+                    local_name,
+                    namespaces: name
+                        .namespace_set()
+                        .iter()
+                        .map(|ns| (ns.is_namespace(), ns.as_uri_opt()))
+                        .collect(),
+                    children: children.clone(),
+                });
+        }
+        children
+    }
+
     pub fn kind(&self) -> Ref<'_, E4XNodeKind<'gc>> {
         self.0.kind.borrow()
     }
 
     pub fn kind_mut(&self, mc: &Mutation<'gc>) -> RefMut<'_, E4XNodeKind<'gc>> {
+        xml_changed();
         unlock!(Gc::write(mc, self.0), E4XNodeData, kind).borrow_mut()
     }
 

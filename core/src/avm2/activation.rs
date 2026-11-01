@@ -683,7 +683,23 @@ impl<'a, 'gc> Activation<'a, 'gc> {
                     multiname,
                     num_args,
                 } => self.op_call_super(*multiname, *num_args),
-                Op::GetPropertyStatic { multiname } => self.op_get_property_static(*multiname),
+                Op::GetPropertyStatic { multiname } => {
+                    // Timffle: `value == xml.@attr` and `xml.@attr == value`
+                    // compare without building the attribute XMLList; the
+                    // consumed ops are skipped.
+                    if multiname.is_attribute() {
+                        match self.op_get_attribute_equals(*multiname, &opcodes[ip..]) {
+                            Some(Ok(skip)) => {
+                                ip += skip;
+                                continue;
+                            }
+                            Some(Err(e)) => Err(e),
+                            None => self.op_get_property_static(*multiname),
+                        }
+                    } else {
+                        self.op_get_property_static(*multiname)
+                    }
+                }
                 Op::GetPropertyFast { multiname } => self.op_get_property_fast(*multiname),
                 Op::GetPropertySlow { multiname } => self.op_get_property_slow(*multiname),
                 Op::SetPropertyStatic { multiname } => self.op_set_property_static(*multiname),
@@ -1222,6 +1238,51 @@ impl<'a, 'gc> Activation<'a, 'gc> {
         self.push_stack(value);
 
         Ok(())
+    }
+
+    /// Timffle: `GetPropertyStatic` of an attribute name on an XML object
+    /// whose result is only compared with `Equals`: either directly (the other
+    /// operand is already on the stack) or after one simple push (a constant or
+    /// a local). Pushes the comparison result and returns how many of the
+    /// following ops were consumed, or returns `None` (stack untouched) when
+    /// the normal path is needed.
+    fn op_get_attribute_equals(
+        &mut self,
+        multiname: Gc<'gc, Multiname<'gc>>,
+        next: &[Op<'gc>],
+    ) -> Option<Result<usize, Error<'gc>>> {
+        let (other, below, skip) = match next {
+            [Op::Equals, ..] => (self.stack.peek(1), true, 1),
+            [push, Op::Equals, ..] => {
+                let value = match push {
+                    Op::PushInt { value } => Value::from(*value),
+                    Op::PushUint { value } => Value::from(*value),
+                    Op::PushDouble { value } => Value::from(*value),
+                    Op::PushString { string } => Value::from(*string),
+                    Op::PushTrue => Value::Bool(true),
+                    Op::PushFalse => Value::Bool(false),
+                    Op::PushNull => Value::Null,
+                    Op::PushUndefined => Value::Undefined,
+                    Op::GetLocal { index } => self.local_register(*index),
+                    _ => return None,
+                };
+                (value, false, 2)
+            }
+            _ => return None,
+        };
+        let Value::Object(object) = self.stack.peek(0) else {
+            return None;
+        };
+        let xml = object.as_xml_object()?;
+        let result = xml.attribute_equals(&multiname, &other, self)?;
+        Some(result.map(|equal| {
+            let _ = self.pop_stack();
+            if below {
+                let _ = self.pop_stack();
+            }
+            self.push_stack(equal);
+            skip
+        }))
     }
 
     fn op_get_property_fast(

@@ -1,0 +1,28 @@
+1 true true true true false
+2 false true true false
+3 true false false false
+4 true true true
+5 true true false true true
+6 true false false false
+7 false true false
+8 if true
+9 ne true
+10 true true false
+11 false false
+12 true true false false
+13 true true
+15 found 75
+16 found 42
+17 200 0
+18 201 last 9999
+19 200 first 2
+20 199 1 first 4
+21 198 1
+22 198 replaced
+23 199 front
+24 199 true false
+25 1 199
+26 false 100 100
+27 changed 0 100
+28 0 100
+29 0
