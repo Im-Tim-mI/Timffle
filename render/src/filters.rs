@@ -87,6 +87,13 @@ impl Filter {
     }
 
     pub fn calculate_dest_rect(&self, source_rect: Rectangle<Twips>) -> Rectangle<Twips> {
+        // Timffle: an empty (invalid) rectangle stays empty. Growing it would move `x_min` off the
+        // "invalid" marker and turn it into a huge rectangle near the coordinate limit, so an empty
+        // clip with a filter (e.g. a hidden clip that only holds an animated glow for its parent)
+        // made its parent "too large to cache" and the parent's own filters were never drawn.
+        if !source_rect.is_valid() {
+            return source_rect;
+        }
         match self {
             Filter::BlurFilter(filter) => filter.calculate_dest_rect(source_rect),
             Filter::GlowFilter(filter) => filter.calculate_dest_rect(source_rect),
