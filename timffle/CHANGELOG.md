@@ -2,6 +2,17 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26329 — 2026-11-03（webgpu 分支，測試版）
+
+**WebGPU 渲染器不再因為「畫完再讀回」卡死：補上瀏覽器 WebGPU 的同步讀回。** 只改 Ruffle 的 wgpu 繪圖層（`render/wgpu/src/webgpu_readback.rs`、`render/wgpu/shaders/readback.wgsl` 新檔，`lib.rs`、`backend.rs`、`descriptors.rs`、`Cargo.toml` 小改）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。只影響 WebGPU 渲染器；WebGL2 與桌面版的讀回路徑完全沒動。通用的修正，任何在 `BitmapData.draw` 之後再用 CPU 讀像素的 Flash 內容都受益。
+
+- **問題**：Flash 內容常先用 `BitmapData.draw` 畫到 GPU，再用 `getPixel`、`copyPixels`、`hitTest`、`threshold` 等在 CPU 端處理，Ruffle 這時要同步把 GPU 貼圖讀回。WebGL2 有同步的 `readPixels`；WebGPU 在瀏覽器主執行緒上只有非同步的緩衝區對應，Ruffle 的等待永遠不會結束，整個分頁卡死（26328 的已知限制；上游 Ruffle 強制用 WebGPU 也一樣）。
+- **做法**：瀏覽器有一條同步拿到 GPU 像素的路——由 WebGPU 驅動的 `OffscreenCanvas` 可以用 `transferToImageBitmap()` 同步快照，再畫進 2D 畫布用 `getImageData()` 讀出。這條路只給 8 位元 RGB、alpha 固定為 1（畫布不透明），所以 `readback.wgsl` 把貼圖的**原始位元組**每趟三個寫進畫布的 RGB，CPU 端再拼回來：8 位元點陣圖兩趟（RGB、alpha），PixelBender 的 32 位元浮點輸出把每個通道位元轉成位元組、最多六趟。結果和原本緩衝區讀回**逐位元相同**，沒有預乘 alpha 的捨入誤差。需要讀回的貼圖本來就都在 GPU 上，記憶體沒有增加；畫布、管線與 uniform 只建一次重複使用。格式不支援或瀏覽器拒絕畫布操作時，記錄錯誤並回傳全零像素，寧可畫錯也不卡死。
+- **效果**：26328 在 WebGPU 下 MISSING（卡死）的三個回歸 SWF（`avm2/bitmapdata_draw_alpha_erase`、`bitmapdata_draw_rotation`、`blend_scroll`）現在都能畫，而且和 WebGL2 逐像素相同。
+- **驗證**：新的 `render/wgpu/tests/readback.rs`（`Rgba8Unorm`、`R32Float`、`Rg32Float`、`Rgba32Float` 的虛擬亂數內容，整張與子矩形各讀一次）在 lavapipe 與 GeForce GT 720（NVK）上都是 0 個錯誤位元組；`timffle/scripts/verify-webgpu.sh` 多了這一步（2b），而且瀏覽器差異測試不再放行任何 `MISSING`。瀏覽器差異測試（242 個靜態回歸 SWF，同一個無頭 Chrome 用 WebGL2 與 WebGPU 各畫一次）：**242 個全部有畫面，232 個逐像素相同、7 個差 1 以內、3 個只是載入時序**（`visual/video/vp6_dispsize`、`import_assets/avm1_imports_avm1`、`from_shumway/invalidClipDepth`，等待 3 秒重跑後逐像素相同），兩種渲染器都沒有主控台錯誤。wgpu 單元測試 12 通過。
+- **官方伺服器實測**（摩爾莊園 30 服，無頭 Chrome 的 WebGPU 軟體模擬，主控台確認 `Used renderer: webgpu`）：登入、世界、地圖、家園庭院、進屋、開倉庫、把家具拿出來擺放與拖動都正常；拖動家具時客戶端做了 `BitmapData.draw` 後的 `hitTest`，實際走到新的讀回路徑 **10 次**（家具 46×20、地板 960×560、三面牆與側邊各一張，各兩趟），每次不到 0.2 ms（軟體模擬下），畫面沒有異常，沒有讀回錯誤、沒有 panic。26328 在這裡會整個分頁卡死。
+- **仍待實機**：這台開發機的 Chrome 在 GT 720 上拿不到 WebGPU 裝置，瀏覽器端仍只用軟體模擬（SwiftShader）驗證；Windows、macOS、Android 的真實 GPU 請在實機上試。讀回的成本是每張貼圖兩趟小繪圖加一次畫布快照，大量連續讀回（每幀幾十次）的內容在真 GPU 上的實際耗時也請留意。
+
 ## 0.8.0.26328 — 2026-11-02（webgpu 分支，測試版）
 
 **繪圖後端改為 WebGPU 優先，並在 WebGPU 上只解析混合物件需要的那一塊：摩靈 主畫面每幀整張解析 118 → 1 次、關卡列表 217 → 3 次。** 改 Ruffle 的網頁播放器（wasm 的 `web/src/builder.rs`）與 wgpu 繪圖層（`render/wgpu/shaders/resolve.wgsl` 新檔、`descriptors.rs`、`layouts.rs`、`surface/target.rs`）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。通用的修正，沒有針對特定網站。

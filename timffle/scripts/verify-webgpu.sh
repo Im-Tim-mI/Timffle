@@ -7,8 +7,10 @@
 # Runs, in order:
 #   1. the wgpu crate's unit tests (dirty-region tracking, blend rectangles);
 #   2. render/wgpu/tests/resolve.rs — resolve.wgsl vs the GPU's own resolve —
-#      on lavapipe (software Vulkan) and, when HW_ICD points at a hardware
-#      Vulkan ICD (e.g. /usr/share/vulkan/icd.d/nouveau_icd.json), on the GPU;
+#      and render/wgpu/tests/readback.rs — readback.wgsl (the synchronous
+#      WebGPU readback) reproduces texture bytes exactly — on lavapipe
+#      (software Vulkan) and, when HW_ICD points at a hardware Vulkan ICD
+#      (e.g. /usr/share/vulkan/icd.d/nouveau_icd.json), on the GPU;
 #   3. Ruffle's image regression suite on the same adapters (the Vulkan
 #      backend takes the sub-rectangle path, like WebGPU);
 #   4. with an unpacked extension build: the browser differential test —
@@ -45,6 +47,11 @@ for entry in "${adapters[@]}"; do
     | tee "$OUT/resolve-$name.log" | grep -E "adapter:|pixels differing|test result"
   grep -q "test result: ok. 2 passed" "$OUT/resolve-$name.log" || fail "resolve test on $name"
 
+  step "2b. readback shader reproduces texture bytes ($name)"
+  VK_ICD_FILENAMES=$icd WGPU_BACKEND=vulkan cargo test -p ruffle_render_wgpu --test readback -- --nocapture 2>&1 \
+    | tee "$OUT/readback-$name.log" | grep -E "adapter:|wrong bytes|test result"
+  grep -q "test result: ok. 1 passed" "$OUT/readback-$name.log" || fail "readback test on $name"
+
   step "3. image regression suite ($name)"
   VK_ICD_FILENAMES=$icd WGPU_BACKEND=vulkan cargo test --release -p tests --features imgtests --test tests > "$OUT/imgtests-$name.log" 2>&1
   grep -E "^test result" "$OUT/imgtests-$name.log" | tail -1
@@ -61,10 +68,9 @@ if [ -n "$EXT_DIR" ]; then
     node "$ROOT/timffle/tools/webgpu-diff/run.mjs" "$EXT_DIR" "$OUT/browser-diff" ${DIFF_ARGS:-} || fail "browser differential run"
     python3 -I "$ROOT/timffle/tools/webgpu-diff/compare.py" "$OUT/browser-diff" > /dev/null 2>&1
     summary=$(grep -E "^Tests:" "$OUT/browser-diff/report.md" 2>/dev/null); echo "$summary"
-    # Known: three BitmapData.draw + CPU-read SWFs hang on WebGPU (synchronous GPU readback
-    # is impossible in the browser); anything else differing or missing is a failure.
-    bad=$(grep -E "^\| [^|]+ \| [^|]* \| [^|]* \| (DIFF|MISSING) \|" "$OUT/browser-diff/report.md" | awk -F'|' '{gsub(/ /,"",$2); print $2}' \
-          | grep -v -E "^(avm2/bitmapdata_draw_alpha_erase|avm2/bitmapdata_draw_rotation|avm2/blend_scroll)$" || true)
+    # Anything differing or missing is a failure. (Since 0.8.0.26329 the BitmapData.draw +
+    # CPU-read SWFs render on WebGPU too: synchronous readback through an OffscreenCanvas.)
+    bad=$(grep -E "^\| [^|]+ \| [^|]* \| [^|]* \| (DIFF|MISSING) \|" "$OUT/browser-diff/report.md" | awk -F'|' '{gsub(/ /,"",$2); print $2}' || true)
     if [ -n "$bad" ]; then echo "unexpected differences:"; echo "$bad"; fail "browser differential test"; fi
   else
     echo "timffle/tools/webgpu-diff/run.mjs missing"; status=1
