@@ -2,6 +2,17 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26328 — 2026-11-02（webgpu 分支，測試版）
+
+**繪圖後端改為 WebGPU 優先，並在 WebGPU 上只解析混合物件需要的那一塊：摩靈 主畫面每幀整張解析 118 → 1 次、關卡列表 217 → 3 次。** 改 Ruffle 的網頁播放器（wasm 的 `web/src/builder.rs`）與 wgpu 繪圖層（`render/wgpu/shaders/resolve.wgsl` 新檔、`descriptors.rs`、`layouts.rs`、`surface/target.rs`）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。通用的修正，沒有針對特定網站。
+
+- **WebGPU 優先**：後端順序從「WebGL2 → WebGPU → WebGL → canvas」改成「**WebGPU → WebGL2** → WebGL → canvas」。沒有 WebGPU 的瀏覽器（Firefox、較舊的 Android）自動退回 WebGL2，行為與 26327 相同；選項頁手動選的渲染器仍以使用者為準。
+- **只解析一小塊**：26327 把「整張解析」改成只在需要時做，但 WebGL2 每次解析仍是整張 960×560。WebGPU（與桌面版的 Vulkan／Metal／DX12）允許著色器直接讀取多重取樣的畫面，所以混合物件需要父層像素時，改用一個小的繪圖管線（`resolve.wgsl`：一個三角形、剪裁到那塊矩形、逐像素平均各取樣點）只解析那一塊；其餘區域維持「未解析」狀態，之後要用到再補。WebGL2 路徑維持 26327 的做法。
+- **效果**（官方 30 服，無頭 Chrome 的 WebGPU 軟體模擬，每幀整張舞台解析次數）：世界 7 → 3（26327）→ **1**；摩靈 主畫面 118 → 84 → **1**；關卡列表 217 → 132 → **3**。剩下的 1 次是畫面完成時送到螢幕前的那一次。自製測試頁（150 個方塊各帶 Overlay＋Hardlight）451 → 152 → **1**。幀數：同一軟體模擬下關卡列表 10 秒內 10（26326）→ 17（26327）→ 22 幀，僅供參考；真實 GPU 要在實機上量。
+- **驗證**：測試頁 WebGPU 截圖與 WebGL 26326 逐像素相同（著色器平均與硬體解析結果一致）；摩靈 關卡列表截圖除動畫部分外相同；Ruffle 畫面回歸在 Vulkan（會走新的解析路徑）4,599 通過，失敗 8 項與改前相同（6 項既有差異＋2 項滿載偶發的游標測試）；wgpu 單元測試 12 通過。
+- **限制**：這台開發機的 GT 720 在 Chrome 的 WebGPU 下沒有裝置（Dawn 不接受開源 NVK 驅動），WebGPU 只用軟體模擬驗證過；**尚未在真實 GPU、Windows、macOS、Android 上測試**。Ruffle 上游把 WebGPU 標為開發中，實機若遇到畫面異常，可在選項頁把渲染器改回 wgpu-webgl。
+- 量測工具：`timffle-work/webgpu-2026-11-02/`（bench-webgpu.mjs、hook-webgpu.js、moling/summary.md）。
+
 ## 0.8.0.26327 — 2026-11-02（PRO_bata 分支，測試版）
 
 **混合模式的「整張舞台解析」只在真的需要時做：摩靈 關卡列表每幀 217 → 132 次、摩靈 主畫面 118 → 84 次、世界 7 → 3 次。** 只改 Ruffle 的 wgpu 繪圖層（wasm 的 `render/wgpu/src/surface.rs`、`surface/target.rs`、`surface/commands.rs`、`surface/bounds.rs`）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。通用的修正，任何大量使用 Overlay／Hardlight 等混合模式的 Flash 內容都受益，沒有針對特定網站。
