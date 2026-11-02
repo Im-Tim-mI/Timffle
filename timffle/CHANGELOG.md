@@ -13,6 +13,13 @@
 - **限制**：這台開發機的 GT 720 在 Chrome 的 WebGPU 下沒有裝置（Dawn 不接受開源 NVK 驅動），WebGPU 只用軟體模擬驗證過；**尚未在真實 GPU、Windows、macOS、Android 上測試**。Ruffle 上游把 WebGPU 標為開發中，實機若遇到畫面異常，可在選項頁把渲染器改回 wgpu-webgl。
 - 量測工具：`timffle-work/webgpu-2026-11-02/`（bench-webgpu.mjs、hook-webgpu.js、moling/summary.md）。
 
+**同日補充（自動化驗證與查證結果）：**
+
+- **PixelBender 在 WebGPU 上原本整個不能用（上游既有問題），已修好**：`ShaderFilter`／`ShaderJob`／`BlendMode.SHADER` 在 WebGPU 渲染器下會畫成空白，WebGL 正常。兩個原因：（1）取樣用 `textureSample`，它需要螢幕空間導數，WebGPU（Dawn）禁止在非一致的分支裡呼叫，而幾乎每個 PixelBender 核心都有條件取樣；PixelBender 圖片沒有 mip，改用 `textureSampleLevel(…, 0)` 結果相同。（2）頂點進入點叫 `filter__vertex_entry_point`，wgpu 把 naga 模組寫成 WGSL 給 WebGPU 時，naga 會改寫含雙底線的識別字，管線就找不到它；改名為 `filter_vertex_entry_point`（`render/src/shader_filter_common.wgsl`、`render/naga-pixelbender/src/lib.rs`）。修正後 8 個 PixelBender 回歸 SWF 在 WebGPU 與 WebGL 下逐像素相同；原生 Vulkan 的 31 個 PixelBender 畫面測試照常通過。
+- **自動化驗證**（`timffle/scripts/verify-webgpu.sh`，說明在 `timffle/docs/TESTING.md` 第 7 節）：wgpu 單元測試 12 → 新的 `render/wgpu/tests/resolve.rs`（著色器解析 vs 硬體解析，lavapipe 與 GeForce GT 720 都是 0 像素差）→ Ruffle 畫面回歸（lavapipe 4,601 通過；**GT 720 真實 GPU 4,601 通過**，都只剩 6 項既有差異）→ 瀏覽器差異測試 `timffle/tools/webgpu-diff/`（242 個靜態回歸 SWF 在同一個 Chrome 裡用 WebGL2 與 WebGPU 各畫一次：**228 個逐像素相同、8 個差 1 以內、3 個只是影片解碼時間差（等久一點就相同）、3 個 WebGPU 卡住**，見下）。
+- **WebGPU 的硬限制（未解決，這是不能直接把 WebGPU 當預設的原因）**：`BitmapData.draw` 畫到 GPU 之後，只要再做 CPU 端的點陣操作（`copyPixels`、`getPixel`、`hitTest`、`threshold` 等），Ruffle 必須同步把 GPU 貼圖讀回；WebGL2 有同步的 `readPixels`，WebGPU 在瀏覽器主執行緒上只有非同步讀回，Ruffle 的 `capture_image` 會永遠等不到而卡死整個分頁。上游 Ruffle 也是如此（26326 強制用 WebGPU 一樣卡）。摩爾莊園客戶端的程式碼裡，`draw(` 與這類 CPU 讀取同時出現的檔案有 89 個，所以實際遊戲會踩到。用 2D canvas 的 `drawImage` 同步讀 WebGPU 畫布的替代做法試過，在無頭 Chrome 上讀到全零，未成功。
+- **支援度查證**（`timffle-work/webgpu-2026-11-02/support-matrix.md`，各項附出處）：Chrome／Edge 113 起（Windows、macOS、ChromeOS）；Linux 的 Chrome 預設只開給 Intel 第 12 代以後（144）與 NVIDIA 官方驅動＋Wayland（147）；Android Chrome 121 起但只有 Android 12+ 的 Qualcomm／ARM GPU（PowerVR 要 Android 16+）；Firefox 僅 Windows（141）與 Apple Silicon macOS（145／147）；Safari 26。被封鎖時 `navigator.gpu` 存在但 `requestAdapter()` 回 null，Chrome 不會悄悄退回軟體 WebGPU，所以「先試 WebGPU、拿不到就退 WebGL2」是安全的。Android WebView（模擬器、WebView 155）同樣因模擬器 GPU 在封鎖名單而回 null，真手機未測。
+
 ## 0.8.0.26327 — 2026-11-02（PRO_bata 分支，測試版）
 
 **混合模式的「整張舞台解析」只在真的需要時做：摩靈 關卡列表每幀 217 → 132 次、摩靈 主畫面 118 → 84 次、世界 7 → 3 次。** 只改 Ruffle 的 wgpu 繪圖層（wasm 的 `render/wgpu/src/surface.rs`、`surface/target.rs`、`surface/commands.rs`、`surface/bounds.rs`）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。通用的修正，任何大量使用 Overlay／Hardlight 等混合模式的 Flash 內容都受益，沒有針對特定網站。

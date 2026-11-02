@@ -190,3 +190,21 @@ cargo test -p tests --test tests      # 在 repo 根目錄
 Timffle 新增了 5 個測試在 `tests/tests/swfs/avm2/`（`localconnection_cyclic_args`、`localconnection_client_primitive`、`urlstream_initial_state`、`urlstream_optional_api`、`bytearray_amf3_cycles`），它們是差異測試黃金答案的 `trace` 版本。
 
 **誠實的說明：** 發行 0.8.0.26294 時，我們是在只簽出 40 個上游 SWF 測試的稀疏 checkout 上跑這個套件（共 46 項通過），渲染單元測試 60/60。**修補後的樹沒有跑過完整的上游測試套件**；在把任何補丁回饋上游之前，必須在完整 checkout 上跑完。
+
+## 7. WebGPU 渲染路徑（`timffle/scripts/verify-webgpu.sh`）
+
+0.8.0.26328 起網頁播放器優先用 WebGPU，並在 WebGPU 上用 `render/wgpu/shaders/resolve.wgsl` 只解析混合物件需要的那一塊。這條路徑的自動化驗證分四層，一個指令跑完：
+
+```sh
+# 只跑 Rust 層（lavapipe 軟體 Vulkan；HW_ICD 指到硬體 Vulkan 驅動時也在 GPU 上跑一次）
+HW_ICD=/usr/share/vulkan/icd.d/nouveau_icd.json timffle/scripts/verify-webgpu.sh
+# 加上瀏覽器比對（給解壓後的擴充功能目錄）
+HW_ICD=... timffle/scripts/verify-webgpu.sh web/packages/extension/dist/unpacked
+```
+
+1. **wgpu 單元測試**（`cargo test -p ruffle_render_wgpu --lib`）：髒區追蹤、混合矩形。
+2. **解析著色器 vs 硬體解析**（`render/wgpu/tests/resolve.rs`）：把有漸層的重疊三角形畫進 4 倍抗鋸齒貼圖，一次用 GPU 內建解析、一次用 `resolve.wgsl` 剪裁到一個矩形，矩形內逐像素相同（lavapipe 與 GeForce GT 720／NVK 上皆為 0 差異）、矩形外一個像素都沒被寫到。GL 後端自動略過（那裡不用這個著色器）。
+3. **Ruffle 畫面回歸**（`cargo test --release -p tests --features imgtests --test tests`，Vulkan 後端會走和 WebGPU 相同的解析路徑）：腳本只容許 `KNOWN_FAILURES` 裡的 6 項上游既有差異（加上 2 項只在滿載時偶發的游標測試），其他失敗都算失敗。
+4. **瀏覽器差異測試**（`timffle/tools/webgpu-diff/`）：`select_tests.py` 從 `tests/tests/swfs` 挑出靜態、有期望圖的回歸 SWF（約 242 個），`run.mjs` 在同一個無頭 Chrome 裡用 `wgpu-webgl` 和 `webgpu` 各畫一次（`preferredRenderer` 不同，其餘相同；WebGPU 在無 GPU 的機器上用 `--use-webgpu-adapter=swiftshader`），`compare.py` 逐像素比對並產生 `report.md` 與並排圖。通道差 ≤ 1 算雜訊；`DIFF`／`MISSING` 除了下面列的已知三個以外都算失敗。約 10 分鐘。
+
+**已知限制（WebGPU 本身，不是 Timffle 的錯）：** `BitmapData.draw` 之後再做 CPU 端的點陣操作（`copyPixels`、`getPixel`、`hitTest`、`threshold`…）需要把 GPU 貼圖同步讀回；WebGPU 在瀏覽器主執行緒上沒有同步讀回，Ruffle 會卡死（`avm2/bitmapdata_draw_alpha_erase`、`bitmapdata_draw_rotation`、`blend_scroll` 三個測試在 WebGPU 下 MISSING，WebGL 正常）。詳見 CHANGELOG 0.8.0.26328。
