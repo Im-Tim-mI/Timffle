@@ -2,9 +2,58 @@ use crate::backend::RenderTargetMode;
 use crate::buffer_pool::{AlwaysCompatible, PoolEntry, TexturePool};
 use crate::descriptors::Descriptors;
 use crate::globals::Globals;
+use crate::surface::bounds::{SurfaceRect, Touched};
 use crate::utils::run_copy_pipeline;
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
 use std::sync::Arc;
+
+/// Timffle: which pixels of the multisampled frame buffer have been drawn
+/// since the resolve buffer was last brought up to date.
+///
+/// Upstream resolves the whole multisampled frame buffer at the end of every
+/// render pass. A frame with hundreds of blended objects therefore resolves the
+/// whole stage hundreds of times, although each blend only needs the parent's
+/// pixels under its own rectangle. Passes started through `draw_attachments`
+/// do not resolve; the resolve happens on demand, only when something reads a
+/// part of the resolve buffer that is out of date, and once at the end.
+#[derive(Debug)]
+enum Dirty {
+    Clean,
+    Rects(Vec<SurfaceRect>),
+    All,
+}
+
+/// More dirty rectangles than this are folded into `Dirty::All`.
+const MAX_DIRTY_RECTS: usize = 64;
+
+impl Dirty {
+    fn mark(&mut self, touched: Touched) {
+        match touched {
+            Touched::None => {}
+            Touched::All => *self = Dirty::All,
+            Touched::Rect(rect) => match self {
+                Dirty::Clean => *self = Dirty::Rects(vec![rect]),
+                Dirty::Rects(rects) => {
+                    if rects.len() >= MAX_DIRTY_RECTS {
+                        *self = Dirty::All;
+                    } else {
+                        rects.push(rect);
+                    }
+                }
+                Dirty::All => {}
+            },
+        }
+    }
+
+    fn needs_resolve(&self, rect: Option<SurfaceRect>) -> bool {
+        match (self, rect) {
+            (Dirty::Clean, _) => false,
+            (Dirty::All, _) => true,
+            (Dirty::Rects(_), None) => true,
+            (Dirty::Rects(rects), Some(rect)) => rects.iter().any(|r| r.intersects(&rect)),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ResolveBuffer {
@@ -200,6 +249,8 @@ pub struct CommandTarget {
     sample_count: u32,
     color_needs_clear: OnceCell<bool>,
     render_target_mode: RenderTargetMode,
+    /// Timffle: see [`Dirty`]. Only meaningful when there is a resolve buffer.
+    dirty: RefCell<Dirty>,
 }
 
 impl CommandTarget {
@@ -295,6 +346,14 @@ impl CommandTarget {
             }
         }
 
+        // A fresh copy of a texture starts out equal in both buffers; anything
+        // else has nothing valid in the resolve buffer until the first resolve.
+        let dirty = if matches!(render_target_mode, RenderTargetMode::FreshWithTexture(_)) {
+            Dirty::Clean
+        } else {
+            Dirty::All
+        };
+
         Self {
             frame_buffer,
             blend_buffer: OnceCell::new(),
@@ -306,6 +365,7 @@ impl CommandTarget {
             sample_count,
             color_needs_clear: OnceCell::new(),
             render_target_mode,
+            dirty: RefCell::new(dirty),
         }
     }
 
@@ -342,7 +402,22 @@ impl CommandTarget {
         &self.globals
     }
 
+    /// The color attachment for a render pass that leaves the resolve buffer
+    /// up to date (the whole multisampled frame buffer is resolved when the
+    /// pass ends).
     pub fn color_attachments(&self) -> Option<wgpu::RenderPassColorAttachment<'_>> {
+        *self.dirty.borrow_mut() = Dirty::Clean;
+        self.attachments(true)
+    }
+
+    /// Timffle: the color attachment for a render pass that does not resolve.
+    /// The caller must report what the pass drew with [`Self::mark_drawn`];
+    /// the resolve buffer is brought up to date by [`Self::ensure_resolved`].
+    pub fn draw_attachments(&self) -> Option<wgpu::RenderPassColorAttachment<'_>> {
+        self.attachments(false)
+    }
+
+    fn attachments(&self, resolve: bool) -> Option<wgpu::RenderPassColorAttachment<'_>> {
         let mut load = wgpu::LoadOp::Load;
         if self.color_needs_clear.set(false).is_ok()
             && let Some(clear_color) = self.render_target_mode.color()
@@ -351,13 +426,52 @@ impl CommandTarget {
         }
         Some(wgpu::RenderPassColorAttachment {
             view: self.frame_buffer.view(),
-            resolve_target: self.resolve_buffer.as_ref().map(|b| b.view()),
+            resolve_target: if resolve {
+                self.resolve_buffer.as_ref().map(|b| b.view())
+            } else {
+                None
+            },
             ops: wgpu::Operations {
                 load,
                 store: wgpu::StoreOp::Store,
             },
             depth_slice: None,
         })
+    }
+
+    /// Timffle: records that a pass started with [`Self::draw_attachments`]
+    /// may have changed these pixels.
+    pub fn mark_drawn(&self, touched: Touched) {
+        if self.resolve_buffer.is_some() {
+            self.dirty.borrow_mut().mark(touched);
+        }
+    }
+
+    /// Timffle: makes sure the resolve buffer is current inside `rect` (or
+    /// everywhere, for `None`). Resolves the whole multisampled frame buffer
+    /// only when something drawn since the last resolve overlaps it.
+    pub fn ensure_resolved(&self, encoder: &mut wgpu::CommandEncoder, rect: Option<SurfaceRect>) {
+        self.ensure_cleared(encoder);
+        let Some(resolve_buffer) = &self.resolve_buffer else {
+            return;
+        };
+        if !self.dirty.borrow().needs_resolve(rect) {
+            return;
+        }
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: create_debug_label!("Resolving command target").as_deref(),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: self.frame_buffer.view(),
+                resolve_target: Some(resolve_buffer.view()),
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            ..Default::default()
+        });
+        *self.dirty.borrow_mut() = Dirty::Clean;
     }
 
     pub fn sample_count(&self) -> u32 {
@@ -404,7 +518,7 @@ impl CommandTarget {
                 pool,
             )
         });
-        self.ensure_cleared(encoder);
+        self.ensure_resolved(encoder, None);
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: self
@@ -429,13 +543,15 @@ impl CommandTarget {
 
     /// Copies one rectangle of this target into a new texture of that size
     /// (Timffle: the parent side of a blend whose surface covers only part of
-    /// this target).
+    /// this target). Only `read` (inside `rect`) has to be up to date: the
+    /// blend is scissored to it.
     pub fn copy_region(
         &self,
         descriptors: &Descriptors,
         pool: &mut TexturePool,
         encoder: &mut wgpu::CommandEncoder,
-        rect: crate::surface::bounds::SurfaceRect,
+        rect: SurfaceRect,
+        read: SurfaceRect,
     ) -> BlendBuffer {
         let size = wgpu::Extent3d {
             width: rect.width,
@@ -451,7 +567,7 @@ impl CommandTarget {
                 | wgpu::TextureUsages::COPY_SRC,
             pool,
         );
-        self.ensure_cleared(encoder);
+        self.ensure_resolved(encoder, Some(read));
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: self.color_texture(),
@@ -486,5 +602,44 @@ impl CommandTarget {
             .as_ref()
             .map(|b| b.texture())
             .unwrap_or_else(|| self.frame_buffer.texture())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn r(x: u32, y: u32, w: u32, h: u32) -> SurfaceRect {
+        SurfaceRect {
+            x,
+            y,
+            width: w,
+            height: h,
+        }
+    }
+
+    #[test]
+    fn dirty_rects_only_resolve_when_overlapping() {
+        let mut d = Dirty::Clean;
+        assert!(!d.needs_resolve(None));
+        d.mark(Touched::None);
+        assert!(!d.needs_resolve(None));
+        d.mark(Touched::Rect(r(0, 0, 10, 10)));
+        d.mark(Touched::Rect(r(100, 100, 10, 10)));
+        assert!(d.needs_resolve(None));
+        assert!(d.needs_resolve(Some(r(5, 5, 1, 1))));
+        assert!(!d.needs_resolve(Some(r(10, 10, 50, 50))));
+        assert!(d.needs_resolve(Some(r(90, 90, 20, 20))));
+        d.mark(Touched::All);
+        assert!(d.needs_resolve(Some(r(500, 500, 1, 1))));
+    }
+
+    #[test]
+    fn too_many_rects_fold_into_all() {
+        let mut d = Dirty::Clean;
+        for i in 0..MAX_DIRTY_RECTS as u32 + 1 {
+            d.mark(Touched::Rect(r(i * 2, 0, 1, 1)));
+        }
+        assert!(matches!(d, Dirty::All));
     }
 }

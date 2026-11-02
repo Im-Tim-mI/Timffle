@@ -9,7 +9,9 @@ use crate::dynamic_transforms::DynamicTransforms;
 use crate::filters::FilterSource;
 use crate::mesh::Mesh;
 use crate::pixel_bender::{ShaderMode, run_pixelbender_shader_impl};
+use crate::surface::bounds::{BlendRects, Touched};
 use crate::surface::commands::{Chunk, CommandRenderer, chunk_blends};
+use crate::surface::target::PoolOrArcTexture;
 use crate::utils::run_copy_pipeline;
 use crate::utils::supported_sample_count;
 use crate::{Descriptors, MaskState, Pipelines};
@@ -147,6 +149,8 @@ impl Surface {
             texture_pool,
         );
 
+        // Timffle: complex blends waiting to be composited (see below).
+        let mut deferred: Vec<(PoolOrArcTexture, ComplexBlend, BlendRects)> = Vec::new();
         for chunk in chunks {
             match chunk {
                 Chunk::Draw {
@@ -154,7 +158,30 @@ impl Surface {
                     needs_stencil,
                     transforms,
                     vertices,
+                    touched,
                 } => {
+                    // Draws that overlap a waiting blend (or change the mask state
+                    // it would be drawn under) must not get ahead of it.
+                    let overlaps = needs_stencil
+                        || match touched {
+                            Touched::None => false,
+                            Touched::All => true,
+                            Touched::Rect(rect) => {
+                                deferred.iter().any(|(_, _, r)| r.tight.intersects(&rect))
+                            }
+                        };
+                    if overlaps {
+                        self.flush_deferred(
+                            &mut deferred,
+                            &target,
+                            descriptors,
+                            texture_pool,
+                            draw_encoder,
+                            nearest_layer,
+                            num_masks,
+                            mask_state,
+                        );
+                    }
                     transforms.copy_to(staging_belt, draw_encoder, &dynamic_transforms.buffer);
                     vertices.copy_to(
                         staging_belt,
@@ -171,7 +198,8 @@ impl Surface {
                             }
                         ),
                         wgpu::RenderPassDescriptor {
-                            color_attachments: &[target.color_attachments()],
+                            // Timffle: no resolve here; see CommandTarget::ensure_resolved.
+                            color_attachments: &[target.draw_attachments()],
                             depth_stencil_attachment: if needs_stencil {
                                 target.stencil_attachment(descriptors, texture_pool)
                             } else {
@@ -180,6 +208,7 @@ impl Surface {
                             ..Default::default()
                         },
                     );
+                    target.mark_drawn(touched);
                     render_pass.set_bind_group(0, target.globals().bind_group(), &[]);
                     render_pass.set_bind_group(1, &dynamic_transforms.bind_group, &[]);
                     let mut renderer = CommandRenderer::new(
@@ -208,6 +237,16 @@ impl Surface {
                     assert!(
                         rect.is_none(),
                         "Shader blends always use a full-size surface"
+                    );
+                    self.flush_deferred(
+                        &mut deferred,
+                        &target,
+                        descriptors,
+                        texture_pool,
+                        draw_encoder,
+                        nearest_layer,
+                        num_masks,
+                        mask_state,
                     );
                     let parent_blend_buffer =
                         target.update_blend_buffer(descriptors, texture_pool, draw_encoder);
@@ -245,143 +284,245 @@ impl Surface {
                     needs_stencil,
                     rect,
                 } => {
-                    let parent = match blend_mode {
-                        ComplexBlend::Alpha | ComplexBlend::Erase => {
-                            match nearest_layer {
-                                LayerRef::None => {
-                                    // An Alpha or Erase with no Layer above it should be ignored
-                                    continue;
-                                }
-                                LayerRef::Current => &target,
-                                LayerRef::Parent(layer) => layer,
-                            }
-                        }
-                        _ => &target,
-                    };
-
-                    // Timffle: a blend surface smaller than the parent is paired with a
-                    // copy of just that part of the parent, and drawn with the viewport
-                    // set to that part, so the blend shaders stay unchanged. (Alpha and
-                    // Erase never get a smaller surface, so `parent` is `target` here.)
-                    let region_buffer;
-                    let parent_blend_view = if let Some(rect) = rect {
-                        region_buffer =
-                            parent.copy_region(descriptors, texture_pool, draw_encoder, rect);
-                        region_buffer.view()
-                    } else {
-                        parent
-                            .update_blend_buffer(descriptors, texture_pool, draw_encoder)
-                            .view()
-                    };
-
-                    let blend_bind_group =
-                        descriptors
-                            .device
-                            .create_bind_group(&wgpu::BindGroupDescriptor {
-                                label: create_debug_label!(
-                                    "Complex blend binds {:?} {}",
-                                    blend_mode,
-                                    if needs_stencil {
-                                        "(with stencil)"
-                                    } else {
-                                        "(Stencilless)"
-                                    }
-                                )
-                                .as_deref(),
-                                layout: &descriptors.bind_layouts.blend,
-                                entries: &[
-                                    wgpu::BindGroupEntry {
-                                        binding: 0,
-                                        resource: wgpu::BindingResource::TextureView(
-                                            parent_blend_view,
-                                        ),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 1,
-                                        resource: wgpu::BindingResource::TextureView(
-                                            texture.view(),
-                                        ),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 2,
-                                        resource: wgpu::BindingResource::Sampler(
-                                            descriptors.bitmap_samplers.get_sampler(false, false),
-                                        ),
-                                    },
-                                ],
-                            });
-
-                    let mut render_pass =
-                        draw_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: create_debug_label!(
-                                "Complex blend {:?} {}",
-                                blend_mode,
-                                if needs_stencil {
-                                    "(with stencil)"
-                                } else {
-                                    "(Stencilless)"
-                                }
-                            )
-                            .as_deref(),
-                            color_attachments: &[target.color_attachments()],
-                            depth_stencil_attachment: if needs_stencil {
-                                target.stencil_attachment(descriptors, texture_pool)
-                            } else {
-                                None
-                            },
-                            ..Default::default()
-                        });
-                    render_pass.set_bind_group(0, target.globals().bind_group(), &[]);
-                    if let Some(rect) = rect {
-                        render_pass.set_viewport(
-                            rect.x as f32,
-                            rect.y as f32,
-                            rect.width as f32,
-                            rect.height as f32,
-                            0.0,
-                            1.0,
-                        );
+                    // Timffle: a blend that reads only its own rectangle of this
+                    // target, and no stencil, can wait until something overlaps
+                    // it; neighbouring blends then share one resolve.
+                    if let Some(rect) = rect
+                        && !needs_stencil
+                        && !matches!(blend_mode, ComplexBlend::Alpha | ComplexBlend::Erase)
+                    {
+                        deferred.push((texture, blend_mode, rect));
+                        continue;
                     }
-
-                    if needs_stencil {
-                        match mask_state {
-                            MaskState::NoMask => {}
-                            MaskState::DrawMaskStencil => {
-                                render_pass.set_stencil_reference(num_masks - 1);
-                            }
-                            MaskState::DrawMaskedContent => {
-                                render_pass.set_stencil_reference(num_masks);
-                            }
-                            MaskState::ClearMaskStencil => {
-                                render_pass.set_stencil_reference(num_masks);
-                            }
-                        }
-                        render_pass.set_pipeline(
-                            self.pipelines.complex_blends[blend_mode].pipeline_for(mask_state),
-                        );
-                    } else {
-                        render_pass.set_pipeline(
-                            self.pipelines.complex_blends[blend_mode].stencilless_pipeline(),
-                        );
-                    }
-
-                    render_pass.set_bind_group(2, &blend_bind_group, &[]);
-
-                    render_pass.set_vertex_buffer(0, descriptors.quad.vertices_pos.slice(..));
-                    render_pass.set_index_buffer(
-                        descriptors.quad.indices.slice(..),
-                        wgpu::IndexFormat::Uint32,
+                    self.flush_deferred(
+                        &mut deferred,
+                        &target,
+                        descriptors,
+                        texture_pool,
+                        draw_encoder,
+                        nearest_layer,
+                        num_masks,
+                        mask_state,
                     );
-
-                    render_pass.draw_indexed(0..6, 0, 0..1);
+                    self.draw_complex_blend(
+                        &target,
+                        descriptors,
+                        texture_pool,
+                        draw_encoder,
+                        nearest_layer,
+                        texture,
+                        blend_mode,
+                        needs_stencil,
+                        rect,
+                        num_masks,
+                        mask_state,
+                    );
                 }
             }
         }
+        self.flush_deferred(
+            &mut deferred,
+            &target,
+            descriptors,
+            texture_pool,
+            draw_encoder,
+            nearest_layer,
+            num_masks,
+            mask_state,
+        );
 
-        // If nothing happened, ensure it's cleared so we don't operate on garbage data
-        target.ensure_cleared(draw_encoder);
+        // If nothing happened, ensure it's cleared so we don't operate on garbage data,
+        // and (Timffle) bring the resolve buffer up to date once, so that whoever
+        // reads the target's color texture sees everything that was drawn.
+        target.ensure_resolved(draw_encoder, None);
 
         target
+    }
+
+    /// Timffle: composites the blends that were waiting, in their original order.
+    #[expect(clippy::too_many_arguments)]
+    fn flush_deferred<'encoder, 'global: 'encoder>(
+        &self,
+        deferred: &mut Vec<(PoolOrArcTexture, ComplexBlend, BlendRects)>,
+        target: &CommandTarget,
+        descriptors: &'encoder Descriptors,
+        texture_pool: &'encoder mut TexturePool,
+        draw_encoder: &'encoder mut Scope<'global, wgpu::CommandEncoder>,
+        nearest_layer: LayerRef<'encoder>,
+        num_masks: u32,
+        mask_state: MaskState,
+    ) {
+        for (texture, blend_mode, rect) in deferred.drain(..) {
+            self.draw_complex_blend(
+                target,
+                descriptors,
+                texture_pool,
+                draw_encoder,
+                nearest_layer,
+                texture,
+                blend_mode,
+                false,
+                Some(rect),
+                num_masks,
+                mask_state,
+            );
+        }
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    fn draw_complex_blend<'encoder, 'global: 'encoder>(
+        &self,
+        target: &CommandTarget,
+        descriptors: &'encoder Descriptors,
+        texture_pool: &'encoder mut TexturePool,
+        draw_encoder: &'encoder mut Scope<'global, wgpu::CommandEncoder>,
+        nearest_layer: LayerRef<'encoder>,
+        texture: PoolOrArcTexture,
+        blend_mode: ComplexBlend,
+        needs_stencil: bool,
+        rect: Option<BlendRects>,
+        num_masks: u32,
+        mask_state: MaskState,
+    ) {
+        let parent = match blend_mode {
+            ComplexBlend::Alpha | ComplexBlend::Erase => {
+                match nearest_layer {
+                    LayerRef::None => {
+                        // An Alpha or Erase with no Layer above it should be ignored
+                        return;
+                    }
+                    LayerRef::Current => target,
+                    LayerRef::Parent(layer) => layer,
+                }
+            }
+            _ => target,
+        };
+
+        // Timffle: a blend surface smaller than the parent is paired with a
+        // copy of just that part of the parent, and drawn with the viewport
+        // set to that part, so the blend shaders stay unchanged. (Alpha and
+        // Erase never get a smaller surface, so `parent` is `target` here.)
+        let region_buffer;
+        let parent_blend_view = if let Some(rect) = rect {
+            region_buffer = parent.copy_region(
+                descriptors,
+                texture_pool,
+                draw_encoder,
+                rect.surface,
+                rect.tight,
+            );
+            region_buffer.view()
+        } else {
+            parent
+                .update_blend_buffer(descriptors, texture_pool, draw_encoder)
+                .view()
+        };
+
+        let blend_bind_group = descriptors
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: create_debug_label!(
+                    "Complex blend binds {:?} {}",
+                    blend_mode,
+                    if needs_stencil {
+                        "(with stencil)"
+                    } else {
+                        "(Stencilless)"
+                    }
+                )
+                .as_deref(),
+                layout: &descriptors.bind_layouts.blend,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(parent_blend_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(texture.view()),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::Sampler(
+                            descriptors.bitmap_samplers.get_sampler(false, false),
+                        ),
+                    },
+                ],
+            });
+
+        let mut render_pass = draw_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: create_debug_label!(
+                "Complex blend {:?} {}",
+                blend_mode,
+                if needs_stencil {
+                    "(with stencil)"
+                } else {
+                    "(Stencilless)"
+                }
+            )
+            .as_deref(),
+            // Timffle: no resolve here; see CommandTarget::ensure_resolved.
+            color_attachments: &[target.draw_attachments()],
+            depth_stencil_attachment: if needs_stencil {
+                target.stencil_attachment(descriptors, texture_pool)
+            } else {
+                None
+            },
+            ..Default::default()
+        });
+        target.mark_drawn(match rect {
+            Some(rect) => Touched::Rect(rect.tight),
+            None => Touched::All,
+        });
+        render_pass.set_bind_group(0, target.globals().bind_group(), &[]);
+        if let Some(rect) = rect {
+            render_pass.set_viewport(
+                rect.surface.x as f32,
+                rect.surface.y as f32,
+                rect.surface.width as f32,
+                rect.surface.height as f32,
+                0.0,
+                1.0,
+            );
+            // Only the pixels the blend can change are written; the rest of
+            // the surface rectangle may hold stale parent pixels.
+            render_pass.set_scissor_rect(
+                rect.tight.x,
+                rect.tight.y,
+                rect.tight.width,
+                rect.tight.height,
+            );
+        }
+
+        if needs_stencil {
+            match mask_state {
+                MaskState::NoMask => {}
+                MaskState::DrawMaskStencil => {
+                    render_pass.set_stencil_reference(num_masks - 1);
+                }
+                MaskState::DrawMaskedContent => {
+                    render_pass.set_stencil_reference(num_masks);
+                }
+                MaskState::ClearMaskStencil => {
+                    render_pass.set_stencil_reference(num_masks);
+                }
+            }
+            render_pass
+                .set_pipeline(self.pipelines.complex_blends[blend_mode].pipeline_for(mask_state));
+        } else {
+            render_pass
+                .set_pipeline(self.pipelines.complex_blends[blend_mode].stencilless_pipeline());
+        }
+
+        render_pass.set_bind_group(2, &blend_bind_group, &[]);
+
+        render_pass.set_vertex_buffer(0, descriptors.quad.vertices_pos.slice(..));
+        render_pass.set_index_buffer(
+            descriptors.quad.indices.slice(..),
+            wgpu::IndexFormat::Uint32,
+        );
+
+        render_pass.draw_indexed(0..6, 0, 0..1);
     }
 
     pub fn quality(&self) -> StageQuality {

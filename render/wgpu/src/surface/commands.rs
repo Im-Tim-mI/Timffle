@@ -7,7 +7,10 @@ use crate::buffer_pool::TexturePool;
 use crate::dynamic_transforms::DynamicTransforms;
 use crate::mesh::{DrawType, Mesh, as_mesh};
 use crate::surface::Surface;
-use crate::surface::bounds::{SurfaceRect, blend_can_shrink, blend_rect, command_list_extent};
+use crate::surface::bounds::{
+    BlendRects, Extent, PixelBox, Touched, blend_can_shrink, blend_rect, command_list_extent,
+    touched_rect,
+};
 use crate::surface::target::CommandTarget;
 use crate::{Descriptors, MaskState, Pipelines, PosUvVertex, Transforms, as_texture};
 use ruffle_render::backend::ShapeHandle;
@@ -411,6 +414,8 @@ pub enum Chunk {
         needs_stencil: bool,
         transforms: BufferBuilder,
         vertices: BufferBuilder,
+        /// Timffle: which pixels of the surface these draws can change.
+        touched: Touched,
     },
     Blend {
         texture: PoolOrArcTexture,
@@ -418,7 +423,7 @@ pub enum Chunk {
         needs_stencil: bool,
         /// Where `texture` goes in the parent, when it is smaller than the parent
         /// (Timffle); `None` means it covers the whole parent.
-        rect: Option<SurfaceRect>,
+        rect: Option<BlendRects>,
     },
 }
 
@@ -549,6 +554,8 @@ struct WgpuCommandHandler<'encoder, 'global: 'encoder> {
     vertices: BufferBuilder,
     needs_stencil: bool,
     num_masks: i32,
+    /// Timffle: what the draws in `current` can touch (in the commands' coordinates).
+    current_extent: Extent,
 }
 
 impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
@@ -594,6 +601,7 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
             vertices,
             needs_stencil: false,
             num_masks: 0,
+            current_extent: Extent::Empty,
         }
     }
 
@@ -619,41 +627,46 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
     /// Every complex blend will be its own item, but every other draw will be chunked together
     fn chunk_blends(&mut self, commands: CommandList) -> Vec<Chunk> {
         commands.execute(self);
-
-        let current = mem::take(&mut self.current);
-        let mut result = mem::take(&mut self.result);
-        let needs_stencil = mem::take(&mut self.needs_stencil);
-        let transforms = mem::replace(
-            &mut self.transforms,
-            Self::new_transforms(self.descriptors, self.dynamic_transforms),
-        );
-        let vertices = mem::replace(
-            &mut self.vertices,
-            Self::new_vertices(self.descriptors, self.dynamic_transforms),
-        );
-
-        if !current.is_empty() {
-            result.push(Chunk::Draw {
-                chunk: current,
-                needs_stencil,
-                transforms,
-                vertices,
-            });
-        }
-
-        result
+        self.flush_current();
+        self.needs_stencil = false;
+        mem::take(&mut self.result)
     }
 
+    /// Moves the draws collected so far into their own `Chunk::Draw`.
+    fn flush_current(&mut self) {
+        if self.current.is_empty() {
+            self.current_extent = Extent::Empty;
+            return;
+        }
+        let extent = mem::replace(&mut self.current_extent, Extent::Empty);
+        self.result.push(Chunk::Draw {
+            chunk: mem::take(&mut self.current),
+            needs_stencil: self.needs_stencil,
+            transforms: mem::replace(
+                &mut self.transforms,
+                Self::new_transforms(self.descriptors, self.dynamic_transforms),
+            ),
+            vertices: mem::replace(
+                &mut self.vertices,
+                Self::new_vertices(self.descriptors, self.dynamic_transforms),
+            ),
+            touched: touched_rect(extent, self.origin, self.width, self.height),
+        });
+    }
+
+    /// `extent` (Timffle) is what the draw can touch, in the commands' coordinates.
     fn add_to_current(
         &mut self,
         world_matrix: [[f32; 4]; 4],
         color_transform: ColorTransform,
+        extent: Extent,
         command_builder: impl FnOnce(u32) -> DrawCommand,
     ) {
         self.add_to_current_with_vertices(
             world_matrix,
             color_transform,
             None,
+            extent,
             |instance_index, _| command_builder(instance_index),
         )
     }
@@ -663,6 +676,7 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
         world_matrix: [[f32; 4]; 4],
         color_transform: ColorTransform,
         vertices: Option<&[PosUvVertex]>,
+        extent: Extent,
         command_builder: impl FnOnce(u32, Option<wgpu::BufferAddress>) -> DrawCommand,
     ) {
         let mut world_matrix = world_matrix;
@@ -684,23 +698,14 @@ impl<'encoder, 'global: 'encoder> WgpuCommandHandler<'encoder, 'global> {
             self.transforms.add(&[transform]),
             vertices.map(|v| self.vertices.add(v)).transpose(),
         ) {
+            self.current_extent = self.current_extent.add(extent);
             self.current.push(command_builder(
                 (transform_range.start as usize / size_of::<Transforms>()) as u32,
                 vertices_range.map(|v| v.start),
             ));
         } else {
-            self.result.push(Chunk::Draw {
-                chunk: mem::take(&mut self.current),
-                needs_stencil: self.needs_stencil,
-                transforms: mem::replace(
-                    &mut self.transforms,
-                    Self::new_transforms(self.descriptors, self.dynamic_transforms),
-                ),
-                vertices: mem::replace(
-                    &mut self.vertices,
-                    Self::new_vertices(self.descriptors, self.dynamic_transforms),
-                ),
-            });
+            self.flush_current();
+            self.current_extent = extent;
             let transform_range = self
                 .transforms
                 .add(&[transform])
@@ -739,10 +744,13 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             None
         };
         let (width, height, origin) = match rect {
-            Some(rect) => (
-                rect.width,
-                rect.height,
-                (self.origin.0 + rect.x as i32, self.origin.1 + rect.y as i32),
+            Some(rects) => (
+                rects.surface.width,
+                rects.surface.height,
+                (
+                    self.origin.0 + rects.surface.x as i32,
+                    self.origin.1 + rects.surface.y as i32,
+                ),
             ),
             None => (self.width, self.height, self.origin),
         };
@@ -822,6 +830,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
                 self.add_to_current(
                     world_matrix(transform.matrix, None, (1.0, 1.0)),
                     transform.color_transform,
+                    Extent::from_box(PixelBox::of_matrix(&transform.matrix, 0.0, 0.0, 1.0, 1.0)),
                     |instance_index| DrawCommand::RenderTexture {
                         _texture: texture,
                         binds: bind_group,
@@ -831,20 +840,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
                 );
             }
             blend_type => {
-                if !self.current.is_empty() {
-                    self.result.push(Chunk::Draw {
-                        chunk: mem::take(&mut self.current),
-                        needs_stencil: self.needs_stencil,
-                        transforms: mem::replace(
-                            &mut self.transforms,
-                            Self::new_transforms(self.descriptors, self.dynamic_transforms),
-                        ),
-                        vertices: mem::replace(
-                            &mut self.vertices,
-                            Self::new_vertices(self.descriptors, self.dynamic_transforms),
-                        ),
-                    });
-                }
+                self.flush_current();
                 let chunk_blend_mode = match blend_type {
                     BlendType::Complex(complex) => ChunkBlendMode::Complex(complex),
                     BlendType::Shader(shader) => ChunkBlendMode::Shader(shader),
@@ -896,10 +892,22 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             ]
         };
 
+        let extent = if transform.matrix3d.is_some() {
+            Extent::Unbounded
+        } else {
+            Extent::from_box(PixelBox::of_matrix(
+                &matrix,
+                0.0,
+                0.0,
+                region.width() as f32,
+                region.height() as f32,
+            ))
+        };
         self.add_to_current_with_vertices(
             world,
             transform.color_transform,
             Some(vertices),
+            extent,
             |instance_index, vertex_offset| DrawCommand::RenderBitmap {
                 bitmap,
                 instance_index,
@@ -923,22 +931,36 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
                 ),
             )
         };
-        self.add_to_current(world, transform.color_transform, |instance_index| {
-            DrawCommand::RenderBitmap {
+        self.add_to_current(
+            world,
+            transform.color_transform,
+            Extent::Unbounded,
+            |instance_index| DrawCommand::RenderBitmap {
                 bitmap,
                 instance_index,
                 vertex_offset: None,
                 smoothing: false,
                 blend_mode: TrivialBlend::Normal,
                 render_stage3d: true,
-            }
-        });
+            },
+        );
     }
 
     fn render_shape(&mut self, shape: ShapeHandle, transform: Transform) {
+        let extent = if transform.matrix3d.is_some() {
+            Extent::Unbounded
+        } else {
+            match as_mesh(&shape).bounds {
+                Some([x0, y0, x1, y1]) => {
+                    Extent::from_box(PixelBox::of_matrix(&transform.matrix, x0, y0, x1, y1))
+                }
+                None => Extent::Empty,
+            }
+        };
         self.add_to_current(
             world_matrix(transform.matrix, transform.matrix3d.as_ref(), (1.0, 1.0)),
             transform.color_transform,
+            extent,
             |instance_index| DrawCommand::RenderShape {
                 shape,
                 instance_index,
@@ -950,6 +972,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
         self.add_to_current(
             world_matrix(matrix, None, (1.0, 1.0)),
             ColorTransform::multiply_from(color),
+            Extent::from_box(PixelBox::of_matrix(&matrix, 0.0, 0.0, 1.0, 1.0)),
             |instance_index| DrawCommand::DrawRect { instance_index },
         );
     }
@@ -965,6 +988,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             self.add_to_current(
                 world_matrix(matrix, None, (1.0, 1.0)),
                 ColorTransform::multiply_from(color),
+                Extent::from_box(PixelBox::of_matrix(&matrix, 0.0, 0.0, 1.0, 1.0)),
                 |instance_index| DrawCommand::DrawLine { instance_index },
             );
         }
@@ -981,6 +1005,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
             self.add_to_current(
                 world_matrix(matrix, None, (1.0, 1.0)),
                 ColorTransform::multiply_from(color),
+                Extent::from_box(PixelBox::of_matrix(&matrix, 0.0, 0.0, 1.0, 1.0)),
                 |instance_index| DrawCommand::DrawLineRect { instance_index },
             );
         }
@@ -1081,6 +1106,7 @@ impl CommandHandler for WgpuCommandHandler<'_, '_> {
         self.add_to_current(
             world_matrix(matrix, None, (1.0, 1.0)),
             Default::default(),
+            Extent::Unbounded,
             |instance_index| DrawCommand::RenderAlphaMask {
                 maskee,
                 mask,

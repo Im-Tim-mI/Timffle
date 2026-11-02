@@ -39,7 +39,7 @@ impl PixelBox {
         }
     }
 
-    fn of_matrix(matrix: &Matrix, x0: f32, y0: f32, x1: f32, y1: f32) -> Option<PixelBox> {
+    pub fn of_matrix(matrix: &Matrix, x0: f32, y0: f32, x1: f32, y1: f32) -> Option<PixelBox> {
         let tx = matrix.tx.to_pixels() as f32;
         let ty = matrix.ty.to_pixels() as f32;
         let mut result: Option<PixelBox> = None;
@@ -76,7 +76,7 @@ pub enum Extent {
 }
 
 impl Extent {
-    fn add(self, other: Extent) -> Extent {
+    pub fn add(self, other: Extent) -> Extent {
         match (self, other) {
             (Extent::Unbounded, _) | (_, Extent::Unbounded) => Extent::Unbounded,
             (Extent::Empty, e) | (e, Extent::Empty) => e,
@@ -84,7 +84,7 @@ impl Extent {
         }
     }
 
-    fn from_box(b: Option<PixelBox>) -> Extent {
+    pub fn from_box(b: Option<PixelBox>) -> Extent {
         match b {
             Some(b) => Extent::Box(PixelBox {
                 x_min: b.x_min - PADDING,
@@ -203,18 +203,73 @@ pub struct SurfaceRect {
     pub height: u32,
 }
 
+impl SurfaceRect {
+    pub fn intersects(&self, other: &SurfaceRect) -> bool {
+        self.x < other.x + other.width
+            && other.x < self.x + self.width
+            && self.y < other.y + other.height
+            && other.y < self.y + self.height
+    }
+}
+
+/// Which pixels of a surface a group of draws can have changed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Touched {
+    None,
+    Rect(SurfaceRect),
+    All,
+}
+
+/// The pixels of a `width` x `height` surface whose top-left pixel is at
+/// `origin` (in the commands' coordinates) that draws with `extent` can change.
+pub fn touched_rect(extent: Extent, origin: (i32, i32), width: u32, height: u32) -> Touched {
+    let b = match extent {
+        Extent::Empty => return Touched::None,
+        Extent::Unbounded => return Touched::All,
+        Extent::Box(b) => b,
+    };
+    let x0 = (b.x_min.floor() - origin.0 as f32).max(0.0);
+    let y0 = (b.y_min.floor() - origin.1 as f32).max(0.0);
+    let x1 = (b.x_max.ceil() - origin.0 as f32).min(width as f32);
+    let y1 = (b.y_max.ceil() - origin.1 as f32).min(height as f32);
+    if x1 <= x0 || y1 <= y0 {
+        return Touched::None;
+    }
+    let (x0, y0, x1, y1) = (x0 as u32, y0 as u32, x1 as u32, y1 as u32);
+    if x0 == 0 && y0 == 0 && x1 >= width && y1 >= height {
+        return Touched::All;
+    }
+    Touched::Rect(SurfaceRect {
+        x: x0,
+        y: y0,
+        width: x1 - x0,
+        height: y1 - y0,
+    })
+}
+
+/// The two rectangles of a blend that uses a surface smaller than its parent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BlendRects {
+    /// The blend surface's place in the parent (size rounded up to a few
+    /// steps, see `bucket`).
+    pub surface: SurfaceRect,
+    /// The pixels the blend actually reads and writes (inside `surface`);
+    /// the composite is scissored to it.
+    pub tight: SurfaceRect,
+}
+
 /// Picks the part of a `parent_width` x `parent_height` surface whose top-left
 /// pixel is at `origin` (in the commands' coordinates) that a blend surface for
 /// `extent` must cover.
 ///
-/// Returns `Ok(None)` when nothing visible is drawn, `Ok(Some(rect))` for a
+/// Returns `Ok(None)` when nothing visible is drawn, `Ok(Some(rects))` for a
 /// smaller surface, and `Err(())` when the full-size surface should be used.
 pub fn blend_rect(
     extent: Extent,
     origin: (i32, i32),
     parent_width: u32,
     parent_height: u32,
-) -> Result<Option<SurfaceRect>, ()> {
+) -> Result<Option<BlendRects>, ()> {
     let b = match extent {
         Extent::Empty => return Ok(None),
         Extent::Unbounded => return Err(()),
@@ -228,6 +283,12 @@ pub fn blend_rect(
         return Ok(None);
     }
     let (x0, y0, x1, y1) = (x0 as u32, y0 as u32, x1 as u32, y1 as u32);
+    let tight = SurfaceRect {
+        x: x0,
+        y: y0,
+        width: x1 - x0,
+        height: y1 - y0,
+    };
     let width = bucket(x1 - x0, parent_width);
     let height = bucket(y1 - y0, parent_height);
     // Not worth it when the box is most of the surface anyway.
@@ -239,11 +300,14 @@ pub fn blend_rect(
     // Keep the (rounded-up) rectangle inside the parent.
     let x = x0.min(parent_width - width);
     let y = y0.min(parent_height - height);
-    Ok(Some(SurfaceRect {
-        x,
-        y,
-        width,
-        height,
+    Ok(Some(BlendRects {
+        surface: SurfaceRect {
+            x,
+            y,
+            width,
+            height,
+        },
+        tight,
     }))
 }
 
@@ -266,12 +330,21 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(
-            r,
+            r.surface,
             SurfaceRect {
                 x: 100,
                 y: 50,
                 width: 64,
                 height: 64
+            }
+        );
+        assert_eq!(
+            r.tight,
+            SurfaceRect {
+                x: 100,
+                y: 50,
+                width: 40,
+                height: 31
             }
         );
     }
@@ -281,6 +354,7 @@ mod tests {
         let r = blend_rect(boxed(940.0, 540.0, 1000.0, 600.0), (0, 0), 960, 560)
             .unwrap()
             .unwrap();
+        let r = r.surface;
         assert!(r.x + r.width <= 960 && r.y + r.height <= 560);
         assert!(r.x <= 940 && r.y <= 540);
     }
@@ -290,7 +364,8 @@ mod tests {
         let r = blend_rect(boxed(300.0, 300.0, 310.0, 310.0), (200, 250), 400, 400)
             .unwrap()
             .unwrap();
-        assert_eq!((r.x, r.y), (100, 50));
+        assert_eq!((r.surface.x, r.surface.y), (100, 50));
+        assert_eq!((r.tight.x, r.tight.y, r.tight.width), (100, 50, 10));
     }
 
     #[test]
@@ -309,6 +384,63 @@ mod tests {
             Ok(None)
         );
         assert_eq!(blend_rect(Extent::Empty, (0, 0), 960, 560), Ok(None));
+    }
+
+    #[test]
+    fn touched_rect_clips_and_detects_full() {
+        assert_eq!(
+            touched_rect(boxed(10.5, 20.5, 30.2, 40.0), (0, 0), 960, 560),
+            Touched::Rect(SurfaceRect {
+                x: 10,
+                y: 20,
+                width: 21,
+                height: 20
+            })
+        );
+        assert_eq!(
+            touched_rect(boxed(-5.0, -5.0, 1000.0, 600.0), (0, 0), 960, 560),
+            Touched::All
+        );
+        assert_eq!(
+            touched_rect(boxed(300.0, 300.0, 310.0, 310.0), (200, 250), 400, 400),
+            Touched::Rect(SurfaceRect {
+                x: 100,
+                y: 50,
+                width: 10,
+                height: 10
+            })
+        );
+        assert_eq!(
+            touched_rect(boxed(-50.0, -50.0, -1.0, -1.0), (0, 0), 960, 560),
+            Touched::None
+        );
+        assert_eq!(touched_rect(Extent::Unbounded, (0, 0), 1, 1), Touched::All);
+        assert_eq!(touched_rect(Extent::Empty, (0, 0), 1, 1), Touched::None);
+    }
+
+    #[test]
+    fn rect_intersection() {
+        let a = SurfaceRect {
+            x: 10,
+            y: 10,
+            width: 20,
+            height: 20,
+        };
+        let touching = SurfaceRect {
+            x: 30,
+            y: 10,
+            width: 5,
+            height: 5,
+        };
+        let inside = SurfaceRect {
+            x: 15,
+            y: 15,
+            width: 1,
+            height: 1,
+        };
+        assert!(!a.intersects(&touching));
+        assert!(a.intersects(&inside));
+        assert!(inside.intersects(&a));
     }
 
     #[test]
