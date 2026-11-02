@@ -12,6 +12,7 @@
 - **驗證**：新的 `render/wgpu/tests/readback.rs`（`Rgba8Unorm`、`R32Float`、`Rg32Float`、`Rgba32Float` 的虛擬亂數內容，整張與子矩形各讀一次）在 lavapipe 與 GeForce GT 720（NVK）上都是 0 個錯誤位元組；`timffle/scripts/verify-webgpu.sh` 多了這一步（2b），而且瀏覽器差異測試不再放行任何 `MISSING`。瀏覽器差異測試（242 個靜態回歸 SWF，同一個無頭 Chrome 用 WebGL2 與 WebGPU 各畫一次）：**242 個全部有畫面，232 個逐像素相同、7 個差 1 以內、3 個只是載入時序**（`visual/video/vp6_dispsize`、`import_assets/avm1_imports_avm1`、`from_shumway/invalidClipDepth`，等待 3 秒重跑後逐像素相同），兩種渲染器都沒有主控台錯誤。wgpu 單元測試 12 通過。
 - **官方伺服器實測**（摩爾莊園 30 服，無頭 Chrome 的 WebGPU 軟體模擬，主控台確認 `Used renderer: webgpu`）：登入、世界、地圖、家園庭院、進屋、開倉庫、把家具拿出來擺放與拖動都正常；拖動家具時客戶端做了 `BitmapData.draw` 後的 `hitTest`，實際走到新的讀回路徑 **10 次**（家具 46×20、地板 960×560、三面牆與側邊各一張，各兩趟），每次不到 0.2 ms（軟體模擬下），畫面沒有異常，沒有讀回錯誤、沒有 panic。26328 在這裡會整個分頁卡死。
 - **仍待實機**：這台開發機的 Chrome 在 GT 720 上拿不到 WebGPU 裝置，瀏覽器端仍只用軟體模擬（SwiftShader）驗證；Windows、macOS、Android 的真實 GPU 請在實機上試。讀回的成本是每張貼圖兩趟小繪圖加一次畫布快照，大量連續讀回（每幀幾十次）的內容在真 GPU 上的實際耗時也請留意。
+- 測試版 ZIP：`timffle-chrome-0.8.0.26329.zip`，sha256 `5d85af8b03abef5571e760986888607e23d8f2e87d4bd42b9aec78cffdfa984d`（由 `00aeb31e4` 的乾淨工作樹建置）。
 
 ## 0.8.0.26328 — 2026-11-02（webgpu 分支，測試版）
 
