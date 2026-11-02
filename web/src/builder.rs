@@ -575,7 +575,10 @@ impl RuffleInstanceBuilder {
 
         let is_transparent = self.wmode.as_deref() == Some("transparent");
 
-        let mut renderer_list = vec!["wgpu-webgl", "webgpu", "webgl", "canvas"];
+        // Timffle: WebGPU first. It has less overhead than WebGL 2 and lets the
+        // wgpu backend read the multisampled frame buffer directly (sub-rectangle
+        // resolves for blend modes); browsers without it fall through to WebGL.
+        let mut renderer_list = vec!["webgpu", "wgpu-webgl", "webgl", "canvas"];
         if let Some(preferred_renderer) = &self.preferred_renderer {
             if let Some(pos) = renderer_list.iter().position(|&r| r == preferred_renderer) {
                 renderer_list.remove(pos);

@@ -21,6 +21,8 @@ pub struct Descriptors {
     pub bind_layouts: BindLayouts,
     pub quad: Quad,
     copy_pipeline: Mutex<FnvHashMap<(u32, wgpu::TextureFormat), wgpu::RenderPipeline>>,
+    /// Timffle: sub-rectangle resolve pipelines, keyed by (sample count, format).
+    resolve_pipeline: Mutex<FnvHashMap<(u32, wgpu::TextureFormat), wgpu::RenderPipeline>>,
     pub shaders: Shaders,
     pipelines: Mutex<FnvHashMap<(u32, wgpu::TextureFormat), Arc<Pipelines>>>,
     pub filters: Filters,
@@ -58,10 +60,81 @@ impl Descriptors {
             bind_layouts,
             quad,
             copy_pipeline: Default::default(),
+            resolve_pipeline: Default::default(),
             shaders,
             pipelines: Default::default(),
             filters,
         }
+    }
+
+    /// Timffle: a pipeline that averages the samples of a multisampled texture
+    /// into a single-sampled target of the same size (see `resolve.wgsl`).
+    pub fn resolve_pipeline(
+        &self,
+        format: wgpu::TextureFormat,
+        msaa_sample_count: u32,
+    ) -> wgpu::RenderPipeline {
+        let mut pipelines = self
+            .resolve_pipeline
+            .lock()
+            .expect("Pipelines should not be already locked");
+        pipelines
+            .entry((msaa_sample_count, format))
+            .or_insert_with(|| {
+                let shader = self
+                    .device
+                    .create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: create_debug_label!("Shader resolve.wgsl").as_deref(),
+                        source: wgpu::ShaderSource::Wgsl(
+                            format!(
+                                "const sample_count = {msaa_sample_count};\n{}",
+                                include_str!("../shaders/resolve.wgsl")
+                            )
+                            .into(),
+                        ),
+                    });
+                let layout = self
+                    .device
+                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label: create_debug_label!("Resolve pipeline layout").as_deref(),
+                        bind_group_layouts: &[Some(&self.bind_layouts.resolve)],
+                        immediate_size: 0,
+                    });
+                self.device
+                    .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                        label: create_debug_label!("Resolve pipeline").as_deref(),
+                        layout: Some(&layout),
+                        vertex: wgpu::VertexState {
+                            module: &shader,
+                            entry_point: Some("main_vertex"),
+                            buffers: &[],
+                            compilation_options: Default::default(),
+                        },
+                        fragment: Some(wgpu::FragmentState {
+                            module: &shader,
+                            entry_point: Some("main_fragment"),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format,
+                                blend: Some(wgpu::BlendState::REPLACE),
+                                write_mask: Default::default(),
+                            })],
+                            compilation_options: Default::default(),
+                        }),
+                        primitive: wgpu::PrimitiveState {
+                            topology: wgpu::PrimitiveTopology::TriangleList,
+                            ..Default::default()
+                        },
+                        depth_stencil: None,
+                        multisample: wgpu::MultisampleState {
+                            count: 1,
+                            mask: !0,
+                            alpha_to_coverage_enabled: false,
+                        },
+                        multiview_mask: None,
+                        cache: None,
+                    })
+            })
+            .clone()
     }
 
     pub fn copy_pipeline(

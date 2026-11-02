@@ -272,7 +272,14 @@ impl CommandTarget {
                 size,
                 format,
                 if sample_count > 1 {
-                    wgpu::TextureUsages::RENDER_ATTACHMENT
+                    // Timffle: the sub-rectangle resolve reads the multisampled
+                    // texture from a shader (not possible on WebGL).
+                    if descriptors.backend == wgpu::Backend::Gl {
+                        wgpu::TextureUsages::RENDER_ATTACHMENT
+                    } else {
+                        wgpu::TextureUsages::RENDER_ATTACHMENT
+                            | wgpu::TextureUsages::TEXTURE_BINDING
+                    }
                 } else {
                     wgpu::TextureUsages::RENDER_ATTACHMENT
                         | wgpu::TextureUsages::COPY_SRC
@@ -450,12 +457,57 @@ impl CommandTarget {
     /// Timffle: makes sure the resolve buffer is current inside `rect` (or
     /// everywhere, for `None`). Resolves the whole multisampled frame buffer
     /// only when something drawn since the last resolve overlaps it.
-    pub fn ensure_resolved(&self, encoder: &mut wgpu::CommandEncoder, rect: Option<SurfaceRect>) {
+    pub fn ensure_resolved(
+        &self,
+        descriptors: &Descriptors,
+        encoder: &mut wgpu::CommandEncoder,
+        rect: Option<SurfaceRect>,
+    ) {
         self.ensure_cleared(encoder);
         let Some(resolve_buffer) = &self.resolve_buffer else {
             return;
         };
         if !self.dirty.borrow().needs_resolve(rect) {
+            return;
+        }
+        // Timffle: where a shader can read the multisampled texture, resolve
+        // only the rectangle that is needed; the rest stays marked dirty.
+        if let Some(rect) = rect
+            && descriptors.backend != wgpu::Backend::Gl
+            && self
+                .frame_buffer
+                .texture()
+                .usage()
+                .contains(wgpu::TextureUsages::TEXTURE_BINDING)
+        {
+            let bind_group = descriptors
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: create_debug_label!("Resolve bind group").as_deref(),
+                    layout: &descriptors.bind_layouts.resolve,
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(self.frame_buffer.view()),
+                    }],
+                });
+            let pipeline = descriptors.resolve_pipeline(self.format, self.sample_count);
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: create_debug_label!("Resolving part of command target").as_deref(),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: resolve_buffer.view(),
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                ..Default::default()
+            });
+            render_pass.set_scissor_rect(rect.x, rect.y, rect.width, rect.height);
+            render_pass.set_pipeline(&pipeline);
+            render_pass.set_bind_group(0, &bind_group, &[]);
+            render_pass.draw(0..3, 0..1);
             return;
         }
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -518,7 +570,7 @@ impl CommandTarget {
                 pool,
             )
         });
-        self.ensure_resolved(encoder, None);
+        self.ensure_resolved(descriptors, encoder, None);
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: self
@@ -567,7 +619,7 @@ impl CommandTarget {
                 | wgpu::TextureUsages::COPY_SRC,
             pool,
         );
-        self.ensure_resolved(encoder, Some(read));
+        self.ensure_resolved(descriptors, encoder, Some(read));
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: self.color_texture(),

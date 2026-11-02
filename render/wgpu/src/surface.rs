@@ -334,7 +334,7 @@ impl Surface {
         // If nothing happened, ensure it's cleared so we don't operate on garbage data,
         // and (Timffle) bring the resolve buffer up to date once, so that whoever
         // reads the target's color texture sees everything that was drawn.
-        target.ensure_resolved(draw_encoder, None);
+        target.ensure_resolved(descriptors, draw_encoder, None);
 
         target
     }

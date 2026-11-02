@@ -10,6 +10,8 @@ pub struct BindLayouts {
     pub gradient: wgpu::BindGroupLayout,
     pub blend: wgpu::BindGroupLayout,
     pub alpha_mask: wgpu::BindGroupLayout,
+    /// Timffle: a multisampled texture, for the sub-rectangle resolve.
+    pub resolve: wgpu::BindGroupLayout,
 }
 
 impl BindLayouts {
@@ -172,6 +174,20 @@ impl BindLayouts {
             label: alpha_mask_bind_layout_label.as_deref(),
         });
 
+        let resolve = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: create_debug_label!("Resolve bind group layout").as_deref(),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: true,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                },
+                count: None,
+            }],
+        });
+
         Self {
             globals,
             transforms,
@@ -179,6 +195,7 @@ impl BindLayouts {
             gradient,
             blend,
             alpha_mask,
+            resolve,
         }
     }
 }
