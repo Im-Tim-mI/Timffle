@@ -22,6 +22,8 @@ fn filter__main_vertex(in: filter__VertexInput) -> filter__VertexOutput {
 
 // Delegating because the one above is called from other shaders, so it can't be an entry point.
 @vertex
-fn filter__vertex_entry_point(in: filter__VertexInput) -> filter__VertexOutput {
+// Timffle: no double underscore in this name (naga rewrites "__" when it writes WGSL
+// for the WebGPU renderer, and the PixelBender pipeline looks it up by name).
+fn filter_vertex_entry_point(in: filter__VertexInput) -> filter__VertexOutput {
     return filter__main_vertex(in);
 }

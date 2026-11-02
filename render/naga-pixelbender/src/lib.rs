@@ -14,7 +14,10 @@ use ruffle_render::pixel_bender::{
     PixelBenderRegChannel, PixelBenderRegKind, PixelBenderShader, PixelBenderTypeOpcode,
 };
 
-pub const VERTEX_SHADER_ENTRYPOINT: &str = "filter__vertex_entry_point";
+// Timffle: no double underscore — naga rewrites identifiers containing "__" when
+// it writes WGSL for the WebGPU renderer, so the pipeline could not find the
+// entry point there ("Entry point \"filter__vertex_entry_point\" doesn't exist").
+pub const VERTEX_SHADER_ENTRYPOINT: &str = "filter_vertex_entry_point";
 pub const FRAGMENT_SHADER_ENTRYPOINT: &str = "main";
 
 pub struct NagaModules {
@@ -850,7 +853,15 @@ impl ShaderBuilder<'_> {
                 coordinate,
                 array_index: None,
                 offset: None,
-                level: naga::SampleLevel::Auto,
+                // Timffle: level 0 instead of automatic. PixelBender images have
+                // no mip levels, so the result is the same, but `textureSample`
+                // needs screen-space derivatives and WebGPU (Dawn) rejects it
+                // inside non-uniform control flow — which every PixelBender
+                // kernel with a conditional sample has — with "'textureSample'
+                // must only be called from uniform control flow", leaving the
+                // shader blank on the WebGPU renderer. `textureSampleLevel` has
+                // no such requirement.
+                level: naga::SampleLevel::Zero,
                 depth_ref: None,
                 gather: None,
                 clamp_to_edge: false,
