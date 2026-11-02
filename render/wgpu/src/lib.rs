@@ -50,6 +50,8 @@ mod layouts;
 mod mesh;
 mod shaders;
 mod surface;
+#[cfg(target_family = "wasm")]
+pub mod webgpu_readback;
 
 impl BitmapHandleImpl for Texture {}
 
@@ -213,6 +215,28 @@ impl QueueSyncHandle {
                 pool,
             } => {
                 let texture = as_texture(&handle);
+
+                // Timffle: the browser's WebGPU cannot map a buffer
+                // synchronously (the wait below would never return), so read
+                // the texture through an OffscreenCanvas instead.
+                #[cfg(target_family = "wasm")]
+                if descriptors.backend == wgpu::Backend::BrowserWebGpu {
+                    return match webgpu_readback::read_texture(
+                        &descriptors,
+                        frame,
+                        &texture.texture,
+                        copy_area,
+                    ) {
+                        Some((bytes, row_bytes)) => with_rgba(&bytes, row_bytes),
+                        None => {
+                            // Wrong pixels beat a hung tab; the error was logged.
+                            let row_bytes = copy_area.width()
+                                * texture.texture.format().block_copy_size(None).unwrap_or(4);
+                            let zeros = vec![0u8; (row_bytes * copy_area.height()) as usize];
+                            with_rgba(&zeros, row_bytes)
+                        }
+                    };
+                }
 
                 let buffer_dimensions = BufferDimensions::new(
                     copy_area.width() as usize,

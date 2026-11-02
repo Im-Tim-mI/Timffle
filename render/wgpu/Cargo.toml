@@ -36,7 +36,12 @@ workspace = true
 # wasm
 [target.'cfg(target_family = "wasm")'.dependencies.web-sys]
 workspace = true
-features = ["HtmlCanvasElement"]
+# Timffle: OffscreenCanvas & co. for the synchronous WebGPU readback (webgpu_readback.rs).
+features = ["HtmlCanvasElement", "OffscreenCanvas", "OffscreenCanvasRenderingContext2d", "ImageBitmap", "ImageData"]
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
 
 [features]
 render_debug_labels = []

@@ -26,6 +26,10 @@ pub struct Descriptors {
     pub shaders: Shaders,
     pipelines: Mutex<FnvHashMap<(u32, wgpu::TextureFormat), Arc<Pipelines>>>,
     pub filters: Filters,
+    /// Timffle: canvases and pipeline for the synchronous readback on the
+    /// browser's WebGPU backend, created on first use.
+    #[cfg(target_family = "wasm")]
+    pub webgpu_readback: crate::webgpu_readback::WebGpuReadbackSlot,
 }
 
 impl Debug for Descriptors {
@@ -64,6 +68,8 @@ impl Descriptors {
             shaders,
             pipelines: Default::default(),
             filters,
+            #[cfg(target_family = "wasm")]
+            webgpu_readback: Default::default(),
         }
     }
 

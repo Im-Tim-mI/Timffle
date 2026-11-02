@@ -422,6 +422,17 @@ impl<T: RenderTarget> WgpuRenderBackend<T> {
         destination: BitmapHandle,
         copy_area: PixelRegion,
     ) -> Box<QueueSyncHandle> {
+        // Timffle: on the browser's WebGPU a copied buffer can never be mapped
+        // synchronously; the texture is read through a canvas instead, so
+        // always keep the texture handle (see webgpu_readback.rs).
+        if self.descriptors.backend == wgpu::Backend::BrowserWebGpu {
+            return Box::new(QueueSyncHandle::NotCopied {
+                handle: destination,
+                copy_area,
+                descriptors: self.descriptors.clone(),
+                pool: self.offscreen_buffer_pool.clone(),
+            });
+        }
         match target.take_buffer() {
             None => Box::new(QueueSyncHandle::NotCopied {
                 handle: destination,
@@ -1049,17 +1060,23 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
             target_texture.texture.height() as usize,
             target_texture.texture.format(),
         );
-        let buffer_info = Some(TextureBufferInfo {
-            buffer: MaybeOwnedBuffer::Borrowed(
-                self.offscreen_buffer_pool
-                    .take(&self.descriptors, copy_dimensions.clone()),
-                copy_dimensions,
-            ),
-            copy_area: PixelRegion::for_whole_size(
-                target_texture.texture.width(),
-                target_texture.texture.height(),
-            ),
-        });
+        // Timffle: no readback buffer on the browser's WebGPU; the texture is
+        // read through a canvas instead (webgpu_readback.rs).
+        let buffer_info = if self.descriptors.backend == wgpu::Backend::BrowserWebGpu {
+            None
+        } else {
+            Some(TextureBufferInfo {
+                buffer: MaybeOwnedBuffer::Borrowed(
+                    self.offscreen_buffer_pool
+                        .take(&self.descriptors, copy_dimensions.clone()),
+                    copy_dimensions,
+                ),
+                copy_area: PixelRegion::for_whole_size(
+                    target_texture.texture.width(),
+                    target_texture.texture.height(),
+                ),
+            })
+        };
 
         let mut texture_target = TextureTarget {
             size: extent,
