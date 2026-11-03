@@ -2,6 +2,17 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26330 — 2026-11-03（webgpu 分支，測試版）
+
+**修正：在 macOS（以及 Windows 真 GPU）的 WebGPU 上，用 PixelBender 混合模式（`BlendMode.SHADER`）的內容會讓整個播放器變黑。** 只改 `render/wgpu/src/pixel_bender.rs` 一處；權限、設定、文字都沒變，小幫手仍是 1.4.1。通用的修正，WebGL2 與桌面版行為不變。
+
+- **原因**：混合著色器的輸入和輸出是同一張貼圖時，Ruffle 會先複製一份輸入。複本固定建成 `Rgba8Unorm`，但混合時的目標是畫面緩衝區，而瀏覽器 WebGPU 在 Metal（Mac）和 D3D12（Windows）上的畫布格式是 `Bgra8Unorm`。格式不同不能 `copyTextureToTexture`，整個指令緩衝區被判無效，那一幀什麼都沒畫出來。Linux 的軟體模擬畫布是 `Rgba8Unorm`，所以 26328/26329 的驗證沒抓到。
+- **修正**：複本改用和目標相同的格式（取樣與格式無關，結果不變）。
+- **實機驗證（Mac mini M2、macOS 26.3、Chrome 156，無頭 Chrome 走真的 Apple GPU：WebGPU 為 Metal 3，WebGL2 為 Metal 上的 ANGLE）**：瀏覽器差異測試 242 個回歸 SWF，兩種渲染器都 242 個有畫面、0 個主控台錯誤、WebGPU 242 個都確認 `Used renderer: webgpu`。26329：169 個逐像素相同、64 個差 1 以內、9 個有差，其中 `avm2/blend_shader_luma_lighten` 整個黑掉（主控台：`Bgra8Unorm` 與 `Rgba8Unorm` 不能複製）。26330：這個測試等待 2 秒後和 WebGL2 只差 43 個反鋸齒邊緣像素（第一次在 Metal 上編譯著色器較慢，只等 0.5 秒時還沒畫出來）。其餘 8 個差 2–5 階（`stage3d_blend` 5、斜角濾鏡 2–3、`hardlight`/`difference` 混合 2），是真 GPU 的浮點精度差，肉眼看不出。
+- **Windows（QEMU 虛擬機、只有「Microsoft 基本顯示卡」、Chrome 156）**：WebGPU 拿不到裝置（`requestAdapter()` 回傳 null），選 WebGPU 時 242 個全部自動退回 `wgpu-webgl`、全部有畫面、0 個錯誤；退回路徑正常。這台沒有真 GPU，不能代表玩家的 Windows 電腦。
+- **混合效果壓力測試頁**（150 個方塊各帶 Overlay＋Hardlight，SWF 24 fps，Mac M2）：WebGL2 在 960×560／1920×1120／2880×1680 是 11.7／7.4／3.6 幀，主執行緒 99% 忙；WebGPU 是 9.5／9.1／9.1 幀，主執行緒只忙 11%。同一台 Chrome 畫最簡單的 WebGPU 頁面可以跑滿 60 幀，所以 9 幀是這個測試頁本身在 GPU 上的負擔（混合物件很多），不是測試環境的限制。小畫面 WebGL2 幀數稍高，大畫面 WebGPU 明顯較好，而且 WebGPU 幾乎不佔主執行緒，Flash 的程式邏輯有更多時間可用。
+- 工具：`timffle-work/realgpu-2026-11-03/bundle/realgpu.mjs`（可攜版差異測試＋壓力測試頁＋GPU 資訊，Mac 用 pipe、Windows 用 WebSocket 連 Chrome）。
+
 ## 0.8.0.26329 — 2026-11-03（webgpu 分支，測試版）
 
 **WebGPU 渲染器不再因為「畫完再讀回」卡死：補上瀏覽器 WebGPU 的同步讀回。** 只改 Ruffle 的 wgpu 繪圖層（`render/wgpu/src/webgpu_readback.rs`、`render/wgpu/shaders/readback.wgsl` 新檔，`lib.rs`、`backend.rs`、`descriptors.rs`、`Cargo.toml` 小改）：擴充功能的權限、設定、文字都沒變，小幫手仍是 1.4.1。只影響 WebGPU 渲染器；WebGL2 與桌面版的讀回路徑完全沒動。通用的修正，任何在 `BitmapData.draw` 之後再用 CPU 讀像素的 Flash 內容都受益。

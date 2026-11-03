@@ -460,10 +460,14 @@ pub(super) fn run_pixelbender_shader_impl(
                             mip_level_count: 1,
                             sample_count: 1,
                             dimension: wgpu::TextureDimension::D2,
-                            format: wgpu::TextureFormat::Rgba8Unorm,
+                            // Must match the target: copy_texture_to_texture needs
+                            // copy-compatible formats, and a blend shader's target is the
+                            // frame buffer, which is Bgra8Unorm on browser WebGPU (Metal,
+                            // D3D12). Sampling is format-independent.
+                            format: target.format(),
                             usage: wgpu::TextureUsages::COPY_DST
                                 | wgpu::TextureUsages::TEXTURE_BINDING,
-                            view_formats: &[wgpu::TextureFormat::Rgba8Unorm],
+                            view_formats: &[target.format()],
                         });
                         render_command_encoder.copy_texture_to_texture(
                             TexelCopyTextureInfo {
