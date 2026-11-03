@@ -102,7 +102,7 @@
         "message": "Ŝalti sockets (la retejoj en la listo uzas ilin rekte; pri aliaj retejoj oni demandas unue)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Glata movo (eksperimenta): desegni pliajn bildojn inter la kadroj de la ludo, por ke movo aspektu pli glata. Sprite-animacio restas sama; uzas pli da GPU."
+        "message": "Interpolado de kadroj"
     },
     "timffle_options_method": {
         "message": "Konekta metodo"
@@ -319,5 +319,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle estas neoficiala disbranĉo de <1>Ruffle</1> kaj ne estas ligita al la projekto Ruffle; ĝia Flash-emulado devenas de Ruffle kaj ĝiaj kontribuantoj. Raportu problemojn al <2>Timffle</2>, ne al Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Senlima – tiel alte kiel la aparato permesas"
+    },
+    "timffle_fi_auto": {
+        "message": "Aŭtomata (defaŭlta) – mem ŝanĝiĝas inter 144 / 120 / 60 / 30 / for"
+    },
+    "timffle_fi_custom": {
+        "message": "Propra…"
+    },
+    "timffle_fi_off": {
+        "message": "For – la propra kadrofrekvenco de la ludo"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Propra celo (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Montri kadrofrekvencon (ŝvebanta skatolo en angulo de la ludo; trenebla al alia angulo)"
     }
 }

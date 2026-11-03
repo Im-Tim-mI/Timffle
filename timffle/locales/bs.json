@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "Ovaj zahtjev više nije aktivan. Možete zatvoriti ovaj prozor.",
     "timffle_options_title": "Socket veze (serveri igara)",
     "timffle_options_enable": "Omogući socketove (web-stranice s liste koriste ih direktno; za ostale se prvo pita)",
-    "timffle_options_frame_interpolation": "Glatko kretanje (eksperimentalno): crtanje dodatnih slika između sličica igre da kretanje izgleda glađe. Animacija spriteova ostaje ista; troši više GPU-a.",
+    "timffle_options_frame_interpolation": "Interpolacija sličica",
     "timffle_options_method": "Način povezivanja",
     "timffle_options_helper": "Socket pomoćnik (preporučeno)",
     "timffle_options_websocket": "Vlastiti WebSocket proxy (napredno)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "Nesačuvane promjene.",
     "timffle_read_failed": "Lokalne postavke nije moguće pročitati.",
     "timffle_save_failed": "Čuvanje nije uspjelo; promjene nisu potvrđene. Pokušajte ponovo.",
-    "timffle_attribution": "Timffle je nezvanični fork projekta <1>Ruffle</1> i nije povezan s projektom Ruffle; Flash emulacija potiče iz Ruffle i njegovih saradnika. Probleme prijavite projektu <2>Timffle</2>, a ne projektu Ruffle."
+    "timffle_attribution": "Timffle je nezvanični fork projekta <1>Ruffle</1> i nije povezan s projektom Ruffle; Flash emulacija potiče iz Ruffle i njegovih saradnika. Probleme prijavite projektu <2>Timffle</2>, a ne projektu Ruffle.",
+    "timffle_fi_unlimited": "Bez ograničenja – koliko uređaj dopušta",
+    "timffle_fi_auto": "Automatski (zadano) – samo prelazi između 144 / 120 / 60 / 30 / isključeno",
+    "timffle_fi_custom": "Prilagođeno…",
+    "timffle_fi_off": "Isključeno – vlastita brzina sličica igre",
+    "timffle_fi_custom_fps": "Prilagođeni cilj (24–999 fps)",
+    "timffle_options_show_fps": "Prikaži brzinu sličica (lebdeći okvir u uglu igre; može se povući u drugi ugao)"
 }

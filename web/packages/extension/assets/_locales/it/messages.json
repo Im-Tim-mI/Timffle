@@ -240,7 +240,7 @@
         "message": "Attiva i socket (i siti in elenco li usano direttamente; per gli altri siti viene chiesto prima)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Movimento fluido (sperimentale): disegna immagini aggiuntive tra i fotogrammi del gioco perché il movimento sembri più fluido. L'animazione degli sprite resta invariata; usa più GPU."
+        "message": "Interpolazione dei fotogrammi"
     },
     "timffle_options_method": {
         "message": "Metodo di connessione"
@@ -457,5 +457,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle è un fork non ufficiale di <1>Ruffle</1> e non è affiliato al progetto Ruffle; la sua emulazione di Flash proviene da Ruffle e dai suoi collaboratori. Segnala i problemi a <2>Timffle</2>, non a Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Illimitata – quanto consente il dispositivo"
+    },
+    "timffle_fi_auto": {
+        "message": "Automatica (predefinita) – passa da sola tra 144 / 120 / 60 / 30 / spenta"
+    },
+    "timffle_fi_custom": {
+        "message": "Personalizzata…"
+    },
+    "timffle_fi_off": {
+        "message": "Spenta – la frequenza propria del gioco"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Obiettivo personalizzato (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Mostra i fotogrammi al secondo (riquadro flottante in un angolo del gioco; trascinabile in un altro angolo)"
     }
 }

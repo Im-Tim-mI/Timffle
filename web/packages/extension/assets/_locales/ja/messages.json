@@ -240,7 +240,7 @@
         "message": "ソケットを有効にする（リストにあるウェブサイトは直接使用し、それ以外のウェブサイトは先に確認します）"
     },
     "timffle_options_frame_interpolation": {
-        "message": "なめらかな動き（実験的）：ゲームのフレームの間に追加の画像を描画して、動きをよりなめらかに見せます。スプライトアニメーションはそのまま。GPU の負荷が増えます。"
+        "message": "フレーム補間"
     },
     "timffle_options_method": {
         "message": "接続方法"
@@ -457,5 +457,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle は <1>Ruffle</1> の非公式フォークであり、Ruffle プロジェクトとは関係ありません。Flash のエミュレーションは Ruffle とその貢献者によるものです。問題は Ruffle ではなく <2>Timffle</2> に報告してください。"
+    },
+    "timffle_fi_unlimited": {
+        "message": "無制限 — デバイスの性能が許す限り高く"
+    },
+    "timffle_fi_auto": {
+        "message": "自動（既定）— 144 / 120 / 60 / 30 / オフの間を自動で調整"
+    },
+    "timffle_fi_custom": {
+        "message": "カスタム…"
+    },
+    "timffle_fi_off": {
+        "message": "オフ — ゲーム本来のフレームレート"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "カスタム目標（24～999 fps）"
+    },
+    "timffle_options_show_fps": {
+        "message": "フレームレートを表示（ゲームの隅に浮かぶ小窓。別の隅へドラッグ可）"
     }
 }

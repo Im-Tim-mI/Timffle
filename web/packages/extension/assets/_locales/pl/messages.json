@@ -240,7 +240,7 @@
         "message": "Włącz sockety (witryny z listy używają ich bezpośrednio; w przypadku innych witryn najpierw pytamy)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Płynny ruch (eksperymentalne): rysuje dodatkowe obrazy między klatkami gry, aby ruch wyglądał płynniej. Animacja sprite'ów pozostaje bez zmian; używa więcej GPU."
+        "message": "Interpolacja klatek"
     },
     "timffle_options_method": {
         "message": "Metoda połączenia"
@@ -457,5 +457,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle jest nieoficjalnym forkiem <1>Ruffle</1> i nie jest związany z projektem Ruffle; emulacja Flasha pochodzi z Ruffle i jego współtwórców. Problemy zgłaszaj do <2>Timffle</2>, a nie do Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Bez limitu – tak wysoko, jak pozwala urządzenie"
+    },
+    "timffle_fi_auto": {
+        "message": "Auto (domyślnie) – samo przełącza między 144 / 120 / 60 / 30 / wył."
+    },
+    "timffle_fi_custom": {
+        "message": "Własna…"
+    },
+    "timffle_fi_off": {
+        "message": "Wył. – własna liczba klatek gry"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Własny cel (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Pokaż liczbę klatek (pływające okienko w rogu gry; można przeciągnąć do innego rogu)"
     }
 }

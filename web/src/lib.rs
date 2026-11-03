@@ -5,6 +5,7 @@ mod audio;
 mod builder;
 mod external_interface;
 mod input;
+mod interp;
 mod log_adapter;
 mod navigator;
 mod storage;
@@ -118,6 +119,14 @@ impl<E> Drop for JsCallback<E> {
     }
 }
 
+/// Timffle: `performance.now()` in ms (0 when unavailable).
+fn performance_now() -> f64 {
+    web_sys::window()
+        .and_then(|w| w.performance())
+        .map(|p| p.now())
+        .unwrap_or(0.0)
+}
+
 struct RuffleInstance {
     core: Arc<Mutex<Player>>,
     callstack: Option<StaticCallstack>,
@@ -154,6 +163,8 @@ struct RuffleInstance {
     pressed_buttons: Vec<GamepadButton>,
     /// Timffle: IME notifications from the core (see `tick`).
     notification_receiver: async_channel::Receiver<PlayerNotification>,
+    /// Timffle: adaptive frame interpolation and fps statistics.
+    interp: interp::InterpControl,
 }
 
 #[wasm_bindgen(raw_module = "./internal/player/inner.js")]
@@ -432,6 +443,24 @@ impl RuffleHandle {
             .unwrap_or(JsValue::NULL)
     }
 
+    /// Timffle: the numbers for the fps overlay (JSON; see `interp::InterpControl::stats_json`).
+    pub fn frame_stats(&self) -> JsValue {
+        let source_fps = self.with_core(|core| core.frame_rate()).unwrap_or(0.0);
+        let now = performance_now();
+        self.with_instance(|instance| {
+            JsValue::from_str(&instance.interp.stats_json(now, source_fps))
+        })
+        .unwrap_or(JsValue::NULL)
+    }
+
+    /// Timffle: changes the frame interpolation mode while playing (`off`, `auto`, `unlimited`
+    /// or a target fps).
+    pub fn set_frame_interpolation(&self, value: &str) {
+        let mode = interp::InterpMode::parse(value);
+        let _ = self.with_core_mut(|core| core.set_frame_interpolation(!mode.is_off()));
+        let _ = self.with_instance_mut(|instance| instance.interp.set_mode(mode));
+    }
+
     pub fn renderer_name(&self) -> JsValue {
         self.with_core(|core| JsValue::from_str(core.renderer().name()))
             .unwrap_or(JsValue::NULL)
@@ -589,6 +618,7 @@ impl RuffleHandle {
         let player = config
             .create_player(js_player.clone(), log_subscriber.clone())
             .await?;
+        let frame_interpolation_mode = config.frame_interpolation;
 
         parent
             .append_child(&player.canvas.clone().into())
@@ -613,6 +643,7 @@ impl RuffleHandle {
             animation_handler_id: None,
             background_tick_mode: false,
             render_pending: false,
+            interp: interp::InterpControl::new(frame_interpolation_mode),
             mouse_move_callback: None,
             mouse_enter_callback: None,
             mouse_leave_callback: None,
@@ -1311,7 +1342,22 @@ impl RuffleHandle {
 
             // Store the timestamp of the last tick.
             instance.timestamp = Some(timestamp);
+
+            // Timffle: frame-rate statistics and the adaptive interpolation target.
+            instance.interp.on_animation_frame(timestamp, dt);
         });
+
+        // Timffle: is an extra (interpolated) picture wanted on this animation frame?
+        let source_fps = self.with_core(|core| core.frame_rate()).unwrap_or(24.0);
+        let interpolate_now = self
+            .with_instance(|instance| {
+                instance
+                    .interp
+                    .decide(timestamp, source_fps, background)
+                    .interpolate
+            })
+            .unwrap_or(false);
+        let mut drew: Option<Option<f64>> = None;
 
         // Tick the Ruffle core.
         let _ = self.with_core_mut(|core| {
@@ -1387,24 +1433,34 @@ impl RuffleHandle {
             }
 
             // Render if the core signals a new frame, or if we resized.
-            // Timffle: with frame interpolation, every animation frame may show a new picture.
-            let wants_render = core.needs_render()
-                || new_dimensions.is_some()
-                || render_pending
-                || core.wants_interpolated_render();
+            // Timffle: with frame interpolation, an animation frame between two movie
+            // frames may also show a new picture, at the rate the controller asks for.
+            let frame_render = core.needs_render() || new_dimensions.is_some() || render_pending;
+            let interp_render = !frame_render && interpolate_now && core.wants_interpolated_render();
             if background {
                 // Timffle: nobody sees the canvas while the page is hidden, but the
                 // background loop runs at the movie's frame rate, and drawing a big
                 // stage every frame kept phones' GPUs busy long after the app was
                 // left. The movie still gets its Event.RENDER every frame.
                 core.dispatch_render_event();
-                render_pending = wants_render;
-            } else if wants_render {
+                render_pending = frame_render;
+            } else if frame_render || interp_render {
+                let started = if interp_render { performance_now() } else { 0.0 };
                 core.render();
                 render_pending = false;
+                drew = Some(interp_render.then(|| performance_now() - started));
             }
         });
-        let _ = self.with_instance_mut(|instance| instance.render_pending = render_pending);
+        let renders_total = self.with_core(|core| core.render_count()).unwrap_or(0);
+        let _ = self.with_instance_mut(|instance| {
+            instance.render_pending = render_pending;
+            if let Some(cost) = drew {
+                instance.interp.note_render(timestamp, cost);
+            }
+            instance
+                .interp
+                .after_frame(timestamp, source_fps, background, renders_total);
+        });
     }
 
     fn on_metadata(self, swf_header: &ruffle_core::swf::HeaderExt) {

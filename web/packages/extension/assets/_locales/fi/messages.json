@@ -213,7 +213,7 @@
         "message": "Ota socketit käyttöön (luettelon sivustot käyttävät niitä suoraan; muilta sivustoilta kysytään ensin)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Sulava liike (kokeellinen): piirtää lisäkuvia pelin ruutujen väliin, jotta liike näyttää sulavammalta. Sprite-animaatio pysyy ennallaan; käyttää enemmän GPU:ta."
+        "message": "Kuvien interpolointi"
     },
     "timffle_options_method": {
         "message": "Yhteystapa"
@@ -430,5 +430,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle on epävirallinen fork projektista <1>Ruffle</1>, eikä se ole sidoksissa Ruffle-projektiin; Flash-emulointi tulee Rufflesta ja sen kehittäjiltä. Ilmoita ongelmista projektille <2>Timffle</2>, älä Rufflelle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Rajoittamaton – niin korkea kuin laite sallii"
+    },
+    "timffle_fi_auto": {
+        "message": "Automaattinen (oletus) – vaihtaa itse 144 / 120 / 60 / 30 / pois välillä"
+    },
+    "timffle_fi_custom": {
+        "message": "Mukautettu…"
+    },
+    "timffle_fi_off": {
+        "message": "Pois – pelin oma kuvataajuus"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Mukautettu tavoite (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Näytä kuvataajuus (kelluva laatikko pelin kulmassa; voi vetää toiseen kulmaan)"
     }
 }

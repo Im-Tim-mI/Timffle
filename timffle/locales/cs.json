@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "Tato žádost již není aktivní. Toto okno můžete zavřít.",
     "timffle_options_title": "Připojení přes sockety (herní servery)",
     "timffle_options_enable": "Povolit sockety (weby v seznamu je používají přímo; u ostatních webů se nejprve zeptáme)",
-    "timffle_options_frame_interpolation": "Plynulý pohyb (experimentální): mezi snímky hry se kreslí další obrázky, aby pohyb vypadal plynuleji. Animace spritů zůstává stejná; zatěžuje více GPU.",
+    "timffle_options_frame_interpolation": "Interpolace snímků",
     "timffle_options_method": "Způsob připojení",
     "timffle_options_helper": "Pomocník pro sockety (doporučeno)",
     "timffle_options_websocket": "Vlastní proxy WebSocket (pokročilé)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "Neuložené změny.",
     "timffle_read_failed": "Místní nastavení se nepodařilo přečíst.",
     "timffle_save_failed": "Uložení se nezdařilo; změny nebyly potvrzeny. Zkuste to znovu.",
-    "timffle_attribution": "Timffle je neoficiální fork projektu <1>Ruffle</1> a není s projektem Ruffle nijak spojen; emulace Flash pochází z Ruffle a jeho přispěvatelů. Problémy hlaste na <2>Timffle</2>, ne projektu Ruffle."
+    "timffle_attribution": "Timffle je neoficiální fork projektu <1>Ruffle</1> a není s projektem Ruffle nijak spojen; emulace Flash pochází z Ruffle a jeho přispěvatelů. Problémy hlaste na <2>Timffle</2>, ne projektu Ruffle.",
+    "timffle_fi_unlimited": "Bez omezení – tak vysoko, jak zařízení dovolí",
+    "timffle_fi_auto": "Automaticky (výchozí) – samo přepíná mezi 144 / 120 / 60 / 30 / vypnuto",
+    "timffle_fi_custom": "Vlastní…",
+    "timffle_fi_off": "Vypnuto – vlastní snímková frekvence hry",
+    "timffle_fi_custom_fps": "Vlastní cíl (24–999 fps)",
+    "timffle_options_show_fps": "Zobrazit snímkovou frekvenci (plovoucí okénko v rohu hry; lze přetáhnout do jiného rohu)"
 }

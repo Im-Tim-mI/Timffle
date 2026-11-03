@@ -234,7 +234,7 @@
         "message": "Omogući socketove (web-mjesta s popisa koriste ih izravno; za ostala se najprije pita)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Glatko kretanje (eksperimentalno): crtanje dodatnih slika između sličica igre kako bi kretanje izgledalo glađe. Animacija spriteova ostaje ista; troši više GPU-a."
+        "message": "Interpolacija sličica"
     },
     "timffle_options_method": {
         "message": "Način povezivanja"
@@ -451,5 +451,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle je neslužbeni fork projekta <1>Ruffle</1> i nije povezan s projektom Ruffle; Flash emulacija potječe iz Ruffle i njegovih suradnika. Probleme prijavite projektu <2>Timffle</2>, a ne projektu Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Bez ograničenja – koliko uređaj dopušta"
+    },
+    "timffle_fi_auto": {
+        "message": "Automatski (zadano) – samo prelazi između 144 / 120 / 60 / 30 / isključeno"
+    },
+    "timffle_fi_custom": {
+        "message": "Prilagođeno…"
+    },
+    "timffle_fi_off": {
+        "message": "Isključeno – vlastita brzina sličica igre"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Prilagođeni cilj (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Prikaži brzinu sličica (lebdeći okvir u kutu igre; može se povući u drugi kut)"
     }
 }

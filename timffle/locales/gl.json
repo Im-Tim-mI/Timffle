@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "Esta solicitude xa non está activa. Podes pechar esta xanela.",
     "timffle_options_title": "Conexións de socket (servidores de xogos)",
     "timffle_options_enable": "Activar sockets (os sitios da lista úsanos directamente; nos outros sitios pregúntase primeiro)",
-    "timffle_options_frame_interpolation": "Movemento suave (experimental): debuxa imaxes adicionais entre os fotogramas do xogo para que o movemento se vexa máis fluído. A animación de sprites non cambia; consome máis GPU.",
+    "timffle_options_frame_interpolation": "Interpolación de fotogramas",
     "timffle_options_method": "Método de conexión",
     "timffle_options_helper": "Asistente de sockets (recomendado)",
     "timffle_options_websocket": "Proxy WebSocket personalizado (avanzado)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "Cambios sen gardar.",
     "timffle_read_failed": "Non se puideron ler os axustes locais.",
     "timffle_save_failed": "Erro ao gardar; os cambios non se confirmaron. Téntao de novo.",
-    "timffle_attribution": "Timffle é unha bifurcación non oficial de <1>Ruffle</1> e non está afiliada ao proxecto Ruffle; a súa emulación de Flash procede de Ruffle e dos seus colaboradores. Informa dos problemas a <2>Timffle</2>, non a Ruffle."
+    "timffle_attribution": "Timffle é unha bifurcación non oficial de <1>Ruffle</1> e non está afiliada ao proxecto Ruffle; a súa emulación de Flash procede de Ruffle e dos seus colaboradores. Informa dos problemas a <2>Timffle</2>, non a Ruffle.",
+    "timffle_fi_unlimited": "Sen límite – tan alto como permita o dispositivo",
+    "timffle_fi_auto": "Automático (predeterminado) – cambia só entre 144 / 120 / 60 / 30 / desactivado",
+    "timffle_fi_custom": "Personalizado…",
+    "timffle_fi_off": "Desactivado – a taxa propia do xogo",
+    "timffle_fi_custom_fps": "Obxectivo personalizado (24–999 fps)",
+    "timffle_options_show_fps": "Mostrar fotogramas por segundo (caixa flotante nun recuncho do xogo; arrástraa a outro recuncho)"
 }

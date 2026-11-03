@@ -335,11 +335,6 @@ pub struct Player {
 
     run_state: RunState,
     needs_render: bool,
-    /// Timffle: a goto outside the frame loop (timer, socket, net event) in a
-    /// SWF 9 movie placed children that will only be constructed and run their
-    /// frame-1 scripts in the next frame. Flash shows nothing before that frame,
-    /// so rendering waits for it (see `run_inner_goto_frame`).
-    render_waits_for_frame: bool,
 
     /// Timffle: `Loader.unloadAndStop(true)` asked for a full collection; the
     /// next GC step after the current update runs a whole cycle.
@@ -368,6 +363,8 @@ pub struct Player {
     forced_frame_rate: bool,
     /// Timffle: draw extra pictures between movie frames (see `display_object::interp`).
     frame_interpolation: bool,
+    /// Timffle: pictures drawn so far (`render` calls), for the fps display.
+    render_count: u64,
     /// The `display_object::interp` frame number of the last `run_frame`.
     interp_tick: u32,
     actions_since_timeout_check: u32,
@@ -572,6 +569,22 @@ impl Player {
         self.frame_accumulator += dt;
         let frame_duration = self.frame_duration();
 
+        // Timffle: frame interpolation counts a tick that runs a movie frame as one "frame":
+        // what the timers and the frame change from here on is interpolated from the pose
+        // the objects had now (see `display_object::interp`).
+        if self.frame_accumulator >= frame_duration {
+            self.interp_tick = crate::display_object::interp::begin_frame();
+        }
+
+        // Timffle: events that arrive between frames (socket data, net connections, timers)
+        // run before this tick's frames, so a picture drawn after the tick shows the state
+        // at the end of the last frame, as Flash Player draws it. Ruffle ran them after the
+        // frames, so an object a timer had just placed was drawn before its constructor and
+        // frame-1 script ran (摩爾莊園 lamu drawn uncoloured for one frame).
+        self.update_sockets();
+        self.update_net_connections();
+        self.update_timers(dt);
+
         let max_frames_per_tick = self.max_frames_per_tick();
         let mut frame = 0;
 
@@ -623,9 +636,6 @@ impl Player {
         });
         self.frame_accumulator += FloatDuration::from_secs(audio_skew);
 
-        self.update_sockets();
-        self.update_net_connections();
-        self.update_timers(dt);
         self.update(|context| {
             StreamManager::tick(context, dt);
         });
@@ -967,7 +977,7 @@ impl Player {
     }
 
     pub fn needs_render(&self) -> bool {
-        self.needs_render && !self.render_waits_for_frame
+        self.needs_render
     }
 
     pub fn background_color(&mut self) -> Option<Color> {
@@ -2091,8 +2101,6 @@ impl Player {
             return;
         }
 
-        self.interp_tick = crate::display_object::interp::begin_frame();
-
         self.update(|context| {
             // TODO: Is this order correct?
             run_all_phases_avm2(context);
@@ -2108,7 +2116,6 @@ impl Player {
         });
 
         self.needs_render = true;
-        self.render_waits_for_frame = false;
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2176,6 +2183,7 @@ impl Player {
         self.renderer
             .submit_frame(background_color, commands, cache_draws);
 
+        self.render_count += 1;
         self.needs_render = false;
     }
 
@@ -2199,6 +2207,11 @@ impl Player {
 
     pub fn navigator_mut(&mut self) -> &mut dyn NavigatorBackend {
         &mut *self.navigator
+    }
+
+    /// Timffle: how many pictures `render` has drawn.
+    pub fn render_count(&self) -> u64 {
+        self.render_count
     }
 
     /// Timffle: whether extra pictures are drawn between movie frames.
@@ -2419,7 +2432,6 @@ impl Player {
                 timers,
                 current_context_menu,
                 needs_render: &mut this.needs_render,
-                render_waits_for_frame: &mut this.render_waits_for_frame,
                 full_gc_requested: &mut this.full_gc_requested,
                 avm1,
                 avm2,
@@ -3267,6 +3279,7 @@ impl PlayerBuilder {
                 frame_rate,
                 forced_frame_rate,
                 frame_interpolation: self.frame_interpolation,
+                render_count: 0,
                 interp_tick: 0,
                 frame_phase: Default::default(),
                 frame_accumulator: FloatDuration::ZERO,
@@ -3302,7 +3315,6 @@ impl PlayerBuilder {
                     RunState::Suspended
                 },
                 needs_render: true,
-                render_waits_for_frame: false,
                 full_gc_requested: false,
                 self_reference: self_ref.clone(),
                 load_behavior: self.load_behavior,

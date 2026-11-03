@@ -79,7 +79,18 @@ export function configureBuilder(
         builder.setFrameRate(config.frameRate);
     }
     if (isExplicit(config.frameInterpolation)) {
-        builder.setFrameInterpolation(config.frameInterpolation);
+        // Timffle: booleans are the old on/off setting; "custom" takes its fps
+        // from frameInterpolationFps.
+        let mode = config.frameInterpolation;
+        if (mode === true) {
+            mode = "auto";
+        } else if (mode === false) {
+            mode = "off";
+        } else if (mode === "custom") {
+            const fps = Number(config.frameInterpolationFps);
+            mode = Number.isFinite(fps) && fps >= 24 && fps <= 999 ? fps : 90;
+        }
+        builder.setFrameInterpolation(String(mode));
     }
     if (isExplicit(config.wmode)) {
         builder.setWmode(config.wmode);

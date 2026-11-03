@@ -240,7 +240,7 @@
         "message": "소켓 사용(목록에 있는 웹사이트는 바로 사용하고, 다른 웹사이트는 먼저 묻습니다)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "부드러운 움직임(실험적): 게임 프레임 사이에 그림을 추가로 그려 움직임을 더 부드럽게 보이게 합니다. 스프라이트 애니메이션은 그대로이며 GPU를 더 사용합니다."
+        "message": "프레임 보간"
     },
     "timffle_options_method": {
         "message": "연결 방법"
@@ -457,5 +457,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle은 <1>Ruffle</1>의 비공식 포크이며 Ruffle 프로젝트와 관련이 없습니다. Flash 에뮬레이션은 Ruffle과 그 기여자들에게서 왔습니다. 문제는 Ruffle이 아닌 <2>Timffle</2>에 신고해 주세요."
+    },
+    "timffle_fi_unlimited": {
+        "message": "제한 없음 — 기기 성능이 허용하는 만큼 높게"
+    },
+    "timffle_fi_auto": {
+        "message": "자동(기본) — 144 / 120 / 60 / 30 / 끔 사이에서 자동 조절"
+    },
+    "timffle_fi_custom": {
+        "message": "사용자 지정…"
+    },
+    "timffle_fi_off": {
+        "message": "끔 — 게임 본래의 프레임 속도"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "사용자 지정 목표(24~999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "프레임 속도 표시(게임 모서리의 떠 있는 상자, 다른 모서리로 끌 수 있음)"
     }
 }

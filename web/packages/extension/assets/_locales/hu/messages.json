@@ -231,7 +231,7 @@
         "message": "Socketek engedélyezése (a listán szereplő webhelyek közvetlenül használják, a többitől előbb rákérdez)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Sima mozgás (kísérleti): a játék képkockái közé további képek rajzolása, hogy a mozgás simábbnak tűnjön. A sprite-animáció változatlan marad; több GPU-t használ."
+        "message": "Képkocka-interpoláció"
     },
     "timffle_options_method": {
         "message": "Kapcsolódási mód"
@@ -448,5 +448,23 @@
     },
     "timffle_attribution": {
         "message": "A Timffle a <1>Ruffle</1> nem hivatalos forkja, és nincs kapcsolatban a Ruffle projekttel; a Flash-emuláció a Ruffle-ből és közreműködőitől származik. A hibákat a <2>Timffle</2> projektnek jelezd, ne a Ruffle-nek."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Korlátlan – amennyit az eszköz enged"
+    },
+    "timffle_fi_auto": {
+        "message": "Automatikus (alapértelmezett) – magától vált 144 / 120 / 60 / 30 / ki között"
+    },
+    "timffle_fi_custom": {
+        "message": "Egyéni…"
+    },
+    "timffle_fi_off": {
+        "message": "Ki – a játék saját képkockasebessége"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Egyéni cél (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Képkockasebesség mutatása (lebegő doboz a játék sarkában; másik sarokba húzható)"
     }
 }

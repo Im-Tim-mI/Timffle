@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "Questa richiesta non è più attiva. Puoi chiudere questa finestra.",
     "timffle_options_title": "Connessioni socket (server di gioco)",
     "timffle_options_enable": "Attiva i socket (i siti in elenco li usano direttamente; per gli altri siti viene chiesto prima)",
-    "timffle_options_frame_interpolation": "Movimento fluido (sperimentale): disegna immagini aggiuntive tra i fotogrammi del gioco perché il movimento sembri più fluido. L'animazione degli sprite resta invariata; usa più GPU.",
+    "timffle_options_frame_interpolation": "Interpolazione dei fotogrammi",
     "timffle_options_method": "Metodo di connessione",
     "timffle_options_helper": "Programma di supporto socket (consigliato)",
     "timffle_options_websocket": "Proxy WebSocket personalizzato (avanzato)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "Modifiche non salvate.",
     "timffle_read_failed": "Impossibile leggere le impostazioni locali.",
     "timffle_save_failed": "Salvataggio non riuscito; le modifiche non sono state confermate. Riprova.",
-    "timffle_attribution": "Timffle è un fork non ufficiale di <1>Ruffle</1> e non è affiliato al progetto Ruffle; la sua emulazione di Flash proviene da Ruffle e dai suoi collaboratori. Segnala i problemi a <2>Timffle</2>, non a Ruffle."
+    "timffle_attribution": "Timffle è un fork non ufficiale di <1>Ruffle</1> e non è affiliato al progetto Ruffle; la sua emulazione di Flash proviene da Ruffle e dai suoi collaboratori. Segnala i problemi a <2>Timffle</2>, non a Ruffle.",
+    "timffle_fi_unlimited": "Illimitata – quanto consente il dispositivo",
+    "timffle_fi_auto": "Automatica (predefinita) – passa da sola tra 144 / 120 / 60 / 30 / spenta",
+    "timffle_fi_custom": "Personalizzata…",
+    "timffle_fi_off": "Spenta – la frequenza propria del gioco",
+    "timffle_fi_custom_fps": "Obiettivo personalizzato (24–999 fps)",
+    "timffle_options_show_fps": "Mostra i fotogrammi al secondo (riquadro flottante in un angolo del gioco; trascinabile in un altro angolo)"
 }

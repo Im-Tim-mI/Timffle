@@ -234,7 +234,7 @@
         "message": "Aktifkan socket (situs dalam daftar menggunakannya langsung; situs lain ditanya dulu)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Gerakan halus (eksperimental): menggambar gambar tambahan di antara frame permainan agar gerakan terlihat lebih halus. Animasi sprite tetap sama; memakai lebih banyak GPU."
+        "message": "Interpolasi frame"
     },
     "timffle_options_method": {
         "message": "Metode koneksi"
@@ -451,5 +451,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle adalah fork tidak resmi dari <1>Ruffle</1> dan tidak berafiliasi dengan proyek Ruffle; emulasi Flash-nya berasal dari Ruffle dan para kontributornya. Laporkan masalah ke <2>Timffle</2>, bukan ke Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Tak terbatas — setinggi yang perangkat izinkan"
+    },
+    "timffle_fi_auto": {
+        "message": "Otomatis (bawaan) — berpindah sendiri antara 144 / 120 / 60 / 30 / mati"
+    },
+    "timffle_fi_custom": {
+        "message": "Kustom…"
+    },
+    "timffle_fi_off": {
+        "message": "Mati — laju frame asli permainan"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Target kustom (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Tampilkan laju frame (kotak mengambang di sudut permainan; bisa diseret ke sudut lain)"
     }
 }

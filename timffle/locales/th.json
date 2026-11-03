@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "คำขอนี้ไม่มีผลแล้ว คุณปิดหน้าต่างนี้ได้",
     "timffle_options_title": "การเชื่อมต่อ Socket (เซิร์ฟเวอร์เกม)",
     "timffle_options_enable": "เปิดใช้ Socket (เว็บไซต์ในรายการจะใช้ได้โดยตรง ส่วนเว็บไซต์อื่นจะถามก่อน)",
-    "timffle_options_frame_interpolation": "การเคลื่อนไหวลื่นไหล (ทดลอง): วาดภาพเพิ่มระหว่างเฟรมของเกมเพื่อให้การเคลื่อนไหวดูลื่นขึ้น แอนิเมชันสไปรต์ยังคงเดิม ใช้ GPU มากขึ้น",
+    "timffle_options_frame_interpolation": "การแทรกเฟรม",
     "timffle_options_method": "วิธีการเชื่อมต่อ",
     "timffle_options_helper": "ตัวช่วย Socket (แนะนำ)",
     "timffle_options_websocket": "พร็อกซี WebSocket ที่กำหนดเอง (ขั้นสูง)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
     "timffle_read_failed": "อ่านการตั้งค่าในเครื่องไม่ได้",
     "timffle_save_failed": "บันทึกไม่สำเร็จ ยังไม่ยืนยันว่ามีการเปลี่ยนแปลง โปรดลองอีกครั้ง",
-    "timffle_attribution": "Timffle เป็นฟอร์กที่ไม่เป็นทางการของ <1>Ruffle</1> และไม่เกี่ยวข้องกับโปรเจกต์ Ruffle การจำลอง Flash มาจาก Ruffle และผู้ร่วมพัฒนา โปรดแจ้งปัญหาที่ <2>Timffle</2> ไม่ใช่ที่ Ruffle"
+    "timffle_attribution": "Timffle เป็นฟอร์กที่ไม่เป็นทางการของ <1>Ruffle</1> และไม่เกี่ยวข้องกับโปรเจกต์ Ruffle การจำลอง Flash มาจาก Ruffle และผู้ร่วมพัฒนา โปรดแจ้งปัญหาที่ <2>Timffle</2> ไม่ใช่ที่ Ruffle",
+    "timffle_fi_unlimited": "ไม่จำกัด — สูงเท่าที่อุปกรณ์รองรับ",
+    "timffle_fi_auto": "อัตโนมัติ (ค่าเริ่มต้น) — สลับระหว่าง 144 / 120 / 60 / 30 / ปิด เอง",
+    "timffle_fi_custom": "กำหนดเอง…",
+    "timffle_fi_off": "ปิด — ใช้อัตราเฟรมเดิมของเกม",
+    "timffle_fi_custom_fps": "เป้าหมายกำหนดเอง (24–999 fps)",
+    "timffle_options_show_fps": "แสดงอัตราเฟรม (กล่องลอยที่มุมเกม ลากไปมุมอื่นได้)"
 }

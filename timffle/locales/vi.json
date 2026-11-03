@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "Yêu cầu này không còn hiệu lực. Bạn có thể đóng cửa sổ này.",
     "timffle_options_title": "Kết nối socket (máy chủ trò chơi)",
     "timffle_options_enable": "Bật socket (các trang web trong danh sách dùng trực tiếp; các trang web khác sẽ được hỏi trước)",
-    "timffle_options_frame_interpolation": "Chuyển động mượt (thử nghiệm): vẽ thêm hình giữa các khung hình của trò chơi để chuyển động trông mượt hơn. Hoạt ảnh sprite giữ nguyên; dùng nhiều GPU hơn.",
+    "timffle_options_frame_interpolation": "Nội suy khung hình",
     "timffle_options_method": "Phương thức kết nối",
     "timffle_options_helper": "Trình hỗ trợ socket (khuyến nghị)",
     "timffle_options_websocket": "Proxy WebSocket tùy chỉnh (nâng cao)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "Có thay đổi chưa lưu.",
     "timffle_read_failed": "Không thể đọc cài đặt cục bộ.",
     "timffle_save_failed": "Lưu không thành công; các thay đổi chưa được xác nhận. Hãy thử lại.",
-    "timffle_attribution": "Timffle là một bản fork không chính thức của <1>Ruffle</1> và không liên kết với dự án Ruffle; phần mô phỏng Flash đến từ Ruffle và những người đóng góp cho Ruffle. Hãy báo lỗi cho <2>Timffle</2>, đừng báo cho Ruffle."
+    "timffle_attribution": "Timffle là một bản fork không chính thức của <1>Ruffle</1> và không liên kết với dự án Ruffle; phần mô phỏng Flash đến từ Ruffle và những người đóng góp cho Ruffle. Hãy báo lỗi cho <2>Timffle</2>, đừng báo cho Ruffle.",
+    "timffle_fi_unlimited": "Không giới hạn — cao nhất mà thiết bị cho phép",
+    "timffle_fi_auto": "Tự động (mặc định) — tự chuyển giữa 144 / 120 / 60 / 30 / tắt",
+    "timffle_fi_custom": "Tùy chỉnh…",
+    "timffle_fi_off": "Tắt — tốc độ khung hình gốc của trò chơi",
+    "timffle_fi_custom_fps": "Mục tiêu tùy chỉnh (24–999 fps)",
+    "timffle_options_show_fps": "Hiện tốc độ khung hình (hộp nổi ở góc trò chơi; kéo sang góc khác được)"
 }

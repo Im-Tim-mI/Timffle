@@ -240,7 +240,7 @@
         "message": "啟用 Socket 連線（清單內的網站直接使用，其他網站會先詢問你）"
     },
     "timffle_options_frame_interpolation": {
-        "message": "平滑畫面（實驗性）：在遊戲的幀與幀之間多畫幾張畫面，讓移動看起來更順。精靈動畫維持原樣；會多用 GPU。"
+        "message": "補幀"
     },
     "timffle_options_method": {
         "message": "連線方式"
@@ -475,5 +475,23 @@
     },
     "timffle_promo_image": {
         "message": "promo-logitech-zh.png"
+    },
+    "timffle_fi_unlimited": {
+        "message": "不限制——依裝置效能盡可能提高幀率"
+    },
+    "timffle_fi_auto": {
+        "message": "自動（預設）——依裝置狀態在 144 / 120 / 60 / 30 / 關閉之間自動調整"
+    },
+    "timffle_fi_custom": {
+        "message": "自訂…"
+    },
+    "timffle_fi_off": {
+        "message": "關閉——不補幀，使用遊戲原本的幀率"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "自訂目標（24–999 fps）"
+    },
+    "timffle_options_show_fps": {
+        "message": "顯示幀數（遊戲角落的浮動視窗，可拖到其他角落）"
     }
 }

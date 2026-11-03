@@ -13,6 +13,7 @@ import {
 } from "../../public/config/index.js";
 import { MovieMetadata, ReadyState } from "../../public/player/index.js";
 import { ruffleShadowTemplate } from "../ui/shadow-template.js";
+import { FpsOverlay } from "../ui/fps-overlay.js";
 import { localizeElements, text, textAsParagraphs } from "../i18n.js";
 import { swfFileName } from "../../swf-utils.js";
 import { isExtension } from "../../current-script.js";
@@ -155,6 +156,8 @@ export class InnerPlayer {
     private readonly playButton: HTMLElement;
     private readonly unmuteOverlay: HTMLElement;
     private readonly splashScreen: HTMLElement;
+    /** Timffle: the floating fps box, created on first use. */
+    private fpsOverlay: FpsOverlay | null = null;
     private readonly virtualKeyboard: HTMLInputElement;
     // Timffle: true between compositionstart and compositionend on the
     // hidden input (the browser's input method is composing CJK text).
@@ -866,6 +869,15 @@ export class InnerPlayer {
         // Timffle: IME composition (see imeEnabled).
         instance.set_ime_composition(this.imeEnabled);
 
+        // Timffle: the fps box ("Show frame rate" in the extension's settings).
+        if (this.loadedConfig?.showFps) {
+            this.fpsOverlay ??= new FpsOverlay(this.container);
+            this.fpsOverlay.start(() => {
+                const value = this.instance?.frame_stats();
+                return typeof value === "string" ? value : null;
+            });
+        }
+
         this.rendererDebugInfo = this.instance!.renderer_debug_info();
 
         if (this.rendererDebugInfo.includes("Adapter Device Type: Cpu")) {
@@ -996,6 +1008,7 @@ export class InnerPlayer {
             // from the document. `updateStyles` adds it back on reconnect.
             this.removeDocumentListeners();
         }
+        this.fpsOverlay?.stop();
         if (this.instance) {
             this.stopBackgroundTick();
             this.instance.destroy();

@@ -49,7 +49,7 @@ pub struct RuffleInstanceBuilder {
     pub(crate) scale: StageScaleMode,
     pub(crate) force_scale: bool,
     pub(crate) frame_rate: Option<f64>,
-    pub(crate) frame_interpolation: bool,
+    pub(crate) frame_interpolation: crate::interp::InterpMode,
     pub(crate) wmode: Option<String>, // TODO: Enumify? `Player` is working in strings here too...
     pub(crate) log_level: tracing::Level,
     pub(crate) max_execution_duration: Duration,
@@ -90,7 +90,7 @@ impl Default for RuffleInstanceBuilder {
             scale: StageScaleMode::ShowAll,
             force_scale: false,
             frame_rate: None,
-            frame_interpolation: false,
+            frame_interpolation: crate::interp::InterpMode::Auto,
             wmode: None,
             log_level: tracing::Level::ERROR,
             max_execution_duration: Duration::from_secs_f64(15.0),
@@ -282,9 +282,10 @@ impl RuffleInstanceBuilder {
         self.player_version = value;
     }
 
+    /// Timffle: `off`, `auto`, `unlimited` or a target fps (see `interp::InterpMode::parse`).
     #[wasm_bindgen(js_name = "setFrameInterpolation")]
-    pub fn set_frame_interpolation(&mut self, value: bool) {
-        self.frame_interpolation = value;
+    pub fn set_frame_interpolation(&mut self, value: &str) {
+        self.frame_interpolation = crate::interp::InterpMode::parse(value);
     }
 
     #[wasm_bindgen(js_name = "setPreferredRenderer")]
@@ -791,7 +792,7 @@ impl RuffleInstanceBuilder {
             .with_align(self.stage_align, self.force_align)
             .with_scale_mode(self.scale, self.force_scale)
             .with_frame_rate(self.frame_rate)
-            .with_frame_interpolation(self.frame_interpolation)
+            .with_frame_interpolation(!self.frame_interpolation.is_off())
             .with_page_url(window.location().href().ok())
             .with_gamepad_button_mapping(self.gamepad_button_mapping.clone())
             .build();

@@ -210,7 +210,7 @@
         "message": "Activa els sockets (els llocs de la llista els utilitzen directament; als altres llocs es pregunta primer)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Moviment suau (experimental): dibuixa imatges addicionals entre els fotogrames del joc perquè el moviment sembli més fluid. L'animació dels sprites no canvia; consumeix més GPU."
+        "message": "Interpolació de fotogrames"
     },
     "timffle_options_method": {
         "message": "Mètode de connexió"
@@ -427,5 +427,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle és un fork no oficial de <1>Ruffle</1> i no està afiliat al projecte Ruffle; l'emulació de Flash prové de Ruffle i dels seus col·laboradors. Informa dels problemes a <2>Timffle</2>, no a Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Sense límit – tan alt com permeti el dispositiu"
+    },
+    "timffle_fi_auto": {
+        "message": "Automàtic (per defecte) – canvia sol entre 144 / 120 / 60 / 30 / desactivat"
+    },
+    "timffle_fi_custom": {
+        "message": "Personalitzat…"
+    },
+    "timffle_fi_off": {
+        "message": "Desactivat – la taxa pròpia del joc"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Objectiu personalitzat (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Mostra els fotogrames per segon (quadre flotant en un racó del joc; arrossega'l a un altre racó)"
     }
 }

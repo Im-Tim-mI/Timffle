@@ -31,7 +31,7 @@
     "timffle_prompt_expired": "Este pedido já não está ativo. Pode fechar esta janela.",
     "timffle_options_title": "Ligações socket (servidores de jogos)",
     "timffle_options_enable": "Ativar sockets (os sites da lista utilizam-nos diretamente; nos outros sites pergunta-se primeiro)",
-    "timffle_options_frame_interpolation": "Movimento suave (experimental): desenha imagens extra entre os fotogramas do jogo para que o movimento pareça mais fluido. A animação de sprites não muda; usa mais GPU.",
+    "timffle_options_frame_interpolation": "Interpolação de fotogramas",
     "timffle_options_method": "Método de ligação",
     "timffle_options_helper": "Assistente de sockets (recomendado)",
     "timffle_options_websocket": "Proxy WebSocket personalizado (avançado)",
@@ -95,5 +95,11 @@
     "timffle_unsaved": "Alterações por guardar.",
     "timffle_read_failed": "Não foi possível ler as opções locais.",
     "timffle_save_failed": "Falha ao guardar; as alterações não foram confirmadas. Tente novamente.",
-    "timffle_attribution": "O Timffle é um fork não oficial do <1>Ruffle</1> e não é afiliado ao projeto Ruffle; a sua emulação de Flash provém do Ruffle e dos seus colaboradores. Comunique os problemas ao <2>Timffle</2>, não ao Ruffle."
+    "timffle_attribution": "O Timffle é um fork não oficial do <1>Ruffle</1> e não é afiliado ao projeto Ruffle; a sua emulação de Flash provém do Ruffle e dos seus colaboradores. Comunique os problemas ao <2>Timffle</2>, não ao Ruffle.",
+    "timffle_fi_unlimited": "Sem limite – o máximo que o dispositivo permitir",
+    "timffle_fi_auto": "Automático (predefinição) – alterna sozinho entre 144 / 120 / 60 / 30 / desligado",
+    "timffle_fi_custom": "Personalizado…",
+    "timffle_fi_off": "Desligado – a cadência própria do jogo",
+    "timffle_fi_custom_fps": "Alvo personalizado (24–999 fps)",
+    "timffle_options_show_fps": "Mostrar cadência (caixa flutuante num canto do jogo; arraste para outro canto)"
 }

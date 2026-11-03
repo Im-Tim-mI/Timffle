@@ -42,4 +42,16 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
     await Promise.all([bindOptions(), bindProxyOptions()]);
+    {
+        // Timffle: the custom fps field is only for the "Custom…" entry of the
+        // frame interpolation menu.
+        const select = document.getElementById(
+            "frame_interpolation",
+        ) as HTMLSelectElement;
+        const row = document.getElementById("frame_interpolation_fps_row")!;
+        const sync = () => row.classList.toggle("hidden", select.value !== "custom");
+        select.addEventListener("change", sync);
+        browser.storage.onChanged.addListener(() => setTimeout(sync, 0));
+        sync();
+    }
 });

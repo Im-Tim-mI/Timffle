@@ -240,7 +240,7 @@
         "message": "Sockets inschakelen (websites op de lijst gebruiken ze direct; bij andere websites wordt eerst gevraagd)"
     },
     "timffle_options_frame_interpolation": {
-        "message": "Vloeiende beweging (experimenteel): tekent extra beelden tussen de frames van het spel zodat beweging vloeiender lijkt. Sprite-animatie blijft gelijk; gebruikt meer GPU."
+        "message": "Tussenbeelden"
     },
     "timffle_options_method": {
         "message": "Verbindingsmethode"
@@ -457,5 +457,23 @@
     },
     "timffle_attribution": {
         "message": "Timffle is een onofficiële fork van <1>Ruffle</1> en is niet gelieerd aan het Ruffle-project; de Flash-emulatie komt van Ruffle en zijn bijdragers. Meld problemen bij <2>Timffle</2>, niet bij Ruffle."
+    },
+    "timffle_fi_unlimited": {
+        "message": "Onbeperkt – zo hoog als het apparaat toelaat"
+    },
+    "timffle_fi_auto": {
+        "message": "Automatisch (standaard) – wisselt vanzelf tussen 144 / 120 / 60 / 30 / uit"
+    },
+    "timffle_fi_custom": {
+        "message": "Aangepast…"
+    },
+    "timffle_fi_off": {
+        "message": "Uit – de eigen beeldfrequentie van het spel"
+    },
+    "timffle_fi_custom_fps": {
+        "message": "Eigen doel (24–999 fps)"
+    },
+    "timffle_options_show_fps": {
+        "message": "Beeldfrequentie tonen (zwevend vakje in een hoek van het spel; naar een andere hoek te slepen)"
     }
 }
