@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Această cerere nu mai este activă. Poți închide această fereastră.",
     "timffle_options_title": "Conexiuni socket (servere de jocuri)",
     "timffle_options_enable": "Activează socketurile (site-urile din listă le folosesc direct; pentru celelalte site-uri se întreabă mai întâi)",
+    "timffle_options_frame_interpolation": "Mișcare lină (experimental): desenează imagini suplimentare între cadrele jocului pentru ca mișcarea să pară mai lină. Animația sprite-urilor rămâne neschimbată; folosește mai mult GPU.",
     "timffle_options_method": "Metodă de conectare",
     "timffle_options_helper": "Asistent pentru socketuri (recomandat)",
     "timffle_options_websocket": "Proxy WebSocket personalizat (avansat)",

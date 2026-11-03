@@ -218,6 +218,9 @@
     "timffle_options_enable": {
         "message": "הפעל Socket (אתרים ברשימה משתמשים בו ישירות; באתרים אחרים נשאל קודם)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "תנועה חלקה (ניסיוני): ציור תמונות נוספות בין הפריימים של המשחק כדי שהתנועה תיראה חלקה יותר. אנימציית ספרייטים נשארת כפי שהיא; צורך יותר GPU."
+    },
     "timffle_options_method": {
         "message": "שיטת חיבור"
     },

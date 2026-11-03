@@ -212,6 +212,9 @@
     "timffle_options_enable": {
         "message": "Ota socketit käyttöön (luettelon sivustot käyttävät niitä suoraan; muilta sivustoilta kysytään ensin)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Sulava liike (kokeellinen): piirtää lisäkuvia pelin ruutujen väliin, jotta liike näyttää sulavammalta. Sprite-animaatio pysyy ennallaan; käyttää enemmän GPU:ta."
+    },
     "timffle_options_method": {
         "message": "Yhteystapa"
     },

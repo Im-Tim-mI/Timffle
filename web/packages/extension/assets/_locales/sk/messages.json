@@ -224,6 +224,9 @@
     "timffle_options_enable": {
         "message": "Povoliť sokety (lokality v zozname ich používajú priamo; pri ostatných lokalitách sa najprv opýtame)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Plynulý pohyb (experimentálne): medzi snímkami hry sa kreslia ďalšie obrázky, aby pohyb vyzeral plynulejšie. Animácia spritov zostáva rovnaká; zaťažuje viac GPU."
+    },
     "timffle_options_method": {
         "message": "Spôsob pripojenia"
     },

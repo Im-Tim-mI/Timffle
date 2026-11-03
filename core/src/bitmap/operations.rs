@@ -1516,6 +1516,7 @@ pub fn draw<'gc>(
 
     let mut cache_draws = vec![];
     let mut render_context = RenderContext {
+        interp: None,
         renderer: context.renderer,
         commands: CommandList::new(),
         cache_draws: &mut cache_draws,

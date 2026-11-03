@@ -1387,7 +1387,11 @@ impl RuffleHandle {
             }
 
             // Render if the core signals a new frame, or if we resized.
-            let wants_render = core.needs_render() || new_dimensions.is_some() || render_pending;
+            // Timffle: with frame interpolation, every animation frame may show a new picture.
+            let wants_render = core.needs_render()
+                || new_dimensions.is_some()
+                || render_pending
+                || core.wants_interpolated_render();
             if background {
                 // Timffle: nobody sees the canvas while the page is hidden, but the
                 // background loop runs at the movie's frame rate, and drawing a big

@@ -533,6 +533,18 @@ export interface BaseLoadOptions {
     showSwfDownload?: boolean;
 
     /**
+     * Timffle: smooth motion (experimental). The movie keeps its own frame
+     * rate; between two of its frames Timffle draws extra pictures in which
+     * objects that moved are placed part-way along their motion, so movement
+     * looks smoother on a 60 Hz or faster display. Sprite swaps and
+     * frame-by-frame animation are not changed. Costs GPU time; adds up to
+     * one movie frame of visual delay.
+     *
+     * @default false
+     */
+    frameInterpolation?: boolean;
+
+    /**
      * Whether or not to show a context menu when right-clicking
      * a Ruffle instance.
      *

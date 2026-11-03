@@ -101,6 +101,9 @@
     "timffle_options_enable": {
         "message": "Activar sockets (os sitios da lista úsanos directamente; nos outros sitios pregúntase primeiro)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Movemento suave (experimental): debuxa imaxes adicionais entre os fotogramas do xogo para que o movemento se vexa máis fluído. A animación de sprites non cambia; consome máis GPU."
+    },
     "timffle_options_method": {
         "message": "Método de conexión"
     },

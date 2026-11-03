@@ -582,7 +582,18 @@ impl Default for ActionQueue<'_> {
 ///
 /// As a convenience, this type can be deref-coerced to `Mutation<'gc>`, but note that explicitly
 /// writing `context.gc()` can be sometimes necessary to satisfy the borrow checker.
+/// Timffle frame interpolation: how far (`t`, 0..1) the player is between movie frame `tick` and the next.
+#[derive(Clone, Copy, Debug)]
+pub struct Interp {
+    pub tick: u32,
+    pub t: f32,
+}
+
 pub struct RenderContext<'a, 'gc> {
+    /// Timffle: when set, objects that moved during movie frame `tick` are drawn part-way along
+    /// their motion (see `display_object::interp`). `None` draws the movie's exact state.
+    pub interp: Option<Interp>,
+
     /// The renderer, used by the display objects to register themselves.
     pub renderer: &'a mut dyn RenderBackend,
 

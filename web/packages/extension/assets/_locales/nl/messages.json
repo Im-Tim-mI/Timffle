@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Sockets inschakelen (websites op de lijst gebruiken ze direct; bij andere websites wordt eerst gevraagd)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Vloeiende beweging (experimenteel): tekent extra beelden tussen de frames van het spel zodat beweging vloeiender lijkt. Sprite-animatie blijft gelijk; gebruikt meer GPU."
+    },
     "timffle_options_method": {
         "message": "Verbindingsmethode"
     },

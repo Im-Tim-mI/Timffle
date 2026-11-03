@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Denne forespørselen er ikke lenger aktiv. Du kan lukke dette vinduet.",
     "timffle_options_title": "Socket-tilkoblinger (spillservere)",
     "timffle_options_enable": "Slå på sockets (nettsteder på listen bruker dem direkte; for andre nettsteder spørres det først)",
+    "timffle_options_frame_interpolation": "Jevn bevegelse (eksperimentell): tegner ekstra bilder mellom spillets rammer slik at bevegelse ser jevnere ut. Sprite-animasjon er uendret; bruker mer GPU.",
     "timffle_options_method": "Tilkoblingsmetode",
     "timffle_options_helper": "Socket-hjelper (anbefalt)",
     "timffle_options_websocket": "Egen WebSocket-proxy (avansert)",

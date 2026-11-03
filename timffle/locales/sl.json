@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Ta zahteva ni več aktivna. To okno lahko zaprete.",
     "timffle_options_title": "Povezave socket (strežniki iger)",
     "timffle_options_enable": "Omogoči socket (spletna mesta s seznama jih uporabljajo neposredno; pri drugih se najprej vpraša)",
+    "timffle_options_frame_interpolation": "Gladko gibanje (poskusno): med sličicami igre se narišejo dodatne slike, da je gibanje videti bolj gladko. Animacija spritov ostane enaka; porabi več GPU.",
     "timffle_options_method": "Način povezave",
     "timffle_options_helper": "Pomočnik za socket (priporočeno)",
     "timffle_options_websocket": "Lasten proxy WebSocket (napredno)",

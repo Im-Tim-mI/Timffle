@@ -233,6 +233,9 @@
     "timffle_options_enable": {
         "message": "Aktifkan socket (situs dalam daftar menggunakannya langsung; situs lain ditanya dulu)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Gerakan halus (eksperimental): menggambar gambar tambahan di antara frame permainan agar gerakan terlihat lebih halus. Animasi sprite tetap sama; memakai lebih banyak GPU."
+    },
     "timffle_options_method": {
         "message": "Metode koneksi"
     },

@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Bật socket (các trang web trong danh sách dùng trực tiếp; các trang web khác sẽ được hỏi trước)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Chuyển động mượt (thử nghiệm): vẽ thêm hình giữa các khung hình của trò chơi để chuyển động trông mượt hơn. Hoạt ảnh sprite giữ nguyên; dùng nhiều GPU hơn."
+    },
     "timffle_options_method": {
         "message": "Phương thức kết nối"
     },

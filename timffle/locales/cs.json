@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Tato žádost již není aktivní. Toto okno můžete zavřít.",
     "timffle_options_title": "Připojení přes sockety (herní servery)",
     "timffle_options_enable": "Povolit sockety (weby v seznamu je používají přímo; u ostatních webů se nejprve zeptáme)",
+    "timffle_options_frame_interpolation": "Plynulý pohyb (experimentální): mezi snímky hry se kreslí další obrázky, aby pohyb vypadal plynuleji. Animace spritů zůstává stejná; zatěžuje více GPU.",
     "timffle_options_method": "Způsob připojení",
     "timffle_options_helper": "Pomocník pro sockety (doporučeno)",
     "timffle_options_websocket": "Vlastní proxy WebSocket (pokročilé)",

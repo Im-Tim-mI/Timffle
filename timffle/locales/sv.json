@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Den här förfrågan är inte längre aktiv. Du kan stänga det här fönstret.",
     "timffle_options_title": "Socketanslutningar (spelservrar)",
     "timffle_options_enable": "Aktivera sockets (webbplatser i listan använder dem direkt; för andra webbplatser frågar vi först)",
+    "timffle_options_frame_interpolation": "Mjuk rörelse (experimentell): ritar extra bilder mellan spelets bildrutor så att rörelser ser mjukare ut. Sprite-animation är oförändrad; använder mer GPU.",
     "timffle_options_method": "Anslutningsmetod",
     "timffle_options_helper": "Sockethjälpare (rekommenderas)",
     "timffle_options_websocket": "Egen WebSocket-proxy (avancerat)",

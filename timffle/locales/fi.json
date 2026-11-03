@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Tämä pyyntö ei ole enää voimassa. Voit sulkea tämän ikkunan.",
     "timffle_options_title": "Socket-yhteydet (pelipalvelimet)",
     "timffle_options_enable": "Ota socketit käyttöön (luettelon sivustot käyttävät niitä suoraan; muilta sivustoilta kysytään ensin)",
+    "timffle_options_frame_interpolation": "Sulava liike (kokeellinen): piirtää lisäkuvia pelin ruutujen väliin, jotta liike näyttää sulavammalta. Sprite-animaatio pysyy ennallaan; käyttää enemmän GPU:ta.",
     "timffle_options_method": "Yhteystapa",
     "timffle_options_helper": "Socket-apuohjelma (suositeltu)",
     "timffle_options_websocket": "Oma WebSocket-välityspalvelin (edistynyt)",

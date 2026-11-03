@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "لم يعد هذا الطلب نشطًا. يمكنك إغلاق هذه النافذة.",
     "timffle_options_title": "اتصالات Socket (خوادم الألعاب)",
     "timffle_options_enable": "تفعيل Socket (تستخدمه المواقع الموجودة في القائمة مباشرةً، ويُسأل أولًا عن المواقع الأخرى)",
+    "timffle_options_frame_interpolation": "حركة سلسة (تجريبي): رسم صور إضافية بين إطارات اللعبة لتبدو الحركة أكثر سلاسة. تبقى رسوم النقوش كما هي؛ يستهلك المزيد من وحدة معالجة الرسومات.",
     "timffle_options_method": "طريقة الاتصال",
     "timffle_options_helper": "مساعد Socket (موصى به)",
     "timffle_options_websocket": "وكيل WebSocket مخصص (متقدم)",

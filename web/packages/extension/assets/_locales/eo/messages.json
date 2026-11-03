@@ -101,6 +101,9 @@
     "timffle_options_enable": {
         "message": "Ŝalti sockets (la retejoj en la listo uzas ilin rekte; pri aliaj retejoj oni demandas unue)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Glata movo (eksperimenta): desegni pliajn bildojn inter la kadroj de la ludo, por ke movo aspektu pli glata. Sprite-animacio restas sama; uzas pli da GPU."
+    },
     "timffle_options_method": {
         "message": "Konekta metodo"
     },

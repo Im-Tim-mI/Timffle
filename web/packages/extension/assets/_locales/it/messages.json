@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Attiva i socket (i siti in elenco li usano direttamente; per gli altri siti viene chiesto prima)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Movimento fluido (sperimentale): disegna immagini aggiuntive tra i fotogrammi del gioco perché il movimento sembri più fluido. L'animazione degli sprite resta invariata; usa più GPU."
+    },
     "timffle_options_method": {
         "message": "Metodo di connessione"
     },

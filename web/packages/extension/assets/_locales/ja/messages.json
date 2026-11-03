@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "ソケットを有効にする（リストにあるウェブサイトは直接使用し、それ以外のウェブサイトは先に確認します）"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "なめらかな動き（実験的）：ゲームのフレームの間に追加の画像を描画して、動きをよりなめらかに見せます。スプライトアニメーションはそのまま。GPU の負荷が増えます。"
+    },
     "timffle_options_method": {
         "message": "接続方法"
     },

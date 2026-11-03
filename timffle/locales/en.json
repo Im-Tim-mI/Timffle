@@ -126,6 +126,10 @@
         "message": "Enable sockets (listed websites use them directly; other websites are asked about first)",
         "description": "Check box."
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Smooth motion (experimental): draw extra pictures between the game's frames so movement looks smoother. Sprite animation stays as is; uses more GPU.",
+        "description": "Check box on the options page (advanced section). Experimental feature; keep the warning about GPU use."
+    },
     "timffle_options_method": {
         "message": "Connection method"
     },

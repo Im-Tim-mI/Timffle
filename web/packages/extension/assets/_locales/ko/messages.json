@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "소켓 사용(목록에 있는 웹사이트는 바로 사용하고, 다른 웹사이트는 먼저 묻습니다)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "부드러운 움직임(실험적): 게임 프레임 사이에 그림을 추가로 그려 움직임을 더 부드럽게 보이게 합니다. 스프라이트 애니메이션은 그대로이며 GPU를 더 사용합니다."
+    },
     "timffle_options_method": {
         "message": "연결 방법"
     },

@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "启用 Socket 连接（列表内的网站直接使用，其他网站会先询问你）"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "平滑画面（实验性）：在游戏的帧与帧之间多画几张画面，让移动看起来更顺。精灵动画维持原样；会多用 GPU。"
+    },
     "timffle_options_method": {
         "message": "连接方式"
     },

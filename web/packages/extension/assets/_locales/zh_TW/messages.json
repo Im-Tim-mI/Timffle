@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "啟用 Socket 連線（清單內的網站直接使用，其他網站會先詢問你）"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "平滑畫面（實驗性）：在遊戲的幀與幀之間多畫幾張畫面，讓移動看起來更順。精靈動畫維持原樣；會多用 GPU。"
+    },
     "timffle_options_method": {
         "message": "連線方式"
     },

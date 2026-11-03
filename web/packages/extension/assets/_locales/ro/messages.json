@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Activează socketurile (site-urile din listă le folosesc direct; pentru celelalte site-uri se întreabă mai întâi)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Mișcare lină (experimental): desenează imagini suplimentare între cadrele jocului pentru ca mișcarea să pară mai lină. Animația sprite-urilor rămâne neschimbată; folosește mai mult GPU."
+    },
     "timffle_options_method": {
         "message": "Metodă de conectare"
     },

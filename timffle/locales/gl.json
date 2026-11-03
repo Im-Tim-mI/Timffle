@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Esta solicitude xa non está activa. Podes pechar esta xanela.",
     "timffle_options_title": "Conexións de socket (servidores de xogos)",
     "timffle_options_enable": "Activar sockets (os sitios da lista úsanos directamente; nos outros sitios pregúntase primeiro)",
+    "timffle_options_frame_interpolation": "Movemento suave (experimental): debuxa imaxes adicionais entre os fotogramas do xogo para que o movemento se vexa máis fluído. A animación de sprites non cambia; consome máis GPU.",
     "timffle_options_method": "Método de conexión",
     "timffle_options_helper": "Asistente de sockets (recomendado)",
     "timffle_options_websocket": "Proxy WebSocket personalizado (avanzado)",

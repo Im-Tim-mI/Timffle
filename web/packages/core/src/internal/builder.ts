@@ -78,6 +78,9 @@ export function configureBuilder(
     if (isExplicit(config.frameRate)) {
         builder.setFrameRate(config.frameRate);
     }
+    if (isExplicit(config.frameInterpolation)) {
+        builder.setFrameInterpolation(config.frameInterpolation);
+    }
     if (isExplicit(config.wmode)) {
         builder.setWmode(config.wmode);
     }

@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "このリクエストは無効になりました。このウィンドウを閉じてかまいません。",
     "timffle_options_title": "ソケット接続（ゲームサーバー）",
     "timffle_options_enable": "ソケットを有効にする（リストにあるウェブサイトは直接使用し、それ以外のウェブサイトは先に確認します）",
+    "timffle_options_frame_interpolation": "なめらかな動き（実験的）：ゲームのフレームの間に追加の画像を描画して、動きをよりなめらかに見せます。スプライトアニメーションはそのまま。GPU の負荷が増えます。",
     "timffle_options_method": "接続方法",
     "timffle_options_helper": "ソケットヘルパー（推奨）",
     "timffle_options_websocket": "カスタム WebSocket プロキシ（上級者向け）",

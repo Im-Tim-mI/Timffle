@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Włącz sockety (witryny z listy używają ich bezpośrednio; w przypadku innych witryn najpierw pytamy)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Płynny ruch (eksperymentalne): rysuje dodatkowe obrazy między klatkami gry, aby ruch wyglądał płynniej. Animacja sprite'ów pozostaje bez zmian; używa więcej GPU."
+    },
     "timffle_options_method": {
         "message": "Metoda połączenia"
     },

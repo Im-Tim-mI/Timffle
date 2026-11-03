@@ -366,6 +366,10 @@ pub struct Player {
 
     frame_rate: f64,
     forced_frame_rate: bool,
+    /// Timffle: draw extra pictures between movie frames (see `display_object::interp`).
+    frame_interpolation: bool,
+    /// The `display_object::interp` frame number of the last `run_frame`.
+    interp_tick: u32,
     actions_since_timeout_check: u32,
 
     frame_phase: FramePhase,
@@ -2087,6 +2091,8 @@ impl Player {
             return;
         }
 
+        self.interp_tick = crate::display_object::interp::begin_frame();
+
         self.update(|context| {
             // TODO: Is this order correct?
             run_all_phases_avm2(context);
@@ -2123,6 +2129,7 @@ impl Player {
     pub fn render(&mut self) {
         self.dispatch_render_event();
 
+        let interp = self.interp_state();
         let mut background_color = Color::WHITE;
 
         let (cache_draws, commands) = self.enter_arena_mut(|gc_context, gc_root, this| {
@@ -2130,6 +2137,7 @@ impl Player {
 
             let mut cache_draws = vec![];
             let mut render_context = RenderContext {
+                interp,
                 renderer: this.renderer.deref_mut(),
                 commands: CommandList::new(),
                 cache_draws: &mut cache_draws,
@@ -2191,6 +2199,40 @@ impl Player {
 
     pub fn navigator_mut(&mut self) -> &mut dyn NavigatorBackend {
         &mut *self.navigator
+    }
+
+    /// Timffle: whether extra pictures are drawn between movie frames.
+    pub fn frame_interpolation(&self) -> bool {
+        self.frame_interpolation
+    }
+
+    pub fn set_frame_interpolation(&mut self, value: bool) {
+        self.frame_interpolation = value;
+    }
+
+    /// Timffle: whether drawing now (between two movie frames) would show something different from
+    /// the last picture: interpolation is on, the movie is running and something moved in its last frame.
+    pub fn wants_interpolated_render(&self) -> bool {
+        self.frame_interpolation
+            && self.is_playing()
+            && self.interp_tick != 0
+            && crate::display_object::interp::anything_changed()
+    }
+
+    /// Timffle: where the player is between the last movie frame and the next, for `render`.
+    fn interp_state(&self) -> Option<crate::context::Interp> {
+        if !self.frame_interpolation || self.interp_tick == 0 || !self.is_playing() {
+            return None;
+        }
+        let frame_duration = self.frame_duration().as_millis();
+        if !(frame_duration > 0.0) {
+            return None;
+        }
+        let t = (self.frame_accumulator.as_millis() / frame_duration).clamp(0.0, 1.0) as f32;
+        Some(crate::context::Interp {
+            tick: self.interp_tick,
+            t,
+        })
     }
 
     // The frame rate of the current movie in FPS.
@@ -2793,6 +2835,7 @@ pub struct PlayerBuilder {
     quality: StageQuality,
     page_url: Option<String>,
     frame_rate: Option<f64>,
+    frame_interpolation: bool,
     external_interface_provider: Option<Box<dyn ExternalInterfaceProvider>>,
     fs_command_provider: Box<dyn FsCommandProvider>,
     #[cfg(feature = "known_stubs")]
@@ -2850,6 +2893,7 @@ impl PlayerBuilder {
             quality: StageQuality::High,
             page_url: None,
             frame_rate: None,
+            frame_interpolation: false,
             external_interface_provider: None,
             fs_command_provider: Box::new(NullFsCommandProvider),
             #[cfg(feature = "known_stubs")]
@@ -3055,6 +3099,13 @@ impl PlayerBuilder {
         self
     }
 
+    /// Timffle: draws extra pictures between movie frames, with moving objects part-way along
+    /// their motion (experimental "smooth motion"; off by default).
+    pub fn with_frame_interpolation(mut self, value: bool) -> Self {
+        self.frame_interpolation = value;
+        self
+    }
+
     /// Adds an External Interface provider for movies to communicate with
     pub fn with_external_interface(mut self, provider: Box<dyn ExternalInterfaceProvider>) -> Self {
         self.external_interface_provider = Some(provider);
@@ -3215,6 +3266,8 @@ impl PlayerBuilder {
                 // Timing
                 frame_rate,
                 forced_frame_rate,
+                frame_interpolation: self.frame_interpolation,
+                interp_tick: 0,
                 frame_phase: Default::default(),
                 frame_accumulator: FloatDuration::ZERO,
                 recent_run_frame_timings: VecDeque::with_capacity(10),

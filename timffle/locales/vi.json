@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Yêu cầu này không còn hiệu lực. Bạn có thể đóng cửa sổ này.",
     "timffle_options_title": "Kết nối socket (máy chủ trò chơi)",
     "timffle_options_enable": "Bật socket (các trang web trong danh sách dùng trực tiếp; các trang web khác sẽ được hỏi trước)",
+    "timffle_options_frame_interpolation": "Chuyển động mượt (thử nghiệm): vẽ thêm hình giữa các khung hình của trò chơi để chuyển động trông mượt hơn. Hoạt ảnh sprite giữ nguyên; dùng nhiều GPU hơn.",
     "timffle_options_method": "Phương thức kết nối",
     "timffle_options_helper": "Trình hỗ trợ socket (khuyến nghị)",
     "timffle_options_websocket": "Proxy WebSocket tùy chỉnh (nâng cao)",

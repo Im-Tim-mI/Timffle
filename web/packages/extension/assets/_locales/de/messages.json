@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Sockets aktivieren (aufgelistete Websites nutzen sie direkt; bei anderen Websites wird zuerst gefragt)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Flüssige Bewegung (experimentell): Zwischen den Bildern des Spiels werden zusätzliche Bilder gezeichnet, damit Bewegungen flüssiger wirken. Sprite-Animationen bleiben unverändert; braucht mehr GPU."
+    },
     "timffle_options_method": {
         "message": "Verbindungsmethode"
     },

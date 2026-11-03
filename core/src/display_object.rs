@@ -254,6 +254,41 @@ pub enum RenderMask<'gc> {
     Alpha(DisplayObject<'gc>),
 }
 
+/// Timffle: scene-graph frame interpolation ("smooth motion").
+///
+/// The movie keeps running at its own frame rate; between two of its frames the renderer may draw
+/// extra pictures in which every object that moved during the last frame is placed part-way between
+/// where it was before that frame and where it is now. Objects record the pose they had at the start
+/// of the frame the first time it changes in that frame (`interp_note_change`), so nothing is copied
+/// for objects that stand still. See `Player::render` and `render_base`.
+pub mod interp {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    /// The number of the movie frame that is running or has run most recently (any player).
+    static TICK: AtomicU32 = AtomicU32::new(1);
+    /// How many objects recorded a pose since the last `begin_frame`.
+    static CHANGED: AtomicU32 = AtomicU32::new(0);
+
+    /// Called when a player starts running a movie frame. Returns the new frame number.
+    pub fn begin_frame() -> u32 {
+        CHANGED.store(0, Ordering::Relaxed);
+        TICK.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    pub fn tick() -> u32 {
+        TICK.load(Ordering::Relaxed)
+    }
+
+    pub(super) fn note_change() {
+        CHANGED.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Whether any object has moved since the last frame began (so drawing between frames shows something new).
+    pub fn anything_changed() -> bool {
+        CHANGED.load(Ordering::Relaxed) > 0
+    }
+}
+
 #[derive(Clone, Collect)]
 #[collect(no_drop)]
 // Ensure this always has the same alignment as its subclasses (needed for `Gc` casts).
@@ -324,6 +359,12 @@ pub struct DisplayObjectBase<'gc> {
 
     /// Rectangle used for 9-slice scaling (`DisplayObject.scale9grid`).
     scaling_grid: Cell<Rectangle<Twips>>,
+
+    /// Timffle frame interpolation: the pose this object had when the movie frame `interp_tick`
+    /// started, recorded by the first change in that frame (see the `interp` module).
+    interp_tick: Cell<u32>,
+    interp_matrix: Cell<Matrix>,
+    interp_alpha: Cell<Fixed8>,
 }
 
 #[derive(Clone)]
@@ -370,6 +411,9 @@ impl Default for DisplayObjectBase<'_> {
             scroll_rect: Cell::new(None),
             next_scroll_rect: Default::default(),
             scaling_grid: Default::default(),
+            interp_tick: Cell::new(0),
+            interp_matrix: Default::default(),
+            interp_alpha: Cell::new(Fixed8::ONE),
         }
     }
 }
@@ -407,6 +451,63 @@ impl<'gc> DisplayObjectBase<'gc> {
         self.place_frame.set(frame);
     }
 
+    /// Timffle frame interpolation: call before changing the matrix or the colour transform.
+    /// Keeps the pose from the start of the current movie frame.
+    fn interp_note_change(&self) {
+        let tick = interp::tick();
+        if self.interp_tick.get() != tick {
+            self.interp_tick.set(tick);
+            self.interp_matrix.set(self.matrix.get());
+            self.interp_alpha.set(self.color_transform.get().a_multiply);
+            interp::note_change();
+        }
+    }
+
+    /// Timffle frame interpolation: moves `transform` (this object's current pose) back towards the pose it
+    /// had before movie frame `tick` by `1 - t`, when the object changed during that frame. Jumps that are
+    /// too big to be one step of a motion (more than 200 px or a scale/skew change above 0.75 in one frame: teleports,
+    /// flips, sprite swaps on a scaled clip) and 3D objects
+    /// are drawn where they are.
+    fn interpolate_transform(&self, transform: &mut Transform, tick: u32, t: f32) {
+        if self.interp_tick.get() != tick || transform.matrix3d.is_some() || !(0.0..1.0).contains(&t) {
+            return;
+        }
+        let from = self.interp_matrix.get();
+        let to = transform.matrix;
+        if from == to {
+            // Only the alpha may have changed.
+        } else {
+            const MAX_STEP_TWIPS: i32 = 200 * 20;
+            const MAX_STEP_SCALE: f32 = 0.75;
+            let dx = (to.tx - from.tx).get();
+            let dy = (to.ty - from.ty).get();
+            if dx.abs() > MAX_STEP_TWIPS
+                || dy.abs() > MAX_STEP_TWIPS
+                || (to.a - from.a).abs() > MAX_STEP_SCALE
+                || (to.b - from.b).abs() > MAX_STEP_SCALE
+                || (to.c - from.c).abs() > MAX_STEP_SCALE
+                || (to.d - from.d).abs() > MAX_STEP_SCALE
+            {
+                return;
+            }
+            let lerp = |a: f32, b: f32| a + (b - a) * t;
+            transform.matrix = Matrix {
+                a: lerp(from.a, to.a),
+                b: lerp(from.b, to.b),
+                c: lerp(from.c, to.c),
+                d: lerp(from.d, to.d),
+                tx: Twips::new(from.tx.get() + (dx as f32 * t).round() as i32),
+                ty: Twips::new(from.ty.get() + (dy as f32 * t).round() as i32),
+            };
+        }
+        let from_alpha = self.interp_alpha.get();
+        let to_alpha = transform.color_transform.a_multiply;
+        if from_alpha != to_alpha {
+            transform.color_transform.a_multiply =
+                Fixed8::from_f32(from_alpha.to_f32() + (to_alpha.to_f32() - from_alpha.to_f32()) * t);
+        }
+    }
+
     fn transform(&self, apply_matrix: bool) -> Transform {
         Transform {
             matrix: if apply_matrix {
@@ -429,6 +530,7 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     pub fn set_matrix(&self, matrix: Matrix) {
+        self.interp_note_change();
         self.matrix.set(matrix);
         // A 2D matrix takes the object out of 3D.
         if self.matrix3d.replace(None).is_some() {
@@ -442,6 +544,7 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     pub fn set_color_transform(&self, color_transform: ColorTransform) {
+        self.interp_note_change();
         self.color_transform.set(color_transform);
     }
 
@@ -462,6 +565,7 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn set_x(&self, x: Twips) -> bool {
+        self.interp_note_change();
         let mut matrix = self.matrix.get();
         let changed = matrix.tx != x;
         matrix.tx = x;
@@ -476,6 +580,7 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn set_y(&self, y: Twips) -> bool {
+        self.interp_note_change();
         let mut matrix = self.matrix.get();
         let changed = matrix.ty != y;
         matrix.ty = y;
@@ -523,6 +628,7 @@ impl<'gc> DisplayObjectBase<'gc> {
     /// Sets (or, with `None`, removes) the 3D matrix, as `transform.matrix3D` does.
     /// Removing it leaves a 2D identity matrix, like Flash Player.
     pub fn set_matrix3d(&self, matrix3d: Option<Matrix3D>) {
+        self.interp_note_change();
         self.set_transformed_by_script(true);
         match matrix3d {
             Some(matrix) => {
@@ -593,6 +699,7 @@ impl<'gc> DisplayObjectBase<'gc> {
                     scale: trs.scale.map(clean),
                 },
             );
+        self.interp_note_change();
             self.matrix3d.set(Some(rebuilt));
             self.matrix.set(rebuilt.to_matrix());
         }
@@ -715,6 +822,7 @@ impl<'gc> DisplayObjectBase<'gc> {
         }
 
         let skew = self.skew.get();
+        self.interp_note_change();
         let cos_x = f64::cos(degrees.into_radians());
         let sin_x = f64::sin(degrees.into_radians());
         let cos_y = f64::cos(degrees.into_radians() + skew);
@@ -762,6 +870,7 @@ impl<'gc> DisplayObjectBase<'gc> {
             rot = 0.0;
         }
 
+        self.interp_note_change();
         let cos = f64::cos(rot);
         let sin = f64::sin(rot);
         let mut matrix = self.matrix.get();
@@ -804,6 +913,7 @@ impl<'gc> DisplayObjectBase<'gc> {
         }
 
         let skew = self.skew.get();
+        self.interp_note_change();
         let cos = f64::cos(rot + skew);
         let sin = f64::sin(rot + skew);
         let mut matrix = self.matrix.get();
@@ -843,6 +953,7 @@ impl<'gc> DisplayObjectBase<'gc> {
 
     fn set_alpha(&self, value: f64) -> bool {
         self.set_transformed_by_script(true);
+        self.interp_note_change();
         let value = Fixed8::from_f64(value);
         let mut tf = self.color_transform.get();
         let changed = tf.a_multiply != value;
@@ -1250,7 +1361,10 @@ pub fn render_base<'gc>(
     }
 
     if options.apply_transform {
-        let transform = this.base().transform(options.apply_matrix);
+        let mut transform = this.base().transform(options.apply_matrix);
+        if options.apply_matrix && let Some(interp) = context.interp {
+            this.base().interpolate_transform(&mut transform, interp.tick, interp.t);
+        }
         context.transform_stack.push(&transform);
     }
 
@@ -1377,6 +1491,7 @@ pub fn render_base<'gc>(
                 matrix3d: None,
             });
             let mut offscreen_context = RenderContext {
+                interp: None,
                 renderer: context.renderer,
                 commands: CommandList::new(),
                 cache_draws: context.cache_draws,

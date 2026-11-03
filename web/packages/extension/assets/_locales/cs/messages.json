@@ -230,6 +230,9 @@
     "timffle_options_enable": {
         "message": "Povolit sockety (weby v seznamu je používají přímo; u ostatních webů se nejprve zeptáme)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Plynulý pohyb (experimentální): mezi snímky hry se kreslí další obrázky, aby pohyb vypadal plynuleji. Animace spritů zůstává stejná; zatěžuje více GPU."
+    },
     "timffle_options_method": {
         "message": "Způsob připojení"
     },

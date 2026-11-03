@@ -101,6 +101,9 @@
     "timffle_options_enable": {
         "message": "Slå på sockets (nettsteder på listen bruker dem direkte; for andre nettsteder spørres det først)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Jevn bevegelse (eksperimentell): tegner ekstra bilder mellom spillets rammer slik at bevegelse ser jevnere ut. Sprite-animasjon er uendret; bruker mer GPU."
+    },
     "timffle_options_method": {
         "message": "Tilkoblingsmetode"
     },

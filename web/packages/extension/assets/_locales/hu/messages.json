@@ -230,6 +230,9 @@
     "timffle_options_enable": {
         "message": "Socketek engedélyezése (a listán szereplő webhelyek közvetlenül használják, a többitől előbb rákérdez)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Sima mozgás (kísérleti): a játék képkockái közé további képek rajzolása, hogy a mozgás simábbnak tűnjön. A sprite-animáció változatlan marad; több GPU-t használ."
+    },
     "timffle_options_method": {
         "message": "Kapcsolódási mód"
     },

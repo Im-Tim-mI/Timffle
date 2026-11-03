@@ -236,6 +236,9 @@
     "timffle_options_enable": {
         "message": "Omogoči socket (spletna mesta s seznama jih uporabljajo neposredno; pri drugih se najprej vpraša)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Gladko gibanje (poskusno): med sličicami igre se narišejo dodatne slike, da je gibanje videti bolj gladko. Animacija spritov ostane enaka; porabi več GPU."
+    },
     "timffle_options_method": {
         "message": "Način povezave"
     },

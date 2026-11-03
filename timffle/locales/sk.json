@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Táto žiadosť už nie je aktívna. Toto okno môžete zavrieť.",
     "timffle_options_title": "Pripojenia cez sokety (herné servery)",
     "timffle_options_enable": "Povoliť sokety (lokality v zozname ich používajú priamo; pri ostatných lokalitách sa najprv opýtame)",
+    "timffle_options_frame_interpolation": "Plynulý pohyb (experimentálne): medzi snímkami hry sa kreslia ďalšie obrázky, aby pohyb vyzeral plynulejšie. Animácia spritov zostáva rovnaká; zaťažuje viac GPU.",
     "timffle_options_method": "Spôsob pripojenia",
     "timffle_options_helper": "Pomocník pre sokety (odporúča sa)",
     "timffle_options_websocket": "Vlastné proxy WebSocket (pokročilé)",

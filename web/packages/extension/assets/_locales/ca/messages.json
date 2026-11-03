@@ -209,6 +209,9 @@
     "timffle_options_enable": {
         "message": "Activa els sockets (els llocs de la llista els utilitzen directament; als altres llocs es pregunta primer)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Moviment suau (experimental): dibuixa imatges addicionals entre els fotogrames del joc perquè el moviment sembli més fluid. L'animació dels sprites no canvia; consumeix més GPU."
+    },
     "timffle_options_method": {
         "message": "Mètode de connexió"
     },

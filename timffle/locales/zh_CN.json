@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "这个请求已失效，可以关闭此窗口。",
     "timffle_options_title": "Socket 连接（游戏服务器）",
     "timffle_options_enable": "启用 Socket 连接（列表内的网站直接使用，其他网站会先询问你）",
+    "timffle_options_frame_interpolation": "平滑画面（实验性）：在游戏的帧与帧之间多画几张画面，让移动看起来更顺。精灵动画维持原样；会多用 GPU。",
     "timffle_options_method": "连接方式",
     "timffle_options_helper": "连接助手（建议）",
     "timffle_options_websocket": "自定义 WebSocket 代理（高级）",

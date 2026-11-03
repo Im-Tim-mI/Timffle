@@ -239,6 +239,9 @@
     "timffle_options_enable": {
         "message": "Soketleri etkinleştir (listedeki siteler bunları doğrudan kullanır; diğer sitelere önce sorulur)"
     },
+    "timffle_options_frame_interpolation": {
+        "message": "Akıcı hareket (deneysel): hareketin daha akıcı görünmesi için oyunun kareleri arasına ek görüntüler çizer. Sprite animasyonu aynı kalır; daha fazla GPU kullanır."
+    },
     "timffle_options_method": {
         "message": "Bağlantı yöntemi"
     },

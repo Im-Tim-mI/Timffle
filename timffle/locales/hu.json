@@ -31,6 +31,7 @@
     "timffle_prompt_expired": "Ez a kérés már nem aktív. Bezárhatod ezt az ablakot.",
     "timffle_options_title": "Socket-kapcsolatok (játékszerverek)",
     "timffle_options_enable": "Socketek engedélyezése (a listán szereplő webhelyek közvetlenül használják, a többitől előbb rákérdez)",
+    "timffle_options_frame_interpolation": "Sima mozgás (kísérleti): a játék képkockái közé további képek rajzolása, hogy a mozgás simábbnak tűnjön. A sprite-animáció változatlan marad; több GPU-t használ.",
     "timffle_options_method": "Kapcsolódási mód",
     "timffle_options_helper": "Socket-segéd (ajánlott)",
     "timffle_options_websocket": "Egyéni WebSocket-proxy (haladó)",
