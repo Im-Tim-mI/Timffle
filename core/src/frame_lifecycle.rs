@@ -13,7 +13,7 @@
 
 use crate::avm2::{Avm2, EventObject};
 use crate::context::UpdateContext;
-use crate::display_object::{DisplayObject, MovieClip, TDisplayObject};
+use crate::display_object::{DisplayObject, MovieClip, TDisplayObject, TDisplayObjectContainer};
 use crate::loader::LoadManager;
 use crate::orphan_manager::OrphanManager;
 use tracing::instrument;
@@ -149,8 +149,18 @@ pub fn run_inner_goto_frame<'gc>(
         // Ruffle would render right after the handler and show those children
         // before their constructors and frame-1 scripts ran (摩爾莊園 lamus
         // drawn uncoloured for a frame), so hold the next render back until a
-        // frame has run.
-        if *context.frame_phase == FramePhase::Idle {
+        // frame has run. Only when the goto really left a clip unconstructed:
+        // shapes and bitmaps look the same before and after construction, and
+        // a game that does `gotoAndStop` on its backgrounds from a 21 ms timer
+        // (摩摩大賽車) would otherwise be held back on almost every tick
+        // (about one drawn frame a second).
+        if *context.frame_phase == FramePhase::Idle
+            && initial_clip.iter_render_list().any(|child| {
+                child
+                    .as_movie_clip()
+                    .is_some_and(|clip| clip.object2().is_none())
+            })
+        {
             *context.render_waits_for_frame = true;
         }
 

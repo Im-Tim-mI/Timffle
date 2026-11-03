@@ -538,6 +538,11 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
     }
 
     fn set_quality(&mut self, quality: StageQuality) {
+        // Timffle: a movie may set `stage.quality` every tick (摩摩大賽車 does, 48 times a second);
+        // rebuilding every render target each time stutters. Same quality = nothing to do.
+        if self.surface.quality() == quality {
+            return;
+        }
         self.surface = Surface::new(
             &self.descriptors,
             quality,
