@@ -53,6 +53,18 @@ impl Dirty {
             (Dirty::Rects(rects), Some(rect)) => rects.iter().any(|r| r.intersects(&rect)),
         }
     }
+
+    /// Records that `resolved` were resolved: dirty rectangles that lie
+    /// completely inside one of them are clean again. (A rectangle that only
+    /// partly overlaps stays dirty; resolving its pixels again is harmless.)
+    fn resolved(&mut self, resolved: &[SurfaceRect]) {
+        if let Dirty::Rects(rects) = self {
+            rects.retain(|dirty| !resolved.iter().any(|r| r.contains(dirty)));
+            if rects.is_empty() {
+                *self = Dirty::Clean;
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -467,24 +479,27 @@ impl CommandTarget {
         let Some(resolve_buffer) = &self.resolve_buffer else {
             return;
         };
-        if !self.dirty.borrow().needs_resolve(rect) {
+        if let Some(rect) = rect {
+            self.ensure_resolved_rects(descriptors, encoder, &[rect]);
             return;
         }
-        // Timffle: where a shader can read the multisampled texture, resolve
-        // only the rectangle that is needed; the rest stays marked dirty.
-        if let Some(rect) = rect
-            && self.can_resolve_partially(descriptors)
-        {
-            self.resolve_rects(descriptors, encoder, resolve_buffer, &[rect]);
+        if !self.dirty.borrow().needs_resolve(None) {
             return;
         }
         self.resolve_all(encoder, resolve_buffer);
     }
 
-    /// Timffle: like [`Self::ensure_resolved`] for several rectangles at
-    /// once. Where partial resolves are possible, all of them share one render
-    /// pass (one scissored draw each); otherwise the whole frame buffer is
-    /// resolved once if any of them needs it.
+    /// Timffle: makes sure the resolve buffer is current inside each of
+    /// `rects`.
+    ///
+    /// When everything is dirty (the first time after a draw that could have
+    /// touched anything, such as a full-screen background), the whole frame
+    /// buffer is resolved once with the GPU's own resolve, so that the many
+    /// blends that usually follow find their rectangles clean and need no
+    /// pass at all. Otherwise, where the resolve shader can read the
+    /// multisampled texture, only the rectangles that overlap something
+    /// drawn since are resolved, all in one render pass (one scissored draw
+    /// each), and the dirty rectangles they cover are clean again.
     pub fn ensure_resolved_rects(
         &self,
         descriptors: &Descriptors,
@@ -497,6 +512,11 @@ impl CommandTarget {
         };
         let needed: Vec<SurfaceRect> = {
             let dirty = self.dirty.borrow();
+            if matches!(*dirty, Dirty::All) {
+                drop(dirty);
+                self.resolve_all(encoder, resolve_buffer);
+                return;
+            }
             rects
                 .iter()
                 .copied()
@@ -508,6 +528,7 @@ impl CommandTarget {
         }
         if self.can_resolve_partially(descriptors) {
             self.resolve_rects(descriptors, encoder, resolve_buffer, &needed);
+            self.dirty.borrow_mut().resolved(&needed);
         } else {
             self.resolve_all(encoder, resolve_buffer);
         }
@@ -649,66 +670,12 @@ impl CommandTarget {
         blend_buffer
     }
 
-    /// Copies one rectangle of this target into a new texture of that size
-    /// (Timffle: the parent side of a blend whose surface covers only part of
-    /// this target). Only `read` (inside `rect`) has to be up to date: the
-    /// blend is scissored to it.
-    pub fn copy_region(
-        &self,
-        descriptors: &Descriptors,
-        pool: &mut TexturePool,
-        encoder: &mut wgpu::CommandEncoder,
-        rect: SurfaceRect,
-        read: SurfaceRect,
-    ) -> BlendBuffer {
-        self.ensure_resolved(descriptors, encoder, Some(read));
-        self.copy_resolved_region(descriptors, pool, encoder, rect)
-    }
-
-    /// [`Self::copy_region`] without the resolve: the caller has already made
-    /// sure that the part it needs is up to date (see
-    /// [`Self::ensure_resolved_rects`]).
-    pub fn copy_resolved_region(
-        &self,
-        descriptors: &Descriptors,
-        pool: &mut TexturePool,
-        encoder: &mut wgpu::CommandEncoder,
-        rect: SurfaceRect,
-    ) -> BlendBuffer {
-        let size = wgpu::Extent3d {
-            width: rect.width,
-            height: rect.height,
-            depth_or_array_layers: 1,
-        };
-        let buffer = BlendBuffer::new(
-            descriptors,
-            size,
-            self.format,
-            wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::COPY_SRC,
-            pool,
-        );
-        encoder.copy_texture_to_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: self.color_texture(),
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: rect.x,
-                    y: rect.y,
-                    z: 0,
-                },
-                aspect: Default::default(),
-            },
-            wgpu::TexelCopyTextureInfo {
-                texture: buffer.texture(),
-                mip_level: 0,
-                origin: Default::default(),
-                aspect: Default::default(),
-            },
-            size,
-        );
-        buffer
+    /// Timffle: whether a render pass that draws into this target (without
+    /// resolving) may read [`Self::color_view`] at the same time — true when
+    /// the colour is read from the resolve buffer, a different texture from
+    /// the multisampled frame buffer being drawn.
+    pub fn readable_while_drawn(&self) -> bool {
+        self.resolve_buffer.is_some()
     }
 
     pub fn color_view(&self) -> &wgpu::TextureView {
@@ -753,6 +720,26 @@ mod tests {
         assert!(d.needs_resolve(Some(r(90, 90, 20, 20))));
         d.mark(Touched::All);
         assert!(d.needs_resolve(Some(r(500, 500, 1, 1))));
+    }
+
+    #[test]
+    fn resolved_rectangles_become_clean() {
+        let mut d = Dirty::Clean;
+        d.mark(Touched::Rect(r(10, 10, 20, 20)));
+        d.mark(Touched::Rect(r(100, 100, 5, 5)));
+        d.resolved(&[r(0, 0, 50, 50)]);
+        assert!(!d.needs_resolve(Some(r(10, 10, 20, 20))));
+        assert!(d.needs_resolve(Some(r(100, 100, 5, 5))));
+        d.resolved(&[r(100, 100, 5, 5)]);
+        assert!(matches!(d, Dirty::Clean));
+        // A rectangle that is only partly covered stays dirty.
+        d.mark(Touched::Rect(r(10, 10, 20, 20)));
+        d.resolved(&[r(0, 0, 15, 15)]);
+        assert!(d.needs_resolve(Some(r(10, 10, 1, 1))));
+        // Everything dirty is never cleaned by a partial resolve.
+        let mut all = Dirty::All;
+        all.resolved(&[r(0, 0, 1000, 1000)]);
+        assert!(all.needs_resolve(Some(r(1, 1, 1, 1))));
     }
 
     #[test]

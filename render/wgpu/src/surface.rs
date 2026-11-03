@@ -11,7 +11,7 @@ use crate::mesh::Mesh;
 use crate::pixel_bender::{ShaderMode, run_pixelbender_shader_impl};
 use crate::surface::bounds::{BlendRects, Touched};
 use crate::surface::commands::{Chunk, CommandRenderer, chunk_blends};
-use crate::surface::target::{BlendBuffer, PoolOrArcTexture};
+use crate::surface::target::PoolOrArcTexture;
 use crate::utils::run_copy_pipeline;
 use crate::utils::supported_sample_count;
 use crate::{Descriptors, MaskState, Pipelines};
@@ -27,10 +27,10 @@ pub use crate::surface::commands::LayerRef;
 
 use self::commands::ChunkBlendMode;
 
-/// Timffle: a group of waiting blends with their parent-side textures and
-/// bind groups, kept alive until the pass that composites them is recorded.
+/// Timffle: a group of waiting blends with their textures and bind groups,
+/// kept alive until the pass that composites them is recorded.
 struct PreparedBlends {
-    regions: Vec<(BlendBuffer, PoolOrArcTexture)>,
+    textures: Vec<PoolOrArcTexture>,
     bind_groups: Vec<wgpu::BindGroup>,
     blends: Vec<(ComplexBlend, BlendRects)>,
 }
@@ -191,12 +191,15 @@ impl Surface {
                     // composited at the start of this very pass (the blend
                     // pipelines have no stencil state).
                     let merged = if overlaps && !needs_stencil {
+                        // The last pass resolves into the resolve buffer, so
+                        // the blends cannot read it then; they get copies.
                         self.prepare_deferred(
                             &mut deferred,
                             &target,
                             descriptors,
                             texture_pool,
                             draw_encoder,
+                            !is_last,
                         )
                     } else {
                         if overlaps {
@@ -419,7 +422,7 @@ impl Surface {
         _mask_state: MaskState,
     ) {
         let Some(prepared) =
-            self.prepare_deferred(deferred, target, descriptors, texture_pool, draw_encoder)
+            self.prepare_deferred(deferred, target, descriptors, texture_pool, draw_encoder, true)
         else {
             return;
         };
@@ -441,6 +444,11 @@ impl Surface {
     /// be composited in one render pass — by [`Self::composite_prepared`],
     /// either in a pass of their own or at the start of the pass of the draws
     /// that made them stop waiting. Drains `deferred`.
+    ///
+    /// With `read_target`, the blends read the parent pixels straight from
+    /// the target's resolve buffer; the composite pass must then not resolve
+    /// into it. Otherwise (or without a resolve buffer) they read one copy
+    /// of the whole target.
     fn prepare_deferred<'encoder, 'global: 'encoder>(
         &self,
         deferred: &mut Vec<(PoolOrArcTexture, ComplexBlend, BlendRects)>,
@@ -448,21 +456,27 @@ impl Surface {
         descriptors: &'encoder Descriptors,
         texture_pool: &'encoder mut TexturePool,
         draw_encoder: &'encoder mut Scope<'global, wgpu::CommandEncoder>,
+        read_target: bool,
     ) -> Option<PreparedBlends> {
         if deferred.is_empty() {
             return None;
         }
-        let reads: Vec<_> = deferred.iter().map(|(_, _, rect)| rect.tight).collect();
-        target.ensure_resolved_rects(descriptors, draw_encoder, &reads);
+        let parent_view = if read_target && target.readable_while_drawn() {
+            let reads: Vec<_> = deferred.iter().map(|(_, _, rect)| rect.tight).collect();
+            target.ensure_resolved_rects(descriptors, draw_encoder, &reads);
+            target.color_view()
+        } else {
+            target
+                .update_blend_buffer(descriptors, texture_pool, draw_encoder)
+                .view()
+        };
 
         let mut prepared = PreparedBlends {
-            regions: Vec::with_capacity(deferred.len()),
+            textures: Vec::with_capacity(deferred.len()),
             bind_groups: Vec::with_capacity(deferred.len()),
             blends: Vec::with_capacity(deferred.len()),
         };
         for (texture, blend_mode, rect) in deferred.drain(..) {
-            let region =
-                target.copy_resolved_region(descriptors, texture_pool, draw_encoder, rect.surface);
             let bind_group = descriptors
                 .device
                 .create_bind_group(&wgpu::BindGroupDescriptor {
@@ -472,7 +486,7 @@ impl Surface {
                     entries: &[
                         wgpu::BindGroupEntry {
                             binding: 0,
-                            resource: wgpu::BindingResource::TextureView(region.view()),
+                            resource: wgpu::BindingResource::TextureView(parent_view),
                         },
                         wgpu::BindGroupEntry {
                             binding: 1,
@@ -486,7 +500,7 @@ impl Surface {
                         },
                     ],
                 });
-            prepared.regions.push((region, texture));
+            prepared.textures.push(texture);
             prepared.bind_groups.push(bind_group);
             prepared.blends.push((blend_mode, rect));
         }
@@ -570,20 +584,18 @@ impl Surface {
             _ => target,
         };
 
-        // Timffle: a blend surface smaller than the parent is paired with a
-        // copy of just that part of the parent, and drawn with the viewport
-        // set to that part, so the blend shaders stay unchanged. (Alpha and
-        // Erase never get a smaller surface, so `parent` is `target` here.)
-        let region_buffer;
-        let parent_blend_view = if let Some(rect) = rect {
-            region_buffer = parent.copy_region(
-                descriptors,
-                texture_pool,
-                draw_encoder,
-                rect.surface,
-                rect.tight,
-            );
-            region_buffer.view()
+        // Timffle: the blend shaders (other than Alpha and Erase) look the
+        // parent pixel up by position, so a blend whose surface covers only
+        // part of the parent is drawn with the viewport set to that part and
+        // reads the parent's resolve buffer directly, once the part it needs
+        // is up to date. Alpha and Erase keep upstream's copy of the layer;
+        // without a resolve buffer the parent is copied too (the copy is
+        // the same size as the target, so positions still match).
+        let parent_blend_view = if !matches!(blend_mode, ComplexBlend::Alpha | ComplexBlend::Erase)
+            && target.readable_while_drawn()
+        {
+            target.ensure_resolved(descriptors, draw_encoder, rect.map(|rect| rect.tight));
+            target.color_view()
         } else {
             parent
                 .update_blend_buffer(descriptors, texture_pool, draw_encoder)

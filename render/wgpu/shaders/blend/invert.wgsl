@@ -23,7 +23,9 @@ fn blend_func(src: vec3<f32>, dst: vec3<f32>) -> vec3<f32> {
 @fragment
 fn main_fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     // dst is the parent pixel we're blending onto
-    var dst: vec4<f32> = textureSample(parent_texture, texture_sampler, in.uv);
+    // Timffle: the parent texture is the parent surface itself (or a copy of it), so the
+    // pixel under this fragment is at the fragment's own position.
+    var dst: vec4<f32> = textureLoad(parent_texture, vec2<i32>(in.position.xy), 0);
     // src is the pixel that we want to apply
     var src: vec4<f32> = textureSample(current_texture, texture_sampler, in.uv);
 

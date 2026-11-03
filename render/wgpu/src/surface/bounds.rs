@@ -204,6 +204,14 @@ pub struct SurfaceRect {
 }
 
 impl SurfaceRect {
+    /// Whether `other` lies completely inside this rectangle.
+    pub fn contains(&self, other: &SurfaceRect) -> bool {
+        other.x >= self.x
+            && other.y >= self.y
+            && other.x + other.width <= self.x + self.width
+            && other.y + other.height <= self.y + self.height
+    }
+
     pub fn intersects(&self, other: &SurfaceRect) -> bool {
         self.x < other.x + other.width
             && other.x < self.x + self.width
