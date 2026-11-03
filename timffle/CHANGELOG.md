@@ -12,6 +12,7 @@
 - **Windows（QEMU 虛擬機、只有「Microsoft 基本顯示卡」、Chrome 156）**：WebGPU 拿不到裝置（`requestAdapter()` 回傳 null），選 WebGPU 時 242 個全部自動退回 `wgpu-webgl`、全部有畫面、0 個錯誤；退回路徑正常。這台沒有真 GPU，不能代表玩家的 Windows 電腦。
 - **混合效果壓力測試頁**（150 個方塊各帶 Overlay＋Hardlight，SWF 24 fps，Mac M2）：WebGL2 在 960×560／1920×1120／2880×1680 是 11.7／7.4／3.6 幀，主執行緒 99% 忙；WebGPU 是 9.5／9.1／9.1 幀，主執行緒只忙 11%。同一台 Chrome 畫最簡單的 WebGPU 頁面可以跑滿 60 幀，所以 9 幀是這個測試頁本身在 GPU 上的負擔（混合物件很多），不是測試環境的限制。小畫面 WebGL2 幀數稍高，大畫面 WebGPU 明顯較好，而且 WebGPU 幾乎不佔主執行緒，Flash 的程式邏輯有更多時間可用。
 - 工具：`timffle-work/realgpu-2026-11-03/bundle/realgpu.mjs`（可攜版差異測試＋壓力測試頁＋GPU 資訊，Mac 用 pipe、Windows 用 WebSocket 連 Chrome）。
+- 測試版 ZIP：`timffle-chrome-0.8.0.26330.zip`，sha256 `c9235bc7a1509d20a40abadfe26c5a7db70121fac43d3dafb83f6e6eb75229f4`（由 `e9743506d` 的乾淨工作樹建置）。
 
 ## 0.8.0.26329 — 2026-11-03（webgpu 分支，測試版）
 
