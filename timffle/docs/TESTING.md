@@ -203,7 +203,7 @@ HW_ICD=... timffle/scripts/verify-webgpu.sh web/packages/extension/dist/unpacked
 ```
 
 1. **wgpu 單元測試**（`cargo test -p ruffle_render_wgpu --lib`）：髒區追蹤、混合矩形。
-2. **解析著色器 vs 硬體解析**（`render/wgpu/tests/resolve.rs`）：把有漸層的重疊三角形畫進 4 倍抗鋸齒貼圖，一次用 GPU 內建解析、一次用 `resolve.wgsl` 剪裁到一個矩形，矩形內逐像素相同（lavapipe 與 GeForce GT 720／NVK 上皆為 0 差異）、矩形外一個像素都沒被寫到。GL 後端自動略過（那裡不用這個著色器）。
+2. **解析著色器 vs 硬體解析**（`render/wgpu/tests/resolve.rs`）：把有漸層的重疊三角形畫進 4 倍抗鋸齒貼圖，一次用 GPU 內建解析、一次用 `resolve.wgsl` 剪裁到一個矩形，矩形內逐像素相同（lavapipe 與 GeForce GT 720／NVK 上皆為 0 差異）、矩形外一個像素都沒被寫到；0.8.0.26331 起第三個測試在同一個 pass 裡解析三個矩形（一組等待中的混合物件就是這樣共用一個 pass）。GL 後端自動略過（那裡不用這個著色器）。
    **讀回著色器**（`render/wgpu/tests/readback.rs`，0.8.0.26329 起）：`readback.wgsl` 是 WebGPU 同步讀回用的著色器，把貼圖的原始位元組每趟三個寫進不透明畫布的 RGB。測試把虛擬亂數內容上傳成 `Rgba8Unorm`、`R32Float`、`Rg32Float`、`Rgba32Float` 貼圖，整張與帶奇數原點的子矩形各讀一次，重組後的位元組必須和上傳的完全相同（lavapipe 與 GT 720 皆 0 個錯誤位元組）。
 3. **Ruffle 畫面回歸**（`cargo test --release -p tests --features imgtests --test tests`，Vulkan 後端會走和 WebGPU 相同的解析路徑）：腳本只容許 `KNOWN_FAILURES` 裡的 6 項上游既有差異（加上 2 項只在滿載時偶發的游標測試），其他失敗都算失敗。
 4. **瀏覽器差異測試**（`timffle/tools/webgpu-diff/`）：`select_tests.py` 從 `tests/tests/swfs` 挑出靜態、有期望圖的回歸 SWF（約 242 個），`run.mjs` 在同一個無頭 Chrome 裡用 `wgpu-webgl` 和 `webgpu` 各畫一次（`preferredRenderer` 不同，其餘相同；WebGPU 在無 GPU 的機器上用 `--use-webgpu-adapter=swiftshader`），`compare.py` 逐像素比對並產生 `report.md` 與並排圖。通道差 ≤ 1 算雜訊；任何 `DIFF`／`MISSING` 都算失敗。約 10 分鐘。

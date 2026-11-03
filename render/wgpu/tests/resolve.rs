@@ -205,6 +205,17 @@ fn shader_resolve(
     target: &wgpu::TextureView,
     scissor: (u32, u32, u32, u32),
 ) {
+    shader_resolve_rects(descriptors, msaa, target, &[scissor]);
+}
+
+/// One render pass, one scissored draw per rectangle (what the player does for
+/// a group of blends that wait together).
+fn shader_resolve_rects(
+    descriptors: &Descriptors,
+    msaa: &wgpu::TextureView,
+    target: &wgpu::TextureView,
+    scissors: &[(u32, u32, u32, u32)],
+) {
     let bind_group = descriptors
         .device
         .create_bind_group(&wgpu::BindGroupDescriptor {
@@ -233,12 +244,75 @@ fn shader_resolve(
             })],
             ..Default::default()
         });
-        pass.set_scissor_rect(scissor.0, scissor.1, scissor.2, scissor.3);
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
-        pass.draw(0..3, 0..1);
+        for scissor in scissors {
+            pass.set_scissor_rect(scissor.0, scissor.1, scissor.2, scissor.3);
+            pass.draw(0..3, 0..1);
+        }
     }
     descriptors.queue.submit([encoder.finish()]);
+}
+
+#[test]
+fn shader_resolve_of_several_rectangles_in_one_pass() {
+    let Some(descriptors) = descriptors() else {
+        return;
+    };
+    let msaa = texture(
+        &descriptors.device,
+        SAMPLES,
+        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+    );
+    let hardware = texture(
+        &descriptors.device,
+        1,
+        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+    );
+    let shader = texture(
+        &descriptors.device,
+        1,
+        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+    );
+    let msaa_view = msaa.create_view(&Default::default());
+    let shader_view = shader.create_view(&Default::default());
+    draw_content(
+        &descriptors,
+        &msaa_view,
+        Some(&hardware.create_view(&Default::default())),
+    );
+    let sentinel = wgpu::Color {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    clear(&descriptors, &shader_view, sentinel);
+    let rects = [(3u32, 4u32, 12u32, 9u32), (30, 2, 20, 15), (8, 30, 50, 10)];
+    shader_resolve_rects(&descriptors, &msaa_view, &shader_view, &rects);
+    let expected = read_back(&descriptors, &hardware);
+    let actual = read_back(&descriptors, &shader);
+    let mut max_diff = 0u8;
+    for y in 0..HEIGHT {
+        for x in 0..WIDTH {
+            let i = (y * WIDTH + x) as usize;
+            let inside = rects
+                .iter()
+                .any(|r| x >= r.0 && x < r.0 + r.2 && y >= r.1 && y < r.1 + r.3);
+            if inside {
+                for c in 0..4 {
+                    max_diff = max_diff.max(expected[i][c].abs_diff(actual[i][c]));
+                }
+            } else {
+                assert_eq!(
+                    actual[i],
+                    [0u8, 255, 0, 255],
+                    "pixel ({x},{y}) outside every rectangle was written"
+                );
+            }
+        }
+    }
+    assert!(max_diff <= 1, "max channel diff {max_diff}");
 }
 
 fn clear(descriptors: &Descriptors, view: &wgpu::TextureView, color: wgpu::Color) {

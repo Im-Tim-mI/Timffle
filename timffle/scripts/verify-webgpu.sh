@@ -45,7 +45,7 @@ for entry in "${adapters[@]}"; do
   step "2. resolve shader vs hardware resolve ($name)"
   VK_ICD_FILENAMES=$icd WGPU_BACKEND=vulkan cargo test -p ruffle_render_wgpu --test resolve -- --nocapture 2>&1 \
     | tee "$OUT/resolve-$name.log" | grep -E "adapter:|pixels differing|test result"
-  grep -q "test result: ok. 2 passed" "$OUT/resolve-$name.log" || fail "resolve test on $name"
+  grep -q "test result: ok. 3 passed" "$OUT/resolve-$name.log" || fail "resolve test on $name"
 
   step "2b. readback shader reproduces texture bytes ($name)"
   VK_ICD_FILENAMES=$icd WGPU_BACKEND=vulkan cargo test -p ruffle_render_wgpu --test readback -- --nocapture 2>&1 \

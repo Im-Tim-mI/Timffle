@@ -473,43 +473,99 @@ impl CommandTarget {
         // Timffle: where a shader can read the multisampled texture, resolve
         // only the rectangle that is needed; the rest stays marked dirty.
         if let Some(rect) = rect
-            && descriptors.backend != wgpu::Backend::Gl
+            && self.can_resolve_partially(descriptors)
+        {
+            self.resolve_rects(descriptors, encoder, resolve_buffer, &[rect]);
+            return;
+        }
+        self.resolve_all(encoder, resolve_buffer);
+    }
+
+    /// Timffle: like [`Self::ensure_resolved`] for several rectangles at
+    /// once. Where partial resolves are possible, all of them share one render
+    /// pass (one scissored draw each); otherwise the whole frame buffer is
+    /// resolved once if any of them needs it.
+    pub fn ensure_resolved_rects(
+        &self,
+        descriptors: &Descriptors,
+        encoder: &mut wgpu::CommandEncoder,
+        rects: &[SurfaceRect],
+    ) {
+        self.ensure_cleared(encoder);
+        let Some(resolve_buffer) = &self.resolve_buffer else {
+            return;
+        };
+        let needed: Vec<SurfaceRect> = {
+            let dirty = self.dirty.borrow();
+            rects
+                .iter()
+                .copied()
+                .filter(|rect| dirty.needs_resolve(Some(*rect)))
+                .collect()
+        };
+        if needed.is_empty() {
+            return;
+        }
+        if self.can_resolve_partially(descriptors) {
+            self.resolve_rects(descriptors, encoder, resolve_buffer, &needed);
+        } else {
+            self.resolve_all(encoder, resolve_buffer);
+        }
+    }
+
+    /// Whether `resolve.wgsl` can read this target's multisampled frame buffer.
+    fn can_resolve_partially(&self, descriptors: &Descriptors) -> bool {
+        descriptors.backend != wgpu::Backend::Gl
             && self
                 .frame_buffer
                 .texture()
                 .usage()
                 .contains(wgpu::TextureUsages::TEXTURE_BINDING)
-        {
-            let bind_group = descriptors
-                .device
-                .create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: create_debug_label!("Resolve bind group").as_deref(),
-                    layout: &descriptors.bind_layouts.resolve,
-                    entries: &[wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(self.frame_buffer.view()),
-                    }],
-                });
-            let pipeline = descriptors.resolve_pipeline(self.format, self.sample_count);
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: create_debug_label!("Resolving part of command target").as_deref(),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: resolve_buffer.view(),
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                    depth_slice: None,
-                })],
-                ..Default::default()
+    }
+
+    /// One render pass that resolves each of `rects` with the resolve shader.
+    /// The dirty state is left as it is.
+    fn resolve_rects(
+        &self,
+        descriptors: &Descriptors,
+        encoder: &mut wgpu::CommandEncoder,
+        resolve_buffer: &ResolveBuffer,
+        rects: &[SurfaceRect],
+    ) {
+        let bind_group = descriptors
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: create_debug_label!("Resolve bind group").as_deref(),
+                layout: &descriptors.bind_layouts.resolve,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(self.frame_buffer.view()),
+                }],
             });
+        let pipeline = descriptors.resolve_pipeline(self.format, self.sample_count);
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: create_debug_label!("Resolving part of command target").as_deref(),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: resolve_buffer.view(),
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            ..Default::default()
+        });
+        render_pass.set_pipeline(&pipeline);
+        render_pass.set_bind_group(0, &bind_group, &[]);
+        for rect in rects {
             render_pass.set_scissor_rect(rect.x, rect.y, rect.width, rect.height);
-            render_pass.set_pipeline(&pipeline);
-            render_pass.set_bind_group(0, &bind_group, &[]);
             render_pass.draw(0..3, 0..1);
-            return;
         }
+    }
+
+    /// Resolves the whole frame buffer with the GPU's own resolve.
+    fn resolve_all(&self, encoder: &mut wgpu::CommandEncoder, resolve_buffer: &ResolveBuffer) {
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: create_debug_label!("Resolving command target").as_deref(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -605,6 +661,20 @@ impl CommandTarget {
         rect: SurfaceRect,
         read: SurfaceRect,
     ) -> BlendBuffer {
+        self.ensure_resolved(descriptors, encoder, Some(read));
+        self.copy_resolved_region(descriptors, pool, encoder, rect)
+    }
+
+    /// [`Self::copy_region`] without the resolve: the caller has already made
+    /// sure that the part it needs is up to date (see
+    /// [`Self::ensure_resolved_rects`]).
+    pub fn copy_resolved_region(
+        &self,
+        descriptors: &Descriptors,
+        pool: &mut TexturePool,
+        encoder: &mut wgpu::CommandEncoder,
+        rect: SurfaceRect,
+    ) -> BlendBuffer {
         let size = wgpu::Extent3d {
             width: rect.width,
             height: rect.height,
@@ -619,7 +689,6 @@ impl CommandTarget {
                 | wgpu::TextureUsages::COPY_SRC,
             pool,
         );
-        self.ensure_resolved(descriptors, encoder, Some(read));
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: self.color_texture(),
