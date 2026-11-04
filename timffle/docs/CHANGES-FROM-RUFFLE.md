@@ -95,6 +95,19 @@
 - **`serverString` 重做**：欄位與順序照 Flash Player 32 量到的（`A,SA,SV,EV,MP3,AE,VE,ACC,PR,SP,SB,DEB,V,M,R,COL,AR,OS,ARCH,L,IME,PR32,PR64,CAS,PT,AVD,LFD,WD,TLS,ML,DP`），編碼同 `escape()`（字母、數字、`-_.` 不編碼，空白是 `%20`）。Ruffle 原本（只有 AVM1 用）少了 `V`、`ARCH`、`PR32`、`PR64`、`CAS`、`WD`、`TLS`、`ML` 八個欄位、`ACC` 的真假相反、`M` 與 `OS` 被編碼兩次。
 - **參考值來自真 Flash**：`timffle/difftest/src/D41Capabilities.hx`（探測用，沒有黃金答案）在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出每個成員與 `serverString`；與 Timffle 唯一刻意不同的是 `hasPrinting`／`PR`（Wine 的 Windows 有列印功能，Timffle 沒有）。測試 `capabilities_members`（依機器而定的成員只檢查與 `serverString` 一致，不印值）。
 
+### 第 2 組：顯示（flash.display.Stage，14 個空殼）
+
+- **參考值來自真 Flash**：`timffle/difftest/src/D42Stage.hx`（每個成員的值、非法值的錯誤、`constructor` 寫入、唯讀成員的 `ReferenceError #1074`）與 `D43StageFull.hx`（`fullScreenSourceRect` 的夾限規則、實際進全螢幕後的 `mouseLock`、離開全螢幕後的狀態），在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出；測試 `stage_members` 的 49 行輸出與它逐行相同（唯一例外：測試主機沒有滑鼠鎖定，所以全螢幕時 `mouseLock = true` 讀回 false——這正是 Flash 在沒有該功能的平台上的行為）。
+- **`fullScreenSourceRect`**（`core/src/display_object/stage.rs`）：存的是 Flash 的整數化副本——座標四捨六入五成雙（1.5 → 2、0.5 → 0）、NaN → -2147483648、寬高夾在 302×74 到 2880×2880 之間（Flash 32 量到的常數；是否隨螢幕大小變動未驗證）；getter 每次給新的 Rectangle（改它不影響舞台）。全螢幕時只把那一塊舞台等比例放大、置中、四周黑邊（不管 `scaleMode`），`stageWidth`／`stageHeight` 不變（真 Flash 亦然）；全螢幕中改值立即生效；設成 null 回到整個舞台。
+- **`mouseLock`**：真的鎖定指標——瀏覽器用 Pointer Lock API（鎖在 canvas 上，滑鼠事件照常送到播放器；使用者按 Esc 或離開全螢幕時瀏覽器解除，`pointerlockchange` 會把狀態同步回 Stage），桌面版用 winit 的 `set_cursor_grab`（Locked，不支援時退成 Confined）。Flash 的規則：非全螢幕時設 true 或 false 都丟 `Error #3707`；離開全螢幕後讀回 false。主機拒絕鎖定時保持 false。`MouseEvent.movementX`／`movementY` 仍是 0（上游既有，不在 stub-report 範圍）。
+- **`allowsFullScreen`／`allowsFullScreenInteractive`**：照播放器的 `allowFullScreen` 設定（網頁版的 `allowFullScreen` 參數）；Timffle 的全螢幕從不限制鍵盤，所以互動式全螢幕只要能全螢幕就允許（真 Flash standalone 的 `allowsFullScreenInteractive` 是 false 但 `displayState` 卻回 `fullScreenInteractive`，自己就不一致）。
+- **`fullScreenWidth`／`fullScreenHeight`**：與 `Capabilities.screenResolutionX`／`Y` 同一個函式（`capabilities.rs::screen_resolution`，視口大小除以縮放係數）；真 Flash 兩者都回主螢幕解析度（1024×768），Timffle 看不到螢幕只看得到視口，兩個 API 至少彼此一致。
+- **`focus` 與 `isFocusInaccessible()`**：焦點物件所屬 SWF 不允許呼叫端的 SWF 存取（不同安全網域且沒有 `Security.allowDomain`）時，`focus` 讀成 null、`isFocusInaccessible()` 為 true；用第 1 組的 `SwfMovie::allows_access_from`。
+- **`colorCorrection`**：Flash 在不支援色彩校正的機器上仍記住設定值；`"on"`／`"off"`／`"default"` 以外的字串 `ArgumentError #2008`，null `TypeError #2007`。**`colorCorrectionSupport`** "unsupported"：繪圖後端不套 ICC 色彩描述檔，就是 Flash「沒有色彩管理的機器」的回答。
+- **`stageVideos`**：Flash 32 不論有沒有 GPU 都給 8 個 `StageVideo`（同一個 Vector、同一批物件；`new StageVideo()` 是 `ArgumentError #2012`）；物件由 Rust 建立（`createStageVideos`），`StageVideo` 本身的成員屬第 5 組。
+- **`wmodeGPU`**：頁面要求 `wmode=gpu` 且由 GPU 繪圖後端（WebGPU／WebGL／wgpu）繪製時 true，否則 false（真 Flash standalone：false）。
+- **沒有該功能的機器上 Flash 的行為**：`softKeyboardRect` 永遠 (0,0,0,0) 且每次同一個物件（播放器沒有自己的軟鍵盤；瀏覽器的螢幕鍵盤在舞台之外、大小不公開）；`displayContextInfo` null、唯讀；`constructor` 讀 null、寫入忽略（Flash 32 量到）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
