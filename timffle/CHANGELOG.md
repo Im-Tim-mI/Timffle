@@ -13,7 +13,8 @@
 - **新增「顯示幀數」**（彈出選單與設定頁各一個勾選框，36 種語言；`web/packages/core/src/internal/ui/fps-overlay.ts`）：勾起來後遊戲角落出現半透明小方塊，大字是每秒實際畫出的張數，小字是遊戲本身的幀率與螢幕更新率（例如 `SWF 24 · 60 Hz`）；每 0.5 秒更新；只有把手會接滑鼠，拖到任一角落會記住；把手連點兩下多顯示一行「上一秒遲到的動畫幀百分比」。開關即時生效，不用重新載入，也不會讓「重新載入分頁」按鈕亮起。頁面設定 `showFps`（`window.RufflePlayer.config`）也可以開。
 - **移除實驗性補幀**（26333～26342 的功能）：拿掉核心的 `interp` 模組與各繪圖點的可見內容計數（`core/src/display_object.rs` 等 8 個檔案回到 webgpu 分支的版本）、`RenderContext.interp`、`Player::frame_interpolation`／`wants_interpolated_render`／`interp_stats`；`web/src/interp.rs` 換成只算幀數的 `web/src/fps.rs`；播放器設定 `frameInterpolation`／`frameInterpolationFps`、公開 API `frameInterpolation` setter、`set_canvas_visible`（捲出視窗外的判斷）全部移除；擴充功能的「（實驗性）補幀功能」開關、「補幀」選單、自訂 fps 欄位與 `frameInterpolationEnabled` 設定移除，7 個相關文字從 36 種語言刪掉（`timffle_options_show_fps` 保留）。補幀之外的改動（tick 順序、`render_count`）保留。
 - 其餘細節、數字與量測工具見下面 26327～26342 各節（測試版紀錄，照原樣保留）。
-- **驗證**：`cargo check` core 與 wasm 目標通過；`web/src/fps.rs` 單元測試 2 項；擴充功能型別檢查與單元測試 320 項通過；`sync_locales.py --check`、`rebrand.py --check` 通過。
+- **驗證**：`cargo check` core 與 wasm 目標通過；`web/src/fps.rs` 單元測試 2 項；擴充功能型別檢查與單元測試 320 項通過；`sync_locales.py --check`、`rebrand.py --check` 通過。本機私服冒煙測試（無頭 Chrome，這台機器拿不到 WebGPU、自動退回 `wgpu-webgl`）：登入、建角後進世界、走路都正常，幀數框顯示 `24`／`SWF 24 · 60 Hz`，主控台只有既知的良性錯誤，沒有 panic。242 個回歸 SWF 未重跑（本版只移除補幀）。
+- 正式版 ZIP：`timffle-chrome-0.8.0.26343.zip`，sha256 `f0bcd20f237a598e7020d4eb167229d24aaefd286552557ec523130c2ab33f1b`；商店包 `timffle-chrome-store-0.8.0.26343.zip`，sha256 `d23a56dedb66540a26d6c6c0becfe296ee6214b11541ba696752a8a10475f971`（皆由標籤 `v0.8.0.26343` = `73426cee6` 的乾淨工作樹建置）。
 
 ## 0.8.0.26342 — 2026-11-04（frame-interp 分支，測試版）
 
