@@ -1421,7 +1421,7 @@ fn draw_textured_triangle(
     depth: u32,
 ) {
     const MAX_DEPTH: u32 = 5;
-    const MIN_EDGE: i32 = 4 * Twips::TWIPS_PER_PIXEL as i32;
+    const MIN_EDGE: i32 = 4 * Twips::TWIPS_PER_PIXEL;
 
     let ts = [tv[0].uvt[2], tv[1].uvt[2], tv[2].uvt[2]];
     let t_min = ts.iter().cloned().fold(f64::INFINITY, f64::min);

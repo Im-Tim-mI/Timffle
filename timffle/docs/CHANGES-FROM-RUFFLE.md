@@ -148,6 +148,15 @@
 - **`DisplayObjectContainer.getObjectsUnderPoint()`**（`display_object_container.rs` 的 `objects_under_point`）：照 Flash 的規則——先父後子、由後往前（`[a, b, inner]`、`[n1, n2, n3]`）；**容器自己的繪圖命中時也列進去**（`self.getObjectsUnderPoint(…)` 回 `[self, selfchild]`，Ruffle 原本把 `this` 排除）；Shape、Bitmap（整個邊界，透明像素也算）、TextField、`mouseEnabled=false`、`mouseChildren=false` 的子物件、alpha 0 的填色與 `alpha=0` 的物件都算；`visible=false` 的物件連同整個子樹不算、遮罩物件本身不算、被遮罩物件（含它的子樹）只在遮罩內算；`scrollRect` 不裁切（`(230,430)` 在 10×10 的 scrollRect 外仍命中）；**SimpleButton 列的是它正在顯示的狀態物件**（up state 的 Shape，`parent` 為 null），`hitTestState` 完全不影響（真 Flash 如此，這就是 shumway 兩個測試原本失敗的原因）；舞台與 Loader 本身沒有繪圖、不會出現。`null` 點 `TypeError #2007`。**沒有重現的**：真 Flash 先用「上次繪製時」的邊界篩選再精確命中（物件搬動後、下一次繪製前，舊位置與新位置都查不到），Ruffle 用目前的變換；舞台外（沒有加到舞台）的容器 Flash 的座標空間也受同一個快取影響，Ruffle 用該樹的全域座標；邊緣像素的量化同 `hitTestPoint` 那一列（Flash 的 x 是 `trunc(x) − 0.5`、y 是 `trunc(y) + 0.5` 取樣，刻意不修）。
 - **`DisplayObjectContainer.areInaccessibleObjectsUnderPoint()`**：同一套列舉，只要有一個命中的物件來自呼叫端 SWF 不能存取的 SWF（不同安全網域且沒有 `Security.allowDomain` 給呼叫端）就 true；同網域一律 false、`null` 點 `TypeError #2007`。規則與 `LoaderInfo.childAllowsParent`／`Stage.isFocusInaccessible` 相同。
 
+### 第 2 組：繪圖（flash.display.Graphics.drawPath／drawTriangles／drawGraphicsData）
+
+- **參考值來自真 Flash**：`timffle/difftest/src/D55Graphics.hx`（readGraphicsData 的結構、drawTriangles 的 UV 貼圖與 drawPath 的線條／填色）、`D56Graphics2.hx`（透視 t、uvtData 長度錯誤、重疊三角形、線條順序與顏色捨入、漸層矩陣）、`D57Winding.hx`（同一個 fill 裡 drawRect／lineTo／drawPath／drawTriangles 怎麼分群）在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出；像素以 `BitmapData.draw` + `getPixel32` 取樣，所以是文字報告。測試 `graphics_path_triangles_rules` 的每個取樣點都來自這些探針（只有 `e3` 的 (16,5) 是把原本落在貼圖格邊界的 (20,5) 往左移的推論值）。
+- **填色群組**（`core/src/drawing.rs` 的 `FillOrigin`）：Flash 的一個 `beginFill` 不是單一路徑——一般指令共用一個 even-odd 群組；每次 `drawPath`／`GraphicsPath` 以自己的 winding 另開群組，緊接著的同 winding `drawPath` 併入同一群組（兩次 nonZero、一順一逆的方塊重疊處是洞）、不同 winding 或之後的一般指令另開群組；每次 `drawTriangles` 自成群組。所以 lineTo 兩個同向重疊方塊中間是洞，中間插一次 `drawTriangles` 就不是洞了（量到的 `c2`）。`Drawing::begin_path_group`／`begin_triangles_group`／`draw_command_in_group` 實作這些規則，`draw_command`（一般指令）遇到非一般群組時自動另開 even-odd 群組。
+- **drawPath 的線條**：子路徑永遠不自動閉合（文件也這麼寫；lineTo 版在 fill 裡會補一段回起點的線）。`DrawingLine.auto_close` 旗標＋`begin_path_stroke`／`end_path_stroke` 把 drawPath 的線段獨立成不閉合的子路徑。**沒有重現**：真 Flash 在 `drawPath` 之後再 `lineTo` 時，drawPath 那段線條整個不畫（量到的 `w5`），Timffle 照常畫。
+- **drawTriangles**（`graphics.rs` 的 `draw_triangles_internal`／`draw_textured_triangle`）：三角形先轉成一致方向再以 non-zero 畫，重疊處是聯集（順逆向、大小套疊都量過）；`uvtData` 長度不是頂點數的 2 或 3 倍就 `ArgumentError #2004`（連沒有填色也檢查）；點陣圖填色＋UV 時每個三角形各自成為一個點陣圖填色，矩陣由 3 個頂點的 (u·寬, v·高) → 座標解出（填色本身的矩陣忽略，沒有 UV 時照用）；有 `t` 時 u、v 以 t 加權內插（量到：右邊 t=0.25 時 u=0.5 的分界在 x=33、t=4 時在 x=8），做法是把 t 差超過 2% 的三角形遞迴細分（最多 5 層、邊長小於 4 px 停止）成仿射小片；漸層填色加 uvtData 時 Flash 什麼都不畫，照做；單色填色忽略 UV。畫完之後游標停在最後一個三角形的第一個頂點（之後的 lineTo 從那裡開始，量到的 `t11`）。
+- **drawGraphicsData**：`Graphics.as` 改成 AS3 迴圈，`GraphicsPath` 走 `drawPathObject()` → `drawPath()`（Flash 的 playerglobal 就是這樣，錯誤堆疊多那兩層；commands／data 為 null 的 path 跳過，沿用上游），其餘項目交給新的 native `drawGraphicsDataItem`。
+- **readGraphicsData／beginShaderFill／lineShaderStyle 還沒做**，Flash 的 readGraphicsData 結構已量完（`difftest/results/flash/d55graphics.txt`、`d56graphics2.txt`、`d57winding.txt`），留給下一批。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -161,6 +170,8 @@
 | `hitTestPoint(x, y, true)` | Flash 以整數像素量化（±0.5 像素內答案相同），Ruffle 用精確座標；在輪廓邊緣 1～2 像素內有少數格子不同（一張每格 8×8 像素、共 8960 格的可走格地圖，18 格不同）。**刻意不修**：Flash 的規則像是掃描線光柵化，最接近的常數取樣偏移仍留下 8 格差異，重現的成本與風險太高。見 [`FLASH-NOTES.md`](FLASH-NOTES.md)。 |
 | `getObjectsUnderPoint` | 真 Flash 先用上次繪製時的邊界篩選（物件搬動後、重繪前，新舊位置都查不到；沒加到舞台的樹也受影響），邊緣像素以 `trunc(x) − 0.5`、`trunc(y) + 0.5` 取樣；Ruffle 用目前的變換與精確座標。重繪之後（事件處理函式裡的一般用法）結果相同。 |
 | `BitmapData.encode(…, JPEGXREncoderOptions)` | Flash 輸出 JPEG XR；Ruffle 的 jxrlib 綁定只有解碼，這一支仍是空殼（回 null，標在 stub-report）。 |
+| `Graphics.drawPath` 之後的 `lineTo` | 真 Flash 在 drawPath 之後接著用 lineTo 時，drawPath 那段線條不畫（只剩 lineTo 的線段與閉合線）；Timffle 兩段都畫。填色相同。 |
+| `Graphics.drawTriangles` 的貼圖取樣 | 真 Flash 取最近貼圖格時有半格的偏移（u=0.5 落在格 9 而不是格 10），Timffle 用 GPU 的 `floor(u·寬)`；只差在貼圖格邊界那一排像素。透視（t）是以細分的仿射小片逼近，邊界位置誤差小於 1 px。 |
 | `<prototype>.hasOwnProperty.call(…)` | `Object.prototype.hasOwnProperty`／`propertyIsEnumerable`（以及 `XML.prototype`、`XMLList.prototype` 上的同名函式）在 Ruffle 取出來的是綁在那個 prototype 物件上的 AS3 方法，`.call(other, name)` 因此忽略 `other`；直接呼叫 `obj.hasOwnProperty(name)` 正確。上游既有行為。 |
 | 遞迴深度 | 網頁版保護上限 900 層；需要更深遞迴的演算法（例如遠距離的 A* 尋路）結果會被截斷，桌面版不受影響。 |
 | URLStream／LocalConnection 其他 | 未證明所有協定、所有外部接收端、跨使用者隔離都與 Flash 相同；AMF3 中沒有 `ObjectId` 型別（Date、XML、ByteArray、數值 Vector）的共享身分仍以完整寫出處理。 |
