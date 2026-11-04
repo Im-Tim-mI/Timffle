@@ -17,7 +17,7 @@ use gc_arena::barrier::unlock;
 use gc_arena::{Collect, Gc, GcWeak, Mutation, lock::Lock};
 use ruffle_common::utils::HasPrefixField;
 use ruffle_macros::istr;
-use ruffle_wstr::WString;
+use ruffle_wstr::{WStr, WString};
 
 use super::xml_list_object::{E4XOrXml, XmlOrXmlListObject};
 
@@ -64,10 +64,39 @@ pub struct XmlObjectData<'gc> {
     node: Lock<E4XNode<'gc>>,
 }
 
+// Timffle: all the commands Flash Player 32 reports to `XML.setNotification` callbacks
+// (measured with timffle/difftest/src/D48XmlNotify.hx).
+#[derive(Clone, Copy, Debug)]
 pub enum NotificationCommand {
     AttributeAdded,
     AttributeChanged,
+    AttributeRemoved,
     NameSet,
+    NamespaceAdded,
+    NamespaceRemoved,
+    NamespaceSet,
+    NodeAdded,
+    NodeChanged,
+    NodeRemoved,
+    TextSet,
+}
+
+impl NotificationCommand {
+    pub fn name<'gc>(self, activation: &mut Activation<'_, 'gc>) -> AvmString<'gc> {
+        match self {
+            NotificationCommand::AttributeAdded => istr!("attributeAdded"),
+            NotificationCommand::AttributeChanged => istr!("attributeChanged"),
+            NotificationCommand::AttributeRemoved => istr!("attributeRemoved"),
+            NotificationCommand::NameSet => istr!("nameSet"),
+            NotificationCommand::NamespaceAdded => istr!("namespaceAdded"),
+            NotificationCommand::NamespaceRemoved => istr!("namespaceRemoved"),
+            NotificationCommand::NamespaceSet => istr!("namespaceSet"),
+            NotificationCommand::NodeAdded => istr!("nodeAdded"),
+            NotificationCommand::NodeChanged => istr!("nodeChanged"),
+            NotificationCommand::NodeRemoved => istr!("nodeRemoved"),
+            NotificationCommand::TextSet => istr!("textSet"),
+        }
+    }
 }
 
 impl<'gc> XmlObject<'gc> {
@@ -374,34 +403,17 @@ impl<'gc> XmlObject<'gc> {
         Ok(false)
     }
 
+    // Timffle: the walk over the ancestors lives on E4XNode now (so Rust-side mutations can
+    // report too); a throwing callback propagates its error like Flash Player does.
     pub fn trigger_notification(
         self,
         activation: &mut Activation<'_, 'gc>,
         command: NotificationCommand,
         value: Value<'gc>,
         detail: Value<'gc>,
-    ) {
-        let target = self;
-        let mut current_node = Some(target.node());
-        while let Some(current) = current_node {
-            if let Some(function) = current.notification() {
-                let current_target = XmlObject::new(current, activation);
-                let command = match command {
-                    NotificationCommand::AttributeAdded => istr!("attributeAdded"),
-                    NotificationCommand::AttributeChanged => istr!("attributeChanged"),
-                    NotificationCommand::NameSet => istr!("nameSet"),
-                };
-                let args = [
-                    current_target.into(),
-                    command.into(),
-                    target.into(),
-                    value,
-                    detail,
-                ];
-                let _ = function.call(activation, Value::Null, FunctionArgs::from_slice(&args));
-            }
-            current_node = current.parent();
-        }
+    ) -> Result<(), Error<'gc>> {
+        self.node()
+            .trigger_notification(activation, command, value, detail)
     }
 }
 
@@ -512,6 +524,12 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
         Ok(self.has_own_property(&multiname))
     }
 
+    // Timffle: ECMA-357 13.4.4.30 XML.prototype.propertyIsEnumerable — only "0" is enumerable
+    // (Flash Player 32 agrees, see timffle/difftest/src/D47XmlProps.hx).
+    fn property_is_enumerable(&self, name: AvmString<'gc>) -> bool {
+        &*name == WStr::from_units(b"0") || self.base().property_is_enumerable(name)
+    }
+
     // ECMA-357 9.1.1.2 [[Put]] (P, V)
     fn set_property_local(
         self,
@@ -609,7 +627,7 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
             //        and ((n.[[Name]].uri == null) or (n.[[Name]].uri == j.[[Name]].uri))
             // 6.e.i.1. If (a == null), a = j
             // 6.e.i.2. Else call the [[Delete]] method of x with argument j.[[Name]]
-            if let Some((index, old_attr)) = self.node().remove_matching_attribute(gc, &name) {
+            if let Some((index, old_attr, _)) = self.node().remove_matching_attribute(gc, &name) {
                 // NOTE: In this branch we modify the value of the first matching attribute.
                 let old_value = {
                     // 6.g. Let a.[[Value]] = c
@@ -634,7 +652,7 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
                         NotificationCommand::AttributeChanged,
                         name.into(),
                         old_value.into(),
-                    );
+                    )?;
                 }
             } else {
                 // 6.f. If a == null
@@ -662,7 +680,7 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
                     NotificationCommand::AttributeAdded,
                     local_name.into(),
                     value.into(),
-                );
+                )?;
             }
 
             // 6.h. Return
@@ -691,9 +709,12 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
         // 11.
         let index = self_node.remove_matching_children(activation.gc(), &name);
 
-        let index = if let Some((index, node)) = index {
+        let (index, old_child) = if let Some((index, node, others)) = index {
             self_node.insert_at(activation.gc(), index, node);
-            index
+            // Timffle: Flash reports the other matching children as removed, last one first.
+            let others: Vec<E4XNode<'gc>> = others.into_iter().rev().collect();
+            self_node.notify_nodes_removed(activation, &others)?;
+            (index, Some(node))
         // 12. If i == undefined
         } else {
             // 12.a. Let i = x.[[Length]]
@@ -721,30 +742,44 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
                 // 12.b.vi. Call [[AddInScopeNamespace]] on y with argument ns
             }
 
-            index
+            (index, None)
         };
 
         // 13. If (primitiveAssign == true)
         if primitive_assign {
-            let E4XNodeKind::Element { children, .. } = &mut *self_node.kind_mut(activation.gc())
-            else {
-                unreachable!("Node should be of Element kind");
-            };
+            let child = self_node
+                .child_at(index)
+                .expect("Node should be of Element kind");
+            // Timffle: Flash reports textSet(new text node, s, old text node) for this.
+            let old_text = child.child_at(0);
 
             // 13.a. Delete all the properties of the XML object x[i]
-            children[index].remove_all_children(activation.gc());
+            child.remove_all_children(activation.gc());
 
             // 13.b. Let s = ToString(c)
             let val = value.coerce_to_string(activation)?;
 
             // 13.c. If s is not the empty string, call the [[Replace]] method of x[i] with arguments "0" and s
-            if !val.is_empty() {
-                children[index].replace(0, value, activation)?;
+            if !val.is_empty()
+                && let Some(new_text) = child.replace(0, value, activation)?
+            {
+                let detail = match old_text {
+                    Some(old_text) => E4XOrXml::E4X(old_text).get_or_create_xml(activation).into(),
+                    None => Value::Null,
+                };
+                new_text.trigger_notification(
+                    activation,
+                    NotificationCommand::TextSet,
+                    val.into(),
+                    detail,
+                )?;
             }
         // 14. Else
         } else {
             // 14.a. Call the [[Replace]] method of x with arguments ToString(i) and c
-            self_node.replace(index, value, activation)?;
+            let new_node = self_node.replace(index, value, activation)?;
+            // Timffle: nodeChanged for an existing child, nodeAdded for a new one.
+            self_node.notify_node_changed(activation, new_node, value, old_child)?;
         }
 
         // 15. Return
@@ -811,38 +846,62 @@ impl<'gc> TObject<'gc> for XmlObject<'gc> {
             //        and ((n.[[Name]].uri == null) or (n.[[Name]].uri == a.[[Name]].uri))
             // 3.a.i.1. Let a.[[Parent]] = null
             // 3.a.i.2. Remove the attribute a from x.[[Attributes]]
-            node.remove_matching_attribute(activation.gc(), &name);
+            if let Some((_, first, others)) = node.remove_matching_attribute(activation.gc(), &name)
+            {
+                // Timffle: Flash reports attributeRemoved(name, old value) for each of them.
+                for attr in std::iter::once(first).chain(others) {
+                    let attr_name = attr.local_name().map(Value::from).unwrap_or(Value::Null);
+                    let old_value = match &*attr.kind() {
+                        E4XNodeKind::Attribute(value) => Value::from(*value),
+                        _ => Value::Null,
+                    };
+                    node.trigger_notification(
+                        activation,
+                        NotificationCommand::AttributeRemoved,
+                        attr_name,
+                        old_value,
+                    )?;
+                }
+            }
 
             // 3.b. Return true
             return Ok(true);
         }
 
-        let E4XNodeKind::Element { children, .. } = &mut *node.kind_mut(activation.gc()) else {
-            return Ok(true);
-        };
-
-        // 4. Let dp = 0
-        // 5. For q = 0 to x.[[Length]]-1
-        children.retain(|child| {
-            // 5.a. If ((n.localName == "*")
-            //   or (x[q].[[Class]] == "element" and x[q].[[Name]].localName == n.localName))
-            //   and ((n.uri == null) or (x[q].[[Class]] == “element” and n.uri == x[q].[[Name]].uri ))
-            let should_retain = if name.is_any_name() {
-                false
-            } else if child.is_element() {
-                !child.matches_name(&name)
-            } else {
-                true
+        // Timffle: collect the removed children so they can be reported afterwards
+        // (the callbacks run ActionScript, so no borrow may be held then).
+        let mut removed = Vec::new();
+        {
+            let E4XNodeKind::Element { children, .. } = &mut *node.kind_mut(activation.gc()) else {
+                return Ok(true);
             };
 
-            if !should_retain {
-                child.set_parent(None, activation.gc());
-            }
+            // 4. Let dp = 0
+            // 5. For q = 0 to x.[[Length]]-1
+            children.retain(|child| {
+                // 5.a. If ((n.localName == "*")
+                //   or (x[q].[[Class]] == "element" and x[q].[[Name]].localName == n.localName))
+                //   and ((n.uri == null) or (x[q].[[Class]] == “element” and n.uri == x[q].[[Name]].uri ))
+                let should_retain = if name.is_any_name() {
+                    false
+                } else if child.is_element() {
+                    !child.matches_name(&name)
+                } else {
+                    true
+                };
 
-            should_retain
-        });
+                if !should_retain {
+                    child.set_parent(None, activation.gc());
+                    removed.push(*child);
+                }
+
+                should_retain
+            });
+        }
 
         // 6. Let x.[[Length]] = x.[[Length]] - dp
+        node.notify_nodes_removed(activation, &removed)?;
+
         // 7. Return true.
         Ok(true)
     }

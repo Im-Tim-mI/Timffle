@@ -13,6 +13,28 @@ use crate::avm2::{
 };
 use crate::string::AvmString;
 
+// Timffle: XMLList.AS3::hasOwnProperty / propertyIsEnumerable (ECMA-357 13.5.4.11 / 13.5.4.19),
+// the same answers as Object.prototype.hasOwnProperty/propertyIsEnumerable give on an XMLList.
+pub fn has_own_property<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let name = args.get_value(0).coerce_to_string(activation)?;
+    Ok(this.has_own_property_string(name, activation)?.into())
+}
+
+pub fn property_is_enumerable<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let name = args.get_value(0).coerce_to_string(activation)?;
+    Ok(this.property_is_enumerable(name).into())
+}
+
 fn has_complex_content_inner(children: &[E4XOrXml<'_>]) -> bool {
     match children {
         [] => false,

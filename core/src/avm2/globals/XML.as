@@ -80,6 +80,12 @@ package {
             return this;
         }
 
+        // Timffle: Flash's XML class declares its own hasOwnProperty/propertyIsEnumerable
+        // (ECMA-357 13.4.4.14 / 13.4.4.30): a child, attribute or "0" is an own property,
+        // prototype methods are not, and only "0" is enumerable.
+        override AS3 native function hasOwnProperty(P:* = void 0):Boolean;
+        override AS3 native function propertyIsEnumerable(P:* = void 0):Boolean;
+
         AS3 function toJSON(k:String):* {
             return this.toJSON(k);
         }
@@ -361,6 +367,21 @@ package {
             self.AS3::setLocalName(name);
         }
 
+        // Timffle: Flash's XML.prototype has its own hasOwnProperty/propertyIsEnumerable
+        // (they coerce `this` to XML, so calling them on a plain object throws #1034) and a
+        // valueOf that is the very same function as Object.prototype.valueOf.
+        prototype.hasOwnProperty = function(P:* = void 0):Boolean {
+            var self:XML = this;
+            return self.AS3::hasOwnProperty(P);
+        }
+
+        prototype.propertyIsEnumerable = function(P:* = void 0):Boolean {
+            var self:XML = this;
+            return self.AS3::propertyIsEnumerable(P);
+        }
+
+        prototype.valueOf = Object.prototype.valueOf;
+
         prototype.setPropertyIsEnumerable("hasComplexContent", false);
         prototype.setPropertyIsEnumerable("hasSimpleContent", false);
         prototype.setPropertyIsEnumerable("name", false);
@@ -398,6 +419,9 @@ package {
         prototype.setPropertyIsEnumerable("replace", false);
         prototype.setPropertyIsEnumerable("setChildren", false);
         prototype.setPropertyIsEnumerable("setLocalName", false);
+        prototype.setPropertyIsEnumerable("hasOwnProperty", false);
+        prototype.setPropertyIsEnumerable("propertyIsEnumerable", false);
+        prototype.setPropertyIsEnumerable("valueOf", false);
 
         XML.settings = function() {
             return XML.AS3::settings();

@@ -4,7 +4,9 @@ use crate::avm2::error::{
 };
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::multiname::NamespaceSet;
-use crate::avm2::object::{E4XOrXml, FunctionObject, NamespaceObject, XmlObject, XmlObjectWeak};
+use crate::avm2::object::{
+    E4XOrXml, FunctionObject, NamespaceObject, NotificationCommand, XmlObject, XmlObjectWeak,
+};
 use crate::avm2::{Activation, Error, Multiname, Namespace, Value};
 use crate::string::{AvmString, StringContext, WStr, WString};
 
@@ -468,7 +470,7 @@ impl<'gc> E4XNode<'gc> {
         self,
         gc_context: &Mutation<'gc>,
         name: &Multiname<'gc>,
-    ) -> Option<(usize, E4XNode<'gc>)> {
+    ) -> Option<(usize, E4XNode<'gc>, Vec<E4XNode<'gc>>)> {
         let E4XNodeKind::Element { children, .. } = &mut *self.kind_mut(gc_context) else {
             return None;
         };
@@ -477,11 +479,12 @@ impl<'gc> E4XNode<'gc> {
     }
 
     /// Removes all matching attributes matching provided name, returns the first attribute removed along with its index (if any).
+    /// Timffle: the other removed nodes come back too, so callers can report them to `XML.setNotification` callbacks.
     pub fn remove_matching_attribute(
         self,
         gc_context: &Mutation<'gc>,
         name: &Multiname<'gc>,
-    ) -> Option<(usize, E4XNode<'gc>)> {
+    ) -> Option<(usize, E4XNode<'gc>, Vec<E4XNode<'gc>>)> {
         let E4XNodeKind::Element { attributes, .. } = &mut *self.kind_mut(gc_context) else {
             return None;
         };
@@ -494,28 +497,31 @@ impl<'gc> E4XNode<'gc> {
         gc_context: &Mutation<'gc>,
         nodes: &mut Vec<E4XNode<'gc>>,
         name: &Multiname<'gc>,
-    ) -> Option<(usize, E4XNode<'gc>)> {
+    ) -> Option<(usize, E4XNode<'gc>, Vec<E4XNode<'gc>>)> {
         let index = nodes
             .iter()
             .position(|x| name.is_any_name() || x.matches_name(name));
 
-        let val = if let Some(index) = index {
-            Some((index, nodes[index]))
-        } else {
-            None
-        };
+        let first = index.map(|index| (index, nodes[index]));
+        // Timffle: every matching node after the first one, in document order.
+        let mut others = Vec::new();
 
         nodes.retain(|x| {
             if name.is_any_name() || x.matches_name(name) {
                 // Remove parent.
                 x.set_parent(None, gc_context);
+                if let Some((_, first_node)) = first
+                    && !E4XNode::ptr_eq(*x, first_node)
+                {
+                    others.push(*x);
+                }
                 false
             } else {
                 true
             }
         });
 
-        val
+        first.map(|(index, node)| (index, node, others))
     }
 
     pub fn insert_at(self, gc_context: &Mutation<'gc>, index: usize, node: E4XNode<'gc>) {
@@ -649,15 +655,17 @@ impl<'gc> E4XNode<'gc> {
     }
 
     // ECMA-357 9.1.1.12 [[Replace]] (P, V)
+    // Timffle: returns the node that now sits at `index` (the XML value or the new text node),
+    // so callers can report it to `XML.setNotification` callbacks.
     pub fn replace(
         self,
         index: usize,
         value: Value<'gc>,
         activation: &mut Activation<'_, 'gc>,
-    ) -> Result<(), Error<'gc>> {
+    ) -> Result<Option<E4XNode<'gc>>, Error<'gc>> {
         // 1. If x.[[Class]] ∈ {"text", "comment", "processing-instruction", "attribute"}, return
         if !self.is_element() {
-            return Ok(());
+            return Ok(None);
         }
 
         // 5. If Type(V) is XML and V.[[Class]] ∈ {"element", "comment", "processing-instruction", "text"}
@@ -690,6 +698,7 @@ impl<'gc> E4XNode<'gc> {
             } else {
                 children[index] = xml.node();
             }
+            return Ok(Some(xml.node()));
         // 6. Else if Type(V) is XMLList
         } else if value
             .as_object()
@@ -723,8 +732,132 @@ impl<'gc> E4XNode<'gc> {
             } else {
                 children[index] = text_node;
             }
+            return Ok(Some(text_node));
         }
 
+        Ok(None)
+    }
+
+    /// Timffle: run the undocumented `XML.setNotification` callbacks of this node and of every
+    /// ancestor, the way Flash Player 32 reports a change made to `self`:
+    /// `callback(nodeWithCallback, command, changedNode, value, detail)` with a null `this`.
+    /// An error thrown by a callback propagates to the caller, as in Flash.
+    pub fn trigger_notification(
+        self,
+        activation: &mut Activation<'_, 'gc>,
+        command: NotificationCommand,
+        value: Value<'gc>,
+        detail: Value<'gc>,
+    ) -> Result<(), Error<'gc>> {
+        if !self.ancestors().any(|node| node.notification().is_some()) {
+            return Ok(());
+        }
+
+        let target = E4XOrXml::E4X(self).get_or_create_xml(activation);
+        let command = command.name(activation);
+        let mut current_node = Some(self);
+        while let Some(current) = current_node {
+            if let Some(function) = current.notification() {
+                let current_target = E4XOrXml::E4X(current).get_or_create_xml(activation);
+                let args = [
+                    current_target.into(),
+                    command.into(),
+                    target.into(),
+                    value,
+                    detail,
+                ];
+                function.call(activation, Value::Null, FunctionArgs::from_slice(&args))?;
+            }
+            current_node = current.parent();
+        }
+
+        Ok(())
+    }
+
+    /// Timffle: report `value` (an XML node or every node of an XMLList) as added under `self`.
+    pub fn notify_node_added(
+        self,
+        activation: &mut Activation<'_, 'gc>,
+        value: Value<'gc>,
+    ) -> Result<(), Error<'gc>> {
+        if let Some(list) = value.as_object().and_then(|x| x.as_xml_list_object()) {
+            let children: Vec<_> = list.children().iter().map(|c| c.node()).collect();
+            for child in children {
+                let child = E4XOrXml::E4X(child).get_or_create_xml(activation);
+                self.trigger_notification(
+                    activation,
+                    NotificationCommand::NodeAdded,
+                    child.into(),
+                    Value::Null,
+                )?;
+            }
+            Ok(())
+        } else if value
+            .as_object()
+            .is_some_and(|x| x.as_xml_object().is_some())
+        {
+            self.trigger_notification(
+                activation,
+                NotificationCommand::NodeAdded,
+                value,
+                Value::Null,
+            )
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Timffle: the child at `index`, if any.
+    pub fn child_at(self, index: usize) -> Option<E4XNode<'gc>> {
+        if let E4XNodeKind::Element { children, .. } = &*self.kind() {
+            children.get(index).copied()
+        } else {
+            None
+        }
+    }
+
+    /// Timffle: report that the child `old` of `self` was replaced by `new_node` (nodeChanged),
+    /// or that `value` was added when there was no old child (nodeAdded).
+    pub fn notify_node_changed(
+        self,
+        activation: &mut Activation<'_, 'gc>,
+        new_node: Option<E4XNode<'gc>>,
+        value: Value<'gc>,
+        old: Option<E4XNode<'gc>>,
+    ) -> Result<(), Error<'gc>> {
+        let new_value = match new_node {
+            Some(node) => E4XOrXml::E4X(node).get_or_create_xml(activation).into(),
+            None => value,
+        };
+        match old {
+            Some(old) => {
+                let old = E4XOrXml::E4X(old).get_or_create_xml(activation);
+                self.trigger_notification(
+                    activation,
+                    NotificationCommand::NodeChanged,
+                    new_value,
+                    old.into(),
+                )
+            }
+            None => self.notify_node_added(activation, new_value),
+        }
+    }
+
+    /// Timffle: report every node of `removed` as removed from `self`.
+    pub fn notify_nodes_removed(
+        self,
+        activation: &mut Activation<'_, 'gc>,
+        removed: &[E4XNode<'gc>],
+    ) -> Result<(), Error<'gc>> {
+        for node in removed {
+            let node = E4XOrXml::E4X(*node).get_or_create_xml(activation);
+            self.trigger_notification(
+                activation,
+                NotificationCommand::NodeRemoved,
+                node.into(),
+                Value::Null,
+            )?;
+        }
         Ok(())
     }
 

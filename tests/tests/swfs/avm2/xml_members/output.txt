@@ -1,0 +1,128 @@
+x.hasOwnProperty(b) = true, enumerable false
+x.hasOwnProperty(c) = true, enumerable false
+x.hasOwnProperty(d) = false, enumerable false
+x.hasOwnProperty(@attr) = true, enumerable false
+x.hasOwnProperty(@zz) = false, enumerable false
+x.hasOwnProperty(0) = true, enumerable true
+x.hasOwnProperty(1) = false, enumerable false
+x.hasOwnProperty(toXMLString) = false, enumerable false
+x.hasOwnProperty(hasOwnProperty) = false, enumerable false
+x.hasOwnProperty(valueOf) = false, enumerable false
+x.hasOwnProperty(length) = false, enumerable false
+x.hasOwnProperty(attr) = false, enumerable false
+x.hasOwnProperty(*) = true, enumerable false
+x.hasOwnProperty(@*) = true, enumerable false
+x.hasOwnProperty(0) = true, enumerable true
+x.propertyIsEnumerable() = false
+x.AS3::hasOwnProperty('b') = true, x.AS3::propertyIsEnumerable('0') = true
+x.valueOf() === x: true
+XML.prototype own hasOwnProperty: true, enumerable false, function
+XML.prototype own propertyIsEnumerable: true, enumerable false, function
+XML.prototype own valueOf: true, enumerable false, function
+XML.prototype own toString: true, enumerable false, function
+XML.prototype own setNotification: false, enumerable false, undefined
+XML.prototype own notification: false, enumerable false, undefined
+XML.prototype own nope: false, enumerable false, undefined
+XML.prototype.valueOf === Object.prototype.valueOf: true
+XML.prototype.hasOwnProperty === Object.prototype.hasOwnProperty: false
+XML.prototype.valueOf.call(x) === x: true
+list2.hasOwnProperty(0) = true/true, list1 true/true, empty false/false
+list2.hasOwnProperty(1) = true/true, list1 false/false, empty false/false
+list2.hasOwnProperty(2) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(b) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(c) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(@attr) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(length) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(toXMLString) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(hasOwnProperty) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(valueOf) = false/false, list1 false/false, empty false/false
+list2.hasOwnProperty(*) = true/false, list1 false/false, empty false/false
+nested.hasOwnProperty(k) = true, @attr true, enumerable k false
+list.valueOf() === list: true
+list.AS3::hasOwnProperty('1') = true, list.AS3::propertyIsEnumerable(1) = true
+XMLList.prototype own hasOwnProperty: true, enumerable false, function
+XMLList.prototype own propertyIsEnumerable: true, enumerable false, function
+XMLList.prototype own valueOf: true, enumerable false, function
+XMLList.prototype own toString: true, enumerable false, function
+XMLList.prototype own nope: false, enumerable false, undefined
+XMLList.prototype.valueOf === Object.prototype.valueOf: true
+XMLList.prototype.valueOf.call(x) is XML: true
+notification() initially: null
+setNotification returns null, notification() === cb: true
+appendChild:
+  cb target=n cmd=nodeAdded prop=n value=XML[element q] detail=null:object
+prependChild:
+  cb target=n cmd=nodeAdded prop=n value=XML[element first] detail=null:object
+setName:
+  cb target=n cmd=nameSet prop=n value=m:string detail=n:string
+setLocalName:
+  cb target=n cmd=nameSet prop=n value=m2:string detail=m:string
+attribute change:
+  cb target=n cmd=attributeChanged prop=n value=a:string detail=1:string
+attribute add:
+  cb target=n cmd=attributeAdded prop=n value=b:string detail=3:string
+attribute delete:
+  cb target=n cmd=attributeRemoved prop=n value=b:string detail=3:string
+child text set:
+  cb target=n cmd=textSet prop=XML[text u] value=u:string detail=XML[text t]
+new child text:
+  cb target=n cmd=textSet prop=XML[text v] value=v:string detail=null:object
+replace child with XML:
+  cb target=n cmd=nodeChanged prop=n value=XML[element r] detail=XML[element z]
+delete child:
+  cb target=n cmd=nodeRemoved prop=n value=XML[element q] detail=null:object
+insertChildAfter:
+  cb target=n cmd=nodeAdded prop=n value=XML[element ins] detail=null:object
+insertChildBefore:
+  cb target=n cmd=nodeAdded prop=n value=XML[element ins2] detail=null:object
+replace(0):
+  cb target=n cmd=nodeChanged prop=n value=XML[element rep] detail=XML[element first]
+setChildren:
+  cb target=n cmd=nodeRemoved prop=n value=XML[element r] detail=null:object
+  cb target=n cmd=nodeRemoved prop=n value=XML[element ins] detail=null:object
+  cb target=n cmd=nodeRemoved prop=n value=XML[element p] detail=null:object
+  cb target=n cmd=nodeRemoved prop=n value=XML[element ins2] detail=null:object
+  cb target=n cmd=nodeChanged prop=n value=XML[element z] detail=XML[element rep]
+grandchild attribute:
+  cb target=n cmd=attributeAdded prop=XML[element z] value=g:string detail=1:string
+grandchild setName:
+  cb target=n cmd=nameSet prop=XML[element zz] value=zz:string detail=z:string
+grandchild appendChild:
+  cb target=n cmd=nodeAdded prop=XML[element zz] value=XML[element deep] detail=null:object
+setNamespace:
+  cb target=n cmd=namespaceSet prop=n value=Namespace[http://x/] detail=null:object
+addNamespace:
+  cb target=n cmd=namespaceAdded prop=n value=Namespace[http://y/] detail=null:object
+removeNamespace:
+  cb target=n cmd=namespaceRemoved prop=XML[element deep] value=Namespace[http://y/] detail=null:object
+  cb target=n cmd=namespaceRemoved prop=XML[element zz] value=Namespace[http://y/] detail=null:object
+  cb target=n cmd=namespaceRemoved prop=n value=Namespace[http://y/] detail=null:object
+setNotification(null):
+  returns null, notification() null
+setNotification(1):
+setNotification(1) THREW #1034
+throwing callback:
+throwing callback THREW #0
+after: k2 with 2 children
+list put r.i = 'all':
+  rcb cmd=nodeRemoved prop=XML[element r] value=XML[element i] detail=null:object
+  rcb cmd=textSet prop=XML[text all] value=all:string detail=null:object
+  -> <r>\n  <i>all</i>\n</r>
+delete r.i:
+  rcb cmd=nodeRemoved prop=XML[element r] value=XML[element i] detail=null:object
+  -> <r/>
+doc(<a x='1'>t<b/></a>) = '<a x="1">t<b /></a>' xmlDecl=null docTypeDecl=null children=1
+doc(<?xml version="1.0" encoding="utf-8"?><a/>) = '<?xml version="1.0" encoding="utf-8"?><a />' xmlDecl=<?xml version="1.0" encoding="utf-8"?> docTypeDecl=null children=1
+doc(<!DOCTYPE a SYSTEM "a.dtd"><a/>) = '<!DOCTYPE a SYSTEM "a.dtd"><a />' xmlDecl=null docTypeDecl=<!DOCTYPE a SYSTEM "a.dtd"> children=1
+doc(<?xml version='1.0'?>\n<!DOCTYPE a>\n<a>\n <b/>\n</a>) = '<?xml version='1.0'?><!DOCTYPE a>\n\n<a>\n <b />\n</a>' xmlDecl=<?xml version='1.0'?> docTypeDecl=<!DOCTYPE a> children=3
+doc() = '<>' xmlDecl=null docTypeDecl=null children=0
+doc(just text) = 'just text' xmlDecl=null docTypeDecl=null children=1
+doc(<a/><b/>) = '<a /><b />' xmlDecl=null docTypeDecl=null children=2
+doc(<a>&amp;&lt;"</a>) = '<a>&amp;&lt;&quot;</a>' xmlDecl=null docTypeDecl=null children=1
+doc(<a>x</a> <!-- c --> tail) = '<a>x</a>  tail' xmlDecl=null docTypeDecl=null children=3
+doc(<?pi target?><a/>) = '<a />' xmlDecl=null docTypeDecl=null children=1
+ignoreWhite doc = '<?xml version='1.0'?><!DOCTYPE a><a><b /></a>' xmlDecl=<?xml version='1.0'?> docTypeDecl=<!DOCTYPE a>
+empty doc = '<>' firstChild=null nodeName=null
+decl-only doc = '<?xml version='1.0'?><!DOCTYPE z><>'
+decl+z doc = '<?xml version='1.0'?><!DOCTYPE z><z />' firstChild '<z />'
+numeric decl doc = '5<z />'
