@@ -101,5 +101,6 @@
     "timffle_fi_custom": "カスタム…",
     "timffle_fi_off": "オフ — ゲーム本来のフレームレート",
     "timffle_fi_custom_fps": "カスタム目標（24～999 fps）",
-    "timffle_options_show_fps": "フレームレートを表示（ゲームの隅に浮かぶ小窓。別の隅へドラッグ可）"
+    "timffle_options_show_fps": "フレームレートを表示（ゲームの隅に浮かぶ小窓。別の隅へドラッグ可）",
+    "timffle_options_fi_enabled": "フレーム補間（実験的）"
 }

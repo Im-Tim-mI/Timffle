@@ -460,5 +460,8 @@
     },
     "timffle_options_show_fps": {
         "message": "Zobraziť snímkovú frekvenciu (plávajúce okienko v rohu hry; dá sa presunúť do iného rohu)"
+    },
+    "timffle_options_fi_enabled": {
+        "message": "Interpolácia snímok (experimentálne)"
     }
 }

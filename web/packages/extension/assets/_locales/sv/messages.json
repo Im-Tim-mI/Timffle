@@ -475,5 +475,8 @@
     },
     "timffle_options_show_fps": {
         "message": "Visa bildfrekvens (flytande ruta i ett hörn av spelet; kan dras till ett annat hörn)"
+    },
+    "timffle_options_fi_enabled": {
+        "message": "Bildinterpolering (experimentell)"
     }
 }

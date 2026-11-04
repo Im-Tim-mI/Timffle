@@ -101,5 +101,6 @@
     "timffle_fi_custom": "사용자 지정…",
     "timffle_fi_off": "끔 — 게임 본래의 프레임 속도",
     "timffle_fi_custom_fps": "사용자 지정 목표(24~999 fps)",
-    "timffle_options_show_fps": "프레임 속도 표시(게임 모서리의 떠 있는 상자, 다른 모서리로 끌 수 있음)"
+    "timffle_options_show_fps": "프레임 속도 표시(게임 모서리의 떠 있는 상자, 다른 모서리로 끌 수 있음)",
+    "timffle_options_fi_enabled": "프레임 보간(실험적)"
 }

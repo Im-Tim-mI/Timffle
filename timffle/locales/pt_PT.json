@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Personalizado…",
     "timffle_fi_off": "Desligado – a cadência própria do jogo",
     "timffle_fi_custom_fps": "Alvo personalizado (24–999 fps)",
-    "timffle_options_show_fps": "Mostrar cadência (caixa flutuante num canto do jogo; arraste para outro canto)"
+    "timffle_options_show_fps": "Mostrar cadência (caixa flutuante num canto do jogo; arraste para outro canto)",
+    "timffle_options_fi_enabled": "Interpolação de fotogramas (experimental)"
 }

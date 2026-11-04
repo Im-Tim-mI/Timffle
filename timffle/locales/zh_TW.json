@@ -107,5 +107,6 @@
     "timffle_fi_custom": "自訂…",
     "timffle_fi_off": "關閉——不補幀，使用遊戲原本的幀率",
     "timffle_fi_custom_fps": "自訂目標（24–999 fps）",
-    "timffle_options_show_fps": "顯示幀數（遊戲角落的浮動視窗，可拖到其他角落）"
+    "timffle_options_show_fps": "顯示幀數（遊戲角落的浮動視窗，可拖到其他角落）",
+    "timffle_options_fi_enabled": "（實驗性）補幀功能"
 }

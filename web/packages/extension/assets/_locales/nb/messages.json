@@ -337,5 +337,8 @@
     },
     "timffle_options_show_fps": {
         "message": "Vis bildefrekvens (flytende boks i et hjørne av spillet; kan dras til et annet hjørne)"
+    },
+    "timffle_options_fi_enabled": {
+        "message": "Bildeinterpolering (eksperimentell)"
     }
 }

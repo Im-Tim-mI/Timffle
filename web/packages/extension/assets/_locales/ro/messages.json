@@ -475,5 +475,8 @@
     },
     "timffle_options_show_fps": {
         "message": "Afișează rata de cadre (casetă plutitoare într-un colț al jocului; poate fi trasă în alt colț)"
+    },
+    "timffle_options_fi_enabled": {
+        "message": "Interpolarea cadrelor (experimental)"
     }
 }

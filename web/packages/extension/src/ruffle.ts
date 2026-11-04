@@ -66,6 +66,29 @@ function handleMessage(message: Message) {
             Setup.installRuffle("extension");
             return {};
         }
+        case "settings": {
+            // Timffle: apply to every player on the page and to players made later.
+            if (window.RufflePlayer?.config) {
+                const cfg = window.RufflePlayer.config as Config.BaseLoadOptions;
+                cfg.frameInterpolation = message.frameInterpolation;
+                cfg.showFps = message.showFps;
+            }
+            for (const el of document.querySelectorAll(
+                "ruffle-embed, ruffle-object, ruffle-player",
+            )) {
+                const player = el as unknown as {
+                    frameInterpolation?: string;
+                    showFps?: boolean;
+                };
+                try {
+                    player.frameInterpolation = message.frameInterpolation;
+                    player.showFps = message.showFps;
+                } catch {
+                    // A player that is not ready yet.
+                }
+            }
+            return {};
+        }
         case "ping":
             // Ping back.
             return {};

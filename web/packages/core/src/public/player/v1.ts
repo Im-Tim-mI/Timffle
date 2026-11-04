@@ -167,6 +167,21 @@ export interface PlayerV1 {
     set traceObserver(observer: ((message: string) => void) | null);
 
     /**
+     * Timffle: changes the frame interpolation setting while playing:
+     * `"off"`, `"auto"`, `"unlimited"` or a target fps as a string.
+     *
+     * @param value The new setting.
+     */
+    set frameInterpolation(value: string);
+
+    /**
+     * Timffle: shows or hides the floating frame-rate box.
+     *
+     * @param value Whether the box is shown.
+     */
+    set showFps(value: boolean);
+
+    /**
      * Fetches the loaded SWF and downloads it.
      */
     downloadSwf(): Promise<void>;

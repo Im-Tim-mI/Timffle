@@ -96,6 +96,14 @@ export class PlayerV1Impl implements PlayerV1 {
         this.#inner.traceObserver = observer;
     }
 
+    set frameInterpolation(value: string) {
+        this.#inner.frameInterpolation = value;
+    }
+
+    set showFps(value: boolean) {
+        this.#inner.showFps = value;
+    }
+
     get config(): URLLoadOptions | DataLoadOptions | object {
         return this.#inner.config;
     }

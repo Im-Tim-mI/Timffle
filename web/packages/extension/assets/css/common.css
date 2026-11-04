@@ -212,3 +212,9 @@ button {
     color: var(--ruffle-orange);
     font-weight: bold;
 }
+
+/* Timffle: the frame interpolation menu and its custom field follow the switch above them. */
+.option.fi-dependent.dimmed {
+    opacity: 0.4;
+    pointer-events: none;
+}

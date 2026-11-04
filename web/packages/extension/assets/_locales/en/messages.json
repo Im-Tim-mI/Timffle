@@ -576,5 +576,9 @@
     "timffle_options_show_fps": {
         "message": "Show frame rate (floating box in a corner of the game; drag it to another corner)",
         "description": "Check box: shows a small floating frame-rate box in a corner of the game."
+    },
+    "timffle_options_fi_enabled": {
+        "message": "Frame interpolation (experimental)",
+        "description": "Check box (popup and options page): the master switch of the frame interpolation feature; the menu below it is dimmed while it is off."
     }
 }

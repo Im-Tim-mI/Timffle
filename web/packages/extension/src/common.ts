@@ -4,6 +4,8 @@ import { resetProxySettings } from "./proxy-settings";
 import { PROXY_STORAGE_KEY } from "./socket-proxy";
 
 export interface Options extends Config.BaseLoadOptions {
+    /** Timffle: the "(experimental) frame interpolation" switch; off = no extra pictures, menu dimmed. */
+    frameInterpolationEnabled: boolean;
     ruffleEnable: boolean;
     ignoreOptout: boolean;
     autostart: boolean;
@@ -218,4 +220,49 @@ export async function resetOptions(): Promise<void> {
     if (data["responseHeadersUnsupported"]) {
         browser.storage.sync.set({ responseHeadersUnsupported: true });
     }
+}
+
+/**
+ * Timffle: dims the frame interpolation menu and custom field while the
+ * switch above them is off, and shows the custom field only for "Custom…".
+ * Call once after `bindOptions`; it follows later changes by itself.
+ */
+export function bindFrameInterpolationMenu(): void {
+    const enabled = document.getElementById(
+        "frame_interpolation_enabled",
+    ) as HTMLInputElement | null;
+    const select = document.getElementById(
+        "frame_interpolation",
+    ) as HTMLSelectElement | null;
+    const row = document.getElementById("frame_interpolation_fps_row");
+    if (!enabled || !select || !row) {
+        return;
+    }
+    const sync = () => {
+        for (const el of document.getElementsByClassName("fi-dependent")) {
+            el.classList.toggle("dimmed", !enabled.checked);
+        }
+        row.classList.toggle("hidden", select.value !== "custom");
+    };
+    enabled.addEventListener("change", sync);
+    select.addEventListener("change", sync);
+    // A change made elsewhere (the popup, the options page) reaches the
+    // inputs through `bindOptions` a moment later; follow the stored values
+    // directly so the dimming never lags behind.
+    browser.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace !== "sync") {
+            return;
+        }
+        if ("frameInterpolationEnabled" in changes) {
+            enabled.checked = changes["frameInterpolationEnabled"]!.newValue !== false;
+        }
+        if ("frameInterpolation" in changes) {
+            const value = String(changes["frameInterpolation"]!.newValue ?? "auto");
+            if ([...select.options].some((option) => option.value === value)) {
+                select.value = value;
+            }
+        }
+        sync();
+    });
+    sync();
 }

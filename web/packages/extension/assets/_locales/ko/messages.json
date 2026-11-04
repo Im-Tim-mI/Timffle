@@ -475,5 +475,8 @@
     },
     "timffle_options_show_fps": {
         "message": "프레임 속도 표시(게임 모서리의 떠 있는 상자, 다른 모서리로 끌 수 있음)"
+    },
+    "timffle_options_fi_enabled": {
+        "message": "프레임 보간(실험적)"
     }
 }

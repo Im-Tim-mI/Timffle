@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Personalizado…",
     "timffle_fi_off": "Desligado – a taxa própria do jogo",
     "timffle_fi_custom_fps": "Alvo personalizado (24–999 fps)",
-    "timffle_options_show_fps": "Mostrar taxa de quadros (caixa flutuante em um canto do jogo; arraste para outro canto)"
+    "timffle_options_show_fps": "Mostrar taxa de quadros (caixa flutuante em um canto do jogo; arraste para outro canto)",
+    "timffle_options_fi_enabled": "Interpolação de quadros (experimental)"
 }

@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Personalitzat…",
     "timffle_fi_off": "Desactivat – la taxa pròpia del joc",
     "timffle_fi_custom_fps": "Objectiu personalitzat (24–999 fps)",
-    "timffle_options_show_fps": "Mostra els fotogrames per segon (quadre flotant en un racó del joc; arrossega'l a un altre racó)"
+    "timffle_options_show_fps": "Mostra els fotogrames per segon (quadre flotant en un racó del joc; arrossega'l a un altre racó)",
+    "timffle_options_fi_enabled": "Interpolació de fotogrames (experimental)"
 }

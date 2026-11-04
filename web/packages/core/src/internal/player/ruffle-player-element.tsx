@@ -159,6 +159,14 @@ export class RufflePlayerElement extends HTMLElement implements PlayerElement {
         this.#inner.traceObserver = observer;
     }
 
+    set frameInterpolation(value: string) {
+        this.#inner.frameInterpolation = value;
+    }
+
+    set showFps(value: boolean) {
+        this.#inner.showFps = value;
+    }
+
     protected debugPlayerInfo(): string {
         return "";
     }

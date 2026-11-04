@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Personalizat…",
     "timffle_fi_off": "Oprit – rata proprie a jocului",
     "timffle_fi_custom_fps": "Țintă personalizată (24–999 fps)",
-    "timffle_options_show_fps": "Afișează rata de cadre (casetă plutitoare într-un colț al jocului; poate fi trasă în alt colț)"
+    "timffle_options_show_fps": "Afișează rata de cadre (casetă plutitoare într-un colț al jocului; poate fi trasă în alt colț)",
+    "timffle_options_fi_enabled": "Interpolarea cadrelor (experimental)"
 }

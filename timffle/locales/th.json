@@ -101,5 +101,6 @@
     "timffle_fi_custom": "กำหนดเอง…",
     "timffle_fi_off": "ปิด — ใช้อัตราเฟรมเดิมของเกม",
     "timffle_fi_custom_fps": "เป้าหมายกำหนดเอง (24–999 fps)",
-    "timffle_options_show_fps": "แสดงอัตราเฟรม (กล่องลอยที่มุมเกม ลากไปมุมอื่นได้)"
+    "timffle_options_show_fps": "แสดงอัตราเฟรม (กล่องลอยที่มุมเกม ลากไปมุมอื่นได้)",
+    "timffle_options_fi_enabled": "การแทรกเฟรม (ทดลอง)"
 }

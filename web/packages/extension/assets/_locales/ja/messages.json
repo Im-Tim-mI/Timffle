@@ -475,5 +475,8 @@
     },
     "timffle_options_show_fps": {
         "message": "フレームレートを表示（ゲームの隅に浮かぶ小窓。別の隅へドラッグ可）"
+    },
+    "timffle_options_fi_enabled": {
+        "message": "フレーム補間（実験的）"
     }
 }

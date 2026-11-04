@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Mukautettu…",
     "timffle_fi_off": "Pois – pelin oma kuvataajuus",
     "timffle_fi_custom_fps": "Mukautettu tavoite (24–999 fps)",
-    "timffle_options_show_fps": "Näytä kuvataajuus (kelluva laatikko pelin kulmassa; voi vetää toiseen kulmaan)"
+    "timffle_options_show_fps": "Näytä kuvataajuus (kelluva laatikko pelin kulmassa; voi vetää toiseen kulmaan)",
+    "timffle_options_fi_enabled": "Kuvien interpolointi (kokeellinen)"
 }

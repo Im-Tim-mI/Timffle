@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Egendefinert…",
     "timffle_fi_off": "Av – spillets egen bildefrekvens",
     "timffle_fi_custom_fps": "Eget mål (24–999 fps)",
-    "timffle_options_show_fps": "Vis bildefrekvens (flytende boks i et hjørne av spillet; kan dras til et annet hjørne)"
+    "timffle_options_show_fps": "Vis bildefrekvens (flytende boks i et hjørne av spillet; kan dras til et annet hjørne)",
+    "timffle_options_fi_enabled": "Bildeinterpolering (eksperimentell)"
 }

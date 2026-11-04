@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Vlastné…",
     "timffle_fi_off": "Vypnuté – vlastná snímková frekvencia hry",
     "timffle_fi_custom_fps": "Vlastný cieľ (24–999 fps)",
-    "timffle_options_show_fps": "Zobraziť snímkovú frekvenciu (plávajúce okienko v rohu hry; dá sa presunúť do iného rohu)"
+    "timffle_options_show_fps": "Zobraziť snímkovú frekvenciu (plávajúce okienko v rohu hry; dá sa presunúť do iného rohu)",
+    "timffle_options_fi_enabled": "Interpolácia snímok (experimentálne)"
 }

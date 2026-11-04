@@ -1,3 +1,4 @@
+import type { Options } from "./common";
 /**
  *
  * This code provides a content script message listener that proxies messages
@@ -11,6 +12,7 @@ import {
     enableBrowserOnOutdatedChromium,
     explicitOptions,
     loadOptions,
+    getOptions,
 } from "./utils";
 import { isMessage } from "./messages";
 import { clearReloadFlag } from "./startup-options";
@@ -247,7 +249,54 @@ function isXMLDocument(): boolean {
             autoplay: options.autostart ? "on" : "auto",
             unmuteOverlay: options.autostart ? "hidden" : "visible",
             splashScreen: !options.autostart,
+            frameInterpolation: effectiveFrameInterpolation(options),
         },
         publicPath: browser.runtime.getURL("/dist/"),
     });
+
+    // Timffle: the frame interpolation switch/menu and the fps box change the
+    // running players at once, no reload.
+    browser.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace !== "sync") {
+            return;
+        }
+        const keys = [
+            "frameInterpolationEnabled",
+            "frameInterpolation",
+            "frameInterpolationFps",
+            "showFps",
+        ];
+        if (!keys.some((k) => k in changes)) {
+            return;
+        }
+        void getOptions(origin).then((current) => {
+            void sendMessageToPage({
+                type: "settings",
+                frameInterpolation: effectiveFrameInterpolation(current),
+                showFps: current.showFps === true,
+            });
+        });
+    });
 })();
+
+/**
+ * Timffle: the frame interpolation value a player should use: "off" while the
+ * switch is off, otherwise the menu value (with "custom" resolved to its fps).
+ */
+function effectiveFrameInterpolation(options: Options): string {
+    if (!options.frameInterpolationEnabled) {
+        return "off";
+    }
+    const mode = options.frameInterpolation;
+    if (mode === true || mode === undefined || mode === null) {
+        return "auto";
+    }
+    if (mode === false) {
+        return "off";
+    }
+    if (mode === "custom") {
+        const fps = Number(options.frameInterpolationFps);
+        return String(Number.isFinite(fps) && fps >= 24 && fps <= 999 ? fps : 90);
+    }
+    return String(mode);
+}

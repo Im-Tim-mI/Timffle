@@ -870,13 +870,7 @@ export class InnerPlayer {
         instance.set_ime_composition(this.imeEnabled);
 
         // Timffle: the fps box ("Show frame rate" in the extension's settings).
-        if (this.loadedConfig?.showFps) {
-            this.fpsOverlay ??= new FpsOverlay(this.container);
-            this.fpsOverlay.start(() => {
-                const value = this.instance?.frame_stats();
-                return typeof value === "string" ? value : null;
-            });
-        }
+        this.showFps = this.loadedConfig?.showFps === true;
 
         this.rendererDebugInfo = this.instance!.renderer_debug_info();
 
@@ -2341,6 +2335,29 @@ export class InnerPlayer {
      */
     set traceObserver(observer: ((message: string) => void) | null) {
         this.instance?.set_trace_observer(observer);
+    }
+
+    /**
+     * Timffle: changes the frame interpolation setting of the running player
+     * (`"off"`, `"auto"`, `"unlimited"` or a target fps).
+     */
+    set frameInterpolation(value: string) {
+        this.instance?.set_frame_interpolation(String(value));
+    }
+
+    /**
+     * Timffle: shows or hides the floating frame-rate box.
+     */
+    set showFps(value: boolean) {
+        if (value && this.instance) {
+            this.fpsOverlay ??= new FpsOverlay(this.container);
+            this.fpsOverlay.start(() => {
+                const stats = this.instance?.frame_stats();
+                return typeof stats === "string" ? stats : null;
+            });
+        } else {
+            this.fpsOverlay?.stop();
+        }
     }
 
     /**

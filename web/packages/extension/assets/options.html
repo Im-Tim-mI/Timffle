@@ -38,7 +38,11 @@
                 <input type="checkbox" id="ignore_optout" />
                 <label for="ignore_optout">Play Flash content even on sites that disallow Timffle</label>
             </div>
-            <div class="option select">
+            <div class="option checkbox">
+                <input type="checkbox" id="frame_interpolation_enabled" />
+                <label for="frame_interpolation_enabled" data-i18n="timffle_options_fi_enabled"></label>
+            </div>
+            <div class="option select fi-dependent">
                 <select id="frame_interpolation">
                     <option value="unlimited" data-i18n="timffle_fi_unlimited"></option>
                     <option value="auto" data-i18n="timffle_fi_auto"></option>
@@ -51,7 +55,7 @@
                 </select>
                 <label for="frame_interpolation" data-i18n="timffle_options_frame_interpolation"></label>
             </div>
-            <div class="option number-input" id="frame_interpolation_fps_row">
+            <div class="option number-input fi-dependent" id="frame_interpolation_fps_row">
                 <input type="number" id="frame_interpolation_fps" min="24" max="999" step="1" placeholder="90" />
                 <label for="frame_interpolation_fps" data-i18n="timffle_fi_custom_fps"></label>
             </div>

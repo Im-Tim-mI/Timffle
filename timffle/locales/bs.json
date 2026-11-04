@@ -101,5 +101,6 @@
     "timffle_fi_custom": "Prilagođeno…",
     "timffle_fi_off": "Isključeno – vlastita brzina sličica igre",
     "timffle_fi_custom_fps": "Prilagođeni cilj (24–999 fps)",
-    "timffle_options_show_fps": "Prikaži brzinu sličica (lebdeći okvir u uglu igre; može se povući u drugi ugao)"
+    "timffle_options_show_fps": "Prikaži brzinu sličica (lebdeći okvir u uglu igre; može se povući u drugi ugao)",
+    "timffle_options_fi_enabled": "Interpolacija sličica (eksperimentalno)"
 }
