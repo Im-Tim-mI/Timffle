@@ -552,13 +552,16 @@ impl RuffleHandle {
         // Instance is dropped at this point.
     }
 
+    /// Timffle: throws in JavaScript when the ActionScript callback threw and
+    /// `ExternalInterface.marshallExceptions` is true.
     pub fn call_exposed_callback(
         &self,
         name: &str,
         #[expect(clippy::boxed_local)] // for js_bind
         args: Box<[JsValue]>,
-    ) -> JsValue {
+    ) -> Result<JsValue, JsValue> {
         let args = args.iter().map(js_to_external_value);
+        let throw = |message: String| JsValue::from(js_sys::Error::new(&message));
 
         // Re-entrant callbacks need to return through the hole that was punched through for them
         // We record the context of external functions, and then if we get an internal callback
@@ -567,13 +570,19 @@ impl RuffleHandle {
         if let Some(context) = CURRENT_CONTEXT.with(|v| *v.borrow()) {
             unsafe {
                 if let Some(callback) = (*context).external_interface.get_callback(name) {
-                    return external_to_js_value(callback.call(&mut *context, name, args));
+                    return callback
+                        .call_checked(&mut *context, name, args)
+                        .map(external_to_js_value)
+                        .map_err(throw);
                 }
             }
         }
 
-        self.with_core_mut(|core| external_to_js_value(core.call_internal_interface(name, args)))
-            .unwrap_or(JsValue::UNDEFINED)
+        match self.with_core_mut(|core| core.call_internal_interface_checked(name, args)) {
+            Ok(Ok(value)) => Ok(external_to_js_value(value)),
+            Ok(Err(message)) => Err(throw(message)),
+            Err(_) => Ok(JsValue::UNDEFINED),
+        }
     }
 
     pub fn set_trace_observer(&self, observer: JsValue) {

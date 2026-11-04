@@ -263,6 +263,14 @@ pub struct NetStreamData<'gc> {
     /// this `NetStream`.
     last_decoded_bitmap: RefCell<Option<BitmapInfo>>,
 
+    /// Timffle: counts decoded frames so a `Video` can tell whether a frame
+    /// is newer than the one its `clear()` hid.
+    decoded_frame_serial: Cell<u64>,
+
+    /// Timffle: the frame size announced by the FLV's `onMetaData`, which
+    /// `Video.videoWidth`/`videoHeight` report before the first frame.
+    metadata_size: Cell<Option<(u16, u16)>>,
+
     /// The AVM side of this stream.
     avm_object: Lock<Option<NetStreamKind<'gc>>>,
 
@@ -316,6 +324,8 @@ impl<'gc> NetStream<'gc> {
                 source: Lock::new(Gc::new(gc_context, Default::default())),
                 buffer_time: Cell::new(0.1),
                 last_decoded_bitmap: RefCell::new(None),
+                decoded_frame_serial: Cell::new(0),
+                metadata_size: Cell::new(None),
                 avm_object: Lock::new(avm_object),
                 avm2_client: Lock::new(None),
                 url: RefCell::new(None),
@@ -1020,7 +1030,7 @@ impl<'gc> NetStream<'gc> {
                     context.renderer,
                 ) {
                     Ok(bitmap_info) => {
-                        self.0.last_decoded_bitmap.replace(Some(bitmap_info));
+                        self.store_decoded_frame(bitmap_info);
                         if let Some(mc) = self.0.attached_to.get() {
                             mc.invalidate_cached_bitmap();
                             *context.needs_render = true;
@@ -1065,7 +1075,7 @@ impl<'gc> NetStream<'gc> {
                     context.renderer,
                 ) {
                     Ok(bitmap_info) => {
-                        self.0.last_decoded_bitmap.replace(Some(bitmap_info));
+                        self.store_decoded_frame(bitmap_info);
                         if let Some(mc) = self.0.attached_to.get() {
                             mc.invalidate_cached_bitmap();
                             *context.needs_render = true;
@@ -1139,6 +1149,11 @@ impl<'gc> NetStream<'gc> {
                         }
                     }
                     _ => tracing::error!("Invalid FLV metadata tag!"),
+                }
+                // Timffle: `Video.videoWidth`/`videoHeight` already know the
+                // size inside the `onMetaData` callback (Flash does).
+                if let (Some(width), Some(height)) = (width, height) {
+                    self.0.metadata_size.set(Some((width as u16, height as u16)));
                 }
             }
             let avm_object = self.0.avm_object.get();
@@ -1326,6 +1341,23 @@ impl<'gc> NetStream<'gc> {
 
     pub fn last_decoded_bitmap(self) -> Option<BitmapInfo> {
         self.0.last_decoded_bitmap.borrow().clone()
+    }
+
+    /// Timffle: see `NetStreamData::decoded_frame_serial`.
+    pub fn decoded_frame_serial(self) -> u64 {
+        self.0.decoded_frame_serial.get()
+    }
+
+    /// Timffle: see `NetStreamData::metadata_size`.
+    pub fn metadata_size(self) -> Option<(u16, u16)> {
+        self.0.metadata_size.get()
+    }
+
+    fn store_decoded_frame(self, bitmap_info: BitmapInfo) {
+        self.0.last_decoded_bitmap.replace(Some(bitmap_info));
+        self.0
+            .decoded_frame_serial
+            .set(self.0.decoded_frame_serial.get().wrapping_add(1));
     }
 
     /// Trigger a status event on the stream.

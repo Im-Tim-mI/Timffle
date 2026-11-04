@@ -2731,12 +2731,24 @@ impl Player {
         name: &str,
         args: impl IntoIterator<Item = ExternalValue>,
     ) -> ExternalValue {
+        self.call_internal_interface_checked(name, args)
+            .unwrap_or(ExternalValue::Null)
+    }
+
+    /// Timffle: `call_internal_interface` that hands an exception thrown by the
+    /// callback back to the container as `Err(message)` when
+    /// `ExternalInterface.marshallExceptions` is true.
+    pub fn call_internal_interface_checked(
+        &mut self,
+        name: &str,
+        args: impl IntoIterator<Item = ExternalValue>,
+    ) -> Result<ExternalValue, String> {
         self.mutate_with_update_context(|context| {
             if let Some(callback) = context.external_interface.get_callback(name) {
-                callback.call(context, name, args)
+                callback.call_checked(context, name, args)
             } else {
                 tracing::warn!("Calling unknown internal interface: {}", name);
-                ExternalValue::Null
+                Ok(ExternalValue::Null)
             }
         })
     }

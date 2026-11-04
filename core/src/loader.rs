@@ -1734,10 +1734,21 @@ fn load_sound_avm1_data<'gc>(
 /// Kick off an AVM2 audio load.
 ///
 /// Returns the loader's async process, which you will need to spawn.
+///
+/// Timffle: `caller_url` is the URL of the SWF that called `load()` (for
+/// `isURLInaccessible`), `generation` the value `SoundObject::begin_load`
+/// returned; the result is dropped when `close()` or another `load()` has
+/// bumped the generation since. Event order and property values follow Flash
+/// Player 32 (timffle/difftest/src/D60Media.hx): `open` (url still unset),
+/// `progress` 0/total (url and bytesTotal set), `progress` total/total,
+/// `id3`, `complete`; data that is not MP3 completes with a zero `length`
+/// (no error); a failed request is `open` then `ioError` "Error #2032".
 pub fn load_sound_avm2<'gc>(
     uc: &UpdateContext<'gc>,
     sound: SoundObject<'gc>,
     request: Request,
+    caller_url: String,
+    generation: u32,
 ) -> OwnedFuture<(), Error> {
     let player = uc.player_handle();
     let sound = SoundObjectHandle::stash(uc, sound);
@@ -1750,35 +1761,70 @@ pub fn load_sound_avm2<'gc>(
             let sound = sound.fetch(uc);
             let sound_object = Avm2Object::from(sound);
 
-            if sound.loading_state() == SoundLoadingState::Loaded {
-                // Sound has already been loaded.
+            if sound.loading_state() == SoundLoadingState::Loaded
+                || sound.load_generation() != generation
+            {
+                // Sound has already been loaded, or this download was closed.
                 return Ok(());
             }
 
-            match response {
-                Ok((body, _, _, _)) => {
-                    let handle = uc.audio.register_mp3(&body)?;
-                    sound.set_owned_sound(uc, handle);
+            let mut activation = Avm2Activation::from_nothing(uc);
+            let open_evt = Avm2EventObject::bare_default_event(activation.context, "open");
+            Avm2::dispatch_event(activation.context, open_evt, sound_object);
 
+            match response {
+                Ok((body, url, _, redirected)) => {
                     let total_len = body.len();
 
-                    // FIXME - the "open" event should be fired earlier, and not fired in case of ioerror.
-                    let mut activation = Avm2Activation::from_nothing(uc);
-                    let open_evt = Avm2EventObject::bare_default_event(activation.context, "open");
-                    Avm2::dispatch_event(activation.context, open_evt, sound_object);
+                    // Flash reveals only the origin of a URL the SWF may not see:
+                    // the download was redirected to another origin.
+                    let final_url = Url::parse(&url).ok();
+                    let inaccessible = redirected
+                        && match (&final_url, Url::parse(&caller_url).ok()) {
+                            (Some(final_url), Some(caller)) => {
+                                final_url.origin() != caller.origin()
+                            }
+                            _ => false,
+                        };
+                    let shown_url = match (&final_url, inaccessible) {
+                        (Some(final_url), true) => final_url.origin().ascii_serialization(),
+                        _ => url,
+                    };
+                    sound.set_url_inaccessible(inaccessible);
+                    sound.set_url(
+                        activation.gc(),
+                        Some(AvmString::new_utf8(activation.gc(), shown_url)),
+                    );
+                    sound.set_bytes(0, total_len as u32);
 
-                    // FIXME - As in load_url_loader, we should fire "progress" events as we receive data,
-                    // not just at the end
+                    let progress_evt =
+                        Avm2EventObject::progress_event(&mut activation, "progress", 0, total_len);
+                    Avm2::dispatch_event(activation.context, progress_evt, sound_object);
+                    if sound.load_generation() != generation {
+                        return Ok(());
+                    }
+
+                    sound.set_bytes(total_len as u32, total_len as u32);
+                    match uc.audio.register_mp3(&body) {
+                        Ok(handle) => sound.set_owned_sound(uc, handle),
+                        Err(e) => {
+                            tracing::warn!("Sound.load: data is not MP3 audio: {e:?}");
+                            sound.set_loading_state(SoundLoadingState::Loaded);
+                        }
+                    }
+
+                    let mut activation = Avm2Activation::from_nothing(uc);
                     let progress_evt = Avm2EventObject::progress_event(
                         &mut activation,
                         "progress",
                         total_len,
                         total_len,
                     );
-
                     Avm2::dispatch_event(activation.context, progress_evt, sound_object);
 
-                    sound.read_and_call_id3_event(&mut activation, body.as_slice());
+                    if sound.sound_handle().is_some() {
+                        sound.read_and_call_id3_event(&mut activation, body.as_slice());
+                    }
 
                     let complete_evt =
                         Avm2EventObject::bare_default_event(activation.context, "complete");
@@ -1791,14 +1837,10 @@ pub fn load_sound_avm2<'gc>(
                         response.error
                     );
 
-                    let mut activation = Avm2Activation::from_nothing(uc);
-
-                    // FIXME: Match the exact error message generated by Flash.
-                    let io_error_evt = Avm2EventObject::io_error_event(
-                        &mut activation,
-                        "Error #2032: Stream Error",
-                        2032,
-                    );
+                    sound.load_failed();
+                    // Flash Player 32 (release) reports the bare code.
+                    let io_error_evt =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2032", 2032);
 
                     Avm2::dispatch_event(uc, io_error_evt, sound_object);
                 }

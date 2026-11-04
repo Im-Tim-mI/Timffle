@@ -1,7 +1,4 @@
 package flash.geom {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
-
     import flash.display.DisplayObject;
     import flash.geom.Matrix3D;
     import flash.geom.PerspectiveProjection;
@@ -19,10 +16,11 @@ package flash.geom {
         public native function get matrix():Matrix;
         public native function set matrix(value:Matrix):void;
 
-        public function get concatenatedColorTransform():ColorTransform {
-            stub_getter("flash.geom.Transform", "concatenatedColorTransform");
-            return new ColorTransform();
-        }
+        // Timffle: the colour transform the object is drawn with: its own one
+        // multiplied by every ancestor's up to the stage. Off the display list
+        // it is just the object's own (measured on Flash Player 32,
+        // timffle/difftest/src/D60Media.hx); a new object every time.
+        public native function get concatenatedColorTransform():ColorTransform;
 
         public native function get concatenatedMatrix():Matrix;
         public native function get pixelBounds():Rectangle;

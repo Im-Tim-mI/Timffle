@@ -159,7 +159,8 @@ pub use crate::avm2::object::shader_data_object::{
 pub use crate::avm2::object::shared_object_object::{SharedObjectObject, SharedObjectObjectWeak};
 pub use crate::avm2::object::socket_object::{SocketObject, SocketObjectWeak, socket_allocator};
 pub use crate::avm2::object::sound_object::{
-    QueuedPlay, SoundLoadingState, SoundObject, SoundObjectHandle, SoundObjectWeak, sound_allocator,
+    EXTRACT_SAMPLE_RATE, QueuedPlay, SoundLoadingState, SoundObject, SoundObjectHandle,
+    SoundObjectWeak, sound_allocator,
 };
 pub use crate::avm2::object::soundchannel_object::{
     SoundChannelObject, SoundChannelObjectWeak, sound_channel_allocator,

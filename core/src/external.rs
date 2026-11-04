@@ -285,6 +285,18 @@ impl<'gc> Callback<'gc> {
         name: &str,
         args: impl IntoIterator<Item = Value>,
     ) -> Value {
+        self.call_checked(context, name, args).unwrap_or(Value::Null)
+    }
+
+    /// Timffle: like `call`, but when `ExternalInterface.marshallExceptions`
+    /// is true an exception thrown by an AVM2 callback comes back as
+    /// `Err(message)` for the container to rethrow instead of being logged.
+    pub fn call_checked(
+        &self,
+        context: &mut UpdateContext<'gc>,
+        name: &str,
+        args: impl IntoIterator<Item = Value>,
+    ) -> Result<Value, String> {
         match self {
             Callback::Avm1 { this, method } => {
                 if let Some(base_clip) = context.stage.root_clip() {
@@ -302,10 +314,10 @@ impl<'gc> Callback<'gc> {
                         .call(name, &mut activation, *this, &args)
                         .and_then(|value| Value::from_avm1(&mut activation, value))
                     {
-                        return result;
+                        return Ok(result);
                     }
                 }
-                Value::Null
+                Ok(Value::Null)
             }
             Callback::Avm2 { method } => {
                 let domain = context
@@ -325,15 +337,18 @@ impl<'gc> Callback<'gc> {
                     FunctionArgs::from_slice(&args),
                 );
                 match result.and_then(|value| Value::from_avm2(&mut activation, value)) {
-                    Ok(result) => result,
+                    Ok(result) => Ok(result),
                     Err(err) => {
+                        if activation.context.external_interface.marshall_exceptions() {
+                            return Err(err.to_string(&mut activation));
+                        }
                         Avm2::uncaught_error(
                             &mut activation,
                             None, // TODO do we need to set this?
                             err,
                             "Error in AVM2 external interface callback",
                         );
-                        Value::Null
+                        Ok(Value::Null)
                     }
                 }
             }
@@ -356,6 +371,19 @@ impl FsCommandProvider for NullFsCommandProvider {
 pub trait ExternalInterfaceProvider {
     fn call_method(&self, context: &mut UpdateContext<'_>, name: &str, args: &[Value]) -> Value;
 
+    /// Timffle: `call_method` that reports an exception thrown by the
+    /// container's function as `Err(message)` (used when
+    /// `ExternalInterface.marshallExceptions` is true). Containers that cannot
+    /// tell return the plain result.
+    fn call_method_checked(
+        &self,
+        context: &mut UpdateContext<'_>,
+        name: &str,
+        args: &[Value],
+    ) -> Result<Value, String> {
+        Ok(self.call_method(context, name, args))
+    }
+
     fn on_callback_available(&self, name: &str);
 
     fn get_id(&self) -> Option<String>;
@@ -371,6 +399,8 @@ pub struct ExternalInterface<'gc> {
     callbacks: BTreeMap<String, Callback<'gc>>,
     #[collect(require_static)]
     fs_commands: Box<dyn FsCommandProvider>,
+    /// Timffle: `ExternalInterface.marshallExceptions`.
+    marshall_exceptions: bool,
 }
 
 impl<'gc> ExternalInterface<'gc> {
@@ -382,7 +412,16 @@ impl<'gc> ExternalInterface<'gc> {
             provider: provider.map(Rc::from),
             callbacks: Default::default(),
             fs_commands,
+            marshall_exceptions: false,
         }
+    }
+
+    pub fn marshall_exceptions(&self) -> bool {
+        self.marshall_exceptions
+    }
+
+    pub fn set_marshall_exceptions(&mut self, value: bool) {
+        self.marshall_exceptions = value;
     }
 
     pub fn set_provider(&mut self, provider: Option<Box<dyn ExternalInterfaceProvider>>) {
@@ -410,6 +449,20 @@ impl<'gc> ExternalInterface<'gc> {
             provider.call_method(context, name, args)
         } else {
             Value::Undefined
+        }
+    }
+
+    /// Timffle: see `ExternalInterfaceProvider::call_method_checked`.
+    pub fn call_method_checked(
+        context: &mut UpdateContext<'gc>,
+        name: &str,
+        args: &[Value],
+    ) -> Result<Value, String> {
+        let provider = context.external_interface.provider.clone();
+        if let Some(provider) = &provider {
+            provider.call_method_checked(context, name, args)
+        } else {
+            Ok(Value::Undefined)
         }
     }
 
