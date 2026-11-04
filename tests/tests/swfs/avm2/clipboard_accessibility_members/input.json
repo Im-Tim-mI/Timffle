@@ -1,0 +1,5 @@
+[
+  { "type": "SetClipboardText", "text": "from-os" },
+  { "type": "TextControl", "code": "Paste" },
+  { "type": "Wait" }
+]

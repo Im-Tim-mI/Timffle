@@ -1,58 +1,47 @@
 package flash.desktop {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
+    import flash.errors.IllegalOperationError;
 
-    import flash.system.System;
-
+    // Timffle: real implementation of Flash Player's clipboard (the rules are in
+    // core/src/avm2/globals/flash/desktop/clipboard.rs). Flash Player, unlike AIR, has
+    // only the operating-system clipboard: `generalClipboard` is the one object, `new`
+    // throws #2178, `getData()` works only inside an Event.PASTE handler (#2179), and
+    // the AIR-only formats (url, bitmap, file list, file promise list) are refused by
+    // `setData()` with `false`.
     public class Clipboard {
-        private static var _generalClipboard = new Clipboard();
+        private static var _generalClipboard:Clipboard = null;
+        // True only while `generalClipboard` makes its one object (the class object is
+        // not reachable from the static initializer, so it is made on first use).
+        private static var _makingGeneral:Boolean = false;
 
         public static function get generalClipboard():Clipboard {
-            return Clipboard._generalClipboard;
-        }
-
-        function Clipboard() {
-            // TODO: This should only be callable in AIR
-        }
-
-        public function get formats():Array {
-            stub_getter("flash.desktop.Clipboard", "formats");
-            return new Array();
-        }
-
-        public function clear():void {
-            stub_method("flash.desktop.Clipboard", "clear");
-        }
-
-        public function clearData(format:String):void {
-            stub_method("flash.desktop.Clipboard", "clearData");
-        }
-
-        public function getData(
-            format:String,
-            transferMode:String = ClipboardTransferMode.ORIGINAL_PREFERRED
-        ):Object {
-            stub_method("flash.desktop.Clipboard", "getData");
-            return null;
-        }
-
-        public function hasFormat(format:String):Boolean {
-            stub_method("flash.desktop.Clipboard", "hasFormat");
-            return false;
-        }
-
-        public function setData(format:String, data:Object, serializable:Boolean = true):Boolean {
-            stub_method("flash.desktop.Clipboard", "setData");
-            if (format == ClipboardFormats.TEXT_FORMAT) {
-                System.setClipboard(data);
-                return true;
+            if (_generalClipboard == null) {
+                _makingGeneral = true;
+                _generalClipboard = new Clipboard();
+                _makingGeneral = false;
             }
-            return false;
+            return _generalClipboard;
         }
 
-        public function setDataHandler(format:String, handler:Function, serializable:Boolean = true):Boolean {
-            stub_method("flash.desktop.Clipboard", "setDataHandler");
-            return false;
+        public function Clipboard() {
+            // Only the general clipboard exists in Flash Player; `new Clipboard()`
+            // is an error there (it is allowed in AIR, for drag and drop).
+            if (!_makingGeneral) {
+                throw new IllegalOperationError("Error #2178: The Clipboard.generalClipboard object must be used instead of creating a new Clipboard.", 2178);
+            }
         }
+
+        public native function get formats():Array;
+
+        public native function clear():void;
+
+        public native function clearData(format:String):void;
+
+        public native function getData(format:String, transferMode:String = "originalPreferred"):Object;
+
+        public native function hasFormat(format:String):Boolean;
+
+        public native function setData(format:String, data:Object, serializable:Boolean = true):Boolean;
+
+        public native function setDataHandler(format:String, handler:Function, serializable:Boolean = true):Boolean;
     }
 }

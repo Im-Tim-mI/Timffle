@@ -1205,6 +1205,9 @@ impl Player {
         }
 
         self.mutate_with_update_context(|context| {
+            // Timffle: the browser plugin allows clipboard writes only while a
+            // user event is being handled (`Clipboard`, `System.setClipboard`).
+            context.avm2.in_user_interaction = true;
             let button_event = ButtonKeyCode::from_input_event(&event)
                 .map(|key_code| ClipEvent::KeyPress { key_code });
 
@@ -1382,6 +1385,22 @@ impl Player {
                 }
             }
 
+            // Timffle: Flash dispatches `Event.PASTE` to whatever has focus, not
+            // only to text fields (those dispatch it from `text_control_input`).
+            if !key_press_handled
+                && let InputEvent::TextControl {
+                    code: crate::events::TextControlCode::Paste,
+                } = &event
+                && context.focus_tracker.get_as_edit_text().is_none()
+                && let Some(focus) = context.focus_tracker.get()
+                && let Some(target) = focus.as_displayobject().object2()
+            {
+                crate::avm2::globals::flash::desktop::clipboard::dispatch_paste_event(
+                    context,
+                    target.into(),
+                );
+            }
+
             // KeyPress events also take precedence over tabbing.
             if !key_press_handled
                 && let InputEvent::KeyDown {
@@ -1422,6 +1441,7 @@ impl Player {
             }
 
             Self::run_actions(context);
+            context.avm2.in_user_interaction = false;
         });
 
         // Update mouse state.

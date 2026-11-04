@@ -222,6 +222,19 @@ pub struct Avm2<'gc> {
     /// Timffle: the player's one `IME` instance (`System.ime`), made on first use.
     pub system_ime: Option<Object<'gc>>,
 
+    /// Timffle: the formats on `Clipboard.generalClipboard`, in insertion order
+    /// (see `globals::flash::desktop::clipboard`).
+    pub clipboard: Vec<globals::flash::desktop::clipboard::ClipboardEntry<'gc>>,
+
+    /// Timffle: true while the player is handling an input event from the user
+    /// (mouse, keyboard, text input). The browser plugin only lets a SWF write
+    /// the clipboard (`Clipboard.setData`, `System.setClipboard`) during that.
+    pub in_user_interaction: bool,
+
+    /// Timffle: true while an `Event.PASTE` is being dispatched; the only time
+    /// `Clipboard.getData()` is allowed in Flash Player.
+    pub in_paste_event: bool,
+
     /// Set while a `StackOverflowError` is being constructed. Building the error object runs
     /// ActionScript constructors, which must not trip `MAX_CALL_DEPTH` again.
     building_stack_overflow_error: bool,
@@ -278,6 +291,9 @@ impl<'gc> Avm2<'gc> {
             shared_object_default_encoding: 3,
             shared_object_prevent_backup: None,
             system_ime: None,
+            clipboard: Vec::new(),
+            in_user_interaction: false,
+            in_paste_event: false,
             building_stack_overflow_error: false,
         }
     }

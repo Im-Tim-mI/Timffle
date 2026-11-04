@@ -1177,12 +1177,22 @@ pub fn make_error_2165<'gc>(activation: &mut Activation<'_, 'gc>, input_name: &s
 make_error_fn!(make_error_2174, 2174, error);
 make_error_fn!(make_error_2175, 2175, error);
 
-// Currently we don't use this, see `globals::flash::system::system::set_clipboard`
+// Timffle: `System.setClipboard` outside user interaction (browser plugin);
+// only the web build raises it, so it is dead code elsewhere.
 make_error_fn!(
     #[allow(dead_code)]
     make_error_2176,
     2176,
-    error
+    security_error
+);
+// Timffle: `Clipboard.getData` outside an `Event.PASTE` handler.
+make_error_fn!(make_error_2179, 2179, security_error);
+// Timffle: `Clipboard` writes outside user interaction (browser plugin only).
+make_error_fn!(
+    #[allow(dead_code)]
+    make_error_2191,
+    2191,
+    security_error
 );
 
 make_error_fn!(make_error_2180, 2180, argument_error);

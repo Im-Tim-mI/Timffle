@@ -1764,6 +1764,14 @@ impl<'gc> EditText<'gc> {
                 context.ui.set_clipboard_content(text.to_string());
             }
             TextControlCode::Paste => 'paste: {
+                // Timffle: Flash dispatches `Event.PASTE` to the focused object
+                // first; `Clipboard.getData()` is only allowed inside that handler.
+                if let Some(target) = self.object2() {
+                    crate::avm2::globals::flash::desktop::clipboard::dispatch_paste_event(
+                        context,
+                        target.into(),
+                    );
+                }
                 let text = context.ui.clipboard_content();
                 if text.is_empty() {
                     // When the clipboard is empty, nothing is pasted

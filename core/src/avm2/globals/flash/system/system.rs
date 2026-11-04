@@ -18,9 +18,10 @@ pub fn set_clipboard<'gc>(
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     // The following restrictions only apply to the plugin.
-    // TODO: Check the type of event that triggered the function call.
+    // Timffle: the browser plugin only allows this while a user event (mouse,
+    // keyboard) is being handled; `Avm2::in_user_interaction` tracks that.
     #[cfg(target_family = "wasm")]
-    if false {
+    if !activation.avm2().in_user_interaction {
         return Err(crate::avm2::error::make_error_2176(activation));
     }
 
