@@ -1,20 +1,19 @@
 package flash.display {
-    import __ruffle__.stub_method;
+    import flash.errors.IllegalOperationError;
 
     [Ruffle(Abstract)]
     public class AVM1Movie extends DisplayObject {
-        // TODO: Can these two methods do anything else besides
-        // throw an error? Should we keep the stubs?
-
+        // Timffle: `call()` and `addCallback()` are the AIR-only bridge to the
+        // loaded AVM1 movie. Flash Player 32 throws `IllegalOperationError
+        // #2014` for every argument (measured with
+        // timffle/difftest/src/D51DisplayMisc.hx): Flash without the feature.
         public function call(functionName:String, ...rest):* {
-            stub_method("flash.display.AVM1Movie", "call");
-            Error.throwError(Error, 2014);
+            Error.throwError(IllegalOperationError, 2014);
             return null;
         }
 
         public function addCallback(name:String, fn:Function):void {
-            stub_method("flash.display.AVM1Movie", "addCallback");
-            Error.throwError(Error, 2014);
+            Error.throwError(IllegalOperationError, 2014);
         }
     }
 }

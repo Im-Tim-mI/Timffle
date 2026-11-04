@@ -14,7 +14,6 @@ use crate::avm2::object::{Object, TObject as _};
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{ArrayObject, ArrayStorage, Error};
-use crate::avm2_stub_method;
 use crate::context::UpdateContext;
 use crate::display_object::HitTestOptions;
 use crate::display_object::{
@@ -507,20 +506,84 @@ pub fn stop_all_movie_clips<'gc>(
     Ok(Value::Undefined)
 }
 
+/// Timffle: the display objects under a stage point, the way Flash's
+/// `getObjectsUnderPoint` lists them (measured with
+/// timffle/difftest/src/D51DisplayMisc.hx and D52DisplayEdge.hx): parents
+/// before children, back to front; the container itself when its own drawing
+/// is hit; shapes, bitmaps (by bounds), text fields and objects with
+/// `mouseEnabled` false all count; invisible objects, objects outside their
+/// mask and mask objects do not; `scrollRect` does not clip; a SimpleButton
+/// contributes the state object it is showing (never the hitTestState).
+/// Flash also skips objects whose last-rendered bounds do not contain the
+/// point; that is not reproduced (current transforms are used).
+fn objects_under_point<'gc>(
+    context: &mut UpdateContext<'gc>,
+    container: DisplayObject<'gc>,
+    point: Point<Twips>,
+) -> Vec<DisplayObject<'gc>> {
+    let options =
+        HitTestOptions::SKIP_MASK | HitTestOptions::SKIP_INVISIBLE | HitTestOptions::SKIP_CHILDREN;
+    let mut result = Vec::new();
+    let mut stack = vec![container];
+    while let Some(object) = stack.pop() {
+        // An invisible object, a mask object, or an object whose mask does
+        // not cover the point hides its whole subtree.
+        if !object.visible() || object.maskee().is_some() {
+            continue;
+        }
+        if let Some(masker) = object.masker()
+            && !masker.hit_test_shape(context, point, HitTestOptions::SKIP_INVISIBLE)
+        {
+            continue;
+        }
+        if let Some(button) = object.as_avm2_button() {
+            if let Some(state) = button.get_state_child(button.state().into()) {
+                // The state object may be a free-standing shape (no parent):
+                // then it lives in the button's own space.
+                let point = if state.parent().is_none() {
+                    match object.global_to_local(point) {
+                        Some(point) => point,
+                        None => continue,
+                    }
+                } else {
+                    point
+                };
+                if state.hit_test_shape(context, point, options) {
+                    result.push(state);
+                }
+                if let Some(state_container) = state.as_container() {
+                    for child in state_container.iter_render_list() {
+                        if child.hit_test_shape(context, point, options) {
+                            result.push(child);
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+        // The stage and a Loader draw nothing of their own.
+        if !matches!(
+            object,
+            DisplayObject::Stage(_) | DisplayObject::LoaderDisplay(_)
+        ) && object.hit_test_shape(context, point, options)
+        {
+            result.push(object);
+        }
+        if let Some(container) = object.as_container() {
+            for child in container.iter_render_list().rev() {
+                stack.push(child);
+            }
+        }
+    }
+    result
+}
+
 pub fn get_objects_under_point<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let thisobj = this.as_object().unwrap();
-
-    avm2_stub_method!(
-        activation,
-        "flash.display.DisplayObjectContainer",
-        "getObjectsUnderPoint",
-        "proper hit-test behavior"
-    );
-    // FIXME: different result at from_shumway/hittesting/hittesting "two-layer button".
 
     let point = args.get_object(activation, 0, "point")?;
     let x = point.get_slot(point_slots::X).as_f64();
@@ -531,26 +594,11 @@ pub fn get_objects_under_point<'gc>(
         y: Twips::from_pixels(y),
     };
 
-    let mut under_point = Vec::new();
-    let mut children = vec![thisobj.as_display_object().unwrap()];
-    let options =
-        HitTestOptions::SKIP_MASK | HitTestOptions::SKIP_INVISIBLE | HitTestOptions::SKIP_CHILDREN;
-
-    while let Some(child) = children.pop() {
-        let obj = child.object2();
-        if let Some(obj) = obj {
-            let obj: Object<'gc> = obj.into();
-
-            if obj != thisobj && child.hit_test_shape(activation.context, point, options) {
-                under_point.push(Some(obj.into()));
-            }
-        }
-        if let Some(container) = child.as_container() {
-            for child in container.iter_render_list().rev() {
-                children.push(child);
-            }
-        }
-    }
+    let container = thisobj.as_display_object().unwrap();
+    let under_point: Vec<_> = objects_under_point(activation.context, container, point)
+        .into_iter()
+        .filter_map(|object| object.object2().map(|o| Some(Object::from(o).into())))
+        .collect();
 
     Ok(
         ArrayObject::from_storage(activation.context, ArrayStorage::from_storage(under_point))
@@ -558,17 +606,31 @@ pub fn get_objects_under_point<'gc>(
     )
 }
 
+/// Timffle: real implementation. True when an object under the point belongs
+/// to a SWF the calling SWF may not script (another security domain that did
+/// not `Security.allowDomain` the caller), the same rule as
+/// `LoaderInfo.childAllowsParent` / `Stage.isFocusInaccessible`.
 pub fn are_inaccessible_objects_under_point<'gc>(
     activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_method!(
-        activation,
-        "flash.display.DisplayObjectContainer",
-        "areInaccessibleObjectsUnderPoint"
-    );
-    Ok(false.into())
+    let thisobj = this.as_object().unwrap();
+
+    let point = args.get_object(activation, 0, "point")?;
+    let x = point.get_slot(point_slots::X).as_f64();
+    let y = point.get_slot(point_slots::Y).as_f64();
+    let point = Point {
+        x: Twips::from_pixels(x),
+        y: Twips::from_pixels(y),
+    };
+
+    let caller = activation.caller_movie_or_root();
+    let container = thisobj.as_display_object().unwrap();
+    let inaccessible = objects_under_point(activation.context, container, point)
+        .into_iter()
+        .any(|object| !object.movie().allows_access_from(caller.url()));
+    Ok(inaccessible.into())
 }
 
 pub fn get_mouse_children<'gc>(

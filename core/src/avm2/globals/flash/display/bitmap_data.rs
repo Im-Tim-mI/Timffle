@@ -4,8 +4,8 @@ use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::error::{
-    Error2004Type, make_error_2004, make_error_2005, make_error_2008, make_error_2015,
-    make_error_2027,
+    Error2004Type, Error2006Type, make_error_2004, make_error_2005, make_error_2006,
+    make_error_2008, make_error_2015, make_error_2027,
 };
 use crate::avm2::filters::FilterAvm2Ext;
 use crate::avm2::function::FunctionArgs;
@@ -1596,4 +1596,431 @@ pub fn merge<'gc>(
     }
 
     Ok(Value::Undefined)
+}
+
+// Timffle: Flash's "no such area" rectangle, as `generateFilterRect` returns
+// it for a source rectangle outside the bitmap or with a negative size
+// (x = y = 2^27 - 1, width = height = 0; measured on Flash Player 32).
+const FLASH_EMPTY_RECT_COORD: i64 = 0x7FF_FFFF;
+
+/// Timffle: how many pixels a blur of `blur` with `quality` passes grows a
+/// rectangle on one side, as Flash Player 32 computes it for
+/// `generateFilterRect` (timffle/difftest/src/D53BlurRect.hx and
+/// D54BlurRect2.hx sampled every quality): the per-quality scale is the
+/// half-width of Ruffle's accumulated pass scale as a single-precision
+/// constant (1.05 is a hair below 1.05, 1.35 a hair above: blur 5 at
+/// quality 2 grows 5, blur 15 at quality 3 grows 21), a blur below 1 counts
+/// as 1, and `floor(x + 0.75)` is the rounding (quality 0 grows nothing,
+/// quality above 15 is 15).
+fn flash_blur_growth(blur: f64, quality: i32) -> i64 {
+    const HALF_PASS_SCALES: [f32; 15] = [
+        0.5, 1.05, 1.35, 1.55, 1.75, 1.9, 2.0, 2.1, 2.2, 2.3, 2.5, 3.0, 3.0, 3.5, 3.5,
+    ];
+    if quality <= 0 {
+        return 0;
+    }
+    let scale = HALF_PASS_SCALES[(quality.min(15) - 1) as usize] as f64;
+    let blur = if blur.is_nan() { 1.0 } else { blur.max(1.0) };
+    (scale * blur + 0.75).floor() as i64
+}
+
+/// Timffle: a rectangle in whole pixels, `x_min..x_max` exclusive.
+#[derive(Clone, Copy)]
+struct PixelRect {
+    x_min: i64,
+    y_min: i64,
+    x_max: i64,
+    y_max: i64,
+}
+
+impl PixelRect {
+    fn grown(self, x: i64, y: i64) -> Self {
+        Self {
+            x_min: self.x_min - x,
+            y_min: self.y_min - y,
+            x_max: self.x_max + x,
+            y_max: self.y_max + y,
+        }
+    }
+
+    fn shifted(self, x: i64, y: i64) -> Self {
+        Self {
+            x_min: self.x_min + x,
+            y_min: self.y_min + y,
+            x_max: self.x_max + x,
+            y_max: self.y_max + y,
+        }
+    }
+
+    fn union(self, other: Self) -> Self {
+        Self {
+            x_min: self.x_min.min(other.x_min),
+            y_min: self.y_min.min(other.y_min),
+            x_max: self.x_max.max(other.x_max),
+            y_max: self.y_max.max(other.y_max),
+        }
+    }
+}
+
+/// Timffle: the slot values of a filter object as `f64`, read straight from
+/// the ActionScript object so that Flash's own numbers (not the fixed-point
+/// SWF copies) drive the rounding.
+fn filter_number<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    filter: Object<'gc>,
+    slot: usize,
+) -> Result<f64, Error<'gc>> {
+    filter.get_slot(slot).coerce_to_number(activation)
+}
+
+/// Timffle: Flash's offset of a shadow/bevel: `floor(distance * cos(angle))`
+/// and `floor(distance * sin(angle))` with the angle in degrees. Flash treats
+/// an offset that is a whole pixel up to floating-point error as that pixel
+/// (4 at 30 degrees moves down 2, 4 at 90 or 180 degrees moves 0 sideways),
+/// hence the epsilon.
+fn flash_filter_offset(distance: f64, angle: f64) -> (i64, i64) {
+    const EPSILON: f64 = 1e-6;
+    let angle = angle.to_radians();
+    (
+        (distance * angle.cos() + EPSILON).floor() as i64,
+        (distance * angle.sin() + EPSILON).floor() as i64,
+    )
+}
+
+/// Implements `BitmapData.generateFilterRectInternal` (the native part of
+/// `generateFilterRect`).
+///
+/// Timffle: real implementation. The source rectangle is rounded to whole
+/// pixels like every other `BitmapData` rectangle (round half to even on each
+/// edge), clamped to the bitmap (a rectangle outside the bitmap or with a
+/// negative size becomes Flash's "empty" marker rectangle), and then grown
+/// per filter the way Flash Player 32 does (measured with
+/// timffle/difftest/src/D51DisplayMisc.hx, D52DisplayEdge.hx, D53BlurRect.hx
+/// and D54BlurRect2.hx):
+/// * blur / glow: `flash_blur_growth` on each axis;
+/// * drop shadow / gradient glow: the blurred rectangle moved by
+///   `floor(distance * cos/sin(angle))`, united with the source rectangle;
+/// * bevel / gradient bevel: the blurred rectangle moved both ways, united
+///   with the source rectangle;
+/// * convolution: `floor(matrixX / 2)` and `floor(matrixY / 2)`;
+/// * colour matrix / displacement map: unchanged;
+/// * shader: the whole bitmap, whatever the source rectangle.
+pub fn generate_filter_rect_internal<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    use crate::avm2::globals::slots::{
+        flash_filters_bevel_filter as bevel_slots, flash_filters_blur_filter as blur_slots,
+        flash_filters_convolution_filter as convolution_slots,
+        flash_filters_drop_shadow_filter as drop_shadow_slots,
+        flash_filters_glow_filter as glow_slots,
+        flash_filters_gradient_bevel_filter as gradient_bevel_slots,
+        flash_filters_gradient_glow_filter as gradient_glow_slots,
+    };
+
+    let this = this.as_object().unwrap();
+    let Some(bitmap_data) = this.as_bitmap_data() else {
+        return Ok(Value::Undefined);
+    };
+    bitmap_data.check_valid(activation)?;
+    let source_rect = args.get_object(activation, 0, "sourceRect")?;
+    let filter_object = args.get_object(activation, 1, "filter")?;
+
+    let width = bitmap_data.width() as i64;
+    let height = bitmap_data.height() as i64;
+    // A ShaderFilter (even one without a shader) covers the whole bitmap.
+    let shader_filter = activation
+        .avm2()
+        .classes()
+        .shaderfilter
+        .inner_class_definition();
+    if filter_object.is_of_type(shader_filter) {
+        return new_rectangle_from_pixels(activation, 0, 0, width, height);
+    }
+    let filter = Filter::from_avm2_object(activation, filter_object)?;
+
+    let (x, y, w, h) = get_rectangle_x_y_width_height(activation, source_rect)?;
+    let (x, y, w, h) = (x as i64, y as i64, w as i64, h as i64);
+    let (x_max, y_max) = (x + w, y + h);
+    let valid = w >= 0 && h >= 0 && x < width && y < height && x_max > 0 && y_max > 0;
+    let rect = if valid {
+        PixelRect {
+            x_min: x.max(0),
+            y_min: y.max(0),
+            x_max: x_max.min(width),
+            y_max: y_max.min(height),
+        }
+    } else {
+        PixelRect {
+            x_min: FLASH_EMPTY_RECT_COORD,
+            y_min: FLASH_EMPTY_RECT_COORD,
+            x_max: FLASH_EMPTY_RECT_COORD,
+            y_max: FLASH_EMPTY_RECT_COORD,
+        }
+    };
+
+    let blur_growth = |activation: &mut Activation<'_, 'gc>,
+                       blur_x: usize,
+                       blur_y: usize,
+                       quality: usize|
+     -> Result<(i64, i64), Error<'gc>> {
+        let blur_x = filter_number(activation, filter_object, blur_x)?;
+        let blur_y = filter_number(activation, filter_object, blur_y)?;
+        let quality = filter_object.get_slot(quality).coerce_to_i32(activation)?;
+        Ok((
+            flash_blur_growth(blur_x, quality),
+            flash_blur_growth(blur_y, quality),
+        ))
+    };
+    let offset = |activation: &mut Activation<'_, 'gc>,
+                  distance: usize,
+                  angle: usize|
+     -> Result<(i64, i64), Error<'gc>> {
+        let distance = filter_number(activation, filter_object, distance)?;
+        let angle = filter_number(activation, filter_object, angle)?;
+        Ok(flash_filter_offset(distance, angle))
+    };
+
+    let result = match filter {
+        Filter::BlurFilter(_) => {
+            let (gx, gy) = blur_growth(
+                activation,
+                blur_slots::BLUR_X,
+                blur_slots::BLUR_Y,
+                blur_slots::QUALITY,
+            )?;
+            rect.grown(gx, gy)
+        }
+        Filter::GlowFilter(_) => {
+            let (gx, gy) = blur_growth(
+                activation,
+                glow_slots::BLUR_X,
+                glow_slots::BLUR_Y,
+                glow_slots::QUALITY,
+            )?;
+            rect.grown(gx, gy)
+        }
+        Filter::DropShadowFilter(_) => {
+            let (gx, gy) = blur_growth(
+                activation,
+                drop_shadow_slots::BLUR_X,
+                drop_shadow_slots::BLUR_Y,
+                drop_shadow_slots::QUALITY,
+            )?;
+            let (dx, dy) = offset(
+                activation,
+                drop_shadow_slots::DISTANCE,
+                drop_shadow_slots::ANGLE,
+            )?;
+            rect.union(rect.grown(gx, gy).shifted(dx, dy))
+        }
+        Filter::GradientGlowFilter(_) => {
+            let (gx, gy) = blur_growth(
+                activation,
+                gradient_glow_slots::_BLUR_X,
+                gradient_glow_slots::_BLUR_Y,
+                gradient_glow_slots::_QUALITY,
+            )?;
+            let (dx, dy) = offset(
+                activation,
+                gradient_glow_slots::_DISTANCE,
+                gradient_glow_slots::_ANGLE,
+            )?;
+            rect.union(rect.grown(gx, gy).shifted(dx, dy))
+        }
+        Filter::BevelFilter(_) => {
+            let (gx, gy) = blur_growth(
+                activation,
+                bevel_slots::BLUR_X,
+                bevel_slots::BLUR_Y,
+                bevel_slots::QUALITY,
+            )?;
+            let (dx, dy) = offset(activation, bevel_slots::DISTANCE, bevel_slots::ANGLE)?;
+            let blurred = rect.grown(gx, gy);
+            rect.union(blurred.shifted(dx, dy))
+                .union(blurred.shifted(-dx, -dy))
+        }
+        Filter::GradientBevelFilter(_) => {
+            let (gx, gy) = blur_growth(
+                activation,
+                gradient_bevel_slots::_BLUR_X,
+                gradient_bevel_slots::_BLUR_Y,
+                gradient_bevel_slots::_QUALITY,
+            )?;
+            let (dx, dy) = offset(
+                activation,
+                gradient_bevel_slots::_DISTANCE,
+                gradient_bevel_slots::_ANGLE,
+            )?;
+            let blurred = rect.grown(gx, gy);
+            rect.union(blurred.shifted(dx, dy))
+                .union(blurred.shifted(-dx, -dy))
+        }
+        Filter::ConvolutionFilter(_) => {
+            let matrix_x = filter_number(activation, filter_object, convolution_slots::MATRIX_X)?;
+            let matrix_y = filter_number(activation, filter_object, convolution_slots::MATRIX_Y)?;
+            let half = |n: f64| -> i64 {
+                if n.is_nan() || n <= 0.0 {
+                    0
+                } else {
+                    (n.floor() as i64) / 2
+                }
+            };
+            rect.grown(half(matrix_x), half(matrix_y))
+        }
+        Filter::ColorMatrixFilter(_) | Filter::DisplacementMapFilter(_) => rect,
+        Filter::ShaderFilter(_) => unreachable!(),
+    };
+
+    new_rectangle_from_pixels(
+        activation,
+        result.x_min,
+        result.y_min,
+        result.x_max - result.x_min,
+        result.y_max - result.y_min,
+    )
+}
+
+/// Timffle: a new `flash.geom.Rectangle` from whole-pixel values (which may
+/// exceed the twips range, unlike `new_rectangle`).
+fn new_rectangle_from_pixels<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    x: i64,
+    y: i64,
+    width: i64,
+    height: i64,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let args = &[
+        (x as f64).into(),
+        (y as f64).into(),
+        (width as f64).into(),
+        (height as f64).into(),
+    ];
+    activation
+        .avm2()
+        .classes()
+        .rectangle
+        .construct(activation, args)
+}
+
+/// Implements `BitmapData.encodeInternal` (the native part of `encode`).
+///
+/// Timffle: real PNG and JPEG encoding with the `image` crate. Like Flash
+/// Player 32 (timffle/difftest/src/D51DisplayMisc.hx): the rectangle is
+/// rounded like every `BitmapData` rectangle and clamped to the bitmap, and
+/// an empty or disjoint one is `ArgumentError #2006`; a disposed bitmap is
+/// `ArgumentError #2015`; PNG is RGBA for a transparent bitmap and RGB
+/// otherwise (`fastCompression` picks the fast zlib level); JPEG drops the
+/// alpha channel; the bytes go to the given ByteArray at its current
+/// position (the same object comes back, position at the end of the data) or
+/// to a new big-endian ByteArray. JPEG XR encoding still needs an encoder
+/// (the bundled jxrlib bindings only decode) and stays a stub.
+pub fn encode_internal<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    use image::ImageEncoder;
+    use image::codecs::jpeg::JpegEncoder;
+    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+    use ruffle_render::bitmap::PixelRegion;
+
+    let this = this.as_object().unwrap();
+    let Some(bitmap_data) = this.as_bitmap_data() else {
+        return Ok(Value::Undefined);
+    };
+    bitmap_data.check_valid(activation)?;
+    let rect = args.get_object(activation, 0, "rect")?;
+    let kind = args.get_i32(1);
+    let param = args.get_i32(2);
+    let byte_array = args.try_get_object(3);
+
+    let (x, y, w, h) = get_rectangle_x_y_width_height(activation, rect)?;
+    let bitmap_width = bitmap_data.width();
+    let bitmap_height = bitmap_data.height();
+    let disjoint = w <= 0
+        || h <= 0
+        || x >= bitmap_width as i32
+        || y >= bitmap_height as i32
+        || x.saturating_add(w) <= 0
+        || y.saturating_add(h) <= 0;
+    let mut region = PixelRegion::for_region_i32(x, y, w, h);
+    region.clamp(bitmap_width, bitmap_height);
+    if disjoint || region.width() == 0 || region.height() == 0 {
+        return Err(make_error_2006(activation, Error2006Type::ArgumentError));
+    }
+
+    if kind == 2 {
+        avm2_stub_method!(
+            activation,
+            "flash.display.BitmapData",
+            "encode",
+            "JPEGXREncoderOptions"
+        );
+        return Ok(Value::Null);
+    }
+
+    let transparent = bitmap_data.transparency();
+    let width = region.width();
+    let height = region.height();
+    let channels = if kind == 0 && transparent { 4 } else { 3 };
+    let mut pixels = Vec::with_capacity((width * height) as usize * channels);
+    {
+        let read = bitmap_data.read_area(region, activation.context.renderer);
+        for py in region.y_min..region.y_max {
+            for px in region.x_min..region.x_max {
+                let color = read.get_pixel32_raw(px, py).to_un_multiplied_alpha();
+                pixels.push(color.red());
+                pixels.push(color.green());
+                pixels.push(color.blue());
+                if channels == 4 {
+                    pixels.push(color.alpha());
+                }
+            }
+        }
+    }
+
+    let mut encoded = Vec::new();
+    let result = if kind == 0 {
+        let compression = if param != 0 {
+            CompressionType::Fast
+        } else {
+            CompressionType::Default
+        };
+        let color = if channels == 4 {
+            image::ExtendedColorType::Rgba8
+        } else {
+            image::ExtendedColorType::Rgb8
+        };
+        PngEncoder::new_with_quality(&mut encoded, compression, FilterType::Adaptive)
+            .write_image(&pixels, width, height, color)
+    } else {
+        let quality = param.clamp(1, 100) as u8;
+        JpegEncoder::new_with_quality(&mut encoded, quality).write_image(
+            &pixels,
+            width,
+            height,
+            image::ExtendedColorType::Rgb8,
+        )
+    };
+    if let Err(error) = result {
+        tracing::error!("BitmapData.encode failed: {error}");
+        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+    }
+
+    if let Some(byte_array) = byte_array {
+        if let Some(mut storage) = byte_array.as_bytearray_mut() {
+            storage
+                .write_bytes(&encoded)
+                .map_err(|e| e.to_avm(activation))?;
+            return Ok(byte_array.into());
+        }
+        return Err(make_error_2004(activation, Error2004Type::TypeError));
+    }
+    let mut storage = ByteArrayStorage::new(activation.context);
+    storage
+        .write_bytes(&encoded)
+        .map_err(|e| e.to_avm(activation))?;
+    Ok(ByteArrayObject::from_storage(activation.context, storage).into())
 }
