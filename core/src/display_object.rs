@@ -363,6 +363,12 @@ pub struct DisplayObjectBase<'gc> {
     /// Timffle frame interpolation: the pose this object had when the movie frame `interp_tick`
     /// started, recorded by the first change in that frame (see the `interp` module).
     interp_tick: Cell<u32>,
+    /// Timffle frame interpolation: the movie frame this object was last drawn in, and the one before
+    /// that. Only an object drawn in the previous frame is interpolated: a new object (placed this
+    /// frame, or re-created by a sprite swap) has no real "previous pose" and would fly in from the
+    /// origin.
+    interp_drawn_tick: Cell<u32>,
+    interp_prev_drawn_tick: Cell<u32>,
     interp_matrix: Cell<Matrix>,
     interp_alpha: Cell<Fixed8>,
 }
@@ -414,6 +420,8 @@ impl Default for DisplayObjectBase<'_> {
             interp_tick: Cell::new(0),
             interp_matrix: Default::default(),
             interp_alpha: Cell::new(Fixed8::ONE),
+            interp_drawn_tick: Cell::new(0),
+            interp_prev_drawn_tick: Cell::new(0),
         }
     }
 }
@@ -469,7 +477,16 @@ impl<'gc> DisplayObjectBase<'gc> {
     /// flips, sprite swaps on a scaled clip) and 3D objects
     /// are drawn where they are.
     fn interpolate_transform(&self, transform: &mut Transform, tick: u32, t: f32) {
+        // Remember in which frames this object is drawn (every picture of a frame counts once).
+        if self.interp_drawn_tick.get() != tick {
+            self.interp_prev_drawn_tick.set(self.interp_drawn_tick.get());
+            self.interp_drawn_tick.set(tick);
+        }
         if self.interp_tick.get() != tick || transform.matrix3d.is_some() || !(0.0..1.0).contains(&t) {
+            return;
+        }
+        if self.interp_prev_drawn_tick.get() + 1 != tick {
+            // Not on screen in the previous frame: nothing to move from.
             return;
         }
         let from = self.interp_matrix.get();
@@ -481,12 +498,19 @@ impl<'gc> DisplayObjectBase<'gc> {
             const MAX_STEP_SCALE: f32 = 0.75;
             let dx = (to.tx - from.tx).get();
             let dy = (to.ty - from.ty).get();
+            // A flip (scale changing sign) or a turn past 90° passes through a collapsed matrix
+            // half-way; a change of this size in one frame is a cut, not a motion.
+            let det_from = from.a * from.d - from.b * from.c;
+            let det_to = to.a * to.d - to.b * to.c;
+            let dot = from.a * to.a + from.b * to.b + from.c * to.c + from.d * to.d;
             if dx.abs() > MAX_STEP_TWIPS
                 || dy.abs() > MAX_STEP_TWIPS
                 || (to.a - from.a).abs() > MAX_STEP_SCALE
                 || (to.b - from.b).abs() > MAX_STEP_SCALE
                 || (to.c - from.c).abs() > MAX_STEP_SCALE
                 || (to.d - from.d).abs() > MAX_STEP_SCALE
+                || (det_from < 0.0) != (det_to < 0.0)
+                || dot <= 0.0
             {
                 return;
             }
