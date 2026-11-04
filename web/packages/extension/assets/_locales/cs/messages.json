@@ -230,9 +230,6 @@
     "timffle_options_enable": {
         "message": "Povolit sockety (weby v seznamu je používají přímo; u ostatních webů se nejprve zeptáme)"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "Interpolace snímků"
-    },
     "timffle_options_method": {
         "message": "Způsob připojení"
     },
@@ -449,25 +446,7 @@
     "timffle_attribution": {
         "message": "Timffle je neoficiální fork projektu <1>Ruffle</1> a není s projektem Ruffle nijak spojen; emulace Flash pochází z Ruffle a jeho přispěvatelů. Problémy hlaste na <2>Timffle</2>, ne projektu Ruffle."
     },
-    "timffle_fi_unlimited": {
-        "message": "Bez omezení"
-    },
-    "timffle_fi_auto": {
-        "message": "Automaticky (výchozí)"
-    },
-    "timffle_fi_custom": {
-        "message": "Vlastní…"
-    },
-    "timffle_fi_off": {
-        "message": "Vypnuto"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "Vlastní cíl (24–999 fps)"
-    },
     "timffle_options_show_fps": {
         "message": "Zobrazit snímkovou frekvenci"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "Interpolace snímků (experimentální)"
     }
 }

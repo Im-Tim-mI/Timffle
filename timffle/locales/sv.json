@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Den här förfrågan är inte längre aktiv. Du kan stänga det här fönstret.",
     "timffle_options_title": "Socketanslutningar (spelservrar)",
     "timffle_options_enable": "Aktivera sockets (webbplatser i listan använder dem direkt; för andra webbplatser frågar vi först)",
-    "timffle_options_frame_interpolation": "Bildinterpolering",
     "timffle_options_method": "Anslutningsmetod",
     "timffle_options_helper": "Sockethjälpare (rekommenderas)",
     "timffle_options_websocket": "Egen WebSocket-proxy (avancerat)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "De lokala inställningarna kunde inte läsas.",
     "timffle_save_failed": "Det gick inte att spara; ändringarna bekräftades inte. Försök igen.",
     "timffle_attribution": "Timffle är en inofficiell fork av <1>Ruffle</1> och är inte knutet till Ruffle-projektet; Flash-emuleringen kommer från Ruffle och dess bidragsgivare. Rapportera problem till <2>Timffle</2>, inte till Ruffle.",
-    "timffle_fi_unlimited": "Obegränsat",
-    "timffle_fi_auto": "Auto (standard)",
-    "timffle_fi_custom": "Eget…",
-    "timffle_fi_off": "Av",
-    "timffle_fi_custom_fps": "Eget mål (24–999 fps)",
-    "timffle_options_show_fps": "Visa bildfrekvens",
-    "timffle_options_fi_enabled": "Bildinterpolering (experimentell)"
+    "timffle_options_show_fps": "Visa bildfrekvens"
 }

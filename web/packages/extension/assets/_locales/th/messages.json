@@ -137,9 +137,6 @@
     "timffle_options_enable": {
         "message": "เปิดใช้ Socket (เว็บไซต์ในรายการจะใช้ได้โดยตรง ส่วนเว็บไซต์อื่นจะถามก่อน)"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "การแทรกเฟรม"
-    },
     "timffle_options_method": {
         "message": "วิธีการเชื่อมต่อ"
     },
@@ -356,25 +353,7 @@
     "timffle_attribution": {
         "message": "Timffle เป็นฟอร์กที่ไม่เป็นทางการของ <1>Ruffle</1> และไม่เกี่ยวข้องกับโปรเจกต์ Ruffle การจำลอง Flash มาจาก Ruffle และผู้ร่วมพัฒนา โปรดแจ้งปัญหาที่ <2>Timffle</2> ไม่ใช่ที่ Ruffle"
     },
-    "timffle_fi_unlimited": {
-        "message": "ไม่จำกัด"
-    },
-    "timffle_fi_auto": {
-        "message": "อัตโนมัติ (ค่าเริ่มต้น)"
-    },
-    "timffle_fi_custom": {
-        "message": "กำหนดเอง…"
-    },
-    "timffle_fi_off": {
-        "message": "ปิด"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "เป้าหมายกำหนดเอง (24–999 fps)"
-    },
     "timffle_options_show_fps": {
         "message": "แสดงอัตราเฟรม"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "การแทรกเฟรม (ทดลอง)"
     }
 }

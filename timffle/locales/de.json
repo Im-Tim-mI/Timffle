@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Diese Anfrage ist nicht mehr aktiv. Sie können dieses Fenster schließen.",
     "timffle_options_title": "Socket-Verbindungen (Spieleserver)",
     "timffle_options_enable": "Sockets aktivieren (aufgelistete Websites nutzen sie direkt; bei anderen Websites wird zuerst gefragt)",
-    "timffle_options_frame_interpolation": "Zwischenbilder",
     "timffle_options_method": "Verbindungsmethode",
     "timffle_options_helper": "Socket-Hilfsprogramm (empfohlen)",
     "timffle_options_websocket": "Eigener WebSocket-Proxy (erweitert)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Die lokalen Einstellungen konnten nicht gelesen werden.",
     "timffle_save_failed": "Speichern fehlgeschlagen; die Änderungen wurden nicht bestätigt. Bitte versuchen Sie es erneut.",
     "timffle_attribution": "Timffle ist ein inoffizieller Fork von <1>Ruffle</1> und nicht mit dem Ruffle-Projekt verbunden; die Flash-Emulation stammt von Ruffle und seinen Mitwirkenden. Bitte melden Sie Probleme bei <2>Timffle</2>, nicht bei Ruffle.",
-    "timffle_fi_unlimited": "Unbegrenzt",
-    "timffle_fi_auto": "Automatisch (Standard)",
-    "timffle_fi_custom": "Benutzerdefiniert…",
-    "timffle_fi_off": "Aus",
-    "timffle_fi_custom_fps": "Eigenes Ziel (24–999 fps)",
-    "timffle_options_show_fps": "Bildrate anzeigen",
-    "timffle_options_fi_enabled": "Zwischenbilder (experimentell)"
+    "timffle_options_show_fps": "Bildrate anzeigen"
 }

@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Бу үтенеч инде актив түгел. Бу тәрәзәне ябарга мөмкин.",
     "timffle_options_title": "Сокет тоташулары (уен серверлары)",
     "timffle_options_enable": "Сокетларны кабызу (исемлектәге сайтлар аларны турыдан-туры куллана; башка сайтлардан башта сорала)",
-    "timffle_options_frame_interpolation": "Кадрлар интерполяциясе",
     "timffle_options_method": "Тоташу ысулы",
     "timffle_options_helper": "Сокет булышчысы (тәкъдим ителә)",
     "timffle_options_websocket": "Үз WebSocket проксие (алдынгы)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Җирле көйләүләрне укып булмады.",
     "timffle_save_failed": "Саклау уңышсыз булды; үзгәрешләр расланмады. Кабат тырышып карагыз.",
     "timffle_attribution": "Timffle — <1>Ruffle</1> проектының рәсми булмаган форкы һәм Ruffle проекты белән бәйле түгел; Flash эмуляциясе Ruffle һәм аның катнашучыларыннан килә. Проблемалар турында <2>Timffle</2> проектына хәбәр итегез, Ruffle'га түгел.",
-    "timffle_fi_unlimited": "Чикләүсез",
-    "timffle_fi_auto": "Автоматик (гадәттә)",
-    "timffle_fi_custom": "Үз кыйммәте…",
-    "timffle_fi_off": "Сүндерелгән",
-    "timffle_fi_custom_fps": "Үз максаты (24–999 fps)",
-    "timffle_options_show_fps": "Кадр ешлыгын күрсәтү",
-    "timffle_options_fi_enabled": "Кадрлар интерполяциясе (эксперименталь)"
+    "timffle_options_show_fps": "Кадр ешлыгын күрсәтү"
 }

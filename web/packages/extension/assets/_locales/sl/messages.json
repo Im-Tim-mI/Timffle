@@ -236,9 +236,6 @@
     "timffle_options_enable": {
         "message": "Omogoči socket (spletna mesta s seznama jih uporabljajo neposredno; pri drugih se najprej vpraša)"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "Interpolacija sličic"
-    },
     "timffle_options_method": {
         "message": "Način povezave"
     },
@@ -455,25 +452,7 @@
     "timffle_attribution": {
         "message": "Timffle je neuradni fork projekta <1>Ruffle</1> in ni povezan s projektom Ruffle; emulacija Flash prihaja iz Ruffle in njegovih sodelavcev. Težave prijavite projektu <2>Timffle</2>, ne projektu Ruffle."
     },
-    "timffle_fi_unlimited": {
-        "message": "Brez omejitve"
-    },
-    "timffle_fi_auto": {
-        "message": "Samodejno (privzeto)"
-    },
-    "timffle_fi_custom": {
-        "message": "Po meri…"
-    },
-    "timffle_fi_off": {
-        "message": "Izklopljeno"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "Cilj po meri (24–999 fps)"
-    },
     "timffle_options_show_fps": {
         "message": "Prikaži hitrost sličic"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "Interpolacija sličic (poskusno)"
     }
 }

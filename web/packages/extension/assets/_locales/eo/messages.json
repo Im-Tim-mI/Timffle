@@ -101,9 +101,6 @@
     "timffle_options_enable": {
         "message": "Ŝalti sockets (la retejoj en la listo uzas ilin rekte; pri aliaj retejoj oni demandas unue)"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "Interpolado de kadroj"
-    },
     "timffle_options_method": {
         "message": "Konekta metodo"
     },
@@ -320,25 +317,7 @@
     "timffle_attribution": {
         "message": "Timffle estas neoficiala disbranĉo de <1>Ruffle</1> kaj ne estas ligita al la projekto Ruffle; ĝia Flash-emulado devenas de Ruffle kaj ĝiaj kontribuantoj. Raportu problemojn al <2>Timffle</2>, ne al Ruffle."
     },
-    "timffle_fi_unlimited": {
-        "message": "Senlima"
-    },
-    "timffle_fi_auto": {
-        "message": "Aŭtomata (defaŭlta)"
-    },
-    "timffle_fi_custom": {
-        "message": "Propra…"
-    },
-    "timffle_fi_off": {
-        "message": "For"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "Propra celo (24–999 fps)"
-    },
     "timffle_options_show_fps": {
         "message": "Montri kadrofrekvencon"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "Interpolado de kadroj (eksperimenta)"
     }
 }

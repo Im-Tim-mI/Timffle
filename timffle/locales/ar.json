@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "لم يعد هذا الطلب نشطًا. يمكنك إغلاق هذه النافذة.",
     "timffle_options_title": "اتصالات Socket (خوادم الألعاب)",
     "timffle_options_enable": "تفعيل Socket (تستخدمه المواقع الموجودة في القائمة مباشرةً، ويُسأل أولًا عن المواقع الأخرى)",
-    "timffle_options_frame_interpolation": "استيفاء الإطارات",
     "timffle_options_method": "طريقة الاتصال",
     "timffle_options_helper": "مساعد Socket (موصى به)",
     "timffle_options_websocket": "وكيل WebSocket مخصص (متقدم)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "تعذرت قراءة الإعدادات المحلية.",
     "timffle_save_failed": "فشل الحفظ؛ لم يتم تأكيد التغييرات. يرجى المحاولة مرة أخرى.",
     "timffle_attribution": "Timffle نسخة غير رسمية (fork) من <1>Ruffle</1> وليست تابعة لمشروع Ruffle؛ ويأتي محاكي Flash من Ruffle ومساهميه. يرجى الإبلاغ عن المشكلات إلى <2>Timffle</2> وليس إلى Ruffle.",
-    "timffle_fi_unlimited": "بلا حد",
-    "timffle_fi_auto": "تلقائي (الافتراضي)",
-    "timffle_fi_custom": "مخصص…",
-    "timffle_fi_off": "إيقاف",
-    "timffle_fi_custom_fps": "هدف مخصص (24–999 إطارًا في الثانية)",
-    "timffle_options_show_fps": "إظهار معدل الإطارات",
-    "timffle_options_fi_enabled": "استيفاء الإطارات (تجريبي)"
+    "timffle_options_show_fps": "إظهار معدل الإطارات"
 }

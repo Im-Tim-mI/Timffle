@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "הבקשה הזו כבר אינה פעילה. אפשר לסגור את החלון הזה.",
     "timffle_options_title": "חיבורי Socket (שרתי משחקים)",
     "timffle_options_enable": "הפעל Socket (אתרים ברשימה משתמשים בו ישירות; באתרים אחרים נשאל קודם)",
-    "timffle_options_frame_interpolation": "אינטרפולציית פריימים",
     "timffle_options_method": "שיטת חיבור",
     "timffle_options_helper": "עוזר Socket (מומלץ)",
     "timffle_options_websocket": "פרוקסי WebSocket מותאם אישית (מתקדם)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "לא ניתן לקרוא את ההגדרות המקומיות.",
     "timffle_save_failed": "השמירה נכשלה; השינויים לא אושרו. נסה שוב.",
     "timffle_attribution": "Timffle הוא fork לא רשמי של <1>Ruffle</1> ואינו קשור לפרויקט Ruffle; האמולציה של Flash מגיעה מ-Ruffle ומתורמיו. דווח על בעיות ל-<2>Timffle</2>, לא ל-Ruffle.",
-    "timffle_fi_unlimited": "ללא הגבלה",
-    "timffle_fi_auto": "אוטומטי (ברירת מחדל)",
-    "timffle_fi_custom": "מותאם אישית…",
-    "timffle_fi_off": "כבוי",
-    "timffle_fi_custom_fps": "יעד מותאם אישית (24–999 fps)",
-    "timffle_options_show_fps": "הצגת קצב פריימים",
-    "timffle_options_fi_enabled": "אינטרפולציית פריימים (ניסיוני)"
+    "timffle_options_show_fps": "הצגת קצב פריימים"
 }

@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Aquesta sol·licitud ja no és activa. Pots tancar aquesta finestra.",
     "timffle_options_title": "Connexions de socket (servidors de jocs)",
     "timffle_options_enable": "Activa els sockets (els llocs de la llista els utilitzen directament; als altres llocs es pregunta primer)",
-    "timffle_options_frame_interpolation": "Interpolació de fotogrames",
     "timffle_options_method": "Mètode de connexió",
     "timffle_options_helper": "Assistent de sockets (recomanat)",
     "timffle_options_websocket": "Proxy WebSocket personalitzat (avançat)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "No s'ha pogut llegir la configuració local.",
     "timffle_save_failed": "No s'ha pogut desar; els canvis no s'han confirmat. Torna-ho a provar.",
     "timffle_attribution": "Timffle és un fork no oficial de <1>Ruffle</1> i no està afiliat al projecte Ruffle; l'emulació de Flash prové de Ruffle i dels seus col·laboradors. Informa dels problemes a <2>Timffle</2>, no a Ruffle.",
-    "timffle_fi_unlimited": "Sense límit",
-    "timffle_fi_auto": "Automàtic (per defecte)",
-    "timffle_fi_custom": "Personalitzat…",
-    "timffle_fi_off": "Desactivat",
-    "timffle_fi_custom_fps": "Objectiu personalitzat (24–999 fps)",
-    "timffle_options_show_fps": "Mostra els fotogrames per segon",
-    "timffle_options_fi_enabled": "Interpolació de fotogrames (experimental)"
+    "timffle_options_show_fps": "Mostra els fotogrames per segon"
 }

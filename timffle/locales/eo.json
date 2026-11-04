@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Ĉi tiu peto ne plu estas aktiva. Vi povas fermi ĉi tiun fenestron.",
     "timffle_options_title": "Socket-konektoj (ludaj serviloj)",
     "timffle_options_enable": "Ŝalti sockets (la retejoj en la listo uzas ilin rekte; pri aliaj retejoj oni demandas unue)",
-    "timffle_options_frame_interpolation": "Interpolado de kadroj",
     "timffle_options_method": "Konekta metodo",
     "timffle_options_helper": "Socket-helpilo (rekomendita)",
     "timffle_options_websocket": "Propra WebSocket-proxy (altnivela)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Ne eblis legi la lokajn agordojn.",
     "timffle_save_failed": "Konservo malsukcesis; la ŝanĝoj ne estis konfirmitaj. Reprovu.",
     "timffle_attribution": "Timffle estas neoficiala disbranĉo de <1>Ruffle</1> kaj ne estas ligita al la projekto Ruffle; ĝia Flash-emulado devenas de Ruffle kaj ĝiaj kontribuantoj. Raportu problemojn al <2>Timffle</2>, ne al Ruffle.",
-    "timffle_fi_unlimited": "Senlima",
-    "timffle_fi_auto": "Aŭtomata (defaŭlta)",
-    "timffle_fi_custom": "Propra…",
-    "timffle_fi_off": "For",
-    "timffle_fi_custom_fps": "Propra celo (24–999 fps)",
-    "timffle_options_show_fps": "Montri kadrofrekvencon",
-    "timffle_options_fi_enabled": "Interpolado de kadroj (eksperimenta)"
+    "timffle_options_show_fps": "Montri kadrofrekvencon"
 }

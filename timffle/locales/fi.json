@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Tämä pyyntö ei ole enää voimassa. Voit sulkea tämän ikkunan.",
     "timffle_options_title": "Socket-yhteydet (pelipalvelimet)",
     "timffle_options_enable": "Ota socketit käyttöön (luettelon sivustot käyttävät niitä suoraan; muilta sivustoilta kysytään ensin)",
-    "timffle_options_frame_interpolation": "Kuvien interpolointi",
     "timffle_options_method": "Yhteystapa",
     "timffle_options_helper": "Socket-apuohjelma (suositeltu)",
     "timffle_options_websocket": "Oma WebSocket-välityspalvelin (edistynyt)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Paikallisia asetuksia ei voitu lukea.",
     "timffle_save_failed": "Tallennus epäonnistui; muutoksia ei vahvistettu. Yritä uudelleen.",
     "timffle_attribution": "Timffle on epävirallinen fork projektista <1>Ruffle</1>, eikä se ole sidoksissa Ruffle-projektiin; Flash-emulointi tulee Rufflesta ja sen kehittäjiltä. Ilmoita ongelmista projektille <2>Timffle</2>, älä Rufflelle.",
-    "timffle_fi_unlimited": "Rajoittamaton",
-    "timffle_fi_auto": "Automaattinen (oletus)",
-    "timffle_fi_custom": "Mukautettu…",
-    "timffle_fi_off": "Pois",
-    "timffle_fi_custom_fps": "Mukautettu tavoite (24–999 fps)",
-    "timffle_options_show_fps": "Näytä kuvataajuus",
-    "timffle_options_fi_enabled": "Kuvien interpolointi (kokeellinen)"
+    "timffle_options_show_fps": "Näytä kuvataajuus"
 }

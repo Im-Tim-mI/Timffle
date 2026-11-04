@@ -143,7 +143,6 @@ pub fn run_inner_goto_frame<'gc>(
             context.goto_construct_queue.push_back(initial_clip);
         }
 
-
         return;
     }
 

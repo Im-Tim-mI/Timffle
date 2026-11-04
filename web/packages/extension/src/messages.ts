@@ -18,15 +18,11 @@ export interface OpenURLMessage {
 /** Timffle: settings that the running players apply at once. */
 export interface SettingsMessage {
     type: "settings";
-    frameInterpolation: string;
     showFps: boolean;
 }
 
 export type Message =
-    | LoadMessage
-    | PingMessage
-    | OpenURLMessage
-    | SettingsMessage;
+    LoadMessage | PingMessage | OpenURLMessage | SettingsMessage;
 
 export function isMessage(object: unknown): object is Message {
     return (object as Message).type !== undefined;

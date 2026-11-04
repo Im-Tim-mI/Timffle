@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "这个请求已失效，可以关闭此窗口。",
     "timffle_options_title": "Socket 连接（游戏服务器）",
     "timffle_options_enable": "启用 Socket 连接（列表内的网站直接使用，其他网站会先询问你）",
-    "timffle_options_frame_interpolation": "补帧",
     "timffle_options_method": "连接方式",
     "timffle_options_helper": "连接助手（建议）",
     "timffle_options_websocket": "自定义 WebSocket 代理（高级）",
@@ -102,11 +101,5 @@
     "timffle_promo_disclaimer": "此为罗技（Logitech）台湾官方线上商城的九折优惠码。使用此优惠码购物时，Timffle 作者会获得分润。Timffle 不是罗技的产品，也没有得到罗技背书。",
     "timffle_promo_image_alt": "横幅：罗技网络旗舰店电竞类别九折折扣码 LOGITIM，可使用到 2026/12/31",
     "timffle_promo_image": "promo-logitech-zh.png",
-    "timffle_fi_unlimited": "不限制",
-    "timffle_fi_auto": "自动（默认）",
-    "timffle_fi_custom": "自定义…",
-    "timffle_fi_off": "关闭",
-    "timffle_fi_custom_fps": "自定义目标（24–999 fps）",
-    "timffle_options_show_fps": "显示帧数",
-    "timffle_options_fi_enabled": "（实验性）补帧功能"
+    "timffle_options_show_fps": "显示帧数"
 }

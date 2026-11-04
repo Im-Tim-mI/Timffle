@@ -153,8 +153,6 @@ export class InnerPlayer {
     private readonly shadow: ShadowRoot;
     private readonly dynamicStyles: HTMLStyleElement;
     private readonly container: HTMLElement;
-    /** Timffle: the element is inside the browser's viewport (IntersectionObserver). */
-    private canvasOnScreen = true;
     private readonly playButton: HTMLElement;
     private readonly unmuteOverlay: HTMLElement;
     private readonly splashScreen: HTMLElement;
@@ -409,29 +407,6 @@ export class InnerPlayer {
             { signal },
         );
         this.setupTabVisibilityHandling(signal);
-        this.setupViewportVisibilityHandling(signal);
-    }
-
-    /**
-     * Timffle: tells the player whether its element is inside the browser's viewport,
-     * so that no extra interpolated pictures are drawn for a player that is scrolled
-     * out of view. The movie keeps running and drawing its own frames.
-     */
-    private setupViewportVisibilityHandling(signal: AbortSignal): void {
-        if (typeof IntersectionObserver !== "function") {
-            return;
-        }
-        const observer = new IntersectionObserver((entries) => {
-            const entry = entries[entries.length - 1];
-            if (entry) {
-                this.canvasOnScreen = entry.isIntersecting;
-                this.instance?.set_canvas_visible(this.canvasOnScreen);
-            }
-        });
-        observer.observe(this.container);
-        signal.addEventListener("abort", () => observer.disconnect(), {
-            once: true,
-        });
     }
 
     /**
@@ -893,9 +868,6 @@ export class InnerPlayer {
         this.instance = instance;
         // Timffle: IME composition (see imeEnabled).
         instance.set_ime_composition(this.imeEnabled);
-        // Timffle: whether the element is inside the viewport (see setupViewportVisibilityHandling).
-        instance.set_canvas_visible(this.canvasOnScreen);
-
         // Timffle: the fps box ("Show frame rate" in the extension's settings).
         this.showFps = this.loadedConfig?.showFps === true;
 
@@ -2362,14 +2334,6 @@ export class InnerPlayer {
      */
     set traceObserver(observer: ((message: string) => void) | null) {
         this.instance?.set_trace_observer(observer);
-    }
-
-    /**
-     * Timffle: changes the frame interpolation setting of the running player
-     * (`"off"`, `"auto"`, `"unlimited"` or a target fps).
-     */
-    set frameInterpolation(value: string) {
-        this.instance?.set_frame_interpolation(String(value));
     }
 
     /**

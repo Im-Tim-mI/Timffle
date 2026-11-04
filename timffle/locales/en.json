@@ -126,10 +126,6 @@
         "message": "Enable sockets (listed websites use them directly; other websites are asked about first)",
         "description": "Check box."
     },
-    "timffle_options_frame_interpolation": {
-        "message": "Frame interpolation",
-        "description": "Label of the frame interpolation menu on the options page (advanced section)."
-    },
     "timffle_options_method": {
         "message": "Connection method"
     },
@@ -415,32 +411,8 @@
         "message": "promo-logitech-en.png",
         "description": "Not a text: the file name of the banner in the extension's images folder. The Chinese languages use promo-logitech-zh.png, every other language promo-logitech-en.png."
     },
-    "timffle_fi_unlimited": {
-        "message": "Unlimited",
-        "description": "Menu entry: no fixed target, as high as the device allows."
-    },
-    "timffle_fi_auto": {
-        "message": "Auto (default)",
-        "description": "Menu entry (the default): the target moves between the listed tiers by itself. Keep the numbers."
-    },
-    "timffle_fi_custom": {
-        "message": "Custom…",
-        "description": "Menu entry that opens a number field; keep the ellipsis."
-    },
-    "timffle_fi_off": {
-        "message": "Off",
-        "description": "Menu entry: no extra pictures."
-    },
-    "timffle_fi_custom_fps": {
-        "message": "Custom target (24–999 fps)",
-        "description": "Label of the number field shown for the Custom entry; keep the range."
-    },
     "timffle_options_show_fps": {
         "message": "Show frame rate",
         "description": "Check box: shows a small floating frame-rate box in a corner of the game (drag its handle to another corner)."
-    },
-    "timffle_options_fi_enabled": {
-        "message": "Frame interpolation (experimental)",
-        "description": "Check box (popup and options page): the master switch of the frame interpolation feature; the menu below it is dimmed while it is off."
     }
 }

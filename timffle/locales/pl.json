@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "To żądanie nie jest już aktywne. Możesz zamknąć to okno.",
     "timffle_options_title": "Połączenia socket (serwery gier)",
     "timffle_options_enable": "Włącz sockety (witryny z listy używają ich bezpośrednio; w przypadku innych witryn najpierw pytamy)",
-    "timffle_options_frame_interpolation": "Interpolacja klatek",
     "timffle_options_method": "Metoda połączenia",
     "timffle_options_helper": "Pomocnik socketów (zalecane)",
     "timffle_options_websocket": "Własny serwer proxy WebSocket (zaawansowane)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Nie udało się odczytać ustawień lokalnych.",
     "timffle_save_failed": "Zapis się nie powiódł; zmiany nie zostały potwierdzone. Spróbuj ponownie.",
     "timffle_attribution": "Timffle jest nieoficjalnym forkiem <1>Ruffle</1> i nie jest związany z projektem Ruffle; emulacja Flasha pochodzi z Ruffle i jego współtwórców. Problemy zgłaszaj do <2>Timffle</2>, a nie do Ruffle.",
-    "timffle_fi_unlimited": "Bez limitu",
-    "timffle_fi_auto": "Auto (domyślnie)",
-    "timffle_fi_custom": "Własna…",
-    "timffle_fi_off": "Wył.",
-    "timffle_fi_custom_fps": "Własny cel (24–999 fps)",
-    "timffle_options_show_fps": "Pokaż liczbę klatek",
-    "timffle_options_fi_enabled": "Interpolacja klatek (eksperymentalne)"
+    "timffle_options_show_fps": "Pokaż liczbę klatek"
 }

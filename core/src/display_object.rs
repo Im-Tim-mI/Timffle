@@ -254,131 +254,6 @@ pub enum RenderMask<'gc> {
     Alpha(DisplayObject<'gc>),
 }
 
-/// Timffle: scene-graph frame interpolation ("smooth motion").
-///
-/// The movie keeps running at its own frame rate; between two of its frames the renderer may draw
-/// extra pictures in which every object that moved during the last frame is placed part-way between
-/// where it was before that frame and where it is now. Objects record the pose they had at the start
-/// of the frame the first time it changes in that frame (`interp_note_change`), so nothing is copied
-/// for objects that stand still. See `Player::render` and `render_base`.
-pub mod interp {
-    use std::sync::atomic::{AtomicU32, Ordering};
-
-    /// The number of the movie frame that is running or has run most recently (any player).
-    static TICK: AtomicU32 = AtomicU32::new(1);
-    /// How many objects recorded a pose since the last `begin_frame`.
-    static CHANGED: AtomicU32 = AtomicU32::new(0);
-    /// How many objects were drawn with an interpolated pose in a picture of the current frame
-    /// (an object changed in this frame whose step passed the cuts).
-    static MOVING: AtomicU32 = AtomicU32::new(0);
-    /// How many pieces of content (shapes, bitmaps, text, cached bitmaps) were drawn *inside the view*
-    /// under an interpolated pose in a picture of the current frame. Only these make a picture between two
-    /// frames look different from the last one; objects moving off the stage, hidden or culled do not count.
-    static VISIBLE: AtomicU32 = AtomicU32::new(0);
-    /// Render nesting depth of objects currently drawn with an interpolated pose (self or an ancestor).
-    static MOVING_DEPTH: AtomicU32 = AtomicU32::new(0);
-    /// Running totals for the fps overlay's debug line: frames begun, frames in which something
-    /// changed, frames in which something visibly moved (counted at the start of the next frame).
-    static STAT_FRAMES: AtomicU32 = AtomicU32::new(0);
-    static STAT_CHANGED_FRAMES: AtomicU32 = AtomicU32::new(0);
-    static STAT_VISIBLE_FRAMES: AtomicU32 = AtomicU32::new(0);
-    static STAT_CHANGED: AtomicU32 = AtomicU32::new(0);
-    static STAT_MOVING: AtomicU32 = AtomicU32::new(0);
-    static STAT_VISIBLE: AtomicU32 = AtomicU32::new(0);
-    /// The biggest step (twips) of an interpolated object in a picture of the current frame
-    /// (`u32::MAX` for turns, scale changes and fades).
-    static STEP_MAX: AtomicU32 = AtomicU32::new(0);
-    /// Frames with visible motion whose biggest step was at most half a pixel / one pixel (20 twips = 1 px).
-    static STAT_HALF_PX_FRAMES: AtomicU32 = AtomicU32::new(0);
-    static STAT_ONE_PX_FRAMES: AtomicU32 = AtomicU32::new(0);
-
-    /// Called when a player starts running a movie frame. Returns the new frame number.
-    pub fn begin_frame() -> u32 {
-        let changed = CHANGED.swap(0, Ordering::Relaxed);
-        let moving = MOVING.swap(0, Ordering::Relaxed);
-        let visible = VISIBLE.swap(0, Ordering::Relaxed);
-        let step = STEP_MAX.swap(0, Ordering::Relaxed);
-        STAT_FRAMES.fetch_add(1, Ordering::Relaxed);
-        STAT_CHANGED.fetch_add(changed, Ordering::Relaxed);
-        STAT_MOVING.fetch_add(moving, Ordering::Relaxed);
-        STAT_VISIBLE.fetch_add(visible, Ordering::Relaxed);
-        if changed > 0 {
-            STAT_CHANGED_FRAMES.fetch_add(1, Ordering::Relaxed);
-        }
-        if visible > 0 {
-            STAT_VISIBLE_FRAMES.fetch_add(1, Ordering::Relaxed);
-            if step <= 10 {
-                STAT_HALF_PX_FRAMES.fetch_add(1, Ordering::Relaxed);
-            }
-            if step <= 20 {
-                STAT_ONE_PX_FRAMES.fetch_add(1, Ordering::Relaxed);
-            }
-        }
-        TICK.fetch_add(1, Ordering::Relaxed) + 1
-    }
-
-    pub(super) fn note_step(step: u32) {
-        STEP_MAX.fetch_max(step, Ordering::Relaxed);
-    }
-
-    pub fn tick() -> u32 {
-        TICK.load(Ordering::Relaxed)
-    }
-
-    pub(super) fn note_change() {
-        CHANGED.fetch_add(1, Ordering::Relaxed);
-    }
-
-    /// Whether any object has moved since the last frame began (so drawing between frames shows something new).
-    pub fn anything_changed() -> bool {
-        CHANGED.load(Ordering::Relaxed) > 0
-    }
-
-    /// Whether a picture of the current frame drew something inside the view with an interpolated pose.
-    /// Pictures of a frame are drawn in order (the frame's own picture first, then the extra ones), so once
-    /// the frame's picture found nothing visibly moving, extra pictures would repeat it.
-    pub fn anything_visibly_moving() -> bool {
-        VISIBLE.load(Ordering::Relaxed) > 0
-    }
-
-    /// An object is about to be drawn with an interpolated pose (its children follow).
-    pub(super) fn enter_moving() {
-        MOVING.fetch_add(1, Ordering::Relaxed);
-        MOVING_DEPTH.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub(super) fn leave_moving() {
-        MOVING_DEPTH.fetch_sub(1, Ordering::Relaxed);
-    }
-
-    /// Whether the content being drawn sits under an interpolated pose (its own or an ancestor's).
-    pub fn under_moving() -> bool {
-        MOVING_DEPTH.load(Ordering::Relaxed) > 0
-    }
-
-    /// Content that passed the view culling is being drawn; counts when it sits under an interpolated pose.
-    pub fn note_visible_content() {
-        if under_moving() {
-            VISIBLE.fetch_add(1, Ordering::Relaxed);
-        }
-    }
-
-    /// Running totals (frames, frames with a change, frames with visible motion, changed objects,
-    /// interpolated objects, visible contents, visible-motion frames with steps ≤ ½ px, ≤ 1 px).
-    pub fn stats() -> [u32; 8] {
-        [
-            STAT_FRAMES.load(Ordering::Relaxed),
-            STAT_CHANGED_FRAMES.load(Ordering::Relaxed),
-            STAT_VISIBLE_FRAMES.load(Ordering::Relaxed),
-            STAT_CHANGED.load(Ordering::Relaxed),
-            STAT_MOVING.load(Ordering::Relaxed),
-            STAT_VISIBLE.load(Ordering::Relaxed),
-            STAT_HALF_PX_FRAMES.load(Ordering::Relaxed),
-            STAT_ONE_PX_FRAMES.load(Ordering::Relaxed),
-        ]
-    }
-}
-
 #[derive(Clone, Collect)]
 #[collect(no_drop)]
 // Ensure this always has the same alignment as its subclasses (needed for `Gc` casts).
@@ -449,19 +324,6 @@ pub struct DisplayObjectBase<'gc> {
 
     /// Rectangle used for 9-slice scaling (`DisplayObject.scale9grid`).
     scaling_grid: Cell<Rectangle<Twips>>,
-
-    /// Timffle frame interpolation: the pose this object had when the movie frame `interp_tick`
-    /// started, recorded by the first change in that frame (see the `interp` module).
-    interp_tick: Cell<u32>,
-    /// Timffle frame interpolation: the movie frame this object was last drawn in, and the one before
-    /// that. Only an object drawn in the previous frame is interpolated: a new object (placed this
-    /// frame, or re-created by a sprite swap) has no real "previous pose" and would fly in from the
-    /// origin.
-    interp_drawn_tick: Cell<u32>,
-    interp_prev_drawn_tick: Cell<u32>,
-    interp_drawn_run: Cell<u32>,
-    interp_matrix: Cell<Matrix>,
-    interp_alpha: Cell<Fixed8>,
 }
 
 #[derive(Clone)]
@@ -508,12 +370,6 @@ impl Default for DisplayObjectBase<'_> {
             scroll_rect: Cell::new(None),
             next_scroll_rect: Default::default(),
             scaling_grid: Default::default(),
-            interp_tick: Cell::new(0),
-            interp_matrix: Default::default(),
-            interp_alpha: Cell::new(Fixed8::ONE),
-            interp_drawn_tick: Cell::new(0),
-            interp_prev_drawn_tick: Cell::new(0),
-            interp_drawn_run: Cell::new(0),
         }
     }
 }
@@ -551,115 +407,6 @@ impl<'gc> DisplayObjectBase<'gc> {
         self.place_frame.set(frame);
     }
 
-    /// Timffle frame interpolation: call before changing the matrix or the colour transform.
-    /// Keeps the pose from the start of the current movie frame.
-    fn interp_note_change(&self) {
-        let tick = interp::tick();
-        if self.interp_tick.get() != tick {
-            self.interp_tick.set(tick);
-            self.interp_matrix.set(self.matrix.get());
-            self.interp_alpha.set(self.color_transform.get().a_multiply);
-            interp::note_change();
-        }
-    }
-
-    /// Timffle frame interpolation: moves `transform` (this object's current pose) back towards the pose it
-    /// had before movie frame `tick` by `1 - t`, when the object changed during that frame. Jumps that are
-    /// too big to be one step of a motion (more than 200 px or a scale/skew change above 0.75 in one frame: teleports,
-    /// flips, sprite swaps on a scaled clip) and 3D objects
-    /// are drawn where they are. Returns whether `transform` was changed (the object is drawn between two poses).
-    fn interpolate_transform(&self, transform: &mut Transform, tick: u32, t: f32) -> bool {
-        // Remember in which frames this object is drawn (every picture of a frame counts once).
-        if self.interp_drawn_tick.get() != tick {
-            self.interp_prev_drawn_tick.set(self.interp_drawn_tick.get());
-            self.interp_drawn_tick.set(tick);
-            // How many frames in a row this object has been drawn (saturating).
-            let run = if self.interp_prev_drawn_tick.get() + 1 == tick {
-                self.interp_drawn_run.get().saturating_add(1)
-            } else {
-                1
-            };
-            self.interp_drawn_run.set(run);
-        }
-        if self.interp_tick.get() != tick || transform.matrix3d.is_some() || !(0.0..1.0).contains(&t) {
-            return false;
-        }
-        // Only an object that was already on screen for two frames moves: one placed last frame
-        // (often at the origin, positioned by script a frame later: avatar clothes) has no motion yet.
-        if self.interp_drawn_run.get() < 3 {
-            return false;
-        }
-        let mut moved = false;
-        let from = self.interp_matrix.get();
-        let to = transform.matrix;
-        if from != to {
-            const MAX_STEP_TWIPS: i32 = 200 * 20;
-            const MAX_STEP_ANGLE: f32 = std::f32::consts::FRAC_PI_2; // 90° in one frame = a cut
-            const MAX_SCALE_RATIO: f32 = 2.0;
-            let dx = (to.tx - from.tx).get();
-            let dy = (to.ty - from.ty).get();
-            // Interpolate rotation, scale and skew separately (Flash's own decomposition), so a turning
-            // object keeps its size instead of shrinking through the middle of a matrix lerp.
-            let dec = |m: &Matrix| {
-                (
-                    m.b.atan2(m.a),
-                    m.a.hypot(m.b),
-                    (-m.c).atan2(m.d),
-                    m.c.hypot(m.d),
-                )
-            };
-            let (r0, sx0, k0, sy0) = dec(&from);
-            let (r1, sx1, k1, sy1) = dec(&to);
-            let arc = |a: f32, b: f32| {
-                let d = b - a;
-                d - (d / std::f32::consts::TAU).round() * std::f32::consts::TAU
-            };
-            let dr = arc(r0, r1);
-            let dk = arc(k0, k1);
-            let ratio = |a: f32, b: f32| if a.abs() < 1e-4 || b.abs() < 1e-4 { f32::INFINITY } else { (b / a).max(a / b) };
-            if dx.abs() > MAX_STEP_TWIPS
-                || dy.abs() > MAX_STEP_TWIPS
-                || dr.abs() > MAX_STEP_ANGLE
-                || dk.abs() > MAX_STEP_ANGLE
-                || ratio(sx0, sx1) > MAX_SCALE_RATIO
-                || ratio(sy0, sy1) > MAX_SCALE_RATIO
-                // A flip or a mirrored skew (y axis on the other side) is a cut.
-                || ((from.a * from.d - from.b * from.c) < 0.0) != ((to.a * to.d - to.b * to.c) < 0.0)
-            {
-                return false;
-            }
-            moved = true;
-            // Debug statistics: how big the visible step is (a turn or a scale change counts as big).
-            let step = if dr != 0.0 || dk != 0.0 || sx0 != sx1 || sy0 != sy1 {
-                u32::MAX
-            } else {
-                dx.unsigned_abs().max(dy.unsigned_abs())
-            };
-            interp::note_step(step);
-            let r = r0 + dr * t;
-            let k = k0 + dk * t;
-            let sx = sx0 + (sx1 - sx0) * t;
-            let sy = sy0 + (sy1 - sy0) * t;
-            transform.matrix = Matrix {
-                a: sx * r.cos(),
-                b: sx * r.sin(),
-                c: -sy * k.sin(),
-                d: sy * k.cos(),
-                tx: Twips::new(from.tx.get() + (dx as f32 * t).round() as i32),
-                ty: Twips::new(from.ty.get() + (dy as f32 * t).round() as i32),
-            };
-        }
-        let from_alpha = self.interp_alpha.get();
-        let to_alpha = transform.color_transform.a_multiply;
-        if from_alpha != to_alpha {
-            transform.color_transform.a_multiply =
-                Fixed8::from_f32(from_alpha.to_f32() + (to_alpha.to_f32() - from_alpha.to_f32()) * t);
-            moved = true;
-            interp::note_step(u32::MAX);
-        }
-        moved
-    }
-
     fn transform(&self, apply_matrix: bool) -> Transform {
         Transform {
             matrix: if apply_matrix {
@@ -682,7 +429,6 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     pub fn set_matrix(&self, matrix: Matrix) {
-        self.interp_note_change();
         self.matrix.set(matrix);
         // A 2D matrix takes the object out of 3D.
         if self.matrix3d.replace(None).is_some() {
@@ -696,7 +442,6 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     pub fn set_color_transform(&self, color_transform: ColorTransform) {
-        self.interp_note_change();
         self.color_transform.set(color_transform);
     }
 
@@ -717,7 +462,6 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn set_x(&self, x: Twips) -> bool {
-        self.interp_note_change();
         let mut matrix = self.matrix.get();
         let changed = matrix.tx != x;
         matrix.tx = x;
@@ -732,7 +476,6 @@ impl<'gc> DisplayObjectBase<'gc> {
     }
 
     fn set_y(&self, y: Twips) -> bool {
-        self.interp_note_change();
         let mut matrix = self.matrix.get();
         let changed = matrix.ty != y;
         matrix.ty = y;
@@ -780,7 +523,6 @@ impl<'gc> DisplayObjectBase<'gc> {
     /// Sets (or, with `None`, removes) the 3D matrix, as `transform.matrix3D` does.
     /// Removing it leaves a 2D identity matrix, like Flash Player.
     pub fn set_matrix3d(&self, matrix3d: Option<Matrix3D>) {
-        self.interp_note_change();
         self.set_transformed_by_script(true);
         match matrix3d {
             Some(matrix) => {
@@ -851,7 +593,6 @@ impl<'gc> DisplayObjectBase<'gc> {
                     scale: trs.scale.map(clean),
                 },
             );
-        self.interp_note_change();
             self.matrix3d.set(Some(rebuilt));
             self.matrix.set(rebuilt.to_matrix());
         }
@@ -974,7 +715,6 @@ impl<'gc> DisplayObjectBase<'gc> {
         }
 
         let skew = self.skew.get();
-        self.interp_note_change();
         let cos_x = f64::cos(degrees.into_radians());
         let sin_x = f64::sin(degrees.into_radians());
         let cos_y = f64::cos(degrees.into_radians() + skew);
@@ -1022,7 +762,6 @@ impl<'gc> DisplayObjectBase<'gc> {
             rot = 0.0;
         }
 
-        self.interp_note_change();
         let cos = f64::cos(rot);
         let sin = f64::sin(rot);
         let mut matrix = self.matrix.get();
@@ -1065,7 +804,6 @@ impl<'gc> DisplayObjectBase<'gc> {
         }
 
         let skew = self.skew.get();
-        self.interp_note_change();
         let cos = f64::cos(rot + skew);
         let sin = f64::sin(rot + skew);
         let mut matrix = self.matrix.get();
@@ -1105,7 +843,6 @@ impl<'gc> DisplayObjectBase<'gc> {
 
     fn set_alpha(&self, value: f64) -> bool {
         self.set_transformed_by_script(true);
-        self.interp_note_change();
         let value = Fixed8::from_f64(value);
         let mut tf = self.color_transform.get();
         let changed = tf.a_multiply != value;
@@ -1512,19 +1249,8 @@ pub fn render_base<'gc>(
         return;
     }
 
-    // Timffle frame interpolation: is this object drawn between two poses? Its content and children then
-    // count as visible motion when they pass the view culling (see `interp::note_visible_content`).
-    let mut moving = false;
     if options.apply_transform {
-        let mut transform = this.base().transform(options.apply_matrix);
-        if options.apply_matrix && let Some(interp) = context.interp {
-            moving = this
-                .base()
-                .interpolate_transform(&mut transform, interp.tick, interp.t);
-        }
-        if moving {
-            interp::enter_moving();
-        }
+        let transform = this.base().transform(options.apply_matrix);
         context.transform_stack.push(&transform);
     }
 
@@ -1651,7 +1377,6 @@ pub fn render_base<'gc>(
                 matrix3d: None,
             });
             let mut offscreen_context = RenderContext {
-                interp: None,
                 renderer: context.renderer,
                 commands: CommandList::new(),
                 cache_draws: context.cache_draws,
@@ -1721,7 +1446,6 @@ pub fn render_base<'gc>(
                         matrix3d: None,
                     }
                 };
-                interp::note_visible_content();
                 context.commands.render_bitmap(
                     cache_info.bitmap.handle,
                     transform,
@@ -1775,9 +1499,6 @@ pub fn render_base<'gc>(
 
     if options.apply_transform {
         context.transform_stack.pop();
-        if moving {
-            interp::leave_moving();
-        }
     }
 }
 

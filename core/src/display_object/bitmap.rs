@@ -397,9 +397,6 @@ impl<'gc> TDisplayObject<'gc> for Bitmap<'gc> {
             // Off-screen; culled
             return;
         }
-        if !context.is_offscreen {
-            crate::display_object::interp::note_visible_content();
-        }
 
         self.0.bitmap_data.get().render(
             self.0.smoothing.get(),

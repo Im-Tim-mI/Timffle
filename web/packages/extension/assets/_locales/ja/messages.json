@@ -239,9 +239,6 @@
     "timffle_options_enable": {
         "message": "ソケットを有効にする（リストにあるウェブサイトは直接使用し、それ以外のウェブサイトは先に確認します）"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "フレーム補間"
-    },
     "timffle_options_method": {
         "message": "接続方法"
     },
@@ -458,25 +455,7 @@
     "timffle_attribution": {
         "message": "Timffle は <1>Ruffle</1> の非公式フォークであり、Ruffle プロジェクトとは関係ありません。Flash のエミュレーションは Ruffle とその貢献者によるものです。問題は Ruffle ではなく <2>Timffle</2> に報告してください。"
     },
-    "timffle_fi_unlimited": {
-        "message": "無制限"
-    },
-    "timffle_fi_auto": {
-        "message": "自動（既定）"
-    },
-    "timffle_fi_custom": {
-        "message": "カスタム…"
-    },
-    "timffle_fi_off": {
-        "message": "オフ"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "カスタム目標（24～999 fps）"
-    },
     "timffle_options_show_fps": {
         "message": "フレームレートを表示"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "フレーム補間（実験的）"
     }
 }

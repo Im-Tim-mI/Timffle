@@ -42,27 +42,6 @@
                 <input type="checkbox" id="show_fps" />
                 <label for="show_fps" data-i18n="timffle_options_show_fps"></label>
             </div>
-            <div class="option checkbox">
-                <input type="checkbox" id="frame_interpolation_enabled" />
-                <label for="frame_interpolation_enabled" data-i18n="timffle_options_fi_enabled"></label>
-            </div>
-            <div class="option select fi-dependent">
-                <select id="frame_interpolation">
-                    <option value="unlimited" data-i18n="timffle_fi_unlimited"></option>
-                    <option value="auto" data-i18n="timffle_fi_auto"></option>
-                    <option value="144">144 fps</option>
-                    <option value="120">120 fps</option>
-                    <option value="60">60 fps</option>
-                    <option value="30">30 fps</option>
-                    <option value="custom" data-i18n="timffle_fi_custom"></option>
-                    <option value="off" data-i18n="timffle_fi_off"></option>
-                </select>
-                <label for="frame_interpolation" data-i18n="timffle_options_frame_interpolation"></label>
-            </div>
-            <div class="option number-input fi-dependent" id="frame_interpolation_fps_row">
-                <input type="number" id="frame_interpolation_fps" min="24" max="999" step="1" placeholder="90" />
-                <label for="frame_interpolation_fps" data-i18n="timffle_fi_custom_fps"></label>
-            </div>
             <div class="option select">
                 <select id="log_level">
                     <option value="error" id="log_level_error">Error</option>

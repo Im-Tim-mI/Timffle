@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Această cerere nu mai este activă. Poți închide această fereastră.",
     "timffle_options_title": "Conexiuni socket (servere de jocuri)",
     "timffle_options_enable": "Activează socketurile (site-urile din listă le folosesc direct; pentru celelalte site-uri se întreabă mai întâi)",
-    "timffle_options_frame_interpolation": "Interpolarea cadrelor",
     "timffle_options_method": "Metodă de conectare",
     "timffle_options_helper": "Asistent pentru socketuri (recomandat)",
     "timffle_options_websocket": "Proxy WebSocket personalizat (avansat)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Setările locale nu au putut fi citite.",
     "timffle_save_failed": "Salvarea a eșuat; modificările nu au fost confirmate. Încearcă din nou.",
     "timffle_attribution": "Timffle este un fork neoficial al <1>Ruffle</1> și nu este afiliat proiectului Ruffle; emularea Flash provine de la Ruffle și de la contribuitorii săi. Raportează problemele la <2>Timffle</2>, nu la Ruffle.",
-    "timffle_fi_unlimited": "Nelimitat",
-    "timffle_fi_auto": "Automat (implicit)",
-    "timffle_fi_custom": "Personalizat…",
-    "timffle_fi_off": "Oprit",
-    "timffle_fi_custom_fps": "Țintă personalizată (24–999 fps)",
-    "timffle_options_show_fps": "Afișează rata de cadre",
-    "timffle_options_fi_enabled": "Interpolarea cadrelor (experimental)"
+    "timffle_options_show_fps": "Afișează rata de cadre"
 }

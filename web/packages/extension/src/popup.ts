@@ -6,7 +6,7 @@ import {
     setPageLanguage,
 } from "./utils";
 import type { Options } from "./common";
-import { bindOptions, bindFrameInterpolationMenu } from "./common";
+import { bindOptions } from "./common";
 import { bindHelperNotice } from "./popup-helper";
 import { bindSocketSection } from "./popup-socket";
 import { localizePage } from "./i18n";
@@ -174,16 +174,10 @@ function optionsChanged() {
     }
 
     const showReloadButton = tabOptions.showReloadButton;
-    // Timffle: these take effect in the running players at once (see
-    // content.ts "settings"), so they never ask for a reload.
+    // Timffle: "Show frame rate" takes effect in the running players at once
+    // (see content.ts "settings"), so it never asks for a reload.
     const live = (o: Options): Partial<Options> => {
-        const {
-            frameInterpolationEnabled: _a,
-            frameInterpolation: _b,
-            frameInterpolationFps: _c,
-            showFps: _d,
-            ...rest
-        } = o;
+        const { showFps: _showFps, ...rest } = o;
         return rest;
     };
     const notDifferent = deepEqual(live(savedOptions), live(tabOptions));
@@ -254,7 +248,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         savedOptions = options;
         optionsChanged();
     }, tabOrigin);
-    bindFrameInterpolationMenu();
     await bindSocketSection({
         tab: activeTab,
         fallbackOrigin: topFrameOrigin,

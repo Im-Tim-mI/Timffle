@@ -239,9 +239,6 @@
     "timffle_options_enable": {
         "message": "Activer les sockets (les sites listés les utilisent directement ; les autres sites sont d'abord soumis à votre décision)"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "Interpolation d'images"
-    },
     "timffle_options_method": {
         "message": "Méthode de connexion"
     },
@@ -458,25 +455,7 @@
     "timffle_attribution": {
         "message": "Timffle est un fork non officiel de <1>Ruffle</1> et n'est pas affilié au projet Ruffle ; son émulation Flash provient de Ruffle et de ses contributeurs. Signalez les problèmes à <2>Timffle</2>, pas à Ruffle."
     },
-    "timffle_fi_unlimited": {
-        "message": "Illimité"
-    },
-    "timffle_fi_auto": {
-        "message": "Auto (défaut)"
-    },
-    "timffle_fi_custom": {
-        "message": "Personnalisé…"
-    },
-    "timffle_fi_off": {
-        "message": "Désactivé"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "Cible personnalisée (24–999 fps)"
-    },
     "timffle_options_show_fps": {
         "message": "Afficher la cadence"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "Interpolation d'images (expérimental)"
     }
 }

@@ -2,6 +2,19 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26343 — 2026-11-04（main，正式版）
+
+**繪圖後端改為 WebGPU 優先的第一個正式版。** 把 `webgpu` 與 `frame-interp` 兩個測試分支（0.8.0.26327～26342）併入主線 `main`，接續正式版 0.8.0.26326；**實驗性的補幀功能整個拿掉，「顯示幀數」保留**（tim：「現在版本我認為可以放入主線 main 了，但實驗性補幀功能拿掉，顯示幀率可以保留」）。小幫手仍是 **1.4.1**，不必重裝。
+
+- **繪圖後端：WebGPU 優先**（26328）：網頁播放器的渲染器順序從「WebGL2 → WebGPU → WebGL → canvas」改成「**WebGPU → WebGL2** → WebGL → canvas」。拿不到 WebGPU 裝置的瀏覽器（Firefox、Linux 的 Chrome 多數情況、較舊的 Android）自動退回 WebGL2，行為和 26326 相同；選項頁手動選的渲染器仍以使用者為準。WebGPU 幾乎不佔主執行緒（Mac M2 實測主執行緒 99% → 約 20%），Flash 程式邏輯有更多時間可用，解析度放大（Retina）時幾乎不掉幀。
+- **混合模式（Overlay、Hardlight 等）的畫法重做**（26327、26328、26331、26332；所有後端適用，畫面不變）：整張舞台的抗鋸齒解析只在真的需要時做，WebGPU 上只解析混合物件需要的那一小塊，每個混合物件的 render pass 少掉一半以上，混合物件讀父層像素不再複製貼圖。摩靈 關卡列表每幀整張解析 217 → 3 次；Mac M2 官方伺服器實測 關卡列表 15.9 → 24 幀（滿速）、Retina 8.7 → 22.9 幀。
+- **WebGPU 的兩個擋路問題修好**（26329、26330）：`BitmapData.draw` 之後再用 CPU 讀像素（`getPixel`、`copyPixels`、`hitTest`…）在瀏覽器 WebGPU 上會讓整個分頁卡死 → 補上同步讀回（`OffscreenCanvas` 快照，結果逐位元相同）；Mac／Windows 真 GPU 上 PixelBender 混合模式（`BlendMode.SHADER`）把整個播放器畫黑（`Bgra8Unorm` 與 `Rgba8Unorm` 不能複製）→ 修好。PixelBender 濾鏡在 WebGPU 上原本整個畫成空白（上游既有問題）也一併修好（26328）。
+- **畫面時序改為 Flash 的做法**（26335）：每個動畫幀改成「先跑 Socket／網路／計時器事件，再跑遊戲幀」，畫出來的永遠是一個完整幀跑完的狀態。26316 加的「幀與幀之間的 goto 先不畫」補丁（及 26334 的限縮）因此移除；摩靈 物件放上去第一幀沒上色、摩摩大賽車 每秒只畫 1 張，兩個問題都由這一個順序改動解決。補幀關閉時 242 個回歸 SWF 的截圖與 trace 和 26332 完全相同（26335 驗證）。
+- **新增「顯示幀數」**（彈出選單與設定頁各一個勾選框，36 種語言；`web/packages/core/src/internal/ui/fps-overlay.ts`）：勾起來後遊戲角落出現半透明小方塊，大字是每秒實際畫出的張數，小字是遊戲本身的幀率與螢幕更新率（例如 `SWF 24 · 60 Hz`）；每 0.5 秒更新；只有把手會接滑鼠，拖到任一角落會記住；把手連點兩下多顯示一行「上一秒遲到的動畫幀百分比」。開關即時生效，不用重新載入，也不會讓「重新載入分頁」按鈕亮起。頁面設定 `showFps`（`window.RufflePlayer.config`）也可以開。
+- **移除實驗性補幀**（26333～26342 的功能）：拿掉核心的 `interp` 模組與各繪圖點的可見內容計數（`core/src/display_object.rs` 等 8 個檔案回到 webgpu 分支的版本）、`RenderContext.interp`、`Player::frame_interpolation`／`wants_interpolated_render`／`interp_stats`；`web/src/interp.rs` 換成只算幀數的 `web/src/fps.rs`；播放器設定 `frameInterpolation`／`frameInterpolationFps`、公開 API `frameInterpolation` setter、`set_canvas_visible`（捲出視窗外的判斷）全部移除；擴充功能的「（實驗性）補幀功能」開關、「補幀」選單、自訂 fps 欄位與 `frameInterpolationEnabled` 設定移除，7 個相關文字從 36 種語言刪掉（`timffle_options_show_fps` 保留）。補幀之外的改動（tick 順序、`render_count`）保留。
+- 其餘細節、數字與量測工具見下面 26327～26342 各節（測試版紀錄，照原樣保留）。
+- **驗證**：`cargo check` core 與 wasm 目標通過；`web/src/fps.rs` 單元測試 2 項；擴充功能型別檢查與單元測試 320 項通過；`sync_locales.py --check`、`rebrand.py --check` 通過。
+
 ## 0.8.0.26342 — 2026-11-04（frame-interp 分支，測試版）
 
 **補幀只在畫面裡真的有東西在動時才多畫**（tim：「如果改成只有在遊戲視窗畫面中的才補幀會不會有更好的幫助」→ 量過之後改成這樣）。`core/src/display_object.rs`、`core/src/player.rs`、`web/src/lib.rs`、`web/packages/core/src/internal/player/inner.tsx`。

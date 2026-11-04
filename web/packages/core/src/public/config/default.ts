@@ -27,8 +27,6 @@ export const DEFAULT_CONFIG: Required<BaseLoadOptions> = {
     warnOnUnsupportedContent: true,
     logLevel: LogLevel.Error,
     showSwfDownload: false,
-    frameInterpolation: "auto",
-    frameInterpolationFps: 90,
     showFps: false,
     contextMenu: ContextMenu.On,
     // Backwards-compatibility option

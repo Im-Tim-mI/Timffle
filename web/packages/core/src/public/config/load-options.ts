@@ -418,11 +418,6 @@ export enum GamepadButton {
 /**
  * Any options used for loading a movie.
  */
-/**
- * Timffle: frame interpolation setting; see {@link BaseLoadOptions.frameInterpolation}.
- */
-export type FrameInterpolation = "off" | "auto" | "unlimited" | "custom" | number | string;
-
 export interface BaseLoadOptions {
     /**
      * If set to true, the movie is allowed to interact with the page through
@@ -538,35 +533,8 @@ export interface BaseLoadOptions {
     showSwfDownload?: boolean;
 
     /**
-     * Timffle: smooth motion (frame interpolation). The movie keeps its own
-     * frame rate; between two of its frames Timffle draws extra pictures in
-     * which objects that moved are placed part-way along their motion.
-     *
-     * - `"auto"` (default): the picture rate moves between 144 / 120 / 60 / 30
-     *   and off by itself, following dropped frames and drawing cost.
-     * - `"unlimited"`: as high as the display and the device allow.
-     * - a number: a fixed target in fps (24–999); never lowered by itself.
-     * - `"off"`: no extra pictures.
-     * - `true` / `false` (old versions) mean `"auto"` / `"off"`.
-     *
-     * The target never exceeds the display's refresh rate, and nothing is
-     * added when the target is at or below the movie's own frame rate.
-     *
-     * @default "auto"
-     */
-    frameInterpolation?: FrameInterpolation | boolean;
-
-    /**
-     * Timffle: the target used when `frameInterpolation` is `"custom"`
-     * (the extension's "Custom…" menu entry), in fps.
-     *
-     * @default 90
-     */
-    frameInterpolationFps?: number;
-
-    /**
-     * Timffle: show a small floating box with the current picture rate and
-     * the interpolation mode in a corner of the player.
+     * Timffle: show a small floating box with the current picture rate
+     * (pictures drawn per second) in a corner of the player.
      *
      * @default false
      */

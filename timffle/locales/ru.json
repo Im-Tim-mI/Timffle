@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Этот запрос больше не активен. Вы можете закрыть это окно.",
     "timffle_options_title": "Сокет-соединения (игровые серверы)",
     "timffle_options_enable": "Включить сокеты (сайты из списка используют их сразу; про остальные сайты сначала спрашивается)",
-    "timffle_options_frame_interpolation": "Интерполяция кадров",
     "timffle_options_method": "Способ подключения",
     "timffle_options_helper": "Сокет-помощник (рекомендуется)",
     "timffle_options_websocket": "Собственный WebSocket-прокси (для опытных)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "Не удалось прочитать локальные настройки.",
     "timffle_save_failed": "Не удалось сохранить; изменения не подтверждены. Повторите попытку.",
     "timffle_attribution": "Timffle — неофициальный форк проекта <1>Ruffle</1>, не связанный с проектом Ruffle; эмуляция Flash — работа Ruffle и его участников. О проблемах сообщайте в <2>Timffle</2>, а не в Ruffle.",
-    "timffle_fi_unlimited": "Без ограничения",
-    "timffle_fi_auto": "Авто (по умолчанию)",
-    "timffle_fi_custom": "Своё значение…",
-    "timffle_fi_off": "Выкл.",
-    "timffle_fi_custom_fps": "Своя цель (24–999 fps)",
-    "timffle_options_show_fps": "Показывать частоту кадров",
-    "timffle_options_fi_enabled": "Интерполяция кадров (экспериментально)"
+    "timffle_options_show_fps": "Показывать частоту кадров"
 }

@@ -1,51 +1,23 @@
 /**
  * Timffle: the floating fps box (the extension's "Show frame rate" switch).
  *
- * Two lines: the current picture rate (big) and the interpolation mode with
- * its target (small). It sits in a corner of the player, can be dragged to
- * any of the four corners (remembered in localStorage), updates every 0.5 s,
- * is translucent and lets every click through except on itself.
- *
- * The second line uses short language-neutral tokens:
- *   `AUTO · 120`        automatic mode at the 120 tier
- *   `AUTO · ⏸`          automatic mode paused by load
- *   `MAX · 88`          unlimited mode, current target 88
- *   `144 fps`           fixed target reached
- *   `144 ▼`             fixed target not reached for 30 s
- *   `144 ▶ 60 Hz`       target above the display's refresh rate
- *   `24 ≥ 30`           movie frame rate at or above the target: nothing added
- *   `OFF · 24`          interpolation off (movie frame rate)
+ * Two lines: the pictures drawn per second (big) and, small, the movie's own
+ * frame rate with the display's refresh rate (`SWF 24 · 60 Hz`). It sits in a
+ * corner of the player, can be dragged to any of the four corners (remembered
+ * in localStorage), updates every 0.5 s, is translucent and lets every click
+ * through except on its drag handle. A double click on the handle shows a
+ * debug line (late animation frames in the last second).
  */
 
 interface FrameStats {
+    /** Pictures drawn per second (the core's render counter over 0.5 s windows). */
     fps: number;
+    /** The movie's own frame rate. */
     sourceFps: number;
-    mode: "off" | "auto" | "unlimited" | "fixed";
-    target: number;
-    effective: number;
+    /** The display's refresh rate, estimated from the animation-frame intervals. */
     refreshHz: number;
+    /** Animation frames that arrived late in the last second, in percent. */
     dropPct: number;
-    interpMs: number;
-    state:
-        | "off"
-        | "starting"
-        | "paused"
-        | "source_above"
-        | "capped"
-        | "below"
-        | "ok";
-    pausedByLoad: boolean;
-    /** Movie frames run so far, frames in which an object changed, frames in which something visibly moved. */
-    frames: number;
-    changedFrames: number;
-    visibleFrames: number;
-    /** Objects that changed, objects drawn between two poses, visible contents under them (totals). */
-    changed: number;
-    moving: number;
-    visible: number;
-    /** Visible-motion frames whose biggest step was at most half a pixel / one pixel. */
-    halfPxFrames: number;
-    onePxFrames: number;
 }
 
 type Corner = "tl" | "tr" | "bl" | "br";
@@ -126,41 +98,11 @@ export class FpsOverlay {
         }
         this.big.textContent = stats.fps.toFixed(0);
         this.small.textContent = FpsOverlay.describe(stats);
-        this.debug.textContent = `drop ${stats.dropPct.toFixed(1)}% · ${stats.interpMs.toFixed(1)} ms · ${stats.refreshHz.toFixed(0)} Hz · src ${stats.sourceFps.toFixed(0)} · chg ${stats.changedFrames}/${stats.frames} · vis ${stats.visibleFrames}/${stats.frames} · obj ${stats.changed}/${stats.moving}/${stats.visible} · step≤½px ${stats.halfPxFrames} ≤1px ${stats.onePxFrames}`;
+        this.debug.textContent = `late ${stats.dropPct.toFixed(1)}%`;
     }
 
     static describe(s: FrameStats): string {
-        const src = s.sourceFps.toFixed(0);
-        if (s.mode === "off" || s.state === "off") {
-            return `OFF · ${src}`;
-        }
-        if (s.state === "starting") {
-            return "…";
-        }
-        if (s.mode === "auto") {
-            if (s.state === "paused") {
-                return "AUTO · ⏸";
-            }
-            if (s.state === "source_above") {
-                return `AUTO · ${src} ≥ ${s.target.toFixed(0)}`;
-            }
-            return `AUTO · ${s.effective.toFixed(0)}`;
-        }
-        if (s.mode === "unlimited") {
-            return `MAX · ${s.effective.toFixed(0)}`;
-        }
-        // fixed
-        const t = s.target.toFixed(0);
-        switch (s.state) {
-            case "capped":
-                return `${t} ▶ ${s.refreshHz.toFixed(0)} Hz`;
-            case "source_above":
-                return `${src} ≥ ${t}`;
-            case "below":
-                return `${t} ▼`;
-            default:
-                return `${t} fps`;
-        }
+        return `SWF ${s.sourceFps.toFixed(0)} · ${s.refreshHz.toFixed(0)} Hz`;
     }
 
     private loadCorner(): Corner {

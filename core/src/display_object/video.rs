@@ -509,9 +509,6 @@ impl<'gc> TDisplayObject<'gc> for Video<'gc> {
             // Off-screen; culled
             return;
         }
-        if !context.is_offscreen {
-            crate::display_object::interp::note_visible_content();
-        }
 
         if options.apply_transform {
             let transform = self.base().transform(options.apply_matrix);

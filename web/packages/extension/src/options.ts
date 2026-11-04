@@ -1,5 +1,5 @@
 import { enableBrowserOnOutdatedChromium, setPageLanguage } from "./utils";
-import { bindFrameInterpolationMenu, bindOptions, resetOptions } from "./common";
+import { bindOptions, resetOptions } from "./common";
 import { buildInfo } from "ruffle-core";
 import { bindProxyOptions } from "./proxy-options";
 import { localizePage } from "./i18n";
@@ -42,5 +42,4 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
     await Promise.all([bindOptions(), bindProxyOptions()]);
-    bindFrameInterpolationMenu();
 });

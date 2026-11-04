@@ -239,9 +239,6 @@
     "timffle_options_enable": {
         "message": "啟用 Socket 連線（清單內的網站直接使用，其他網站會先詢問你）"
     },
-    "timffle_options_frame_interpolation": {
-        "message": "補幀"
-    },
     "timffle_options_method": {
         "message": "連線方式"
     },
@@ -476,25 +473,7 @@
     "timffle_promo_image": {
         "message": "promo-logitech-zh.png"
     },
-    "timffle_fi_unlimited": {
-        "message": "不限制"
-    },
-    "timffle_fi_auto": {
-        "message": "自動（預設）"
-    },
-    "timffle_fi_custom": {
-        "message": "自訂…"
-    },
-    "timffle_fi_off": {
-        "message": "關閉"
-    },
-    "timffle_fi_custom_fps": {
-        "message": "自訂目標（24–999 fps）"
-    },
     "timffle_options_show_fps": {
         "message": "顯示幀數"
-    },
-    "timffle_options_fi_enabled": {
-        "message": "（實驗性）補幀功能"
     }
 }

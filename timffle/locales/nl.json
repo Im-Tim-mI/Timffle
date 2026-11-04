@@ -31,7 +31,6 @@
     "timffle_prompt_expired": "Dit verzoek is niet meer actief. Je kunt dit venster sluiten.",
     "timffle_options_title": "Socketverbindingen (gameservers)",
     "timffle_options_enable": "Sockets inschakelen (websites op de lijst gebruiken ze direct; bij andere websites wordt eerst gevraagd)",
-    "timffle_options_frame_interpolation": "Tussenbeelden",
     "timffle_options_method": "Verbindingsmethode",
     "timffle_options_helper": "Sockethelper (aanbevolen)",
     "timffle_options_websocket": "Eigen WebSocket-proxy (geavanceerd)",
@@ -96,11 +95,5 @@
     "timffle_read_failed": "De lokale instellingen konden niet worden gelezen.",
     "timffle_save_failed": "Opslaan mislukt; de wijzigingen zijn niet bevestigd. Probeer het opnieuw.",
     "timffle_attribution": "Timffle is een onofficiële fork van <1>Ruffle</1> en is niet gelieerd aan het Ruffle-project; de Flash-emulatie komt van Ruffle en zijn bijdragers. Meld problemen bij <2>Timffle</2>, niet bij Ruffle.",
-    "timffle_fi_unlimited": "Onbeperkt",
-    "timffle_fi_auto": "Automatisch (standaard)",
-    "timffle_fi_custom": "Aangepast…",
-    "timffle_fi_off": "Uit",
-    "timffle_fi_custom_fps": "Eigen doel (24–999 fps)",
-    "timffle_options_show_fps": "Beeldfrequentie tonen",
-    "timffle_options_fi_enabled": "Tussenbeelden (experimenteel)"
+    "timffle_options_show_fps": "Beeldfrequentie tonen"
 }
