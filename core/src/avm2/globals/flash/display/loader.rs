@@ -16,7 +16,6 @@ use crate::avm2::object::TObject as _;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{Error, Object};
-use crate::avm2_stub_method;
 use crate::backend::navigator::{NavigationMethod, Request};
 use crate::display_object::LoaderDisplay;
 use crate::display_object::MovieClip;
@@ -79,15 +78,9 @@ pub fn load<'gc>(
 
     let loader_info = loader_info.as_loader_info_object().unwrap();
 
-    if loader_info.init_event_fired() {
-        avm2_stub_method!(
-            activation,
-            "flash.display.Loader",
-            "load",
-            "reusing a Loader"
-        );
-    }
-
+    // Timffle: reusing a Loader (load() after a finished load) cancels the
+    // previous load, unloads the old content and reuses the same
+    // contentLoaderInfo, as in Flash; see the `loader_reuse` test.
     cancel_previous_load(activation, loader_info);
 
     // Unload the loader, in case something was already loaded.
@@ -260,15 +253,7 @@ pub fn load_bytes<'gc>(
 
     let loader_info = loader_info.as_loader_info_object().unwrap();
 
-    if loader_info.init_event_fired() {
-        avm2_stub_method!(
-            activation,
-            "flash.display.Loader",
-            "loadBytes",
-            "reusing a Loader"
-        );
-    }
-
+    // Timffle: reusing a Loader is handled like in `load()` above.
     cancel_previous_load(activation, loader_info);
 
     // Unload the loader, in case something was already loaded.
