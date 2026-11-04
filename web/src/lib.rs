@@ -13,6 +13,11 @@ mod ui;
 mod zip;
 
 use crate::builder::RuffleInstanceBuilder;
+
+// Timffle: count allocated bytes for `System.totalMemory`/`freeMemory`.
+#[global_allocator]
+static GLOBAL: ruffle_core::memory::CountingAllocator<std::alloc::System> =
+    ruffle_core::memory::CountingAllocator(std::alloc::System);
 use external_interface::{external_to_js_value, js_to_external_value};
 use input::{web_input_to_ruffle_key_descriptor, web_to_ruffle_text_control};
 use js_sys::{Error as JsError, Uint8Array};

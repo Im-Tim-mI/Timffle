@@ -4,9 +4,11 @@ use crate::avm2::activation::Activation;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{Object, ScriptObject, TObject};
 use crate::context::UpdateContext;
+use flash_lso::types::AMFVersion;
 use gc_arena::barrier::unlock;
 use gc_arena::{Collect, Gc, GcWeak, lock::Lock};
 use ruffle_common::utils::HasPrefixField;
+use std::cell::Cell;
 use std::fmt::Debug;
 
 #[derive(Clone, Collect, Copy)]
@@ -29,6 +31,22 @@ pub struct SharedObjectObjectData<'gc> {
 
     /// The name of this SharedObject.
     name: String,
+
+    /// Timffle: a remote shared object (`SharedObject.getRemote`) has no
+    /// file behind it: `flush()` fails with #2130 and nothing is stored.
+    remote: bool,
+
+    /// Timffle: `objectEncoding` (AMF0 or AMF3), the format `flush()` and
+    /// `size` use. Starts as `SharedObject.defaultObjectEncoding`.
+    #[collect(require_static)]
+    object_encoding: Cell<AMFVersion>,
+
+    /// Timffle: `client`, the object server callbacks are invoked on;
+    /// `None` means the shared object itself.
+    client: Lock<Option<Object<'gc>>>,
+
+    /// Timffle: `fps`, the write-only update rate for a remote connection.
+    fps: Cell<f64>,
 }
 
 impl<'gc> SharedObjectObject<'gc> {
@@ -37,8 +55,23 @@ impl<'gc> SharedObjectObject<'gc> {
         data: Object<'gc>,
         name: String,
     ) -> Self {
+        Self::new(activation, data, name, false)
+    }
+
+    /// Timffle: `remote` marks a `getRemote` object (nothing on disk).
+    pub fn new(
+        activation: &mut Activation<'_, 'gc>,
+        data: Object<'gc>,
+        name: String,
+        remote: bool,
+    ) -> Self {
         let class = activation.avm2().classes().sharedobject;
         let base = ScriptObjectData::new(class);
+        let object_encoding = if activation.avm2().shared_object_default_encoding == 0 {
+            AMFVersion::AMF0
+        } else {
+            AMFVersion::AMF3
+        };
 
         SharedObjectObject(Gc::new(
             activation.gc(),
@@ -46,6 +79,10 @@ impl<'gc> SharedObjectObject<'gc> {
                 base,
                 data: Lock::new(data),
                 name,
+                remote,
+                object_encoding: Cell::new(object_encoding),
+                client: Lock::new(None),
+                fps: Cell::new(0.0),
             },
         ))
     }
@@ -67,6 +104,35 @@ impl<'gc> SharedObjectObject<'gc> {
 
     pub fn name(&self) -> &String {
         &self.0.name
+    }
+
+    pub fn is_remote(self) -> bool {
+        self.0.remote
+    }
+
+    pub fn object_encoding(self) -> AMFVersion {
+        self.0.object_encoding.get()
+    }
+
+    pub fn set_object_encoding(self, encoding: AMFVersion) {
+        self.0.object_encoding.set(encoding);
+    }
+
+    pub fn client(self) -> Option<Object<'gc>> {
+        self.0.client.get()
+    }
+
+    pub fn set_client(self, context: &mut UpdateContext<'gc>, client: Option<Object<'gc>>) {
+        unlock!(
+            Gc::write(context.gc(), self.0),
+            SharedObjectObjectData,
+            client
+        )
+        .set(client);
+    }
+
+    pub fn set_fps(self, fps: f64) {
+        self.0.fps.set(fps);
     }
 }
 

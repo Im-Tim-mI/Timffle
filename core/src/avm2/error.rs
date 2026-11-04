@@ -1064,6 +1064,8 @@ pub fn make_error_2012<'gc>(
 make_error_fn!(make_error_2015, 2015, argument_error);
 make_error_fn!(make_error_2017, 2017, security_error);
 make_error_fn!(make_error_2018, 2018, security_error);
+// Timffle: `SharedObject.deleteAll`/`getDiskUsage` (AIR-only features).
+make_error_fn!(make_error_2014, 2014, error);
 
 #[inline(never)]
 #[cold]
@@ -1146,6 +1148,10 @@ pub fn make_error_2109<'gc>(
 
 make_error_fn!(make_error_2126, 2126, argument_error);
 make_error_fn!(make_error_2130, 2130, error);
+// Timffle: `SharedObject.getRemote` without a usable remote path, and
+// `SharedObject.connect` without a server connection.
+make_error_fn!(make_error_2134, 2134, error);
+make_error_fn!(make_error_2139, 2139, error);
 
 #[inline(never)]
 #[cold]

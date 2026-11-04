@@ -34,6 +34,8 @@ mod library;
 pub mod limits;
 pub mod loader;
 mod local_connection;
+/// Timffle: memory accounting for `System.totalMemory` and friends.
+pub mod memory;
 mod net_connection;
 mod orphan_manager;
 pub mod pixel_bender;

@@ -754,9 +754,15 @@ pub fn parent<'gc>(
 
     let xml = this.as_xml_object().unwrap();
     let node = xml.node();
-    Ok(node.parent().map_or(Value::Undefined, |parent| {
-        XmlObject::new(parent, activation).into()
-    }))
+    // Timffle: a node cut loose by `System.disposeXML` answers null, a root undefined.
+    let none = if node.is_disposed() {
+        Value::Null
+    } else {
+        Value::Undefined
+    };
+    Ok(node
+        .parent()
+        .map_or(none, |parent| XmlObject::new(parent, activation).into()))
 }
 
 pub fn elements<'gc>(

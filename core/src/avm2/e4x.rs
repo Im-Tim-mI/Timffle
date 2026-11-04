@@ -23,6 +23,7 @@ use quick_xml::{
 use ruffle_common::xml::avm2_unescape;
 use ruffle_macros::istr;
 
+use std::cell::Cell;
 use std::cell::{Ref, RefMut};
 use std::fmt::{self, Debug};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -113,6 +114,10 @@ pub struct E4XNodeData<'gc> {
     /// Timffle: the children found by the last `children_named` lookup on
     /// this node, valid while no XML anywhere has been changed since.
     child_cache: RefLock<Option<ChildCache<'gc>>>,
+    /// Timffle: set by `System.disposeXML` on every descendant of the
+    /// disposed node. Flash tells such a node apart from a root: its
+    /// `parent()` is `null`, a root's is `undefined`.
+    disposed: Cell<bool>,
 }
 
 /// Timffle: bumped by every change to any E4X node (children, attributes,
@@ -240,6 +245,7 @@ impl<'gc> E4XNode<'gc> {
         E4XNode(Gc::new(
             mc,
             E4XNodeData {
+                disposed: Cell::new(false),
                 parent: Lock::new(None),
                 namespace: Lock::new(None),
                 local_name: Lock::new(None),
@@ -259,6 +265,7 @@ impl<'gc> E4XNode<'gc> {
         E4XNode(Gc::new(
             mc,
             E4XNodeData {
+                disposed: Cell::new(false),
                 parent: Lock::new(parent),
                 namespace: Lock::new(None),
                 local_name: Lock::new(None),
@@ -279,6 +286,7 @@ impl<'gc> E4XNode<'gc> {
         E4XNode(Gc::new(
             mc,
             E4XNodeData {
+                disposed: Cell::new(false),
                 parent: Lock::new(parent),
                 namespace: Lock::new(namespace),
                 local_name: Lock::new(Some(name)),
@@ -304,6 +312,7 @@ impl<'gc> E4XNode<'gc> {
         E4XNode(Gc::new(
             mc,
             E4XNodeData {
+                disposed: Cell::new(false),
                 parent: Lock::new(parent),
                 namespace: Lock::new(namespace),
                 local_name: Lock::new(Some(name)),
@@ -416,6 +425,7 @@ impl<'gc> E4XNode<'gc> {
         let node = E4XNode(Gc::new(
             mc,
             E4XNodeData {
+                disposed: Cell::new(false),
                 parent: Lock::new(None),
                 namespace: Lock::new(self.namespace()),
                 local_name: Lock::new(self.local_name()),
@@ -901,6 +911,7 @@ impl<'gc> E4XNode<'gc> {
                 let node = E4XNode(Gc::new(
                     activation.gc(),
                     E4XNodeData {
+                        disposed: Cell::new(false),
                         parent: Lock::new(None),
                         namespace: Lock::new(None),
                         local_name: Lock::new(None),
@@ -1016,6 +1027,7 @@ impl<'gc> E4XNode<'gc> {
                     let node = E4XNode(Gc::new(
                         activation.gc(),
                         E4XNodeData {
+                            disposed: Cell::new(false),
                             parent: Lock::new(None),
                             namespace: Lock::new(None),
                             local_name: Lock::new(None),
@@ -1053,6 +1065,7 @@ impl<'gc> E4XNode<'gc> {
                     let node = E4XNode(Gc::new(
                         activation.gc(),
                         E4XNodeData {
+                            disposed: Cell::new(false),
                             parent: Lock::new(None),
                             namespace: Lock::new(None),
                             local_name: Lock::new(Some(name)),
@@ -1156,6 +1169,7 @@ impl<'gc> E4XNode<'gc> {
             let attribute = E4XNode(Gc::new(
                 activation.gc(),
                 E4XNodeData {
+                    disposed: Cell::new(false),
                     parent: Lock::new(None),
                     namespace: Lock::new(namespace),
                     local_name: Lock::new(Some(name)),
@@ -1207,6 +1221,7 @@ impl<'gc> E4XNode<'gc> {
         let result = E4XNode(Gc::new(
             activation.gc(),
             E4XNodeData {
+                disposed: Cell::new(false),
                 parent: Lock::new(None),
                 namespace: Lock::new(namespace),
                 local_name: Lock::new(Some(name)),
@@ -1247,6 +1262,15 @@ impl<'gc> E4XNode<'gc> {
 
     pub fn local_name(self) -> Option<AvmString<'gc>> {
         self.0.local_name.get()
+    }
+
+    /// Timffle: see `E4XNodeData::disposed`.
+    pub fn is_disposed(self) -> bool {
+        self.0.disposed.get()
+    }
+
+    pub fn set_disposed(self) {
+        self.0.disposed.set(true);
     }
 
     pub fn set_parent(&self, parent: Option<E4XNode<'gc>>, mc: &Mutation<'gc>) {

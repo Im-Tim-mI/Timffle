@@ -12,6 +12,11 @@ use clap::Parser;
 use libtest_mimic::{Arguments, Trial};
 use ruffle_fs_tests_runner::FsTestsRunner;
 use ruffle_test_framework::environment::CompileMode;
+
+// Timffle: count allocated bytes so `System.totalMemory` is real in tests.
+#[global_allocator]
+static GLOBAL: ruffle_core::memory::CountingAllocator<std::alloc::System> =
+    ruffle_core::memory::CountingAllocator(std::alloc::System);
 use ruffle_test_framework::options::TestOptions;
 use ruffle_test_framework::runner::TestStatus;
 use ruffle_test_framework::test::Test;

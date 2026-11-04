@@ -132,6 +132,11 @@ pub trait UiBackend: Any {
         !lock
     }
 
+    /// Timffle: `System.exit(code)` from a local-trusted SWF: the standalone
+    /// Flash Player quits. A host that is not a standalone player ignores
+    /// it (the browser never gets here: the sandbox check raises #2018 first).
+    fn exit(&mut self, _code: u32) {}
+
     /// Displays a message about an error during root movie download.
     /// In particular, on web this can be a CORS error, which we can sidestep
     /// by providing a direct .swf link instead.

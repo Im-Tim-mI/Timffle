@@ -2609,6 +2609,10 @@ impl Player {
 
             let mut avm2_activation = Avm2Activation::from_nothing(context);
             for so in avm2_activation.context.avm2_shared_objects.clone().values() {
+                // Timffle: remote shared objects (`getRemote`) have no file.
+                if so.is_remote() {
+                    continue;
+                }
                 if crate::avm2::globals::flash::net::shared_object::flush_impl(
                     &mut avm2_activation,
                     *so,

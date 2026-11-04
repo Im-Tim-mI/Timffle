@@ -255,6 +255,12 @@ impl UiBackend for DesktopUiBackend {
 
     // Timffle: `Stage.mouseLock` grabs the cursor; platforms without a real
     // lock (X11) confine it to the window instead.
+    /// Timffle: `System.exit()` from a local-trusted SWF quits the player,
+    /// like the standalone Flash Player projector.
+    fn exit(&mut self, _code: u32) {
+        let _ = self.event_loop.send_event(RuffleEvent::ExitRequested);
+    }
+
     fn set_mouse_lock(&mut self, lock: bool) -> bool {
         if lock {
             self.window

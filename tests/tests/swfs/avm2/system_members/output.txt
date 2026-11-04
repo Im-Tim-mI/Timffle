@@ -1,0 +1,28 @@
+// ime
+flash.system::IME same=true isSupported=false
+hasEventListener=false
+// processCPUUsage
+0
+// vmVersion
+2.1 sec cyclone
+// useCodePage
+false
+true
+false
+// memory
+total>0 true free>=0 true private>0 true
+pages 0 0 0 totalMemory>0 true 0
+// disposeXML
+<root>
+  <a id="1"/>
+  <b/>
+</root>
+root.children=2 a.parent=null a.children=0 a.attributes=1 b.children=0 c.parent=null attr.parent==a true
+<r>   <a>     <b/>   </a>   <c/> </r> a2.parent==r2 true b2.parent=null
+text 'hello' text
+// pauseForGCIfCollectionImminent
+ok
+// pause/resume
+ok
+// exit
+SecurityError #2017: Error #2017: Only trusted local files may cause the Flash Player to exit.

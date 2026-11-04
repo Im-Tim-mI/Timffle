@@ -210,6 +210,18 @@ pub struct Avm2<'gc> {
 
     pub optimizer_enabled: bool,
 
+    /// Timffle: `SharedObject.defaultObjectEncoding`. Flash stores whatever
+    /// value is assigned (no validation); new shared objects serialize with
+    /// AMF0 when it is 0 and AMF3 otherwise.
+    pub shared_object_default_encoding: u32,
+
+    /// Timffle: `SharedObject.preventBackup` (an AIR/iOS setting). Flash
+    /// Player reads back `null` until a value was assigned.
+    pub shared_object_prevent_backup: Option<bool>,
+
+    /// Timffle: the player's one `IME` instance (`System.ime`), made on first use.
+    pub system_ime: Option<Object<'gc>>,
+
     /// Set while a `StackOverflowError` is being constructed. Building the error object runs
     /// ActionScript constructors, which must not trip `MAX_CALL_DEPTH` again.
     building_stack_overflow_error: bool,
@@ -263,6 +275,9 @@ impl<'gc> Avm2<'gc> {
             debug_output: false,
 
             optimizer_enabled: true,
+            shared_object_default_encoding: 3,
+            shared_object_prevent_backup: None,
+            system_ime: None,
             building_stack_overflow_error: false,
         }
     }
