@@ -83,6 +83,10 @@ pub enum QueuedMessageKind<'gc> {
         method_name: AvmString<'gc>,
         #[collect(require_static)]
         arguments: Vec<AmfValue>,
+        /// Timffle: the URL of the SWF that sent the message, checked against
+        /// the receiver's `allowDomain()` lists on delivery.
+        #[collect(require_static)]
+        sender_url: String,
     },
 }
 
@@ -96,8 +100,18 @@ impl<'gc> QueuedMessageKind<'gc> {
                 connection_name,
                 method_name,
                 arguments,
+                sender_url,
             } => {
                 if let Some(receiver) = context.local_connections.find_listener(&connection_name) {
+                    // Timffle: a receiver that did not allow the sender's domain
+                    // refuses the call; the sender sees a `status` event with
+                    // level `error`, like Flash (AVM1 receivers are not checked).
+                    if let LocalConnectionKind::Avm2(_, receiver_object) = &receiver
+                        && !receiver_object.accepts_sender(&sender_url)
+                    {
+                        source.send_status(istr!(context, "error"), context);
+                        return;
+                    }
                     source.send_status(istr!(context, "status"), context);
                     receiver.run_method(context, method_name, arguments);
                 } else {
@@ -166,9 +180,11 @@ impl<'gc> LocalConnections<'gc> {
         self.connections.remove(&handle.0);
     }
 
+    /// Queue a `send()` from the SWF at `sender_url`, whose domain is `domain`.
     pub fn send<C: Into<LocalConnectionKind<'gc>>>(
         &mut self,
         domain: &str,
+        sender_url: &str,
         source: C,
         connection_name: AvmString<'gc>,
         method_name: AvmString<'gc>,
@@ -188,6 +204,7 @@ impl<'gc> LocalConnections<'gc> {
                 connection_name,
                 method_name,
                 arguments,
+                sender_url: sender_url.to_string(),
             }
         } else {
             QueuedMessageKind::Failure

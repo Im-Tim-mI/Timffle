@@ -236,6 +236,7 @@ pub fn send<'gc>(
 
     activation.context.local_connections.send(
         &LocalConnections::get_domain(activation.context.root_swf.url()),
+        activation.context.root_swf.url(),
         this,
         *connection_name,
         *method_name,

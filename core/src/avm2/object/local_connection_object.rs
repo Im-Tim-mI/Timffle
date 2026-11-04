@@ -12,6 +12,7 @@ use core::fmt;
 use flash_lso::types::Value as AmfValue;
 use gc_arena::barrier::unlock;
 use gc_arena::{Collect, Gc, GcWeak, Mutation, lock::Lock};
+use ruffle_common::sandbox::{AllowedDomains, FlashOrigin};
 use ruffle_common::utils::HasPrefixField;
 use ruffle_macros::istr;
 use std::cell::RefCell;
@@ -29,6 +30,8 @@ pub fn local_connection_allocator<'gc>(
             base,
             connection_handle: RefCell::new(None),
             client: Lock::new(None),
+            movie_url: activation.caller_movie_or_root().url().to_string(),
+            allowed_domains: RefCell::new(AllowedDomains::default()),
         },
     ));
 
@@ -63,6 +66,15 @@ pub struct LocalConnectionObjectData<'gc> {
     connection_handle: RefCell<Option<LocalConnectionHandle>>,
 
     client: Lock<Option<Object<'gc>>>,
+
+    /// Timffle: the URL of the SWF that created this object. Flash ties a
+    /// LocalConnection to the sandbox of the file that created it: this is
+    /// the domain `connect()` and `send()` qualify names with, and the
+    /// domain other senders are checked against.
+    movie_url: String,
+
+    /// Timffle: the senders admitted by `allowDomain()` / `allowInsecureDomain()`.
+    allowed_domains: RefCell<AllowedDomains>,
 }
 
 impl<'gc> LocalConnectionObject<'gc> {
@@ -78,13 +90,54 @@ impl<'gc> LocalConnectionObject<'gc> {
         unlock!(Gc::write(mc, self.0), LocalConnectionObjectData, client).set(Some(client));
     }
 
+    /// Timffle: the URL of the SWF that created this object.
+    pub fn movie_url(&self) -> &str {
+        &self.0.movie_url
+    }
+
+    /// Timffle: `allowDomain()` (`insecure == false`) or
+    /// `allowInsecureDomain()` (`insecure == true`).
+    pub fn allow_domains<'a>(self, domains: impl IntoIterator<Item = &'a str>, insecure: bool) {
+        let mut allowed = self.0.allowed_domains.borrow_mut();
+        for domain in domains {
+            allowed.allow(domain, insecure);
+        }
+    }
+
+    /// Timffle: whether a `send()` from the SWF at `sender_url` may reach
+    /// this (receiving) connection, as in Flash Player:
+    ///
+    /// - a non-HTTPS sender never reaches an HTTPS receiver unless the
+    ///   receiver called `allowInsecureDomain()` for it (even in one domain);
+    /// - senders in the receiver's superdomain are accepted by default (their
+    ///   connection names resolve to the same `superdomain:name`);
+    /// - every other sender needs `allowDomain()` / `allowInsecureDomain()`
+    ///   with its domain, `*` (remote senders) or `localhost` (local files).
+    pub fn accepts_sender(self, sender_url: &str) -> bool {
+        let receiver = FlashOrigin::of(&self.0.movie_url);
+        let sender = FlashOrigin::of(sender_url);
+        let allowed = self.0.allowed_domains.borrow();
+        if receiver.is_https() && !sender.is_https() {
+            return allowed.allows_origin(&receiver, &sender);
+        }
+        if receiver.local == sender.local
+            && LocalConnections::get_superdomain(&receiver.host)
+                == LocalConnections::get_superdomain(&sender.host)
+        {
+            return true;
+        }
+        allowed.allows_origin(&receiver, &sender)
+    }
+
     pub fn connect(self, activation: &mut Activation<'_, 'gc>, name: AvmString<'gc>) -> bool {
         if self.is_connected() {
             return false;
         }
 
+        // Timffle: the connection belongs to the domain of the SWF that
+        // created it, not necessarily the root SWF.
         let connection_handle = activation.context.local_connections.connect(
-            &LocalConnections::get_domain(activation.context.root_swf.url()),
+            &LocalConnections::get_domain(&self.0.movie_url),
             (activation.domain(), self),
             &name,
         );

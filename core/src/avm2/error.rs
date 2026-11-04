@@ -959,6 +959,23 @@ pub fn make_error_2001<'gc>(
 make_error_fn!(make_error_2002, 2002, io_error);
 make_error_fn!(make_error_2003, 2003, security_error);
 
+// Timffle: Flash's generic cross-sandbox access error (`LoaderInfo` sandbox
+// bridges, `getLoaderInfoByDefinition`).
+#[inline(never)]
+#[cold]
+pub fn make_error_2047<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    property: &str,
+    caller: &str,
+    target: &str,
+) -> Error<'gc> {
+    make_error!(security_error(
+        activation,
+        error_message!(2047, property, caller, target),
+        2047,
+    ))
+}
+
 pub enum Error2004Type {
     Error,
     ArgumentError,
@@ -1090,6 +1107,7 @@ pub fn make_error_2027<'gc>(
 make_error_fn!(make_error_2029, 2029, io_error);
 make_error_fn!(make_error_2030, 2030, eof_error);
 make_error_fn!(make_error_2037, 2037, error);
+make_error_fn!(make_error_2052, 2052, argument_error);
 make_error_fn!(make_error_2058, 2058, io_error);
 make_error_fn!(make_error_2067, 2067, error);
 make_error_fn!(make_error_2078, 2078, illegal_operation_error);

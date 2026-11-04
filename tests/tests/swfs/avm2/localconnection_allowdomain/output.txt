@@ -1,0 +1,21 @@
+allowDomain(): ok
+allowDomain('*'): ok
+allowDomain('a.example', 'b.example'): ok
+allowInsecureDomain('*'): ok
+allowDomain(null): ArgumentError #2052 Error #2052: Only String arguments are permitted for allowDomain and allowInsecureDomain.
+allowDomain(5): ArgumentError #2052 Error #2052: Only String arguments are permitted for allowDomain and allowInsecureDomain.
+allowDomain('ok', {}): ArgumentError #2052 Error #2052: Only String arguments are permitted for allowDomain and allowInsecureDomain.
+allowInsecureDomain(undefined): ArgumentError #2052 Error #2052: Only String arguments are permitted for allowDomain and allowInsecureDomain.
+allowInsecureDomain('x', 7): ArgumentError #2052 Error #2052: Only String arguments are permitted for allowDomain and allowInsecureDomain.
+--- send to 'allowed' (allowDomain('*'))
+sender status: status
+receiverAll.hello(frame1)
+--- send to 'plain' (no allowDomain, same domain)
+sender status: status
+receiverNone.hello(frame2)
+--- send to '_under' (allowInsecureDomain('*'))
+sender status: status
+receiverUnder.hello(frame3)
+--- send to 'nobody'
+sender status: error
+done
