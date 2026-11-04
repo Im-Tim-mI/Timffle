@@ -96,10 +96,10 @@
     "timffle_read_failed": "Não foi possível ler as configurações locais.",
     "timffle_save_failed": "Falha ao salvar; as alterações não foram confirmadas. Tente novamente.",
     "timffle_attribution": "O Timffle é um fork não oficial do <1>Ruffle</1> e não é afiliado ao projeto Ruffle; sua emulação de Flash vem do Ruffle e de seus colaboradores. Informe os problemas ao <2>Timffle</2>, não ao Ruffle.",
-    "timffle_fi_unlimited": "Sem limite – o máximo que o dispositivo permitir",
-    "timffle_fi_auto": "Automático (padrão) – alterna sozinho entre 144 / 120 / 60 / 30 / desligado",
+    "timffle_fi_unlimited": "Sem limite",
+    "timffle_fi_auto": "Automático (padrão)",
     "timffle_fi_custom": "Personalizado…",
-    "timffle_fi_off": "Desligado – a taxa própria do jogo",
+    "timffle_fi_off": "Desligado",
     "timffle_fi_custom_fps": "Alvo personalizado (24–999 fps)",
     "timffle_options_show_fps": "Mostrar taxa de quadros (caixa flutuante em um canto do jogo; arraste para outro canto)",
     "timffle_options_fi_enabled": "Interpolação de quadros (experimental)"

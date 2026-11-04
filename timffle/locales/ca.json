@@ -96,10 +96,10 @@
     "timffle_read_failed": "No s'ha pogut llegir la configuració local.",
     "timffle_save_failed": "No s'ha pogut desar; els canvis no s'han confirmat. Torna-ho a provar.",
     "timffle_attribution": "Timffle és un fork no oficial de <1>Ruffle</1> i no està afiliat al projecte Ruffle; l'emulació de Flash prové de Ruffle i dels seus col·laboradors. Informa dels problemes a <2>Timffle</2>, no a Ruffle.",
-    "timffle_fi_unlimited": "Sense límit – tan alt com permeti el dispositiu",
-    "timffle_fi_auto": "Automàtic (per defecte) – canvia sol entre 144 / 120 / 60 / 30 / desactivat",
+    "timffle_fi_unlimited": "Sense límit",
+    "timffle_fi_auto": "Automàtic (per defecte)",
     "timffle_fi_custom": "Personalitzat…",
-    "timffle_fi_off": "Desactivat – la taxa pròpia del joc",
+    "timffle_fi_off": "Desactivat",
     "timffle_fi_custom_fps": "Objectiu personalitzat (24–999 fps)",
     "timffle_options_show_fps": "Mostra els fotogrames per segon (quadre flotant en un racó del joc; arrossega'l a un altre racó)",
     "timffle_options_fi_enabled": "Interpolació de fotogrames (experimental)"

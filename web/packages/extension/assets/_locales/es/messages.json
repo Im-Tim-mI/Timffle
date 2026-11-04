@@ -459,16 +459,16 @@
         "message": "Timffle es una bifurcación no oficial de <1>Ruffle</1> y no está afiliada al proyecto Ruffle; su emulación de Flash procede de Ruffle y de sus colaboradores. Informa de los problemas a <2>Timffle</2>, no a Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Sin límite: tan alto como permita el dispositivo"
+        "message": "Sin límite"
     },
     "timffle_fi_auto": {
-        "message": "Automático (predeterminado): cambia solo entre 144 / 120 / 60 / 30 / desactivado"
+        "message": "Automático (predeterminado)"
     },
     "timffle_fi_custom": {
         "message": "Personalizado…"
     },
     "timffle_fi_off": {
-        "message": "Desactivado: la tasa propia del juego"
+        "message": "Desactivado"
     },
     "timffle_fi_custom_fps": {
         "message": "Objetivo personalizado (24–999 fps)"

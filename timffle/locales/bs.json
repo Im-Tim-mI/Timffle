@@ -96,10 +96,10 @@
     "timffle_read_failed": "Lokalne postavke nije moguće pročitati.",
     "timffle_save_failed": "Čuvanje nije uspjelo; promjene nisu potvrđene. Pokušajte ponovo.",
     "timffle_attribution": "Timffle je nezvanični fork projekta <1>Ruffle</1> i nije povezan s projektom Ruffle; Flash emulacija potiče iz Ruffle i njegovih saradnika. Probleme prijavite projektu <2>Timffle</2>, a ne projektu Ruffle.",
-    "timffle_fi_unlimited": "Bez ograničenja – koliko uređaj dopušta",
-    "timffle_fi_auto": "Automatski (zadano) – samo prelazi između 144 / 120 / 60 / 30 / isključeno",
+    "timffle_fi_unlimited": "Bez ograničenja",
+    "timffle_fi_auto": "Automatski (zadano)",
     "timffle_fi_custom": "Prilagođeno…",
-    "timffle_fi_off": "Isključeno – vlastita brzina sličica igre",
+    "timffle_fi_off": "Isključeno",
     "timffle_fi_custom_fps": "Prilagođeni cilj (24–999 fps)",
     "timffle_options_show_fps": "Prikaži brzinu sličica (lebdeći okvir u uglu igre; može se povući u drugi ugao)",
     "timffle_options_fi_enabled": "Interpolacija sličica (eksperimentalno)"

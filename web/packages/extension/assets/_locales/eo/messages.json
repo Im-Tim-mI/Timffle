@@ -321,16 +321,16 @@
         "message": "Timffle estas neoficiala disbranĉo de <1>Ruffle</1> kaj ne estas ligita al la projekto Ruffle; ĝia Flash-emulado devenas de Ruffle kaj ĝiaj kontribuantoj. Raportu problemojn al <2>Timffle</2>, ne al Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Senlima – tiel alte kiel la aparato permesas"
+        "message": "Senlima"
     },
     "timffle_fi_auto": {
-        "message": "Aŭtomata (defaŭlta) – mem ŝanĝiĝas inter 144 / 120 / 60 / 30 / for"
+        "message": "Aŭtomata (defaŭlta)"
     },
     "timffle_fi_custom": {
         "message": "Propra…"
     },
     "timffle_fi_off": {
-        "message": "For – la propra kadrofrekvenco de la ludo"
+        "message": "For"
     },
     "timffle_fi_custom_fps": {
         "message": "Propra celo (24–999 fps)"

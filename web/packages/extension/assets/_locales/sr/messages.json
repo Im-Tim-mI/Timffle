@@ -447,16 +447,16 @@
         "message": "Timffle je nezvanični fork projekta <1>Ruffle</1> i nije povezan sa projektom Ruffle; Flash emulacija potiče iz Ruffle i njegovih saradnika. Probleme prijavite projektu <2>Timffle</2>, a ne projektu Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Bez ograničenja – koliko uređaj dozvoljava"
+        "message": "Bez ograničenja"
     },
     "timffle_fi_auto": {
-        "message": "Automatski (podrazumevano) – samo prelazi između 144 / 120 / 60 / 30 / isključeno"
+        "message": "Automatski (podrazumevano)"
     },
     "timffle_fi_custom": {
         "message": "Prilagođeno…"
     },
     "timffle_fi_off": {
-        "message": "Isključeno – sopstvena brzina sličica igre"
+        "message": "Isključeno"
     },
     "timffle_fi_custom_fps": {
         "message": "Prilagođeni cilj (24–999 fps)"

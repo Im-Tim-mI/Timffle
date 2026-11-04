@@ -96,10 +96,10 @@
     "timffle_read_failed": "Kunne ikke lese de lokale innstillingene.",
     "timffle_save_failed": "Lagringen mislyktes; endringene ble ikke bekreftet. Prøv igjen.",
     "timffle_attribution": "Timffle er en uoffisiell fork av <1>Ruffle</1> og er ikke tilknyttet Ruffle-prosjektet; Flash-emuleringen kommer fra Ruffle og bidragsyterne. Meld fra om problemer til <2>Timffle</2>, ikke til Ruffle.",
-    "timffle_fi_unlimited": "Ubegrenset – så høyt som enheten tillater",
-    "timffle_fi_auto": "Auto (standard) – veksler selv mellom 144 / 120 / 60 / 30 / av",
+    "timffle_fi_unlimited": "Ubegrenset",
+    "timffle_fi_auto": "Auto (standard)",
     "timffle_fi_custom": "Egendefinert…",
-    "timffle_fi_off": "Av – spillets egen bildefrekvens",
+    "timffle_fi_off": "Av",
     "timffle_fi_custom_fps": "Eget mål (24–999 fps)",
     "timffle_options_show_fps": "Vis bildefrekvens (flytende boks i et hjørne av spillet; kan dras til et annet hjørne)",
     "timffle_options_fi_enabled": "Bildeinterpolering (eksperimentell)"

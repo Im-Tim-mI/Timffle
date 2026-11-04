@@ -450,16 +450,16 @@
         "message": "Timffle je neoficiální fork projektu <1>Ruffle</1> a není s projektem Ruffle nijak spojen; emulace Flash pochází z Ruffle a jeho přispěvatelů. Problémy hlaste na <2>Timffle</2>, ne projektu Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Bez omezení – tak vysoko, jak zařízení dovolí"
+        "message": "Bez omezení"
     },
     "timffle_fi_auto": {
-        "message": "Automaticky (výchozí) – samo přepíná mezi 144 / 120 / 60 / 30 / vypnuto"
+        "message": "Automaticky (výchozí)"
     },
     "timffle_fi_custom": {
         "message": "Vlastní…"
     },
     "timffle_fi_off": {
-        "message": "Vypnuto – vlastní snímková frekvence hry"
+        "message": "Vypnuto"
     },
     "timffle_fi_custom_fps": {
         "message": "Vlastní cíl (24–999 fps)"

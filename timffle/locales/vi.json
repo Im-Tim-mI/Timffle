@@ -96,10 +96,10 @@
     "timffle_read_failed": "Không thể đọc cài đặt cục bộ.",
     "timffle_save_failed": "Lưu không thành công; các thay đổi chưa được xác nhận. Hãy thử lại.",
     "timffle_attribution": "Timffle là một bản fork không chính thức của <1>Ruffle</1> và không liên kết với dự án Ruffle; phần mô phỏng Flash đến từ Ruffle và những người đóng góp cho Ruffle. Hãy báo lỗi cho <2>Timffle</2>, đừng báo cho Ruffle.",
-    "timffle_fi_unlimited": "Không giới hạn — cao nhất mà thiết bị cho phép",
-    "timffle_fi_auto": "Tự động (mặc định) — tự chuyển giữa 144 / 120 / 60 / 30 / tắt",
+    "timffle_fi_unlimited": "Không giới hạn",
+    "timffle_fi_auto": "Tự động (mặc định)",
     "timffle_fi_custom": "Tùy chỉnh…",
-    "timffle_fi_off": "Tắt — tốc độ khung hình gốc của trò chơi",
+    "timffle_fi_off": "Tắt",
     "timffle_fi_custom_fps": "Mục tiêu tùy chỉnh (24–999 fps)",
     "timffle_options_show_fps": "Hiện tốc độ khung hình (hộp nổi ở góc trò chơi; kéo sang góc khác được)",
     "timffle_options_fi_enabled": "Nội suy khung hình (thử nghiệm)"

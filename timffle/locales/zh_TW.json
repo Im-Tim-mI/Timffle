@@ -102,10 +102,10 @@
     "timffle_promo_disclaimer": "此為羅技（Logitech）官方線上商城的九折優惠碼。使用此優惠碼購物時，Timffle 作者會獲得分潤。Timffle 不是羅技的產品，也沒有得到羅技背書。",
     "timffle_promo_image_alt": "橫幅：羅技網路旗艦店電競類別九折折扣碼 LOGITIM，可使用到 2026/12/31",
     "timffle_promo_image": "promo-logitech-zh.png",
-    "timffle_fi_unlimited": "不限制——依裝置效能盡可能提高幀率",
-    "timffle_fi_auto": "自動（預設）——依裝置狀態在 144 / 120 / 60 / 30 / 關閉之間自動調整",
+    "timffle_fi_unlimited": "不限制",
+    "timffle_fi_auto": "自動（預設）",
     "timffle_fi_custom": "自訂…",
-    "timffle_fi_off": "關閉——不補幀，使用遊戲原本的幀率",
+    "timffle_fi_off": "關閉",
     "timffle_fi_custom_fps": "自訂目標（24–999 fps）",
     "timffle_options_show_fps": "顯示幀數（遊戲角落的浮動視窗，可拖到其他角落）",
     "timffle_options_fi_enabled": "（實驗性）補幀功能"

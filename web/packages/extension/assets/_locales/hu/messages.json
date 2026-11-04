@@ -450,16 +450,16 @@
         "message": "A Timffle a <1>Ruffle</1> nem hivatalos forkja, és nincs kapcsolatban a Ruffle projekttel; a Flash-emuláció a Ruffle-ből és közreműködőitől származik. A hibákat a <2>Timffle</2> projektnek jelezd, ne a Ruffle-nek."
     },
     "timffle_fi_unlimited": {
-        "message": "Korlátlan – amennyit az eszköz enged"
+        "message": "Korlátlan"
     },
     "timffle_fi_auto": {
-        "message": "Automatikus (alapértelmezett) – magától vált 144 / 120 / 60 / 30 / ki között"
+        "message": "Automatikus (alapértelmezett)"
     },
     "timffle_fi_custom": {
         "message": "Egyéni…"
     },
     "timffle_fi_off": {
-        "message": "Ki – a játék saját képkockasebessége"
+        "message": "Ki"
     },
     "timffle_fi_custom_fps": {
         "message": "Egyéni cél (24–999 fps)"

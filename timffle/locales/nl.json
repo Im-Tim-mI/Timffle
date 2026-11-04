@@ -96,10 +96,10 @@
     "timffle_read_failed": "De lokale instellingen konden niet worden gelezen.",
     "timffle_save_failed": "Opslaan mislukt; de wijzigingen zijn niet bevestigd. Probeer het opnieuw.",
     "timffle_attribution": "Timffle is een onofficiële fork van <1>Ruffle</1> en is niet gelieerd aan het Ruffle-project; de Flash-emulatie komt van Ruffle en zijn bijdragers. Meld problemen bij <2>Timffle</2>, niet bij Ruffle.",
-    "timffle_fi_unlimited": "Onbeperkt – zo hoog als het apparaat toelaat",
-    "timffle_fi_auto": "Automatisch (standaard) – wisselt vanzelf tussen 144 / 120 / 60 / 30 / uit",
+    "timffle_fi_unlimited": "Onbeperkt",
+    "timffle_fi_auto": "Automatisch (standaard)",
     "timffle_fi_custom": "Aangepast…",
-    "timffle_fi_off": "Uit – de eigen beeldfrequentie van het spel",
+    "timffle_fi_off": "Uit",
     "timffle_fi_custom_fps": "Eigen doel (24–999 fps)",
     "timffle_options_show_fps": "Beeldfrequentie tonen (zwevend vakje in een hoek van het spel; naar een andere hoek te slepen)",
     "timffle_options_fi_enabled": "Tussenbeelden (experimenteel)"

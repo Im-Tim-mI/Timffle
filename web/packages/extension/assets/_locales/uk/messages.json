@@ -444,16 +444,16 @@
         "message": "Timffle — неофіційний форк проєкту <1>Ruffle</1>, не пов’язаний із проєктом Ruffle; емуляція Flash — це робота Ruffle та його учасників. Про проблеми повідомляйте в <2>Timffle</2>, а не в Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Без обмеження — настільки високо, наскільки дозволяє пристрій"
+        "message": "Без обмеження"
     },
     "timffle_fi_auto": {
-        "message": "Авто (типово) — сама перемикається між 144 / 120 / 60 / 30 / вимк."
+        "message": "Авто (типово)"
     },
     "timffle_fi_custom": {
         "message": "Власне значення…"
     },
     "timffle_fi_off": {
-        "message": "Вимк. — власна частота кадрів гри"
+        "message": "Вимк."
     },
     "timffle_fi_custom_fps": {
         "message": "Власна ціль (24–999 fps)"

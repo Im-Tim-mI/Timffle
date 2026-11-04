@@ -96,10 +96,10 @@
     "timffle_read_failed": "ローカルの設定を読み込めませんでした。",
     "timffle_save_failed": "保存に失敗しました。変更は確認されていません。もう一度お試しください。",
     "timffle_attribution": "Timffle は <1>Ruffle</1> の非公式フォークであり、Ruffle プロジェクトとは関係ありません。Flash のエミュレーションは Ruffle とその貢献者によるものです。問題は Ruffle ではなく <2>Timffle</2> に報告してください。",
-    "timffle_fi_unlimited": "無制限 — デバイスの性能が許す限り高く",
-    "timffle_fi_auto": "自動（既定）— 144 / 120 / 60 / 30 / オフの間を自動で調整",
+    "timffle_fi_unlimited": "無制限",
+    "timffle_fi_auto": "自動（既定）",
     "timffle_fi_custom": "カスタム…",
-    "timffle_fi_off": "オフ — ゲーム本来のフレームレート",
+    "timffle_fi_off": "オフ",
     "timffle_fi_custom_fps": "カスタム目標（24～999 fps）",
     "timffle_options_show_fps": "フレームレートを表示（ゲームの隅に浮かぶ小窓。別の隅へドラッグ可）",
     "timffle_options_fi_enabled": "フレーム補間（実験的）"

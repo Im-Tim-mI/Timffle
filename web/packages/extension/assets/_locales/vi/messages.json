@@ -459,16 +459,16 @@
         "message": "Timffle là một bản fork không chính thức của <1>Ruffle</1> và không liên kết với dự án Ruffle; phần mô phỏng Flash đến từ Ruffle và những người đóng góp cho Ruffle. Hãy báo lỗi cho <2>Timffle</2>, đừng báo cho Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Không giới hạn — cao nhất mà thiết bị cho phép"
+        "message": "Không giới hạn"
     },
     "timffle_fi_auto": {
-        "message": "Tự động (mặc định) — tự chuyển giữa 144 / 120 / 60 / 30 / tắt"
+        "message": "Tự động (mặc định)"
     },
     "timffle_fi_custom": {
         "message": "Tùy chỉnh…"
     },
     "timffle_fi_off": {
-        "message": "Tắt — tốc độ khung hình gốc của trò chơi"
+        "message": "Tắt"
     },
     "timffle_fi_custom_fps": {
         "message": "Mục tiêu tùy chỉnh (24–999 fps)"

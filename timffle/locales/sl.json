@@ -96,10 +96,10 @@
     "timffle_read_failed": "Lokalnih nastavitev ni bilo mogoče prebrati.",
     "timffle_save_failed": "Shranjevanje ni uspelo; spremembe niso bile potrjene. Poskusite znova.",
     "timffle_attribution": "Timffle je neuradni fork projekta <1>Ruffle</1> in ni povezan s projektom Ruffle; emulacija Flash prihaja iz Ruffle in njegovih sodelavcev. Težave prijavite projektu <2>Timffle</2>, ne projektu Ruffle.",
-    "timffle_fi_unlimited": "Brez omejitve – tako visoko, kot naprava dopušča",
-    "timffle_fi_auto": "Samodejno (privzeto) – samo preklaplja med 144 / 120 / 60 / 30 / izklopljeno",
+    "timffle_fi_unlimited": "Brez omejitve",
+    "timffle_fi_auto": "Samodejno (privzeto)",
     "timffle_fi_custom": "Po meri…",
-    "timffle_fi_off": "Izklopljeno – lastna hitrost sličic igre",
+    "timffle_fi_off": "Izklopljeno",
     "timffle_fi_custom_fps": "Cilj po meri (24–999 fps)",
     "timffle_options_show_fps": "Prikaži hitrost sličic (lebdeče okence v kotu igre; lahko ga povlečete v drug kot)",
     "timffle_options_fi_enabled": "Interpolacija sličic (poskusno)"

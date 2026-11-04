@@ -429,16 +429,16 @@
         "message": "Timffle és un fork no oficial de <1>Ruffle</1> i no està afiliat al projecte Ruffle; l'emulació de Flash prové de Ruffle i dels seus col·laboradors. Informa dels problemes a <2>Timffle</2>, no a Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Sense límit – tan alt com permeti el dispositiu"
+        "message": "Sense límit"
     },
     "timffle_fi_auto": {
-        "message": "Automàtic (per defecte) – canvia sol entre 144 / 120 / 60 / 30 / desactivat"
+        "message": "Automàtic (per defecte)"
     },
     "timffle_fi_custom": {
         "message": "Personalitzat…"
     },
     "timffle_fi_off": {
-        "message": "Desactivat – la taxa pròpia del joc"
+        "message": "Desactivat"
     },
     "timffle_fi_custom_fps": {
         "message": "Objectiu personalitzat (24–999 fps)"

@@ -96,10 +96,10 @@
     "timffle_read_failed": "Nie udało się odczytać ustawień lokalnych.",
     "timffle_save_failed": "Zapis się nie powiódł; zmiany nie zostały potwierdzone. Spróbuj ponownie.",
     "timffle_attribution": "Timffle jest nieoficjalnym forkiem <1>Ruffle</1> i nie jest związany z projektem Ruffle; emulacja Flasha pochodzi z Ruffle i jego współtwórców. Problemy zgłaszaj do <2>Timffle</2>, a nie do Ruffle.",
-    "timffle_fi_unlimited": "Bez limitu – tak wysoko, jak pozwala urządzenie",
-    "timffle_fi_auto": "Auto (domyślnie) – samo przełącza między 144 / 120 / 60 / 30 / wył.",
+    "timffle_fi_unlimited": "Bez limitu",
+    "timffle_fi_auto": "Auto (domyślnie)",
     "timffle_fi_custom": "Własna…",
-    "timffle_fi_off": "Wył. – własna liczba klatek gry",
+    "timffle_fi_off": "Wył.",
     "timffle_fi_custom_fps": "Własny cel (24–999 fps)",
     "timffle_options_show_fps": "Pokaż liczbę klatek (pływające okienko w rogu gry; można przeciągnąć do innego rogu)",
     "timffle_options_fi_enabled": "Interpolacja klatek (eksperymentalne)"

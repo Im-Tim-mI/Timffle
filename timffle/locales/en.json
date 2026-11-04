@@ -416,11 +416,11 @@
         "description": "Not a text: the file name of the banner in the extension's images folder. The Chinese languages use promo-logitech-zh.png, every other language promo-logitech-en.png."
     },
     "timffle_fi_unlimited": {
-        "message": "Unlimited — as high as the device allows",
+        "message": "Unlimited",
         "description": "Menu entry: no fixed target, as high as the device allows."
     },
     "timffle_fi_auto": {
-        "message": "Auto (default) — moves between 144 / 120 / 60 / 30 / off by itself",
+        "message": "Auto (default)",
         "description": "Menu entry (the default): the target moves between the listed tiers by itself. Keep the numbers."
     },
     "timffle_fi_custom": {
@@ -428,7 +428,7 @@
         "description": "Menu entry that opens a number field; keep the ellipsis."
     },
     "timffle_fi_off": {
-        "message": "Off — the game's own frame rate",
+        "message": "Off",
         "description": "Menu entry: no extra pictures."
     },
     "timffle_fi_custom_fps": {

@@ -459,16 +459,16 @@
         "message": "Timffle este un fork neoficial al <1>Ruffle</1> și nu este afiliat proiectului Ruffle; emularea Flash provine de la Ruffle și de la contribuitorii săi. Raportează problemele la <2>Timffle</2>, nu la Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Nelimitat – cât de sus permite dispozitivul"
+        "message": "Nelimitat"
     },
     "timffle_fi_auto": {
-        "message": "Automat (implicit) – trece singur între 144 / 120 / 60 / 30 / oprit"
+        "message": "Automat (implicit)"
     },
     "timffle_fi_custom": {
         "message": "Personalizat…"
     },
     "timffle_fi_off": {
-        "message": "Oprit – rata proprie a jocului"
+        "message": "Oprit"
     },
     "timffle_fi_custom_fps": {
         "message": "Țintă personalizată (24–999 fps)"

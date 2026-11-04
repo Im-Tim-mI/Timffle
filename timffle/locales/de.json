@@ -96,10 +96,10 @@
     "timffle_read_failed": "Die lokalen Einstellungen konnten nicht gelesen werden.",
     "timffle_save_failed": "Speichern fehlgeschlagen; die Änderungen wurden nicht bestätigt. Bitte versuchen Sie es erneut.",
     "timffle_attribution": "Timffle ist ein inoffizieller Fork von <1>Ruffle</1> und nicht mit dem Ruffle-Projekt verbunden; die Flash-Emulation stammt von Ruffle und seinen Mitwirkenden. Bitte melden Sie Probleme bei <2>Timffle</2>, nicht bei Ruffle.",
-    "timffle_fi_unlimited": "Unbegrenzt – so hoch, wie das Gerät erlaubt",
-    "timffle_fi_auto": "Automatisch (Standard) – wechselt von selbst zwischen 144 / 120 / 60 / 30 / aus",
+    "timffle_fi_unlimited": "Unbegrenzt",
+    "timffle_fi_auto": "Automatisch (Standard)",
     "timffle_fi_custom": "Benutzerdefiniert…",
-    "timffle_fi_off": "Aus – die eigene Bildrate des Spiels",
+    "timffle_fi_off": "Aus",
     "timffle_fi_custom_fps": "Eigenes Ziel (24–999 fps)",
     "timffle_options_show_fps": "Bildrate anzeigen (schwebendes Kästchen in einer Ecke des Spiels; in eine andere Ecke ziehbar)",
     "timffle_options_fi_enabled": "Zwischenbilder (experimentell)"

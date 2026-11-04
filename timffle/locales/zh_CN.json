@@ -102,10 +102,10 @@
     "timffle_promo_disclaimer": "此为罗技（Logitech）台湾官方线上商城的九折优惠码。使用此优惠码购物时，Timffle 作者会获得分润。Timffle 不是罗技的产品，也没有得到罗技背书。",
     "timffle_promo_image_alt": "横幅：罗技网络旗舰店电竞类别九折折扣码 LOGITIM，可使用到 2026/12/31",
     "timffle_promo_image": "promo-logitech-zh.png",
-    "timffle_fi_unlimited": "不限制——按设备性能尽量提高帧率",
-    "timffle_fi_auto": "自动（默认）——按设备状态在 144 / 120 / 60 / 30 / 关闭之间自动调整",
+    "timffle_fi_unlimited": "不限制",
+    "timffle_fi_auto": "自动（默认）",
     "timffle_fi_custom": "自定义…",
-    "timffle_fi_off": "关闭——不补帧，使用游戏原本的帧率",
+    "timffle_fi_off": "关闭",
     "timffle_fi_custom_fps": "自定义目标（24–999 fps）",
     "timffle_options_show_fps": "显示帧数（游戏角落的浮动窗口，可拖到其他角落）",
     "timffle_options_fi_enabled": "（实验性）补帧功能"

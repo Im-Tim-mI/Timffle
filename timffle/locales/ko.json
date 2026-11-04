@@ -96,10 +96,10 @@
     "timffle_read_failed": "로컬 설정을 읽을 수 없습니다.",
     "timffle_save_failed": "저장하지 못했습니다. 변경 사항이 확인되지 않았습니다. 다시 시도하세요.",
     "timffle_attribution": "Timffle은 <1>Ruffle</1>의 비공식 포크이며 Ruffle 프로젝트와 관련이 없습니다. Flash 에뮬레이션은 Ruffle과 그 기여자들에게서 왔습니다. 문제는 Ruffle이 아닌 <2>Timffle</2>에 신고해 주세요.",
-    "timffle_fi_unlimited": "제한 없음 — 기기 성능이 허용하는 만큼 높게",
-    "timffle_fi_auto": "자동(기본) — 144 / 120 / 60 / 30 / 끔 사이에서 자동 조절",
+    "timffle_fi_unlimited": "제한 없음",
+    "timffle_fi_auto": "자동(기본)",
     "timffle_fi_custom": "사용자 지정…",
-    "timffle_fi_off": "끔 — 게임 본래의 프레임 속도",
+    "timffle_fi_off": "끔",
     "timffle_fi_custom_fps": "사용자 지정 목표(24~999 fps)",
     "timffle_options_show_fps": "프레임 속도 표시(게임 모서리의 떠 있는 상자, 다른 모서리로 끌 수 있음)",
     "timffle_options_fi_enabled": "프레임 보간(실험적)"

@@ -96,10 +96,10 @@
     "timffle_read_failed": "Paikallisia asetuksia ei voitu lukea.",
     "timffle_save_failed": "Tallennus epäonnistui; muutoksia ei vahvistettu. Yritä uudelleen.",
     "timffle_attribution": "Timffle on epävirallinen fork projektista <1>Ruffle</1>, eikä se ole sidoksissa Ruffle-projektiin; Flash-emulointi tulee Rufflesta ja sen kehittäjiltä. Ilmoita ongelmista projektille <2>Timffle</2>, älä Rufflelle.",
-    "timffle_fi_unlimited": "Rajoittamaton – niin korkea kuin laite sallii",
-    "timffle_fi_auto": "Automaattinen (oletus) – vaihtaa itse 144 / 120 / 60 / 30 / pois välillä",
+    "timffle_fi_unlimited": "Rajoittamaton",
+    "timffle_fi_auto": "Automaattinen (oletus)",
     "timffle_fi_custom": "Mukautettu…",
-    "timffle_fi_off": "Pois – pelin oma kuvataajuus",
+    "timffle_fi_off": "Pois",
     "timffle_fi_custom_fps": "Mukautettu tavoite (24–999 fps)",
     "timffle_options_show_fps": "Näytä kuvataajuus (kelluva laatikko pelin kulmassa; voi vetää toiseen kulmaan)",
     "timffle_options_fi_enabled": "Kuvien interpolointi (kokeellinen)"

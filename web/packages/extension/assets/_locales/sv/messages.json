@@ -459,16 +459,16 @@
         "message": "Timffle är en inofficiell fork av <1>Ruffle</1> och är inte knutet till Ruffle-projektet; Flash-emuleringen kommer från Ruffle och dess bidragsgivare. Rapportera problem till <2>Timffle</2>, inte till Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Obegränsat – så högt som enheten tillåter"
+        "message": "Obegränsat"
     },
     "timffle_fi_auto": {
-        "message": "Auto (standard) – växlar själv mellan 144 / 120 / 60 / 30 / av"
+        "message": "Auto (standard)"
     },
     "timffle_fi_custom": {
         "message": "Eget…"
     },
     "timffle_fi_off": {
-        "message": "Av – spelets egen bildfrekvens"
+        "message": "Av"
     },
     "timffle_fi_custom_fps": {
         "message": "Eget mål (24–999 fps)"

@@ -96,10 +96,10 @@
     "timffle_read_failed": "Tidak dapat membaca pengaturan lokal.",
     "timffle_save_failed": "Gagal menyimpan; perubahan tidak terkonfirmasi. Silakan coba lagi.",
     "timffle_attribution": "Timffle adalah fork tidak resmi dari <1>Ruffle</1> dan tidak berafiliasi dengan proyek Ruffle; emulasi Flash-nya berasal dari Ruffle dan para kontributornya. Laporkan masalah ke <2>Timffle</2>, bukan ke Ruffle.",
-    "timffle_fi_unlimited": "Tak terbatas — setinggi yang perangkat izinkan",
-    "timffle_fi_auto": "Otomatis (bawaan) — berpindah sendiri antara 144 / 120 / 60 / 30 / mati",
+    "timffle_fi_unlimited": "Tak terbatas",
+    "timffle_fi_auto": "Otomatis (bawaan)",
     "timffle_fi_custom": "Kustom…",
-    "timffle_fi_off": "Mati — laju frame asli permainan",
+    "timffle_fi_off": "Mati",
     "timffle_fi_custom_fps": "Target kustom (24–999 fps)",
     "timffle_options_show_fps": "Tampilkan laju frame (kotak mengambang di sudut permainan; bisa diseret ke sudut lain)",
     "timffle_options_fi_enabled": "Interpolasi frame (eksperimental)"

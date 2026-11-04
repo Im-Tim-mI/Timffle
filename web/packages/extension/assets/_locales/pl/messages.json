@@ -459,16 +459,16 @@
         "message": "Timffle jest nieoficjalnym forkiem <1>Ruffle</1> i nie jest związany z projektem Ruffle; emulacja Flasha pochodzi z Ruffle i jego współtwórców. Problemy zgłaszaj do <2>Timffle</2>, a nie do Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Bez limitu – tak wysoko, jak pozwala urządzenie"
+        "message": "Bez limitu"
     },
     "timffle_fi_auto": {
-        "message": "Auto (domyślnie) – samo przełącza między 144 / 120 / 60 / 30 / wył."
+        "message": "Auto (domyślnie)"
     },
     "timffle_fi_custom": {
         "message": "Własna…"
     },
     "timffle_fi_off": {
-        "message": "Wył. – własna liczba klatek gry"
+        "message": "Wył."
     },
     "timffle_fi_custom_fps": {
         "message": "Własny cel (24–999 fps)"

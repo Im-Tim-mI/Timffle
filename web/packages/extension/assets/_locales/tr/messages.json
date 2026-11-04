@@ -459,16 +459,16 @@
         "message": "Timffle, <1>Ruffle</1> projesinin resmî olmayan bir fork'udur ve Ruffle projesiyle bağlantılı değildir; Flash öykünmesi Ruffle'dan ve katkıda bulunanlarından gelir. Sorunları Ruffle'a değil, <2>Timffle</2> projesine bildirin."
     },
     "timffle_fi_unlimited": {
-        "message": "Sınırsız – cihazın izin verdiği kadar yüksek"
+        "message": "Sınırsız"
     },
     "timffle_fi_auto": {
-        "message": "Otomatik (varsayılan) – 144 / 120 / 60 / 30 / kapalı arasında kendi geçer"
+        "message": "Otomatik (varsayılan)"
     },
     "timffle_fi_custom": {
         "message": "Özel…"
     },
     "timffle_fi_off": {
-        "message": "Kapalı – oyunun kendi kare hızı"
+        "message": "Kapalı"
     },
     "timffle_fi_custom_fps": {
         "message": "Özel hedef (24–999 fps)"

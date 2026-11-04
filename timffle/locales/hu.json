@@ -96,10 +96,10 @@
     "timffle_read_failed": "A helyi beállításokat nem sikerült beolvasni.",
     "timffle_save_failed": "A mentés sikertelen; a módosítások nem lettek megerősítve. Próbáld újra.",
     "timffle_attribution": "A Timffle a <1>Ruffle</1> nem hivatalos forkja, és nincs kapcsolatban a Ruffle projekttel; a Flash-emuláció a Ruffle-ből és közreműködőitől származik. A hibákat a <2>Timffle</2> projektnek jelezd, ne a Ruffle-nek.",
-    "timffle_fi_unlimited": "Korlátlan – amennyit az eszköz enged",
-    "timffle_fi_auto": "Automatikus (alapértelmezett) – magától vált 144 / 120 / 60 / 30 / ki között",
+    "timffle_fi_unlimited": "Korlátlan",
+    "timffle_fi_auto": "Automatikus (alapértelmezett)",
     "timffle_fi_custom": "Egyéni…",
-    "timffle_fi_off": "Ki – a játék saját képkockasebessége",
+    "timffle_fi_off": "Ki",
     "timffle_fi_custom_fps": "Egyéni cél (24–999 fps)",
     "timffle_options_show_fps": "Képkockasebesség mutatása (lebegő doboz a játék sarkában; másik sarokba húzható)",
     "timffle_options_fi_enabled": "Képkocka-interpoláció (kísérleti)"

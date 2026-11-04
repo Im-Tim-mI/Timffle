@@ -218,3 +218,8 @@ button {
     opacity: 0.4;
     pointer-events: none;
 }
+
+/* Timffle: the frame interpolation menu must leave room for its label. */
+.option.select select#frame_interpolation {
+    max-width: 55%;
+}

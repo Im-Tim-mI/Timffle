@@ -438,16 +438,16 @@
         "message": "Timffle הוא fork לא רשמי של <1>Ruffle</1> ואינו קשור לפרויקט Ruffle; האמולציה של Flash מגיעה מ-Ruffle ומתורמיו. דווח על בעיות ל-<2>Timffle</2>, לא ל-Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "ללא הגבלה — גבוה ככל שהמכשיר מאפשר"
+        "message": "ללא הגבלה"
     },
     "timffle_fi_auto": {
-        "message": "אוטומטי (ברירת מחדל) — עובר לבד בין 144 / 120 / 60 / 30 / כבוי"
+        "message": "אוטומטי (ברירת מחדל)"
     },
     "timffle_fi_custom": {
         "message": "מותאם אישית…"
     },
     "timffle_fi_off": {
-        "message": "כבוי — קצב הפריימים המקורי של המשחק"
+        "message": "כבוי"
     },
     "timffle_fi_custom_fps": {
         "message": "יעד מותאם אישית (24–999 fps)"

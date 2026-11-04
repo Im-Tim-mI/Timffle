@@ -453,16 +453,16 @@
         "message": "Timffle adalah fork tidak resmi dari <1>Ruffle</1> dan tidak berafiliasi dengan proyek Ruffle; emulasi Flash-nya berasal dari Ruffle dan para kontributornya. Laporkan masalah ke <2>Timffle</2>, bukan ke Ruffle."
     },
     "timffle_fi_unlimited": {
-        "message": "Tak terbatas — setinggi yang perangkat izinkan"
+        "message": "Tak terbatas"
     },
     "timffle_fi_auto": {
-        "message": "Otomatis (bawaan) — berpindah sendiri antara 144 / 120 / 60 / 30 / mati"
+        "message": "Otomatis (bawaan)"
     },
     "timffle_fi_custom": {
         "message": "Kustom…"
     },
     "timffle_fi_off": {
-        "message": "Mati — laju frame asli permainan"
+        "message": "Mati"
     },
     "timffle_fi_custom_fps": {
         "message": "Target kustom (24–999 fps)"

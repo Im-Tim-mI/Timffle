@@ -96,10 +96,10 @@
     "timffle_read_failed": "Yerel ayarlar okunamadı.",
     "timffle_save_failed": "Kaydetme başarısız oldu; değişiklikler onaylanmadı. Lütfen yeniden deneyin.",
     "timffle_attribution": "Timffle, <1>Ruffle</1> projesinin resmî olmayan bir fork'udur ve Ruffle projesiyle bağlantılı değildir; Flash öykünmesi Ruffle'dan ve katkıda bulunanlarından gelir. Sorunları Ruffle'a değil, <2>Timffle</2> projesine bildirin.",
-    "timffle_fi_unlimited": "Sınırsız – cihazın izin verdiği kadar yüksek",
-    "timffle_fi_auto": "Otomatik (varsayılan) – 144 / 120 / 60 / 30 / kapalı arasında kendi geçer",
+    "timffle_fi_unlimited": "Sınırsız",
+    "timffle_fi_auto": "Otomatik (varsayılan)",
     "timffle_fi_custom": "Özel…",
-    "timffle_fi_off": "Kapalı – oyunun kendi kare hızı",
+    "timffle_fi_off": "Kapalı",
     "timffle_fi_custom_fps": "Özel hedef (24–999 fps)",
     "timffle_options_show_fps": "Kare hızını göster (oyunun köşesinde yüzen kutu; başka köşeye sürüklenebilir)",
     "timffle_options_fi_enabled": "Kare ara değerleme (deneysel)"

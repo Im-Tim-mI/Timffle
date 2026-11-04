@@ -477,16 +477,16 @@
         "message": "promo-logitech-zh.png"
     },
     "timffle_fi_unlimited": {
-        "message": "不限制——按设备性能尽量提高帧率"
+        "message": "不限制"
     },
     "timffle_fi_auto": {
-        "message": "自动（默认）——按设备状态在 144 / 120 / 60 / 30 / 关闭之间自动调整"
+        "message": "自动（默认）"
     },
     "timffle_fi_custom": {
         "message": "自定义…"
     },
     "timffle_fi_off": {
-        "message": "关闭——不补帧，使用游戏原本的帧率"
+        "message": "关闭"
     },
     "timffle_fi_custom_fps": {
         "message": "自定义目标（24–999 fps）"

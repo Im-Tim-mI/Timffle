@@ -459,16 +459,16 @@
         "message": "Timffle は <1>Ruffle</1> の非公式フォークであり、Ruffle プロジェクトとは関係ありません。Flash のエミュレーションは Ruffle とその貢献者によるものです。問題は Ruffle ではなく <2>Timffle</2> に報告してください。"
     },
     "timffle_fi_unlimited": {
-        "message": "無制限 — デバイスの性能が許す限り高く"
+        "message": "無制限"
     },
     "timffle_fi_auto": {
-        "message": "自動（既定）— 144 / 120 / 60 / 30 / オフの間を自動で調整"
+        "message": "自動（既定）"
     },
     "timffle_fi_custom": {
         "message": "カスタム…"
     },
     "timffle_fi_off": {
-        "message": "オフ — ゲーム本来のフレームレート"
+        "message": "オフ"
     },
     "timffle_fi_custom_fps": {
         "message": "カスタム目標（24～999 fps）"
