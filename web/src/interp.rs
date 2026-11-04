@@ -101,6 +101,8 @@ pub struct InterpControl {
     /// target instead of rounding up to the next animation frame).
     next_interp_due: f64,
     started: bool,
+    /// Animation-frame intervals still to ignore for the display-rate estimate (see `set_mode`).
+    hold_samples: u32,
     // Overlay numbers.
     win_start: f64,
     win_renders: u64,
@@ -135,6 +137,7 @@ impl InterpControl {
             off_since: f64::NEG_INFINITY,
             next_interp_due: f64::NEG_INFINITY,
             started: false,
+            hold_samples: 0,
             win_start: 0.0,
             win_renders: 0,
             renders_at_win_start: 0,
@@ -158,6 +161,14 @@ impl InterpControl {
             self.below_target_since = None;
             self.paused_by_load = false;
             self.next_interp_due = f64::NEG_INFINITY;
+            // While nothing was drawn the animation frames may have slowed down (a hidden or
+            // idle page); measure the display again from scratch.
+            self.raf_deltas.clear();
+            self.refresh_hz = 60.0;
+            // The browser slows the animation frames of a page that draws nothing new; only
+            // once extra pictures are drawn again does the loop reach the display rate.
+            // Measure after that, not during the first two seconds.
+            self.hold_samples = 120;
         }
     }
 
@@ -197,6 +208,21 @@ impl InterpControl {
     /// Called at the start of every animation frame with the frame timestamp and the time since
     /// the previous one (both ms).
     pub fn on_animation_frame(&mut self, ts: f64, dt: f64) {
+        if self.hold_samples > 0 && dt > 0.0 {
+            self.hold_samples -= 1;
+            // Draw at the assumed 60 Hz meanwhile so the loop can speed up.
+            if !self.started {
+                self.started = true;
+                self.period_start = ts;
+                self.win_start = ts;
+                match self.mode {
+                    InterpMode::Auto => self.tier = self.start_tier(),
+                    InterpMode::Unlimited => self.unlimited_target = self.refresh_hz,
+                    _ => {}
+                }
+            }
+            return;
+        }
         if dt > 0.0 && dt < 1000.0 {
             if self.raf_deltas.len() >= 120 {
                 self.raf_deltas.pop_front();
