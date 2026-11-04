@@ -129,6 +129,15 @@
 - **`XMLDocument.toString()`**：`xmlDecl`（非 null 時 `String()`）＋ `docTypeDecl` ＋ 子節點依序；沒有子節點時 `<>`（Flash 對空文件就是印這個）。`parseXML` 新增 `_takeDeclarations`：把每個 `<?xml …?>` 與 `<!DOCTYPE …>`（含 `[ ]` 內部子集）取出存進 `xmlDecl`／`docTypeDecl`，剩下的片段各自用 E4X 解析後接起來——所以宣告前後的空白各是一個文字節點（Flash 量到 3 個子節點，之前是 2 個）。註解與處理指令照舊被 E4X 的預設設定丟掉（Flash 也不保留）。
 - **已知未動**：`Object.prototype.hasOwnProperty.call(xml, "b")`（以及 `XML.prototype.hasOwnProperty.call({}, …)`）在 Ruffle 拿到的是綁在 prototype 物件本身的 AS3 方法，因此回答的是 prototype 物件自己有沒有該屬性；這是上游 vtable 對 public 名字也配到 AS3 命名空間方法的既有行為，與 XML 類別無關，列在下表。
 
+### 第 2 組：桌面與無障礙（flash.desktop.Clipboard 7 空殼、flash.accessibility.Accessibility 2 空殼、flash.debugger.enterDebugger 缺少）
+
+- **參考值來自真 Flash**：`timffle/difftest/src/D50ClipAcc.hx` 在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出（`timffle/difftest/drive_flash.py` 用私用 Xvfb 與 XTest 送真的滑鼠點擊，所以「使用者事件內」那一段也是量到的）；`Event.PASTE` 在 Wine 下送不出去（Flash 只收到修飾鍵），貼上事件內的行為照 AS3 參考文件。測試 `clipboard_accessibility_members`（150 行）貼上事件之外的每一行都和真 Flash 相同。
+- **`Clipboard`**（`core/src/avm2/globals/flash/desktop/clipboard.rs`，狀態放在 `Avm2::clipboard`）：Flash Player 只有作業系統剪貼簿這一個，`generalClipboard` 第一次取用時建立（Ruffle 在類別的靜態初始化期間拿不到類別物件，所以不能在宣告處 `new`），之後任何 `new Clipboard()` 都是 `IllegalOperationError #2178`。`setData` 接受 `air:text`（任何值轉成字串，並寫進主機剪貼簿 `UiBackend::set_clipboard_content`）、`air:html`、`air:rtf` 與任何自訂格式名，回 `true`；AIR 才有的 `air:url`、`air:bitmap`、`air:file list`、`air:file promise list` 回 `false` 不存；格式或資料為 null 是 `TypeError #2007`。`setDataHandler` 存函式並把格式列進 `formats`，讀取時才呼叫（參數是格式名）；null 函式／格式 `#2007`。`formats` 每次是新的 Array、依加入順序；主機剪貼簿有文字而清單裡沒有 `air:text` 時（別的程式複製了東西）會排在最前面。`hasFormat(null)` false。`clearData(air:text)`／`clear()` 也清掉主機剪貼簿。**`getData` 只在 `Event.PASTE` 派送期間允許**（`Avm2::in_paste_event`），其他任何時候——包括滑鼠事件內、格式不存在——都是 `SecurityError #2179`；null 格式在那之前就是 `TypeError #1009`（真 Flash 的順序）。貼上事件內：`air:text` 以主機剪貼簿為準（`setData` 寫進去的，或之後別的程式複製的），`air:html`／`air:rtf` 回副本（ByteArray 走 AMF3 來回），自訂格式照 `transferMode`：`originalPreferred`／`originalOnly` 原物件、`clonePreferred` 可序列化就給 AMF3 副本否則原物件、`cloneOnly` 不可序列化（`serializable=false`）回 null；不認得的 transferMode 丟 `ArgumentError #2008`（文件只說 Error，代碼是假設）。
+- **`Event.PASTE`**：原本 Ruffle 不派送。現在貼上的文字控制碼（Ctrl+V、右鍵選單的貼上、網頁版的 JS `paste` 事件）先對焦點物件派送 `paste`（bubbles、不可取消；`EditText::text_control_input` 在插入文字之前，焦點不是文字欄位時由 `Player::handle_input_event` 派送），處理函式裡才能 `getData`。
+- **瀏覽器外掛的「只能在使用者事件內寫入」規則**：`Player::handle_input_event` 處理滑鼠／鍵盤／文字輸入事件期間設 `Avm2::in_user_interaction`；網頁版（`target_family = "wasm"`）的 `Clipboard.clear`／`clearData`／`setData`／`setDataHandler` 在這之外丟 `SecurityError #2191`，`System.setClipboard` 丟 `#2176`（上游原本寫 `if false`，從不丟）。standalone 與桌面版沒有這條規則（真 Flash standalone 量到：事件外的 `setData` 也成功），和上游對 `setClipboard` 的分法相同。
+- **`Accessibility`**：`updateProperties()`／`sendEvent()` 在 `Capabilities.hasAccessibility` 為 false 時丟 `IllegalOperationError #2014`（真 Flash 在沒有螢幕閱讀器橋接的機器上就是這樣，連 `sendEvent(null, …)` 也是），`active` 維持 false。這就是「沒有該功能的機器上 Flash 的行為」：Timffle 沒有 MSAA 橋接。
+- **`flash.debugger.enterDebugger()`**：新的 `flash/debugger.as`，發行版播放器的這個函式立刻返回（只有 debugger 版會停在這裡），量到：回 void、帶參數是 `ArgumentError #1063`。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
