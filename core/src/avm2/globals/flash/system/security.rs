@@ -2,6 +2,7 @@
 
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
+use crate::avm2::error::make_error_2052;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::value::Value;
 use crate::avm2_stub_method;
@@ -53,22 +54,44 @@ pub fn get_sandbox_type<'gc>(
     Ok(AvmString::new_utf8(activation.gc(), sandbox_type).into())
 }
 
+// Timffle: `Security.allowDomain()` / `allowInsecureDomain()` record the
+// domains on the calling SWF (`SwfMovieData::allow_domains`). Ruffle does not
+// enforce cross-scripting sandboxes, so the lists only feed what Flash
+// exposes about them: `LoaderInfo.childAllowsParent`, `parentAllowsChild`
+// and `isURLInaccessible`.
+fn allow_domains_impl<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    args: FunctionArgs<'_, 'gc>,
+    insecure: bool,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let mut domains = Vec::with_capacity(args.len());
+    for arg in args {
+        // Flash tests the type: null, numbers and objects are ArgumentError #2052.
+        match arg {
+            Value::String(domain) => domains.push(domain.to_string()),
+            _ => return Err(make_error_2052(activation)),
+        }
+    }
+    activation
+        .caller_movie_or_root()
+        .allow_domains(domains.iter().map(String::as_str), insecure);
+    Ok(Value::Undefined)
+}
+
 pub fn allow_domain<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
+    args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_method!(activation, "flash.system.Security", "allowDomain");
-    Ok(Value::Undefined)
+    allow_domains_impl(activation, args, false)
 }
 
 pub fn allow_insecure_domain<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
+    args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_method!(activation, "flash.system.Security", "allowInsecureDomain");
-    Ok(Value::Undefined)
+    allow_domains_impl(activation, args, true)
 }
 
 pub fn load_policy_file<'gc>(

@@ -9,7 +9,7 @@ content: null
 contentType: null
 frameRate: Error: Error #2099: The loading object is not sufficiently loaded to provide this information.
 height: Error: Error #2099: The loading object is not sufficiently loaded to provide this information.
-isURLInaccessible: false
+isURLInaccessible: true
 loader: [object Loader]
 loaderURL: test.swf
 parameters: [object Object]
@@ -40,7 +40,7 @@ loaderURL: alf.jpg
 parameters: [object Object]
 parentAllowsChild: true
 parentSandboxBridge: null
-sameDomain: false
+sameDomain: true
 sharedEvents: [object EventDispatcher]
 swfVersion: 0
 uncaughtErrorEvents: [object UncaughtErrorEvents]

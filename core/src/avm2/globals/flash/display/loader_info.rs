@@ -3,17 +3,57 @@
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::bytearray::Endian;
-use crate::avm2::error::make_error_2099;
+use crate::avm2::error::{make_error_2047, make_error_2099};
 use crate::avm2::function::FunctionArgs;
-use crate::avm2::object::{DomainObject, LoaderStream, ScriptObject, TObject as _};
+use crate::avm2::object::{
+    DomainObject, LoaderInfoObject, LoaderStream, ScriptObject, TObject as _,
+};
+use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::display_object::TDisplayObject;
 use crate::loader::ContentType;
 use crate::string::AvmString;
 use crate::tag_utils::SwfMovie;
-use crate::{avm2_stub_getter, avm2_stub_method};
+use crate::avm2_stub_method;
+use ruffle_common::sandbox::{SandboxType, same_security_domain};
 use swf::{Compression, write_swf};
 use url::Url;
+
+// Timffle: the trust relationships Flash exposes on LoaderInfo. Ruffle does
+// not enforce cross-scripting sandboxes; these report what Flash would, from
+// the two SWFs' security domains (scheme + host) and their
+// `Security.allowDomain()` lists. Policy files (crossdomain.xml) are not
+// consulted: the browser's CORS rules govern the download instead.
+
+/// The movie of the `Loader` that loaded this content; the root SWF and the
+/// stage have none.
+fn parent_movie<'gc>(loader_info: LoaderInfoObject<'gc>) -> Option<SwfMovie<'gc>> {
+    loader_info
+        .loader()
+        .map(|loader| loader.display_object().movie())
+}
+
+/// `isURLInaccessible`: `url` is not available. Before anything was loaded
+/// `url` is null and Flash reports true (as measured in the
+/// `from_shumway/as3-loader/loaderinfo/loaded-content-properties` test);
+/// afterwards it is true when the download was redirected to a different
+/// security domain than the loading SWF's and the content did not allow
+/// that domain.
+fn is_url_inaccessible<'gc>(loader_info: LoaderInfoObject<'gc>) -> bool {
+    if !loader_info.expose_content() {
+        return true;
+    }
+    if !loader_info.redirected() {
+        return false;
+    }
+    let LoaderStream::Swf(root, _) = loader_info.loader_stream() else {
+        return false;
+    };
+    match parent_movie(loader_info) {
+        Some(parent) => !root.allows_access_from(parent.url()),
+        None => false,
+    }
+}
 
 /// `actionScriptVersion` getter
 pub fn get_action_script_version<'gc>(
@@ -221,12 +261,17 @@ pub fn get_height<'gc>(
 
 /// `isURLInaccessible` getter
 pub fn get_is_url_inaccessible<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.display.LoaderInfo", "isURLInaccessible");
-    Ok(false.into())
+    let this = this.as_object().unwrap();
+
+    if let Some(loader_info) = this.as_loader_info_object() {
+        return Ok(is_url_inaccessible(loader_info).into());
+    }
+
+    Ok(Value::Undefined)
 }
 
 /// `sameDomain` getter
@@ -237,19 +282,128 @@ pub fn get_same_domain<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    if let Some(loader_stream) = this.as_loader_info_object().map(|o| o.loader_stream()) {
-        match loader_stream {
+    if let Some(loader_info) = this.as_loader_info_object() {
+        match loader_info.loader_stream() {
             LoaderStream::NotYetLoaded(_, _, _) => {
                 return Err(make_error_2099(activation));
             }
-            LoaderStream::Swf(_root, _) => {
-                avm2_stub_getter!(activation, "flash.display.LoaderInfo", "sameDomain");
-                return Ok(false.into());
+            LoaderStream::Swf(root, _) => {
+                // Timffle: same security domain (scheme + host) as the loading
+                // SWF; the root SWF and the stage have no loader and report true.
+                let same = parent_movie(loader_info)
+                    .is_none_or(|parent| same_security_domain(root.url(), parent.url()));
+                return Ok(same.into());
             }
         }
     }
 
     Ok(Value::Undefined)
+}
+
+/// `parentSandboxBridge` getter
+pub fn get_parent_sandbox_bridge<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    Ok(this
+        .as_loader_info_object()
+        .and_then(|loader_info| loader_info.parent_sandbox_bridge())
+        .map_or(Value::Null, Into::into))
+}
+
+/// `parentSandboxBridge` setter: only code in the Loader's own SWF may set it.
+pub fn set_parent_sandbox_bridge<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let loader_info = this.as_loader_info_object().unwrap();
+
+    let caller = activation.caller_movie_or_root();
+    let allowed =
+        parent_movie(loader_info).is_some_and(|parent| SwfMovie::ptr_eq(&parent, &caller));
+    if !allowed {
+        let content_url = loader_info.loader_stream().movie().url().to_string();
+        return Err(make_error_2047(
+            activation,
+            "LoaderInfo.parentSandboxBridge",
+            caller.url(),
+            &content_url,
+        ));
+    }
+
+    let bridge = args.try_get_object(0);
+    loader_info.set_parent_sandbox_bridge(activation.gc(), bridge);
+
+    Ok(Value::Undefined)
+}
+
+/// `childSandboxBridge` getter
+pub fn get_child_sandbox_bridge<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    Ok(this
+        .as_loader_info_object()
+        .and_then(|loader_info| loader_info.child_sandbox_bridge())
+        .map_or(Value::Null, Into::into))
+}
+
+/// `childSandboxBridge` setter: only code in the loaded content may set it.
+pub fn set_child_sandbox_bridge<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let loader_info = this.as_loader_info_object().unwrap();
+
+    let caller = activation.caller_movie_or_root();
+    let content = loader_info.loader_stream().movie();
+    if !SwfMovie::ptr_eq(&content, &caller) {
+        let content_url = content.url().to_string();
+        return Err(make_error_2047(
+            activation,
+            "LoaderInfo.childSandboxBridge",
+            caller.url(),
+            &content_url,
+        ));
+    }
+
+    let bridge = args.try_get_object(0);
+    loader_info.set_child_sandbox_bridge(activation.gc(), bridge);
+
+    Ok(Value::Undefined)
+}
+
+/// `getLoaderInfoByDefinition` static method.
+///
+/// Timffle: Flash Player answers this only for SWFs in the local-trusted
+/// sandbox, and outside debugger builds the answer is null; every other
+/// sandbox gets a SecurityError. That is what a release player does, so
+/// Timffle does the same instead of guessing a LoaderInfo.
+pub fn get_loader_info_by_definition<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let caller = activation.caller_movie_or_root();
+    match caller.sandbox_type() {
+        SandboxType::LocalTrusted | SandboxType::Application => Ok(Value::Null),
+        _ => Err(make_error_2047(
+            activation,
+            "LoaderInfo.getLoaderInfoByDefinition",
+            caller.url(),
+            "localTrusted",
+        )),
+    }
 }
 
 /// `childAllowsParent` getter
@@ -265,20 +419,10 @@ pub fn get_child_allows_parent<'gc>(
     match loader_stream {
         LoaderStream::NotYetLoaded(_, _, _) => Err(make_error_2099(activation)),
         LoaderStream::Swf(root, dobj) => {
-            // TODO: respect allowDomain() and polices.
-            avm2_stub_getter!(activation, "flash.display.LoaderInfo", "childAllowsParent");
-
-            if let Some(loader) = loader_info.loader() {
-                let loader = loader.display_object();
-                let parent_movie = loader.movie();
-
-                if let Ok(child_url) = Url::parse(root.url())
-                    && let Ok(parent_url) = Url::parse(parent_movie.url())
-                    && child_url.host() == parent_url.host()
-                {
-                    return Ok(true.into());
-                }
-                Ok(false.into())
+            // Timffle: true in the same security domain, or when the content
+            // called Security.allowDomain() for the loader's domain.
+            if let Some(parent_movie) = parent_movie(loader_info) {
+                Ok(root.allows_access_from(parent_movie.url()).into())
             } else {
                 // Only the root movie is LoaderStream::Swf but missing a loader.
                 // In that case, return true.
@@ -305,20 +449,10 @@ pub fn get_parent_allows_child<'gc>(
     match loader_stream {
         LoaderStream::NotYetLoaded(_, _, _) => Err(make_error_2099(activation)),
         LoaderStream::Swf(root, dobj) => {
-            // TODO: respect allowDomain() and polices.
-            avm2_stub_getter!(activation, "flash.display.LoaderInfo", "parentAllowsChild");
-
-            if let Some(loader) = loader_info.loader() {
-                let loader = loader.display_object();
-                let parent_movie = loader.movie();
-
-                if let Ok(child_url) = Url::parse(root.url())
-                    && let Ok(parent_url) = Url::parse(parent_movie.url())
-                    && child_url.host() == parent_url.host()
-                {
-                    return Ok(true.into());
-                }
-                Ok(false.into())
+            // Timffle: true in the same security domain, or when the loading
+            // SWF called Security.allowDomain() for the content's domain.
+            if let Some(parent_movie) = parent_movie(loader_info) {
+                Ok(parent_movie.allows_access_from(root.url()).into())
             } else {
                 // See comment on childAllowsParent
                 assert!(
@@ -370,6 +504,14 @@ pub fn get_url<'gc>(
         let root = match loader_stream {
             LoaderStream::NotYetLoaded(root, _, _) | LoaderStream::Swf(root, _) => root,
         };
+        // Timffle: when `isURLInaccessible`, Flash only reveals the origin of
+        // the final URL (e.g. `http://www.example.com`).
+        if is_url_inaccessible(loader_info)
+            && let Ok(url) = Url::parse(root.url())
+        {
+            let origin = url.origin().ascii_serialization();
+            return Ok(AvmString::new_utf8(activation.gc(), origin).into());
+        }
         return Ok(AvmString::new_utf8(activation.gc(), root.url()).into());
     }
 

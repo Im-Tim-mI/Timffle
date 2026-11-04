@@ -1,0 +1,39 @@
+--- root loaderInfo
+root.sameDomain: true
+root.childAllowsParent: true
+root.parentAllowsChild: true
+root.isURLInaccessible: false
+root.loader: null
+root.parentSandboxBridge: null
+root.childSandboxBridge: null
+--- Security.allowDomain arguments
+Security.allowDomain('*'): ok
+Security.allowInsecureDomain('x.example'): ok
+Security.allowDomain(null): ArgumentError #2052
+Security.allowDomain(1): ArgumentError #2052
+Security.allowInsecureDomain('a', []): ArgumentError #2052
+--- getLoaderInfoByDefinition
+getLoaderInfoByDefinition(this): SecurityError #2047
+--- contentLoaderInfo before load
+sameDomain: Error #2099
+isURLInaccessible: true
+parentSandboxBridge.greeting: hello from parent
+parent sets parentSandboxBridge: ok
+parent sets childSandboxBridge: SecurityError #2047
+childSandboxBridge: null
+root content sets its own parentSandboxBridge: SecurityError #2047
+root.childSandboxBridge.fromRoot: true
+root content sets its own childSandboxBridge: ok
+--- child constructed
+child sees parentSandboxBridge.greeting: hello from parent
+child sets childSandboxBridge: ok
+child sets parentSandboxBridge: SecurityError #2047
+--- contentLoaderInfo on complete
+child.sameDomain: true
+child.childAllowsParent: true
+child.parentAllowsChild: true
+child.isURLInaccessible: false
+childSandboxBridge.reply: hello from child
+parentSandboxBridge: null
+parent clears parentSandboxBridge: ok
+done

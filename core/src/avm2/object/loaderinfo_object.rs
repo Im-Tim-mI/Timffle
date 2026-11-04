@@ -98,6 +98,16 @@ pub struct LoaderInfoObjectData<'gc> {
     expose_content: Cell<bool>,
 
     errored: Cell<bool>,
+
+    /// Timffle: whether the HTTP download of the content was redirected
+    /// (one of the conditions of `LoaderInfo.isURLInaccessible`).
+    redirected: Cell<bool>,
+
+    /// Timffle: `LoaderInfo.parentSandboxBridge`, set by the loading SWF.
+    parent_sandbox_bridge: Lock<Option<Object<'gc>>>,
+
+    /// Timffle: `LoaderInfo.childSandboxBridge`, set by the loaded content.
+    child_sandbox_bridge: Lock<Option<Object<'gc>>>,
 }
 
 impl<'gc> LoaderInfoObject<'gc> {
@@ -142,10 +152,48 @@ impl<'gc> LoaderInfoObject<'gc> {
                 content_type: Cell::new(ContentType::Unknown),
                 expose_content: Cell::new(false),
                 errored: Cell::new(false),
+                redirected: Cell::new(false),
+                parent_sandbox_bridge: Lock::new(None),
+                child_sandbox_bridge: Lock::new(None),
             },
         ));
 
         Ok(object)
+    }
+
+    /// Timffle: whether the content's download went through an HTTP redirect.
+    pub fn redirected(self) -> bool {
+        self.0.redirected.get()
+    }
+
+    pub fn set_redirected(self, redirected: bool) {
+        self.0.redirected.set(redirected);
+    }
+
+    pub fn parent_sandbox_bridge(self) -> Option<Object<'gc>> {
+        self.0.parent_sandbox_bridge.get()
+    }
+
+    pub fn set_parent_sandbox_bridge(self, mc: &Mutation<'gc>, bridge: Option<Object<'gc>>) {
+        unlock!(
+            Gc::write(mc, self.0),
+            LoaderInfoObjectData,
+            parent_sandbox_bridge
+        )
+        .set(bridge);
+    }
+
+    pub fn child_sandbox_bridge(self) -> Option<Object<'gc>> {
+        self.0.child_sandbox_bridge.get()
+    }
+
+    pub fn set_child_sandbox_bridge(self, mc: &Mutation<'gc>, bridge: Option<Object<'gc>>) {
+        unlock!(
+            Gc::write(mc, self.0),
+            LoaderInfoObjectData,
+            child_sandbox_bridge
+        )
+        .set(bridge);
     }
 
     pub fn loader(self) -> Option<StageObject<'gc>> {
@@ -190,6 +238,8 @@ impl<'gc> LoaderInfoObject<'gc> {
     pub fn reset_init_and_complete_events(self) {
         self.0.init_event_fired.set(false);
         self.0.complete_event_fired.set(false);
+        // Timffle: the next content starts without redirect state.
+        self.0.redirected.set(false);
     }
 
     /// The root clip of the content this loader info currently describes, if it has one yet.

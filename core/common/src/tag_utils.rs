@@ -1,7 +1,8 @@
-use crate::sandbox::SandboxType;
+use crate::sandbox::{AllowedDomains, SandboxType};
 
 use gc_arena::metrics::Metrics;
 use gc_arena::{Collect, Finalization, Gc, GcWeak, Mutation};
+use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -214,6 +215,10 @@ pub struct SwfMovieData {
     /// It absolutely cannot be changed after constructing
     /// the object in order to ensure proper sandboxing.
     sandbox_type: SandboxType,
+
+    /// Timffle: the domains this SWF granted cross-scripting access with
+    /// `Security.allowDomain()` / `Security.allowInsecureDomain()`.
+    allowed_domains: RefCell<AllowedDomains>,
 }
 
 impl SwfMovieData {
@@ -236,6 +241,7 @@ impl SwfMovieData {
             force_avm1: false,
             is_from_bytes: false,
             sandbox_type,
+            allowed_domains: Default::default(),
         }
     }
 
@@ -265,6 +271,7 @@ impl SwfMovieData {
             force_avm1: false,
             is_from_bytes: false,
             sandbox_type,
+            allowed_domains: Default::default(),
         }
     }
 
@@ -292,6 +299,7 @@ impl SwfMovieData {
             force_avm1: false,
             is_from_bytes: false,
             sandbox_type,
+            allowed_domains: Default::default(),
         }
     }
 
@@ -317,6 +325,7 @@ impl SwfMovieData {
             force_avm1: false,
             is_from_bytes: false,
             sandbox_type,
+            allowed_domains: Default::default(),
         }
     }
 
@@ -354,6 +363,7 @@ impl SwfMovieData {
             force_avm1: false,
             is_from_bytes: load_bytes_info.is_some(),
             sandbox_type,
+            allowed_domains: Default::default(),
         };
         movie.append_parameters_from_url();
         Ok(movie)
@@ -384,6 +394,7 @@ impl SwfMovieData {
             force_avm1: false,
             is_from_bytes,
             sandbox_type,
+            allowed_domains: Default::default(),
         };
         movie.append_parameters_from_url();
         movie
@@ -506,6 +517,21 @@ impl SwfMovieData {
 
     pub fn sandbox_type(&self) -> SandboxType {
         self.sandbox_type
+    }
+
+    /// Timffle: `Security.allowDomain()` (`insecure == false`) or
+    /// `Security.allowInsecureDomain()` (`insecure == true`) called by this SWF.
+    pub fn allow_domains<'a>(&self, domains: impl IntoIterator<Item = &'a str>, insecure: bool) {
+        let mut allowed = self.allowed_domains.borrow_mut();
+        for domain in domains {
+            allowed.allow(domain, insecure);
+        }
+    }
+
+    /// Timffle: whether the SWF at `caller_url` may script this SWF: it is in
+    /// the same security domain, or this SWF allowed its domain.
+    pub fn allows_access_from(&self, caller_url: &str) -> bool {
+        self.allowed_domains.borrow().allows(&self.url, caller_url)
     }
 }
 

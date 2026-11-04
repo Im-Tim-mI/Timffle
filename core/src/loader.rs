@@ -2500,6 +2500,8 @@ impl<'gc> MovieLoader<'gc> {
             MovieLoaderVMData::Avm2 { loader_info, .. } => {
                 let current_movie = loader_info.loader_stream().movie();
 
+                // Timffle: remembered for `LoaderInfo.isURLInaccessible`.
+                loader_info.set_redirected(redirected);
                 loader_info
                     .set_loader_stream(LoaderStream::Swf(current_movie, dobj.unwrap()), uc.gc());
 
