@@ -3,7 +3,7 @@ use crate::avm1::error::Error;
 use crate::avm1::property_decl::{DeclContext, StaticDeclarations};
 use crate::avm1::{Object, Value};
 use crate::string::AvmString;
-use crate::system_properties::SystemCapabilities;
+use crate::system_properties::{ServerStringHost, SystemCapabilities};
 
 const OBJECT_DECLS: StaticDeclarations = declare_static_properties! {
     "hasAccessibility" => property(get_has_accessibility);
@@ -224,10 +224,25 @@ pub fn get_server_string<'gc>(
     _this: Object<'gc>,
     _args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    let server_string = activation
-        .context
-        .system
-        .get_server_string(activation.context);
+    // Timffle: the shared builder takes the AVM1 host values explicitly (AVM2 passes its own).
+    let player_version = activation.context.player_version;
+    let viewport_dimensions = activation.context.renderer.viewport_dimensions();
+    let system = &activation.context.system;
+    let version = system.get_version_string(player_version);
+    let manufacturer = system.manufacturer.get_manufacturer_string(player_version);
+    let os = system.os.to_string();
+    let player_type = system.player_type.to_string();
+    let server_string = system.get_server_string(&ServerStringHost {
+        version: &version,
+        manufacturer: &manufacturer,
+        os: &os,
+        language: system.language.get_language_code(player_version),
+        player_type: &player_type,
+        width: (f64::from(viewport_dimensions.width) / viewport_dimensions.scale_factor).round()
+            as u32,
+        height: (f64::from(viewport_dimensions.height) / viewport_dimensions.scale_factor)
+            .round() as u32,
+    });
     Ok(AvmString::new_utf8(activation.gc(), server_string).into())
 }
 

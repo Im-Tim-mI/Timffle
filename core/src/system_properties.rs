@@ -1,7 +1,33 @@
-use crate::context::UpdateContext;
 use bitflags::bitflags;
 use core::fmt;
 use fluent_templates::{LanguageIdentifier, langid};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC};
+
+// Timffle: Flash's serverString escapes like `escape()`: letters, digits, `-`, `_` and `.`
+// stay ("AR=1.0", "ML=5.1", "L=zh-TW"), everything else is %XX ("OS=Windows%208").
+const SERVER_STRING_ESCAPE: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'_')
+    .remove(b'.');
+
+/// Timffle: the values that differ between AVM1 and AVM2 (or depend on the player runtime)
+/// and are needed to build `serverString`.
+pub struct ServerStringHost<'a> {
+    /// `Capabilities.version`, e.g. "WIN 32,0,0,0"
+    pub version: &'a str,
+    /// `Capabilities.manufacturer`, e.g. "Adobe Windows"
+    pub manufacturer: &'a str,
+    /// `Capabilities.os`
+    pub os: &'a str,
+    /// `Capabilities.language`
+    pub language: &'a str,
+    /// `Capabilities.playerType`
+    pub player_type: &'a str,
+    /// `Capabilities.screenResolutionX`
+    pub width: u32,
+    /// `Capabilities.screenResolutionY`
+    pub height: u32,
+}
 
 /// Available cpu architectures
 pub enum CpuArchitecture {
@@ -178,6 +204,23 @@ impl From<LanguageIdentifier> for Language {
     }
 }
 
+/// Timffle: `Capabilities.touchscreenType`
+pub enum TouchscreenType {
+    None,
+    Finger,
+    Stylus,
+}
+
+impl fmt::Display for TouchscreenType {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(match self {
+            TouchscreenType::None => "none",
+            TouchscreenType::Finger => "finger",
+            TouchscreenType::Stylus => "stylus",
+        })
+    }
+}
+
 /// The supported colors of the screen
 pub enum ScreenColor {
     Color,
@@ -264,6 +307,10 @@ pub struct SystemProperties {
     pub os: OperatingSystem,
     /// The cpu architecture of the platform
     pub cpu_architecture: CpuArchitecture,
+    /// Timffle: `Capabilities.cpuAddressSize`, the player's pointer width (32 or 64)
+    pub cpu_address_size: u8,
+    /// Timffle: `Capabilities.touchscreenType`
+    pub touchscreen_type: TouchscreenType,
     /// The highest supported h264 decoder level
     pub idc_level: String,
 }
@@ -275,7 +322,33 @@ impl SystemProperties {
             exact_settings: true,
             //TODO: default to false on fp>=7, true <= 6
             use_codepage: false,
-            capabilities: SystemCapabilities::empty(),
+            // Timffle: what this player really provides. Flash Player's constant capabilities
+            // (audio, MP3, streaming and embedded video, the built-in Speex/H.264 encoders,
+            // TLS, 32-bit processes) are set. AV_HARDWARE, LOCAL_FILE_READ and WINDOW_LESS
+            // mean "not administratively disabled" (`avHardwareDisable` etc. are their
+            // negation). Unset: ACCESSIBILITY (no accessibility bridge), IME (IME.isSupported
+            // is false), PRINTING (no PrintJob), SCREEN_BROADCAST/SCREEN_PLAYBACK (FMS
+            // screen sharing; desktop Flash Player 32 reports both false), DEBUGGER (this is
+            // a release player) and ACROBAT_EMBEDDED -- exactly what Flash Player reports on
+            // a machine without those features.
+            capabilities: SystemCapabilities::AUDIO
+                | SystemCapabilities::STREAMING_AUDIO
+                | SystemCapabilities::STREAMING_VIDEO
+                | SystemCapabilities::EMBEDDED_VIDEO
+                | SystemCapabilities::MP3
+                | SystemCapabilities::AUDIO_ENCODER
+                | SystemCapabilities::VIDEO_ENCODER
+                | SystemCapabilities::TLS
+                | SystemCapabilities::PROCESS_32_BIT
+                | SystemCapabilities::AV_HARDWARE
+                | SystemCapabilities::LOCAL_FILE_READ
+                | SystemCapabilities::WINDOW_LESS
+                | if cfg!(any(target_pointer_width = "64", target_family = "wasm")) {
+                    // A 64-bit player, or the browser plug-in: the OS runs 64-bit processes.
+                    SystemCapabilities::PROCESS_64_BIT
+                } else {
+                    SystemCapabilities::empty()
+                },
             player_type: PlayerType::StandAlone,
             screen_color: ScreenColor::Color,
             // TODO: note for fp <7 this should be the locale and the ui lang for >= 7, on windows
@@ -286,7 +359,25 @@ impl SystemProperties {
             dpi: 72_f32,
             manufacturer: Manufacturer::Linux,
             os: OperatingSystem::Linux,
-            cpu_architecture: CpuArchitecture::X86,
+            // Timffle: the real architecture of this build; wasm cannot see the host CPU and
+            // reports x86 like the Windows host it pretends to be.
+            cpu_architecture: if cfg!(any(target_arch = "arm", target_arch = "aarch64")) {
+                CpuArchitecture::Arm
+            } else if cfg!(any(target_arch = "powerpc", target_arch = "powerpc64")) {
+                CpuArchitecture::PowerPc
+            } else if cfg!(any(target_arch = "sparc", target_arch = "sparc64")) {
+                CpuArchitecture::Sparc
+            } else {
+                CpuArchitecture::X86
+            },
+            cpu_address_size: if cfg!(target_pointer_width = "64") {
+                64
+            } else {
+                32
+            },
+            // No touch input reaches the player as touch; see flash.ui.Multitouch.
+            touchscreen_type: TouchscreenType::None,
+            // Flash Player 32's software H.264 decoder level on desktop.
             idc_level: "5.1".into(),
         }
     }
@@ -312,78 +403,53 @@ impl SystemProperties {
     }
 
     fn encode_string(&self, s: &str) -> String {
-        percent_encoding::utf8_percent_encode(s, percent_encoding::NON_ALPHANUMERIC).to_string()
+        percent_encoding::utf8_percent_encode(s, SERVER_STRING_ESCAPE).to_string()
     }
 
-    pub fn get_server_string(&self, context: &UpdateContext) -> String {
-        let viewport_dimensions = context.renderer.viewport_dimensions();
-        url::form_urlencoded::Serializer::new(String::new())
-            .append_pair("A", self.encode_capability(SystemCapabilities::AUDIO))
-            .append_pair(
-                "SA",
-                self.encode_capability(SystemCapabilities::STREAMING_AUDIO),
-            )
-            .append_pair(
-                "SV",
-                self.encode_capability(SystemCapabilities::STREAMING_VIDEO),
-            )
-            .append_pair(
-                "EV",
-                self.encode_capability(SystemCapabilities::EMBEDDED_VIDEO),
-            )
-            .append_pair("MP3", self.encode_capability(SystemCapabilities::MP3))
-            .append_pair(
-                "AE",
-                self.encode_capability(SystemCapabilities::AUDIO_ENCODER),
-            )
-            .append_pair(
-                "VE",
-                self.encode_capability(SystemCapabilities::VIDEO_ENCODER),
-            )
-            .append_pair(
-                "ACC",
-                self.encode_not_capability(SystemCapabilities::ACCESSIBILITY),
-            )
-            .append_pair("PR", self.encode_capability(SystemCapabilities::PRINTING))
-            .append_pair(
-                "SP",
-                self.encode_capability(SystemCapabilities::SCREEN_PLAYBACK),
-            )
-            .append_pair(
-                "SB",
-                self.encode_capability(SystemCapabilities::SCREEN_BROADCAST),
-            )
-            .append_pair("DEB", self.encode_capability(SystemCapabilities::DEBUGGER))
-            .append_pair(
-                "M",
-                &self.encode_string(
-                    self.manufacturer
-                        .get_manufacturer_string(context.player_version)
-                        .as_str(),
-                ),
-            )
-            .append_pair(
-                "R",
-                &format!(
-                    "{}x{}",
-                    viewport_dimensions.width, viewport_dimensions.height
-                ),
-            )
-            .append_pair("COL", &self.screen_color.to_string())
-            .append_pair("AR", &self.pixel_aspect_ratio.to_string())
-            .append_pair("OS", &self.encode_string(&self.os.to_string()))
-            .append_pair("L", self.language.get_language_code(context.player_version))
-            .append_pair("IME", self.encode_capability(SystemCapabilities::IME))
-            .append_pair("PT", &self.player_type.to_string())
-            .append_pair(
-                "AVD",
-                self.encode_not_capability(SystemCapabilities::AV_HARDWARE),
-            )
-            .append_pair(
-                "LFD",
-                self.encode_not_capability(SystemCapabilities::LOCAL_FILE_READ),
-            )
-            .append_pair("DP", &self.dpi.to_string())
-            .finish()
+    // Timffle: rewritten. The fields and their order are those of Flash Player 32
+    // (32.0.0.465 standalone: A, SA, SV, EV, MP3, AE, VE, ACC, PR, SP, SB, DEB, V, M, R, COL,
+    // AR, OS, ARCH, L, IME, PR32, PR64, CAS, PT, AVD, LFD, WD, TLS, ML, DP). Ruffle's version
+    // lacked V/ARCH/PR32/PR64/CAS/WD/TLS/ML, inverted ACC, and percent-encoded M and OS twice.
+    pub fn get_server_string(&self, host: &ServerStringHost<'_>) -> String {
+        let flag = |cap| self.encode_capability(cap);
+        let not_flag = |cap| self.encode_not_capability(cap);
+        let pairs: [(&str, String); 31] = [
+            ("A", flag(SystemCapabilities::AUDIO).into()),
+            ("SA", flag(SystemCapabilities::STREAMING_AUDIO).into()),
+            ("SV", flag(SystemCapabilities::STREAMING_VIDEO).into()),
+            ("EV", flag(SystemCapabilities::EMBEDDED_VIDEO).into()),
+            ("MP3", flag(SystemCapabilities::MP3).into()),
+            ("AE", flag(SystemCapabilities::AUDIO_ENCODER).into()),
+            ("VE", flag(SystemCapabilities::VIDEO_ENCODER).into()),
+            ("ACC", flag(SystemCapabilities::ACCESSIBILITY).into()),
+            ("PR", flag(SystemCapabilities::PRINTING).into()),
+            ("SP", flag(SystemCapabilities::SCREEN_PLAYBACK).into()),
+            ("SB", flag(SystemCapabilities::SCREEN_BROADCAST).into()),
+            ("DEB", flag(SystemCapabilities::DEBUGGER).into()),
+            ("V", self.encode_string(host.version)),
+            ("M", self.encode_string(host.manufacturer)),
+            ("R", format!("{}x{}", host.width, host.height)),
+            ("COL", self.screen_color.to_string()),
+            ("AR", format!("{:.1}", self.pixel_aspect_ratio)),
+            ("OS", self.encode_string(host.os)),
+            ("ARCH", self.cpu_architecture.to_string()),
+            ("L", self.encode_string(host.language)),
+            ("IME", flag(SystemCapabilities::IME).into()),
+            ("PR32", flag(SystemCapabilities::PROCESS_32_BIT).into()),
+            ("PR64", flag(SystemCapabilities::PROCESS_64_BIT).into()),
+            ("CAS", self.cpu_address_size.to_string()),
+            ("PT", self.encode_string(host.player_type)),
+            ("AVD", not_flag(SystemCapabilities::AV_HARDWARE).into()),
+            ("LFD", not_flag(SystemCapabilities::LOCAL_FILE_READ).into()),
+            ("WD", not_flag(SystemCapabilities::WINDOW_LESS).into()),
+            ("TLS", flag(SystemCapabilities::TLS).into()),
+            ("ML", self.encode_string(&self.idc_level)),
+            ("DP", format!("{}", self.dpi)),
+        ];
+        pairs
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect::<Vec<_>>()
+            .join("&")
     }
 }

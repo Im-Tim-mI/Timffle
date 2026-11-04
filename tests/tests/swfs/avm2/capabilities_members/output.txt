@@ -1,0 +1,73 @@
+_internal = 37
+avHardwareDisable = false
+cpuAddressSize is 32 or 64: true
+cpuArchitecture is known: true
+hasAccessibility = false
+hasAudio = true
+hasAudioEncoder = true
+hasEmbeddedVideo = true
+hasIME = false
+hasMP3 = true
+hasPrinting = false
+hasScreenBroadcast = false
+hasScreenPlayback = false
+hasStreamingAudio = true
+hasStreamingVideo = true
+hasTLS = true
+hasVideoEncoder = true
+isDebugger = false
+isEmbeddedInAcrobat = false
+language = en
+localFileReadDisable = false
+manufacturer = Adobe Windows
+maxLevelIDC = 5.1
+os = Windows 8
+pixelAspectRatio = 1
+playerType = StandAlone
+screenColor = color
+screenDPI = 72
+screenResolutionX = 1024
+screenResolutionY = 768
+supports32BitProcesses = true
+touchscreenType = none
+version = WIN 32,0,0,0
+hasMultiChannelAudio('5.1') = false
+hasMultiChannelAudio('7.1') = false
+hasMultiChannelAudio('') = false
+hasMultiChannelAudio(null) = false
+hasMultiChannelAudio() threw ArgumentError #1063
+serverString keys = A,SA,SV,EV,MP3,AE,VE,ACC,PR,SP,SB,DEB,V,M,R,COL,AR,OS,ARCH,L,IME,PR32,PR64,CAS,PT,AVD,LFD,WD,TLS,ML,DP
+serverString A = t
+serverString SA = t
+serverString SV = t
+serverString EV = t
+serverString MP3 = t
+serverString AE = t
+serverString VE = t
+serverString ACC = f
+serverString PR = f
+serverString SP = f
+serverString SB = f
+serverString DEB = f
+serverString V = WIN%2032%2C0%2C0%2C0
+serverString M = Adobe%20Windows
+serverString R = 1024x768
+serverString COL = color
+serverString AR = 1.0
+serverString OS = Windows%208
+serverString L = en
+serverString IME = f
+serverString PR32 = t
+serverString PT = StandAlone
+serverString AVD = f
+serverString LFD = f
+serverString WD = f
+serverString TLS = t
+serverString ML = 5.1
+serverString DP = 72
+ARCH matches cpuArchitecture: true
+CAS matches cpuAddressSize: true
+PR64 matches supports64BitProcesses: true
+V decodes to version: true
+M decodes to manufacturer: true
+OS decodes to os: true
