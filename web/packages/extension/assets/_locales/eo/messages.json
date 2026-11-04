@@ -336,7 +336,7 @@
         "message": "Propra celo (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Montri kadrofrekvencon (ŝvebanta skatolo en angulo de la ludo; trenebla al alia angulo)"
+        "message": "Montri kadrofrekvencon"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolado de kadroj (eksperimenta)"

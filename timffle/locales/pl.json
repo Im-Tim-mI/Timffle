@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Własna…",
     "timffle_fi_off": "Wył.",
     "timffle_fi_custom_fps": "Własny cel (24–999 fps)",
-    "timffle_options_show_fps": "Pokaż liczbę klatek (pływające okienko w rogu gry; można przeciągnąć do innego rogu)",
+    "timffle_options_show_fps": "Pokaż liczbę klatek",
     "timffle_options_fi_enabled": "Interpolacja klatek (eksperymentalne)"
 }

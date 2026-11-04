@@ -474,7 +474,7 @@
         "message": "Eigen doel (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Beeldfrequentie tonen (zwevend vakje in een hoek van het spel; naar een andere hoek te slepen)"
+        "message": "Beeldfrequentie tonen"
     },
     "timffle_options_fi_enabled": {
         "message": "Tussenbeelden (experimenteel)"

@@ -492,7 +492,7 @@
         "message": "自訂目標（24–999 fps）"
     },
     "timffle_options_show_fps": {
-        "message": "顯示幀數（遊戲角落的浮動視窗，可拖到其他角落）"
+        "message": "顯示幀數"
     },
     "timffle_options_fi_enabled": {
         "message": "（實驗性）補幀功能"

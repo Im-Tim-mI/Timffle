@@ -447,7 +447,7 @@
         "message": "Mukautettu tavoite (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Näytä kuvataajuus (kelluva laatikko pelin kulmassa; voi vetää toiseen kulmaan)"
+        "message": "Näytä kuvataajuus"
     },
     "timffle_options_fi_enabled": {
         "message": "Kuvien interpolointi (kokeellinen)"

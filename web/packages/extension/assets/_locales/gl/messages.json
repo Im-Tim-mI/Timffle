@@ -336,7 +336,7 @@
         "message": "Obxectivo personalizado (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Mostrar fotogramas por segundo (caixa flotante nun recuncho do xogo; arrástraa a outro recuncho)"
+        "message": "Mostrar fotogramas por segundo"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolación de fotogramas (experimental)"

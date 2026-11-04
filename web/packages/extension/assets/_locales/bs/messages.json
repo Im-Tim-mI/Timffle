@@ -462,7 +462,7 @@
         "message": "Prilagođeni cilj (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Prikaži brzinu sličica (lebdeći okvir u uglu igre; može se povući u drugi ugao)"
+        "message": "Prikaži brzinu sličica"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolacija sličica (eksperimentalno)"

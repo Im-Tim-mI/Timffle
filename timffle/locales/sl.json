@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Po meri…",
     "timffle_fi_off": "Izklopljeno",
     "timffle_fi_custom_fps": "Cilj po meri (24–999 fps)",
-    "timffle_options_show_fps": "Prikaži hitrost sličic (lebdeče okence v kotu igre; lahko ga povlečete v drug kot)",
+    "timffle_options_show_fps": "Prikaži hitrost sličic",
     "timffle_options_fi_enabled": "Interpolacija sličic (poskusno)"
 }

@@ -471,7 +471,7 @@
         "message": "Cilj po meri (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Prikaži hitrost sličic (lebdeče okence v kotu igre; lahko ga povlečete v drug kot)"
+        "message": "Prikaži hitrost sličic"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolacija sličic (poskusno)"

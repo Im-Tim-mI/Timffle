@@ -453,7 +453,7 @@
         "message": "יעד מותאם אישית (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "הצגת קצב פריימים (תיבה צפה בפינת המשחק; אפשר לגרור לפינה אחרת)"
+        "message": "הצגת קצב פריימים"
     },
     "timffle_options_fi_enabled": {
         "message": "אינטרפולציית פריימים (ניסיוני)"

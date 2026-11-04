@@ -474,7 +474,7 @@
         "message": "Eigenes Ziel (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Bildrate anzeigen (schwebendes Kästchen in einer Ecke des Spiels; in eine andere Ecke ziehbar)"
+        "message": "Bildrate anzeigen"
     },
     "timffle_options_fi_enabled": {
         "message": "Zwischenbilder (experimentell)"

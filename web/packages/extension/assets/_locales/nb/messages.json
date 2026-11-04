@@ -336,7 +336,7 @@
         "message": "Eget mål (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Vis bildefrekvens (flytende boks i et hjørne av spillet; kan dras til et annet hjørne)"
+        "message": "Vis bildefrekvens"
     },
     "timffle_options_fi_enabled": {
         "message": "Bildeinterpolering (eksperimentell)"

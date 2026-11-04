@@ -474,7 +474,7 @@
         "message": "Alvo personalizado (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Mostrar cadência (caixa flutuante num canto do jogo; arraste para outro canto)"
+        "message": "Mostrar cadência"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolação de fotogramas (experimental)"

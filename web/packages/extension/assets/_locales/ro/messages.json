@@ -474,7 +474,7 @@
         "message": "Țintă personalizată (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Afișează rata de cadre (casetă plutitoare într-un colț al jocului; poate fi trasă în alt colț)"
+        "message": "Afișează rata de cadre"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolarea cadrelor (experimental)"

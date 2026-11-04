@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Egyéni…",
     "timffle_fi_off": "Ki",
     "timffle_fi_custom_fps": "Egyéni cél (24–999 fps)",
-    "timffle_options_show_fps": "Képkockasebesség mutatása (lebegő doboz a játék sarkában; másik sarokba húzható)",
+    "timffle_options_show_fps": "Képkockasebesség mutatása",
     "timffle_options_fi_enabled": "Képkocka-interpoláció (kísérleti)"
 }

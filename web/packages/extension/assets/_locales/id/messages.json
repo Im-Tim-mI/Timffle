@@ -468,7 +468,7 @@
         "message": "Target kustom (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Tampilkan laju frame (kotak mengambang di sudut permainan; bisa diseret ke sudut lain)"
+        "message": "Tampilkan laju frame"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolasi frame (eksperimental)"

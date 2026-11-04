@@ -474,7 +474,7 @@
         "message": "Mục tiêu tùy chỉnh (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Hiện tốc độ khung hình (hộp nổi ở góc trò chơi; kéo sang góc khác được)"
+        "message": "Hiện tốc độ khung hình"
     },
     "timffle_options_fi_enabled": {
         "message": "Nội suy khung hình (thử nghiệm)"

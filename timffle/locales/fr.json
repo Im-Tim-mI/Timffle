@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Personnalisé…",
     "timffle_fi_off": "Désactivé",
     "timffle_fi_custom_fps": "Cible personnalisée (24–999 fps)",
-    "timffle_options_show_fps": "Afficher la cadence (petite boîte flottante dans un coin du jeu ; déplaçable vers un autre coin)",
+    "timffle_options_show_fps": "Afficher la cadence",
     "timffle_options_fi_enabled": "Interpolation d'images (expérimental)"
 }

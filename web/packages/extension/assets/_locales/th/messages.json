@@ -372,7 +372,7 @@
         "message": "เป้าหมายกำหนดเอง (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "แสดงอัตราเฟรม (กล่องลอยที่มุมเกม ลากไปมุมอื่นได้)"
+        "message": "แสดงอัตราเฟรม"
     },
     "timffle_options_fi_enabled": {
         "message": "การแทรกเฟรม (ทดลอง)"

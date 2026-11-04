@@ -492,7 +492,7 @@
         "message": "自定义目标（24–999 fps）"
     },
     "timffle_options_show_fps": {
-        "message": "显示帧数（游戏角落的浮动窗口，可拖到其他角落）"
+        "message": "显示帧数"
     },
     "timffle_options_fi_enabled": {
         "message": "（实验性）补帧功能"

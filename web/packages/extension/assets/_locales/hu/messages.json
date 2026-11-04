@@ -465,7 +465,7 @@
         "message": "Egyéni cél (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Képkockasebesség mutatása (lebegő doboz a játék sarkában; másik sarokba húzható)"
+        "message": "Képkockasebesség mutatása"
     },
     "timffle_options_fi_enabled": {
         "message": "Képkocka-interpoláció (kísérleti)"

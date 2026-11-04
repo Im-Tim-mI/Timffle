@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Personalizado…",
     "timffle_fi_off": "Desactivado",
     "timffle_fi_custom_fps": "Objetivo personalizado (24–999 fps)",
-    "timffle_options_show_fps": "Mostrar fotogramas por segundo (cuadro flotante en una esquina del juego; arrástralo a otra esquina)",
+    "timffle_options_show_fps": "Mostrar fotogramas por segundo",
     "timffle_options_fi_enabled": "Interpolación de fotogramas (experimental)"
 }

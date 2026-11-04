@@ -465,7 +465,7 @@
         "message": "Vlastní cíl (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Zobrazit snímkovou frekvenci (plovoucí okénko v rohu hry; lze přetáhnout do jiného rohu)"
+        "message": "Zobrazit snímkovou frekvenci"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolace snímků (experimentální)"

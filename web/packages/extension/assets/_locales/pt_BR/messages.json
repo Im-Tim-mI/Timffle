@@ -474,7 +474,7 @@
         "message": "Alvo personalizado (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Mostrar taxa de quadros (caixa flutuante em um canto do jogo; arraste para outro canto)"
+        "message": "Mostrar taxa de quadros"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolação de quadros (experimental)"

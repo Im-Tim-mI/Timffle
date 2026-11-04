@@ -444,7 +444,7 @@
         "message": "Objectiu personalitzat (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Mostra els fotogrames per segon (quadre flotant en un racó del joc; arrossega'l a un altre racó)"
+        "message": "Mostra els fotogrames per segon"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolació de fotogrames (experimental)"

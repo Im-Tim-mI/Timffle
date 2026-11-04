@@ -474,7 +474,7 @@
         "message": "Cible personnalisée (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Afficher la cadence (petite boîte flottante dans un coin du jeu ; déplaçable vers un autre coin)"
+        "message": "Afficher la cadence"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolation d'images (expérimental)"

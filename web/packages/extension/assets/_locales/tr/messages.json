@@ -474,7 +474,7 @@
         "message": "Özel hedef (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Kare hızını göster (oyunun köşesinde yüzen kutu; başka köşeye sürüklenebilir)"
+        "message": "Kare hızını göster"
     },
     "timffle_options_fi_enabled": {
         "message": "Kare ara değerleme (deneysel)"

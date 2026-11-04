@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Власне значення…",
     "timffle_fi_off": "Вимк.",
     "timffle_fi_custom_fps": "Власна ціль (24–999 fps)",
-    "timffle_options_show_fps": "Показувати частоту кадрів (плаваюче віконце в кутку гри; можна перетягнути в інший кут)",
+    "timffle_options_show_fps": "Показувати частоту кадрів",
     "timffle_options_fi_enabled": "Інтерполяція кадрів (експериментально)"
 }

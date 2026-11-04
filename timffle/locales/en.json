@@ -436,8 +436,8 @@
         "description": "Label of the number field shown for the Custom entry; keep the range."
     },
     "timffle_options_show_fps": {
-        "message": "Show frame rate (floating box in a corner of the game; drag it to another corner)",
-        "description": "Check box: shows a small floating frame-rate box in a corner of the game."
+        "message": "Show frame rate",
+        "description": "Check box: shows a small floating frame-rate box in a corner of the game (drag its handle to another corner)."
     },
     "timffle_options_fi_enabled": {
         "message": "Frame interpolation (experimental)",

@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Үз кыйммәте…",
     "timffle_fi_off": "Сүндерелгән",
     "timffle_fi_custom_fps": "Үз максаты (24–999 fps)",
-    "timffle_options_show_fps": "Кадр ешлыгын күрсәтү (уен почмагындагы йөзүче тәрәзә; башка почмакка күчереп була)",
+    "timffle_options_show_fps": "Кадр ешлыгын күрсәтү",
     "timffle_options_fi_enabled": "Кадрлар интерполяциясе (эксперименталь)"
 }

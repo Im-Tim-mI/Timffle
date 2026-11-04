@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Kustom…",
     "timffle_fi_off": "Mati",
     "timffle_fi_custom_fps": "Target kustom (24–999 fps)",
-    "timffle_options_show_fps": "Tampilkan laju frame (kotak mengambang di sudut permainan; bisa diseret ke sudut lain)",
+    "timffle_options_show_fps": "Tampilkan laju frame",
     "timffle_options_fi_enabled": "Interpolasi frame (eksperimental)"
 }

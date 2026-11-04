@@ -101,6 +101,6 @@
     "timffle_fi_custom": "Benutzerdefiniert…",
     "timffle_fi_off": "Aus",
     "timffle_fi_custom_fps": "Eigenes Ziel (24–999 fps)",
-    "timffle_options_show_fps": "Bildrate anzeigen (schwebendes Kästchen in einer Ecke des Spiels; in eine andere Ecke ziehbar)",
+    "timffle_options_show_fps": "Bildrate anzeigen",
     "timffle_options_fi_enabled": "Zwischenbilder (experimentell)"
 }

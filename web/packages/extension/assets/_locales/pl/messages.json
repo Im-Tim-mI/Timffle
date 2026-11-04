@@ -474,7 +474,7 @@
         "message": "Własny cel (24–999 fps)"
     },
     "timffle_options_show_fps": {
-        "message": "Pokaż liczbę klatek (pływające okienko w rogu gry; można przeciągnąć do innego rogu)"
+        "message": "Pokaż liczbę klatek"
     },
     "timffle_options_fi_enabled": {
         "message": "Interpolacja klatek (eksperymentalne)"
