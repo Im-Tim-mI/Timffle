@@ -4,7 +4,7 @@ import { resetProxySettings } from "./proxy-settings";
 import { PROXY_STORAGE_KEY } from "./socket-proxy";
 
 export interface Options extends Config.BaseLoadOptions {
-    /** Timffle: the "(experimental) frame interpolation" switch; off = no extra pictures, menu dimmed. */
+    /** Timffle: the "(experimental) frame interpolation" switch (default off); off = no extra pictures, menu dimmed. */
     frameInterpolationEnabled: boolean;
     ruffleEnable: boolean;
     ignoreOptout: boolean;

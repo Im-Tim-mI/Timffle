@@ -11,7 +11,7 @@ import { explicitOptionsFrom } from "./startup-options";
 
 const DEFAULT_OPTIONS: Required<Options> = {
     ...Config.DEFAULT_CONFIG,
-    frameInterpolationEnabled: true,
+    frameInterpolationEnabled: false,
     ruffleEnable: true,
     ignoreOptout: false,
     autostart: false,
