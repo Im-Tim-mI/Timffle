@@ -51,6 +51,11 @@ package flash.net {
         [API("682")]
         public function get length():Number { return 0; }
 
+        // Timffle: only AIR caches URLStream downloads to disk; Flash Player in
+        // a browser never does, so this read-only property is always false.
+        [API("682")]
+        public function get diskCacheEnabled():Boolean { return false; }
+
         public function close():void {
             if (!this._connected) {
                 throw new IOError("Error #2029: This URLStream object does not have a stream opened.", 2029);

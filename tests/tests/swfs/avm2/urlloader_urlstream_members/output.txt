@@ -1,0 +1,7 @@
+addEventListener declaredBy: flash.net::URLLoader
+hasEventListener: true
+custom listener called: custom on [object URLLoader]
+weak/priority listener called: true
+diskCacheEnabled: false
+diskCacheEnabled access: readonly type Boolean
+connected: false
