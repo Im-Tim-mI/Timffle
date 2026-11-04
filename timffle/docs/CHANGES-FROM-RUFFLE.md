@@ -157,6 +157,16 @@
 - **drawGraphicsData**：`Graphics.as` 改成 AS3 迴圈，`GraphicsPath` 走 `drawPathObject()` → `drawPath()`（Flash 的 playerglobal 就是這樣，錯誤堆疊多那兩層；commands／data 為 null 的 path 跳過，沿用上游），其餘項目交給新的 native `drawGraphicsDataItem`。
 - **readGraphicsData／beginShaderFill／lineShaderStyle 還沒做**，Flash 的 readGraphicsData 結構已量完（`difftest/results/flash/d55graphics.txt`、`d56graphics2.txt`、`d57winding.txt`），留給下一批。
 
+### 第 2 組：顯示小成員（InteractiveObject 軟鍵盤成員、MovieClip.trackAsMenu、Shader.precisionHint、ShaderJob、Sprite.startTouchDrag／stopTouchDrag、TransformGestureEvent.GESTURE_DIRECTIONAL_TAP）
+
+- **參考值來自真 Flash**：`timffle/difftest/src/D58Misc.hx`（屬性、ShaderJob 的同步／非同步與錯誤、三次「在 A 按下、在 B 放開」的拖曳——由新的 `timffle/difftest/drive_drag.py` 透過私有 Xvfb＋XTest 送出真的按下、移動、放開）與 `D59ShaderQueue.hx`（佇列、ByteArray／Vector 目標）在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出。測試 `avm2/display_small_members` 的每一行都來自這些探針（只有 `GESTURE_DIRECTIONAL_TAP` 例外，見下）。Wine 下真 Flash 的背景 ShaderJob 不穩定（D58 只有第一個工作完成，D59 一個都沒完成，`progress` 停在 0），非同步的時序只能確定「`start()` 回來時 target 還沒變、complete 在下一個 `enterFrame` 之前」。
+- **`MovieClip.trackAsMenu`**（`movie_clip.rs` 的 `track_as_menu` 旗標、`player.rs` 的放開處理、新的 `ClipEvent::MenuRelease`）：在 A 上按下、在 B 上放開時，Flash 先給 A `releaseOutside`，然後——只有 B 的 `trackAsMenu` 為 true 時——給 B `click`；旗標是在派送 click 的那一刻讀的（在 `mouseUp` 處理函式裡把 B 的旗標打開，這次就有 click）。Ruffle 原本把旗標存起來但從不使用；現在放開時對滑鼠下的 AVM2 物件排一個 `MenuRelease`，它在派送時才檢查 `MovieClip.trackAsMenu` 或 AVM2 `SimpleButton` 的 menu tracking，成立就當 `Release`（click／doubleClick）。AVM1 不變。
+- **上游的「同一個時間軸物件」判斷**（`Player::check_display_object_equality`）：原本只比 depth、character id 與所屬 SWF，目的是 goto 重建物件後仍算「在同一物件內放開」；兩個 `new Sprite()`／`new MovieClip()` 的 id 都是 0、depth 相同，所以在 A 按下、在 B 放開在 Ruffle 一律算成 A 的 click。現在只對時間軸放置的物件套這條規則。
+- **`ShaderJob`**（`ShaderJob.as`、`shader_job.rs`）：`start()` 先驗證（第二次 `start()` 不論完成或取消都是 `ArgumentError #2172`；shader／target null `TypeError #2007`；target 不是 BitmapData／ByteArray／Vector.<Number>（字串也算）`ArgumentError #2004`；ByteArray／Vector 目標的 `width`／`height` 為 0 `ArgumentError #2004`；影像輸入沒給 `ArgumentError #2164`；固定長度的 Vector `RangeError #1126`；輸出不是 3／4 通道 `#2162`，沿用上游），然後把 shader 的 handle 與參數、輸入複製下來（Flash 也是在 `start()` 時複製）。`start(true)` 立刻執行；`start(false)` 把工作排進 `Avm2::shader_jobs`，`Player::run_actions` 在每一輪腳本結束時依序執行（`complete` 處理函式再 `start()` 的工作也在同一輪跑完），寫入 target 後派送 `ShaderEvent.COMPLETE`（bubbles／cancelable false，`bitmapData`／`byteArray`／`vector` 依目標型別其一非 null）；已 `dispose()` 的 BitmapData 目標不寫、照樣完成（文件行為）。`progress`：未開始 NaN、排隊中 0、完成 1；`cancel()` 把排隊中的工作標成取消（執行時跳過、不派送）並把 progress 設回 0（對已完成的工作也是 0，量到）。ByteArray 目標：浮點數依 ByteArray 自己的端序寫入（Flash 預設 big-endian 的 ByteArray `readFloat()` 讀回正確值；上游寫原始小端序位元組）；`render/wgpu` 讀回的緩衝區只取前 `height` 列（上游把多出的列也算進結果：2×2 的 Vector 長 32 而不是 16）。**假設**：同步的 `start(true)` 不派送 `complete`（Adobe 文件兩處說法相反，`ShaderEvent.COMPLETE` 的說明是「非同步才派送」）。
+- **`Shader.precisionHint`**：只接受 `ShaderPrecision.FULL`／`FAST`，其他值（null、""、"FULL"）`ArgumentError #2004`；Ruffle 的 Pixel Bender 一律全精度執行，值只是存起來。
+- **沒有該功能的機器上 Flash 的行為**（都在真 Flash 32 量到）：`InteractiveObject.requestSoftKeyboard()`——`needsSoftKeyboard` 為 true 且物件在舞台上時把 `stage.focus` 設成自己（false 時焦點不動），永遠回 false（沒有虛擬鍵盤）；`needsSoftKeyboard`／`softKeyboardInputAreaOfInterest`（同一個 Rectangle 物件讀回、改原物件會跟著變）／`accessibilityImplementation`（同一個物件讀回）照存，`Capabilities.hasAccessibility` 為 false 所以沒有人會查詢它；`Sprite.startTouchDrag()`／`stopTouchDrag()` 在 `Multitouch.supportsTouchEvents` 為 false 的機器上任何 touchPointID（含 -1、沒按過的 id、連 `startDrag` 混用）都接受、什麼都不拖、不丟錯——Ruffle 把觸控當滑鼠送，沒有可綁定的觸控點，行為相同。
+- **`TransformGestureEvent.GESTURE_DIRECTIONAL_TAP`**：AIR 3.0 的常數，Flash Player 32 standalone 讀到 undefined（airglobal 才有），但在 Adobe 的 API 清單裡；照文件補上 `"gestureDirectionalTap"`，版本標記與 `MovieClip.isPlaying` 相同（`[API("674")]`）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -172,6 +182,7 @@
 | `BitmapData.encode(…, JPEGXREncoderOptions)` | Flash 輸出 JPEG XR；Ruffle 的 jxrlib 綁定只有解碼，這一支仍是空殼（回 null，標在 stub-report）。 |
 | `Graphics.drawPath` 之後的 `lineTo` | 真 Flash 在 drawPath 之後接著用 lineTo 時，drawPath 那段線條不畫（只剩 lineTo 的線段與閉合線）；Timffle 兩段都畫。填色相同。 |
 | `Graphics.drawTriangles` 的貼圖取樣 | 真 Flash 取最近貼圖格時有半格的偏移（u=0.5 落在格 9 而不是格 10），Timffle 用 GPU 的 `floor(u·寬)`；只差在貼圖格邊界那一排像素。透視（t）是以細分的仿射小片逼近，邊界位置誤差小於 1 px。 |
+| `ShaderJob` 的背景執行 | 真 Flash 在另一條執行緒跑背景的 ShaderJob、`complete` 回到主執行緒；Timffle 在同一輪腳本結束時（下一幀之前）同步執行並派送 `complete`，同時只會有一個工作在跑、順序相同，但 `progress` 不會出現 0 與 1 之間的值。 |
 | `<prototype>.hasOwnProperty.call(…)` | `Object.prototype.hasOwnProperty`／`propertyIsEnumerable`（以及 `XML.prototype`、`XMLList.prototype` 上的同名函式）在 Ruffle 取出來的是綁在那個 prototype 物件上的 AS3 方法，`.call(other, name)` 因此忽略 `other`；直接呼叫 `obj.hasOwnProperty(name)` 正確。上游既有行為。 |
 | 遞迴深度 | 網頁版保護上限 900 層；需要更深遞迴的演算法（例如遠距離的 A* 尋路）結果會被截斷，桌面版不受影響。 |
 | URLStream／LocalConnection 其他 | 未證明所有協定、所有外部接收端、跨使用者隔離都與 Flash 相同；AMF3 中沒有 `ObjectId` 型別（Date、XML、ByteArray、數值 Vector）的共享身分仍以完整寫出處理。 |
