@@ -11,7 +11,7 @@
 - 新的擴充功能設定 `frameInterpolationEnabled`（預設開）；關閉時播放器收到的值是 `off`，選單的值保留。
 - 文字 `timffle_options_fi_enabled`，36 種語言。
 - **驗證**：本機 e2e（`timffle-work/interp-adaptive/livetest.mjs`）：遊戲載入後依序切換 開關關→`OFF · 12`、固定 30→`30 fps`、自訂 45→`45 fps`、顯示幀數關→框消失、開→回來，頁面從頭到尾沒有重新載入，主控台無錯誤；彈出選單與設定頁的開關／黯淡／自訂欄位都跟著存的值走。擴充功能單元測試 320 項通過。
-- 測試版 ZIP：`timffle-chrome-0.8.0.26336.zip`，sha256 `73da1b647ea2fe3d68d45bf99fd82e5947be3d8ead30273e95f9202b77148688`（由 `c3092cf64` 的乾淨工作樹建置）。小幫手仍是 1.4.1。
+- 測試版 ZIP：`timffle-chrome-0.8.0.26336.zip`，sha256 `02703dc2f5acc41a4206c8398d56d744f188acdbea7a0fd3164fe122e586f479`（由 `03e92c328` 的乾淨工作樹建置）。小幫手仍是 1.4.1。
 
 ## 0.8.0.26335 — 2026-11-03（frame-interp 分支，測試版）
 
