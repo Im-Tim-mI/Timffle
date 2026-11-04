@@ -369,6 +369,7 @@ pub struct DisplayObjectBase<'gc> {
     /// origin.
     interp_drawn_tick: Cell<u32>,
     interp_prev_drawn_tick: Cell<u32>,
+    interp_drawn_run: Cell<u32>,
     interp_matrix: Cell<Matrix>,
     interp_alpha: Cell<Fixed8>,
 }
@@ -422,6 +423,7 @@ impl Default for DisplayObjectBase<'_> {
             interp_alpha: Cell::new(Fixed8::ONE),
             interp_drawn_tick: Cell::new(0),
             interp_prev_drawn_tick: Cell::new(0),
+            interp_drawn_run: Cell::new(0),
         }
     }
 }
@@ -481,45 +483,69 @@ impl<'gc> DisplayObjectBase<'gc> {
         if self.interp_drawn_tick.get() != tick {
             self.interp_prev_drawn_tick.set(self.interp_drawn_tick.get());
             self.interp_drawn_tick.set(tick);
+            // How many frames in a row this object has been drawn (saturating).
+            let run = if self.interp_prev_drawn_tick.get() + 1 == tick {
+                self.interp_drawn_run.get().saturating_add(1)
+            } else {
+                1
+            };
+            self.interp_drawn_run.set(run);
         }
         if self.interp_tick.get() != tick || transform.matrix3d.is_some() || !(0.0..1.0).contains(&t) {
             return;
         }
-        if self.interp_prev_drawn_tick.get() + 1 != tick {
-            // Not on screen in the previous frame: nothing to move from.
+        // Only an object that was already on screen for two frames moves: one placed last frame
+        // (often at the origin, positioned by script a frame later: avatar clothes) has no motion yet.
+        if self.interp_drawn_run.get() < 3 {
             return;
         }
         let from = self.interp_matrix.get();
         let to = transform.matrix;
-        if from == to {
-            // Only the alpha may have changed.
-        } else {
+        if from != to {
             const MAX_STEP_TWIPS: i32 = 200 * 20;
-            const MAX_STEP_SCALE: f32 = 0.75;
+            const MAX_STEP_ANGLE: f32 = std::f32::consts::FRAC_PI_2; // 90° in one frame = a cut
+            const MAX_SCALE_RATIO: f32 = 2.0;
             let dx = (to.tx - from.tx).get();
             let dy = (to.ty - from.ty).get();
-            // A flip (scale changing sign) or a turn past 90° passes through a collapsed matrix
-            // half-way; a change of this size in one frame is a cut, not a motion.
-            let det_from = from.a * from.d - from.b * from.c;
-            let det_to = to.a * to.d - to.b * to.c;
-            let dot = from.a * to.a + from.b * to.b + from.c * to.c + from.d * to.d;
+            // Interpolate rotation, scale and skew separately (Flash's own decomposition), so a turning
+            // object keeps its size instead of shrinking through the middle of a matrix lerp.
+            let dec = |m: &Matrix| {
+                (
+                    m.b.atan2(m.a),
+                    m.a.hypot(m.b),
+                    (-m.c).atan2(m.d),
+                    m.c.hypot(m.d),
+                )
+            };
+            let (r0, sx0, k0, sy0) = dec(&from);
+            let (r1, sx1, k1, sy1) = dec(&to);
+            let arc = |a: f32, b: f32| {
+                let d = b - a;
+                d - (d / std::f32::consts::TAU).round() * std::f32::consts::TAU
+            };
+            let dr = arc(r0, r1);
+            let dk = arc(k0, k1);
+            let ratio = |a: f32, b: f32| if a.abs() < 1e-4 || b.abs() < 1e-4 { f32::INFINITY } else { (b / a).max(a / b) };
             if dx.abs() > MAX_STEP_TWIPS
                 || dy.abs() > MAX_STEP_TWIPS
-                || (to.a - from.a).abs() > MAX_STEP_SCALE
-                || (to.b - from.b).abs() > MAX_STEP_SCALE
-                || (to.c - from.c).abs() > MAX_STEP_SCALE
-                || (to.d - from.d).abs() > MAX_STEP_SCALE
-                || (det_from < 0.0) != (det_to < 0.0)
-                || dot <= 0.0
+                || dr.abs() > MAX_STEP_ANGLE
+                || dk.abs() > MAX_STEP_ANGLE
+                || ratio(sx0, sx1) > MAX_SCALE_RATIO
+                || ratio(sy0, sy1) > MAX_SCALE_RATIO
+                // A flip or a mirrored skew (y axis on the other side) is a cut.
+                || ((from.a * from.d - from.b * from.c) < 0.0) != ((to.a * to.d - to.b * to.c) < 0.0)
             {
                 return;
             }
-            let lerp = |a: f32, b: f32| a + (b - a) * t;
+            let r = r0 + dr * t;
+            let k = k0 + dk * t;
+            let sx = sx0 + (sx1 - sx0) * t;
+            let sy = sy0 + (sy1 - sy0) * t;
             transform.matrix = Matrix {
-                a: lerp(from.a, to.a),
-                b: lerp(from.b, to.b),
-                c: lerp(from.c, to.c),
-                d: lerp(from.d, to.d),
+                a: sx * r.cos(),
+                b: sx * r.sin(),
+                c: -sy * k.sin(),
+                d: sy * k.cos(),
                 tx: Twips::new(from.tx.get() + (dx as f32 * t).round() as i32),
                 ty: Twips::new(from.ty.get() + (dy as f32 * t).round() as i32),
             };
