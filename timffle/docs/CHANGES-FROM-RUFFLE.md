@@ -70,6 +70,22 @@
 
 ---
 
+## API 補齊（PRO_bata，`api100`）
+
+目標是把 Ruffle 的 `stub-report`（README 的「Timffle 對 Ruffle 的修補」圖）補到 0 個缺少、0 個空殼。每一批都附回歸測試（`tests/tests/swfs/avm2/`），瀏覽器沒有的功能一律做成「沒有該功能的機器上 Flash Player 的行為」，不假裝成功。
+
+### 第 1 組：網路（LocalConnection、LoaderInfo、Loader、URLLoader、URLStream；加上 Security.allowDomain）
+
+- **`LocalConnection.allowDomain()` / `allowInsecureDomain()`**（原本是空殼）：每個接收端記住自己的允許清單（`core/src/avm2/object/local_connection_object.rs`）；`send()` 送達時（`core/src/local_connection.rs`）依 Flash 的規則檢查寄件端的網域：同一個上層網域預設允許；HTTPS 接收端只透過 `allowInsecureDomain()` 接受非 HTTPS 寄件端（同網域也一樣）；其餘要在清單裡（確切網域、`*` 只涵蓋遠端、`localhost` 涵蓋本機檔案），被拒絕時寄件端收到 `status` 事件 `level="error"`。參數不是字串丟 `ArgumentError #2052`。連線名稱改以**建立該物件的 SWF** 的網域限定（原本一律用根 SWF），`domain` 取呼叫端 SWF 的網域。AVM1 接收端不檢查（AVM1 的 `allowDomain` 是回呼，未實作）。測試 `localconnection_allowdomain`。
+- **`Security.allowDomain()` / `allowInsecureDomain()`**（原本是空殼）：記在呼叫端 SWF 上（`SwfMovieData::allow_domains`，`core/common/src/sandbox.rs` 的 `AllowedDomains`）。Ruffle 不執行跨 SWF 的腳本沙箱，所以這份清單只供 Flash 會回報的屬性使用（下一項）。`loadPolicyFile`／`showSettings` 仍是空殼（第 2 組）。
+- **`LoaderInfo.sameDomain` / `childAllowsParent` / `parentAllowsChild`**（原本是空殼或只比主機名稱）：`sameDomain` 比較載入端與內容的安全網域（協定＋主機；`http` 與 `https` 不同）；兩個 allows 屬性在同網域為 true，否則看對方有沒有 `Security.allowDomain()` 自己的網域。根 SWF 與舞台沒有載入端，一律 true。**不讀取 crossdomain.xml 政策檔**（下載本身受瀏覽器 CORS 管理），所以只靠政策檔授權的情況 Flash 會回 true、Timffle 回 false。
+- **`LoaderInfo.isURLInaccessible`**：尚未載入（`url` 為 null）時 true——這是從 Ruffle 內附的真 Flash 輸出 `from_shumway/as3-loader/loaderinfo/loaded-content-properties` 量到的，該測試的 `sameDomain: true` 也一併對上了；載入後，只有「HTTP 轉址到別的安全網域，而且內容沒有允許載入端」才 true，此時 `url` 只給來源（`http://www.example.com`），與 Flash 文件相同。轉址旗標來自載入器（`core/src/loader.rs`）。
+- **`LoaderInfo.parentSandboxBridge` / `childSandboxBridge`**（原本是空殼）：真的存在 LoaderInfo 上；只有載入端 SWF 的程式可以設 parent 端、只有被載入的內容可以設 child 端，否則 `SecurityError #2047`（Flash 的通用沙箱錯誤；文件只說 SecurityError，錯誤號未經真 Flash 驗證）。內容卸載後 child 端清空。
+- **`LoaderInfo.getLoaderInfoByDefinition()`**：Flash 文件說只有本機信任沙箱可呼叫，而且發行版播放器回 null；Timffle 照做——`localTrusted`／`application` 沙箱回 null，其餘丟 `SecurityError #2047`（錯誤號同上，未驗證）。測試 `loaderinfo_security_properties`。
+- **`Loader.load()` / `loadBytes()` 重複使用**：移除「重複使用 Loader」的空殼標記；取消前一次載入、卸載舊內容、沿用同一個 `contentLoaderInfo` 早已實作，由 `loader_reuse` 測試涵蓋。
+- **`URLLoader.addEventListener()`**：Flash 的 playerglobal 在 URLLoader 上宣告了這個覆寫（只為了文件化事件），行為與 `EventDispatcher` 相同；補上覆寫。**`URLStream.diskCacheEnabled`**：只有 AIR 會把下載快取到磁碟，瀏覽器裡的 Flash Player 永遠是 false（唯讀）。測試 `urlloader_urlstream_members`。
+- 與真 Flash 仍不同：被載入的子 SWF 在自己的建構式裡讀 `loaderInfo.sameDomain` 等屬性，Ruffle 會丟 `Error #2099`（載入串流要到第一幀之後才切換成已載入；上游既有）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |

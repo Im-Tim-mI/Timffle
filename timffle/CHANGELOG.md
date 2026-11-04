@@ -2,6 +2,12 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 未發布（PRO_bata：API 補齊）
+
+把 Ruffle `stub-report` 量到的 Flash Player API 缺口補齊到 0 缺少、0 空殼（起點 2026-11-04：4,560 項、354 缺少、421 空殼 = 82.59 %）。每一批附回歸測試；瀏覽器沒有的功能做成「沒有該功能的機器上 Flash 的行為」。細節見 [`docs/CHANGES-FROM-RUFFLE.md`](docs/CHANGES-FROM-RUFFLE.md)「API 補齊」。
+
+- **第 1 組（網路）**：`LocalConnection.allowDomain`／`allowInsecureDomain` 真的生效（接收端允許清單、HTTPS 規則、被拒時寄件端收到 `status` level `error`、非字串參數 `ArgumentError #2052`，連線名稱改以建立該物件的 SWF 網域限定）；`Security.allowDomain`／`allowInsecureDomain` 記錄在呼叫端 SWF；`LoaderInfo.sameDomain`／`childAllowsParent`／`parentAllowsChild` 依安全網域與 allowDomain 清單回答，`isURLInaccessible` 未載入時 true（真 Flash 輸出證實）、轉址到別的網域且未授權時 true 並把 `url` 截成來源，`parentSandboxBridge`／`childSandboxBridge` 真的存放（只有各自的一方能設，否則 `SecurityError #2047`），`getLoaderInfoByDefinition` 照發行版 Flash：本機信任沙箱回 null、其餘 `SecurityError`；`Loader.load`／`loadBytes` 重複使用不再標成空殼；`URLLoader.addEventListener` 覆寫、`URLStream.diskCacheEnabled`（永遠 false）。驗證：新測試 `localconnection_allowdomain`、`loaderinfo_security_properties`、`urlloader_urlstream_members`，既有的 localconnection／loaderinfo／loader_reuse 測試通過，`from_shumway/…/loaded-content-properties` 的兩行輸出改成與真 Flash 相同；`cargo check`、`cargo clippy -p ruffle_core`（只剩上游既有的 4 個警告）。
+
 ## 0.8.0.26343 — 2026-11-04（main，正式版）
 
 **繪圖後端改為 WebGPU 優先的第一個正式版。** 把 `webgpu` 與 `frame-interp` 兩個測試分支（0.8.0.26327～26342）併入主線 `main`，接續正式版 0.8.0.26326；**實驗性的補幀功能整個拿掉，「顯示幀數」保留**（tim：「現在版本我認為可以放入主線 main 了，但實驗性補幀功能拿掉，顯示幀率可以保留」）。小幫手仍是 **1.4.1**，不必重裝。
