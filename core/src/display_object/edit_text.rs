@@ -2683,6 +2683,9 @@ impl<'gc> TDisplayObject<'gc> for EditText<'gc> {
             // Off-screen; culled
             return;
         }
+        if !context.is_offscreen {
+            crate::display_object::interp::note_visible_content();
+        }
 
         fn is_transform_positive_scale_only(context: &mut RenderContext) -> bool {
             let Matrix { a, b, c, d, .. } = context.transform_stack.transform().matrix;

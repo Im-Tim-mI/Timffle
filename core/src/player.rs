@@ -2224,12 +2224,20 @@ impl Player {
     }
 
     /// Timffle: whether drawing now (between two movie frames) would show something different from
-    /// the last picture: interpolation is on, the movie is running and something moved in its last frame.
+    /// the last picture: interpolation is on, the movie is running and the frame's own picture drew
+    /// something inside the view between two poses. Objects that moved off the stage, hidden or culled
+    /// do not earn extra pictures (`interp::anything_visibly_moving`).
     pub fn wants_interpolated_render(&self) -> bool {
         self.frame_interpolation
             && self.is_playing()
             && self.interp_tick != 0
             && crate::display_object::interp::anything_changed()
+            && crate::display_object::interp::anything_visibly_moving()
+    }
+
+    /// Timffle: frame interpolation counters for the fps overlay's debug line (see `interp::stats`).
+    pub fn interp_stats(&self) -> [u32; 8] {
+        crate::display_object::interp::stats()
     }
 
     /// Timffle: where the player is between the last movie frame and the next, for `render`.

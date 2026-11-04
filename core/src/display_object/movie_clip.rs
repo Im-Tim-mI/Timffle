@@ -2662,6 +2662,15 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
 
     fn render_self(self, context: &mut RenderContext<'_, 'gc>) {
         if let Some(drawing) = self.drawing() {
+            // Timffle frame interpolation: own drawing inside the view counts as visible content
+            // (the bounds are only computed while something is drawn between two poses).
+            if !context.is_offscreen
+                && crate::display_object::interp::under_moving()
+                && (self.local_to_global_matrix() * drawing.self_bounds(true))
+                    .intersects(&context.stage.view_bounds())
+            {
+                crate::display_object::interp::note_visible_content();
+            }
             drawing.render(context);
         }
         self.render_children(context);

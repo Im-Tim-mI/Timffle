@@ -422,7 +422,7 @@ impl InterpControl {
     }
 
     /// The numbers for the fps overlay, as JSON.
-    pub fn stats_json(&self, ts: f64, source_fps: f64) -> String {
+    pub fn stats_json(&self, ts: f64, source_fps: f64, core: [u32; 8]) -> String {
         let requested = self.requested_target();
         let effective = self.effective_target();
         let state = if self.mode.is_off() {
@@ -442,7 +442,7 @@ impl InterpControl {
             "ok"
         };
         format!(
-            "{{\"fps\":{:.1},\"sourceFps\":{:.2},\"mode\":\"{}\",\"target\":{:.0},\"effective\":{:.0},\"refreshHz\":{:.0},\"dropPct\":{:.1},\"interpMs\":{:.2},\"state\":\"{}\",\"pausedByLoad\":{}}}",
+            "{{\"fps\":{:.1},\"sourceFps\":{:.2},\"mode\":\"{}\",\"target\":{:.0},\"effective\":{:.0},\"refreshHz\":{:.0},\"dropPct\":{:.1},\"interpMs\":{:.2},\"state\":\"{}\",\"pausedByLoad\":{},\"frames\":{},\"changedFrames\":{},\"visibleFrames\":{},\"changed\":{},\"moving\":{},\"visible\":{},\"halfPxFrames\":{},\"onePxFrames\":{}}}",
             self.fps,
             source_fps,
             self.mode.name(),
@@ -452,7 +452,15 @@ impl InterpControl {
             self.drop_pct,
             self.interp_ms,
             state,
-            self.paused_by_load
+            self.paused_by_load,
+            core[0],
+            core[1],
+            core[2],
+            core[3],
+            core[4],
+            core[5],
+            core[6],
+            core[7]
         )
     }
 }
@@ -517,11 +525,11 @@ mod tests {
         let mut c = InterpControl::new(InterpMode::Target(144.0));
         let ts = warm(&mut c, 60.0);
         assert_eq!(c.effective_target(), 60.0);
-        assert!(c.stats_json(ts, 24.0).contains("\"state\":\"capped\""));
+        assert!(c.stats_json(ts, 24.0, [0; 8]).contains("\"state\":\"capped\""));
         let mut c = InterpControl::new(InterpMode::Target(30.0));
         let ts = warm(&mut c, 60.0);
         assert!(!c.decide(ts, 60.0, false).interpolate);
-        assert!(c.stats_json(ts, 60.0).contains("source_above"));
+        assert!(c.stats_json(ts, 60.0, [0; 8]).contains("source_above"));
     }
 
     #[test]

@@ -140,6 +140,9 @@ impl<'gc> TDisplayObject<'gc> for Text<'gc> {
             // Off-screen; culled
             return;
         }
+        if !context.is_offscreen {
+            crate::display_object::interp::note_visible_content();
+        }
 
         let shared = self.0.shared.get();
         context.transform_stack.push(&Transform {

@@ -245,6 +245,9 @@ impl<'gc> TDisplayObject<'gc> for Graphic<'gc> {
             // Off-screen; culled
             return;
         }
+        if !context.is_offscreen {
+            crate::display_object::interp::note_visible_content();
+        }
 
         if let Some(drawing) = self.0.drawing.get() {
             drawing.borrow().render(context);

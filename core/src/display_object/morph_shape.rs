@@ -111,6 +111,16 @@ impl<'gc> TDisplayObject<'gc> for MorphShape<'gc> {
     }
 
     fn render_self(self, context: &mut RenderContext<'_, 'gc>) {
+        // Timffle frame interpolation: a morph shape inside the view counts as visible content
+        // (the bounds are only computed while something is drawn between two poses).
+        if !context.is_offscreen
+            && crate::display_object::interp::under_moving()
+            && self
+                .world_bounds(BoundsMode::Engine)
+                .intersects(&context.stage.view_bounds())
+        {
+            crate::display_object::interp::note_visible_content();
+        }
         let ratio = self.ratio();
         let shared = self.0.shared.get();
         let shape_handle = shared.get_shape(context, ratio);

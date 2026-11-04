@@ -142,6 +142,9 @@ struct RuffleInstance {
     background_tick_mode: bool,
     /// Timffle: a frame was not drawn in background tick mode; draw it once the page is shown.
     render_pending: bool,
+    /// Timffle: the player's element is scrolled out of the browser's viewport (nobody sees extra
+    /// interpolated pictures; movie frames are still drawn so the picture is current when it scrolls back).
+    canvas_offscreen: bool,
     mouse_move_callback: Option<JsCallback<PointerEvent>>,
     mouse_enter_callback: Option<JsCallback<PointerEvent>>,
     mouse_leave_callback: Option<JsCallback<PointerEvent>>,
@@ -425,6 +428,15 @@ impl RuffleHandle {
         self.tick(timestamp);
     }
 
+    /// Timffle: whether the player's element is inside the browser's viewport (an
+    /// `IntersectionObserver` in the player tells us). Off screen, no extra interpolated
+    /// pictures are drawn; the movie itself runs and draws as usual.
+    pub fn set_canvas_visible(&self, visible: bool) {
+        let _ = self.with_instance_mut(|instance| {
+            instance.canvas_offscreen = !visible;
+        });
+    }
+
     pub fn has_focus(&self) -> bool {
         self.with_instance(|instance| instance.has_focus)
             .unwrap_or_default()
@@ -446,9 +458,12 @@ impl RuffleHandle {
     /// Timffle: the numbers for the fps overlay (JSON; see `interp::InterpControl::stats_json`).
     pub fn frame_stats(&self) -> JsValue {
         let source_fps = self.with_core(|core| core.frame_rate()).unwrap_or(0.0);
+        let core_stats = self
+            .with_core(|core| core.interp_stats())
+            .unwrap_or([0; 8]);
         let now = performance_now();
         self.with_instance(|instance| {
-            JsValue::from_str(&instance.interp.stats_json(now, source_fps))
+            JsValue::from_str(&instance.interp.stats_json(now, source_fps, core_stats))
         })
         .unwrap_or(JsValue::NULL)
     }
@@ -643,6 +658,7 @@ impl RuffleHandle {
             animation_handler_id: None,
             background_tick_mode: false,
             render_pending: false,
+            canvas_offscreen: false,
             interp: interp::InterpControl::new(frame_interpolation_mode),
             mouse_move_callback: None,
             mouse_enter_callback: None,
@@ -1353,7 +1369,11 @@ impl RuffleHandle {
             .with_instance(|instance| {
                 instance
                     .interp
-                    .decide(timestamp, source_fps, background)
+                    .decide(
+                        timestamp,
+                        source_fps,
+                        background || instance.canvas_offscreen,
+                    )
                     .interpolate
             })
             .unwrap_or(false);

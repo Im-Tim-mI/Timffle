@@ -35,6 +35,17 @@ interface FrameStats {
         | "below"
         | "ok";
     pausedByLoad: boolean;
+    /** Movie frames run so far, frames in which an object changed, frames in which something visibly moved. */
+    frames: number;
+    changedFrames: number;
+    visibleFrames: number;
+    /** Objects that changed, objects drawn between two poses, visible contents under them (totals). */
+    changed: number;
+    moving: number;
+    visible: number;
+    /** Visible-motion frames whose biggest step was at most half a pixel / one pixel. */
+    halfPxFrames: number;
+    onePxFrames: number;
 }
 
 type Corner = "tl" | "tr" | "bl" | "br";
@@ -115,7 +126,7 @@ export class FpsOverlay {
         }
         this.big.textContent = stats.fps.toFixed(0);
         this.small.textContent = FpsOverlay.describe(stats);
-        this.debug.textContent = `drop ${stats.dropPct.toFixed(1)}% · ${stats.interpMs.toFixed(1)} ms · ${stats.refreshHz.toFixed(0)} Hz · src ${stats.sourceFps.toFixed(0)}`;
+        this.debug.textContent = `drop ${stats.dropPct.toFixed(1)}% · ${stats.interpMs.toFixed(1)} ms · ${stats.refreshHz.toFixed(0)} Hz · src ${stats.sourceFps.toFixed(0)} · chg ${stats.changedFrames}/${stats.frames} · vis ${stats.visibleFrames}/${stats.frames} · obj ${stats.changed}/${stats.moving}/${stats.visible} · step≤½px ${stats.halfPxFrames} ≤1px ${stats.onePxFrames}`;
     }
 
     static describe(s: FrameStats): string {
