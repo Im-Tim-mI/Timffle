@@ -1164,6 +1164,20 @@ pub fn make_error_2136<'gc>(activation: &mut Activation<'_, 'gc>) -> Error<'gc> 
 make_error_fn!(make_error_2150, 2150, argument_error);
 make_error_fn!(make_error_2162, 2162, argument_error);
 
+// Timffle: `ShaderJob.start()` with an image input that has no `input`.
+#[inline(never)]
+#[cold]
+pub fn make_error_2164<'gc>(activation: &mut Activation<'_, 'gc>, input_name: &str) -> Error<'gc> {
+    make_error!(argument_error(
+        activation,
+        error_message!(2164, input_name),
+        2164,
+    ))
+}
+
+// Timffle: `ShaderJob.start()` on a job that was already started.
+make_error_fn!(make_error_2172, 2172, argument_error);
+
 #[inline(never)]
 #[cold]
 pub fn make_error_2165<'gc>(activation: &mut Activation<'_, 'gc>, input_name: &str) -> Error<'gc> {

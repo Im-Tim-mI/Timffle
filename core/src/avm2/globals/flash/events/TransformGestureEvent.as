@@ -5,6 +5,10 @@ package flash.events {
         public static const GESTURE_ROTATE:String = "gestureRotate";
         public static const GESTURE_SWIPE:String = "gestureSwipe";
         public static const GESTURE_ZOOM:String = "gestureZoom";
+        // Timffle: AIR 3.0 constant (the Flash Player 32 standalone reports it undefined; it is
+        // in Adobe's API list, so it is exposed like MovieClip.isPlaying with the same marker).
+        [API("674")]
+        public static const GESTURE_DIRECTIONAL_TAP:String = "gestureDirectionalTap";
 
         private var _offsetX:Number;
         private var _offsetY:Number;

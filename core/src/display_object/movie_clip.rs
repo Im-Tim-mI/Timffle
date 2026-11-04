@@ -220,6 +220,10 @@ pub struct MovieClipData<'gc> {
 
     /// Show a hand cursor when the clip is in button mode.
     avm2_use_hand_cursor: Cell<bool>,
+
+    /// Timffle: AVM2 `MovieClip.trackAsMenu` — the clip gets `click` when the mouse is
+    /// released over it even if the press happened on another object.
+    track_as_menu: Cell<bool>,
 }
 
 #[derive(Clone, Collect)]
@@ -252,6 +256,7 @@ impl<'gc> MovieClipData<'gc> {
             drawing: OnceCell::new(),
             avm2_enabled: Cell::new(true),
             avm2_use_hand_cursor: Cell::new(true),
+            track_as_menu: Cell::new(false),
             button_mode: Cell::new(false),
             last_queued_script_frame: Cell::new(None),
             queued_script_frame: Cell::new(0),
@@ -2294,6 +2299,15 @@ impl<'gc> MovieClip<'gc> {
 
     pub fn forced_button_mode(self) -> bool {
         self.0.button_mode.get()
+    }
+
+    /// Timffle: AVM2 `MovieClip.trackAsMenu`.
+    pub fn track_as_menu(self) -> bool {
+        self.0.track_as_menu.get()
+    }
+
+    pub fn set_track_as_menu(self, track_as_menu: bool) {
+        self.0.track_as_menu.set(track_as_menu);
     }
 
     pub fn set_forced_button_mode(self, button_mode: bool) {

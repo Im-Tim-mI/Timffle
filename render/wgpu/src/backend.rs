@@ -1130,18 +1130,21 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
 
         match target {
             PixelBenderTarget::Bitmap(_) => Ok(PixelBenderOutput::Bitmap(sync_handle)),
-            PixelBenderTarget::Bytes { width, .. } => {
+            PixelBenderTarget::Bytes { width, height } => {
                 let mut output = None;
                 self.resolve_sync_handle(
                     sync_handle,
                     Box::new(|raw_pixels, buffer_width| {
                         let width = *width as usize;
+                        // Timffle: the readback buffer can hold more rows than the job's
+                        // height; a ShaderJob result is exactly width * height pixels.
+                        let height = *height as usize;
 
                         if buffer_width as usize
                             != width * output_channels * std::mem::size_of::<f32>()
                         {
                             let mut new_pixels = Vec::new();
-                            for row in raw_pixels.chunks(buffer_width as usize) {
+                            for row in raw_pixels.chunks(buffer_width as usize).take(height) {
                                 let actual_row = &row[0..(width * std::mem::size_of::<[f32; 4]>())];
 
                                 for pixel in actual_row
@@ -1161,7 +1164,8 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
                             }
                             output = Some(new_pixels);
                         } else {
-                            output = Some(raw_pixels.to_vec());
+                            let len = (buffer_width as usize * height).min(raw_pixels.len());
+                            output = Some(raw_pixels[..len].to_vec());
                         };
                     }),
                 )?;

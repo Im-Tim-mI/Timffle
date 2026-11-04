@@ -391,6 +391,14 @@ pub trait TInteractiveObject<'gc>:
 
                 Avm2::dispatch_event(activation.context, avm2_event, target).into()
             }
+            ClipEvent::MenuRelease { index } => {
+                // Timffle: `click` for a trackAsMenu object the mouse was released over.
+                if crate::player::Player::avm2_tracks_as_menu(self) {
+                    self.event_dispatch_to_avm2(context, ClipEvent::Release { index })
+                } else {
+                    ClipEventResult::NotHandled
+                }
+            }
             ClipEvent::ReleaseOutside => {
                 let string_release_outside = istr!("releaseOutside");
 

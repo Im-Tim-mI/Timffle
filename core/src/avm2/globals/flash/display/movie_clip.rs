@@ -212,6 +212,42 @@ pub fn get_current_scene<'gc>(
     Ok(Value::Undefined)
 }
 
+/// Timffle: implements `trackAsMenu`'s getter.
+pub fn get_track_as_menu<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(mc) = this
+        .as_display_object()
+        .and_then(|dobj| dobj.as_movie_clip())
+    {
+        return Ok(mc.track_as_menu().into());
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: implements `trackAsMenu`'s setter.
+pub fn set_track_as_menu<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(mc) = this
+        .as_display_object()
+        .and_then(|dobj| dobj.as_movie_clip())
+    {
+        mc.set_track_as_menu(args.get_bool(0));
+    }
+
+    Ok(Value::Undefined)
+}
+
 pub fn get_enabled<'gc>(
     _activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,

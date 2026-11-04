@@ -231,6 +231,10 @@ pub struct Avm2<'gc> {
     /// the clipboard (`Clipboard.setData`, `System.setClipboard`) during that.
     pub in_user_interaction: bool,
 
+    /// Timffle: background `ShaderJob`s (`start(false)`) waiting to run; they finish after
+    /// the current script turn (see `globals::flash::display::shader_job::run_pending`).
+    pub shader_jobs: Vec<globals::flash::display::shader_job::PendingShaderJob<'gc>>,
+
     /// Timffle: true while an `Event.PASTE` is being dispatched; the only time
     /// `Clipboard.getData()` is allowed in Flash Player.
     pub in_paste_event: bool,
@@ -293,6 +297,7 @@ impl<'gc> Avm2<'gc> {
             system_ime: None,
             clipboard: Vec::new(),
             in_user_interaction: false,
+            shader_jobs: Vec::new(),
             in_paste_event: false,
             building_stack_overflow_error: false,
         }

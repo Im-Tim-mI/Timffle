@@ -1,17 +1,22 @@
 use crate::avm2::bytearray::Endian;
-use crate::avm2::error::{Error2004Type, make_error_2004, make_error_2162, make_error_2165};
+use crate::avm2::error::{
+    Error2004Type, make_error_1126, make_error_2004, make_error_2007, make_error_2162,
+    make_error_2164, make_error_2165, make_error_2172,
+};
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::slots::{
     flash_display_shader as shader_slots, flash_display_shader_input as shader_input_slots,
     flash_display_shader_job as shader_job_slots,
     flash_display_shader_parameter as shader_parameter_slots,
 };
+use crate::avm2::object::EventObject;
 use crate::avm2::parameters::ParametersExt;
-use crate::avm2::{Activation, Error, Object, TObject as _, Value};
+use crate::avm2::{Activation, Avm2, Error, Object, TObject as _, Value};
+use crate::context::UpdateContext;
 use crate::pixel_bender::PixelBenderTypeExt;
 use crate::string::AvmString;
 
-use crate::avm2_stub_method;
+use gc_arena::Collect;
 
 use ruffle_render::backend::{PixelBenderOutput, PixelBenderTarget};
 use ruffle_render::bitmap::PixelRegion;
@@ -267,7 +272,31 @@ fn make_float_texture<'gc, S: PixelSource>(
     })
 }
 
+// Timffle: `ShaderJob._state` values (see ShaderJob.as).
+const STATE_NEW: i32 = 0;
+const STATE_QUEUED: i32 = 1;
+const STATE_DONE: i32 = 2;
+
+/// Timffle: a `ShaderJob` started with `start(false)`, waiting for the end of the script turn.
+/// The shader handle and arguments are copied at `start()` time like Flash copies the Shader.
+#[derive(Collect)]
+#[collect(no_drop)]
+pub struct PendingShaderJob<'gc> {
+    job: Object<'gc>,
+    #[collect(require_static)]
+    shader: PixelBenderShaderHandle,
+    #[collect(require_static)]
+    arguments: Vec<PixelBenderShaderArgument<'static>>,
+}
+
 /// Implements `ShaderJob.start`.
+///
+/// Timffle: validates like Flash Player 32 (measured in D58Misc / D59ShaderQueue): a second
+/// `start()` on the same job is ArgumentError #2172; `shader` / `target` null are TypeError #2007;
+/// a target that is not BitmapData / ByteArray / Vector.<Number>, or a zero `width` / `height`
+/// with a ByteArray / Vector target, is ArgumentError #2004; an image input without data is
+/// ArgumentError #2164; a fixed Vector target is RangeError #1126. `start(true)` runs now,
+/// `start(false)` queues the job (target untouched until it runs, `progress` 0).
 pub fn start<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -276,44 +305,55 @@ pub fn start<'gc>(
     let this = this.as_object().unwrap();
 
     let wait_for_completion = args.get_bool(0);
-    if !wait_for_completion {
-        avm2_stub_method!(
-            activation,
-            "flash.display.ShaderJob",
-            "start",
-            "with waitForCompletion=false"
-        );
+
+    if this
+        .get_slot(shader_job_slots::_STATE)
+        .coerce_to_i32(activation)?
+        != STATE_NEW
+    {
+        return Err(make_error_2172(activation));
     }
-    let shader = this
-        .get_slot(shader_job_slots::_SHADER)
-        .as_object()
-        .expect("Missing Shader object");
+
+    let Some(shader) = this.get_slot(shader_job_slots::_SHADER).as_object() else {
+        return Err(make_error_2007(activation, "shader"));
+    };
+    let target = this.get_slot(shader_job_slots::_TARGET);
+    if matches!(target, Value::Null | Value::Undefined) {
+        return Err(make_error_2007(activation, "target"));
+    }
+    let Some(target) = target.as_object() else {
+        // A primitive (e.g. a String) target.
+        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+    };
+
+    let is_bitmap = target.as_bitmap_data().is_some();
+    if !is_bitmap && target.as_bytearray().is_none() {
+        match target.as_vector_storage() {
+            Some(vector) if vector.is_fixed() => return Err(make_error_1126(activation)),
+            Some(_) => {}
+            None => return Err(make_error_2004(activation, Error2004Type::ArgumentError)),
+        }
+    }
+    if !is_bitmap {
+        let output_width = this.get_slot(shader_job_slots::_WIDTH).as_i32();
+        let output_height = this.get_slot(shader_job_slots::_HEIGHT).as_i32();
+        if output_width <= 0 || output_height <= 0 {
+            return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        }
+    }
 
     let (shader_handle, arguments) = get_shader_args(shader, activation)?;
 
-    let target = this
-        .get_slot(shader_job_slots::_TARGET)
-        .as_object()
-        .expect("ShaderJob.target is not an object");
-
-    let output_width = this.get_slot(shader_job_slots::_WIDTH).as_u32();
-
-    let output_height = this.get_slot(shader_job_slots::_HEIGHT).as_u32();
-
-    let pixel_bender_target = if let Some(bitmap) = target.as_bitmap_data() {
-        let target_bitmap = bitmap.sync(activation.context.renderer);
-        // Perform both a GPU->CPU and CPU->GPU sync before writing to it.
-        // FIXME - are both necessary?
-        let mut target_bitmap_data = target_bitmap.borrow_mut(activation.gc());
-        target_bitmap_data.update_dirty_texture(activation.context.renderer);
-
-        PixelBenderTarget::Bitmap(target_bitmap_data.bitmap_handle(activation.context.renderer))
-    } else {
-        PixelBenderTarget::Bytes {
-            width: output_width,
-            height: output_height,
+    for argument in &arguments {
+        if let PixelBenderShaderArgument::ImageInput {
+            texture: None,
+            name,
+            ..
+        } = argument
+        {
+            return Err(make_error_2164(activation, name));
         }
-    };
+    }
 
     match shader_handle.0.parsed_shader().output_channels() {
         Some(3 | 4) => {}
@@ -325,40 +365,160 @@ pub fn start<'gc>(
         }
     }
 
-    let output = activation
-        .context
-        .renderer
-        .run_pixelbender_shader(shader_handle, &arguments, &pixel_bender_target)
-        .expect("Failed to run shader");
+    this.set_slot(shader_job_slots::_STATE, STATE_QUEUED.into(), activation)?;
+    this.set_slot(shader_job_slots::_PROGRESS, 0.0.into(), activation)?;
 
-    match output {
-        PixelBenderOutput::Bitmap(sync_handle) => {
-            let target_bitmap = target
-                .as_bitmap_data()
-                .unwrap()
-                .sync(activation.context.renderer);
-            let mut target_bitmap_data = target_bitmap.borrow_mut(activation.gc());
-            let width = target_bitmap_data.width();
-            let height = target_bitmap_data.height();
-            target_bitmap_data.set_gpu_dirty(
-                activation.gc(),
-                sync_handle,
-                PixelRegion::for_whole_size(width, height),
-            );
+    let pending = PendingShaderJob {
+        job: this,
+        shader: shader_handle,
+        arguments,
+    };
+    if wait_for_completion {
+        run_job(activation, pending, false)?;
+    } else {
+        activation.context.avm2.shader_jobs.push(pending);
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: runs the background jobs queued by `start(false)`, in order, and dispatches their
+/// `complete` events. Called by `Player::run_actions` at the end of each script turn.
+pub fn run_pending(context: &mut UpdateContext<'_>) {
+    while !context.avm2.shader_jobs.is_empty() {
+        let pending = context.avm2.shader_jobs.remove(0);
+        let mut activation = Activation::from_nothing(context);
+        if let Err(error) = run_job(&mut activation, pending, true) {
+            tracing::error!("Background ShaderJob failed: {error:?}");
         }
-        PixelBenderOutput::Bytes(pixels) => {
-            if let Some(mut bytearray) = target.as_bytearray_mut() {
-                bytearray.write_at(&pixels, 0).unwrap();
-            } else if let Some(mut vector) = target.as_vector_storage_mut(activation.gc()) {
-                let new_values = bytemuck::cast_slice::<u8, f32>(&pixels)
-                    .iter()
-                    .map(|p| Value::from(*p as f64));
-                vector.replace_storage_with_iter(new_values);
-            } else {
-                return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+    }
+}
+
+/// Timffle: executes one job and writes its result into the target (nothing is written into a
+/// disposed BitmapData, but the job still completes). With `dispatch`, a `ShaderEvent.COMPLETE`
+/// carrying the target is dispatched on the job afterwards.
+fn run_job<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    pending: PendingShaderJob<'gc>,
+    dispatch: bool,
+) -> Result<(), Error<'gc>> {
+    let PendingShaderJob {
+        job: this,
+        shader: shader_handle,
+        arguments,
+    } = pending;
+
+    if this
+        .get_slot(shader_job_slots::_STATE)
+        .coerce_to_i32(activation)?
+        != STATE_QUEUED
+    {
+        // Cancelled while queued: no result, no event.
+        return Ok(());
+    }
+
+    let target = this
+        .get_slot(shader_job_slots::_TARGET)
+        .as_object()
+        .expect("ShaderJob.target is not an object");
+
+    let output_width = this.get_slot(shader_job_slots::_WIDTH).as_u32();
+
+    let output_height = this.get_slot(shader_job_slots::_HEIGHT).as_u32();
+
+    let disposed_bitmap = target
+        .as_bitmap_data()
+        .is_some_and(|bitmap| bitmap.disposed());
+
+    if !disposed_bitmap {
+        let pixel_bender_target = if let Some(bitmap) = target.as_bitmap_data() {
+            let target_bitmap = bitmap.sync(activation.context.renderer);
+            // Perform both a GPU->CPU and CPU->GPU sync before writing to it.
+            // FIXME - are both necessary?
+            let mut target_bitmap_data = target_bitmap.borrow_mut(activation.gc());
+            target_bitmap_data.update_dirty_texture(activation.context.renderer);
+
+            PixelBenderTarget::Bitmap(target_bitmap_data.bitmap_handle(activation.context.renderer))
+        } else {
+            PixelBenderTarget::Bytes {
+                width: output_width,
+                height: output_height,
+            }
+        };
+
+        let output = activation
+            .context
+            .renderer
+            .run_pixelbender_shader(shader_handle, &arguments, &pixel_bender_target)
+            .expect("Failed to run shader");
+
+        match output {
+            PixelBenderOutput::Bitmap(sync_handle) => {
+                let target_bitmap = target
+                    .as_bitmap_data()
+                    .unwrap()
+                    .sync(activation.context.renderer);
+                let mut target_bitmap_data = target_bitmap.borrow_mut(activation.gc());
+                let width = target_bitmap_data.width();
+                let height = target_bitmap_data.height();
+                target_bitmap_data.set_gpu_dirty(
+                    activation.gc(),
+                    sync_handle,
+                    PixelRegion::for_whole_size(width, height),
+                );
+            }
+            PixelBenderOutput::Bytes(pixels) => {
+                if let Some(mut bytearray) = target.as_bytearray_mut() {
+                    // Timffle: the floats are written in the ByteArray's own byte order, so
+                    // readFloat() gives them back (Flash Player 32 returns the right values
+                    // from a default big-endian ByteArray).
+                    let floats = bytemuck::cast_slice::<u8, f32>(&pixels);
+                    let mut ordered = Vec::with_capacity(pixels.len());
+                    for float in floats {
+                        match bytearray.endian() {
+                            Endian::Big => ordered.extend_from_slice(&float.to_be_bytes()),
+                            Endian::Little => ordered.extend_from_slice(&float.to_le_bytes()),
+                        }
+                    }
+                    bytearray.write_at(&ordered, 0).unwrap();
+                } else if let Some(mut vector) = target.as_vector_storage_mut(activation.gc()) {
+                    let new_values = bytemuck::cast_slice::<u8, f32>(&pixels)
+                        .iter()
+                        .map(|p| Value::from(*p as f64));
+                    vector.replace_storage_with_iter(new_values);
+                } else {
+                    return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+                }
             }
         }
     }
 
-    Ok(Value::Undefined)
+    this.set_slot(shader_job_slots::_STATE, STATE_DONE.into(), activation)?;
+    this.set_slot(shader_job_slots::_PROGRESS, 1.0.into(), activation)?;
+
+    if dispatch {
+        let (bitmap, bytes, vector) = if target.as_bitmap_data().is_some() {
+            (target.into(), Value::Null, Value::Null)
+        } else if target.as_bytearray().is_some() {
+            (Value::Null, target.into(), Value::Null)
+        } else {
+            (Value::Null, Value::Null, target.into())
+        };
+        let shader_event_class = activation.avm2().classes().shaderevent;
+        let event = EventObject::from_class_and_args(
+            activation,
+            shader_event_class,
+            &[
+                AvmString::new_utf8(activation.gc(), "complete").into(),
+                false.into(),
+                false.into(),
+                bitmap,
+                bytes,
+                vector,
+            ],
+        );
+        Avm2::dispatch_event(activation.context, event, this);
+    }
+
+    Ok(())
 }

@@ -1929,6 +1929,20 @@ impl Player {
                                         from: cur_over_object,
                                     },
                                 ));
+
+                                // Timffle: Flash's `trackAsMenu` (MovieClip / SimpleButton in
+                                // AVM2): the object under the mouse gets `click` although the
+                                // press happened elsewhere — after the pressed object's
+                                // `releaseOutside`, with the flag read at dispatch time, as
+                                // measured on Flash Player 32 (D58Misc).
+                                if over_object.as_displayobject().movie().is_action_script_3() {
+                                    events.push((
+                                        over_object,
+                                        ClipEvent::MenuRelease {
+                                            index: context.input.last_click_index(),
+                                        },
+                                    ));
+                                }
                             } else {
                                 new_cursor = MouseCursor::Arrow;
                             }
@@ -2023,6 +2037,14 @@ impl Player {
         object1: DisplayObject<'gc>,
         object2: DisplayObject<'gc>,
     ) -> bool {
+        // Timffle: this "same timeline character at the same depth" rule exists for objects a
+        // goto re-created while the mouse was held; objects made by script (`new Sprite()`,
+        // all character id 0) are only equal to themselves — otherwise a press on one script
+        // clip and a release on another counted as a click (measured against Flash Player 32
+        // in display_small_members).
+        if !object1.instantiated_by_timeline() || !object2.instantiated_by_timeline() {
+            return false;
+        }
         object1.depth() == object2.depth()
             && object1.id() == object2.id()
             && SwfMovie::ptr_eq(&object1.movie(), &object2.movie())
@@ -2264,6 +2286,22 @@ impl Player {
         &mut *self.ui
     }
 
+    /// Timffle: true for an AVM2 MovieClip with `trackAsMenu` set or an AVM2 SimpleButton
+    /// in menu tracking mode.
+    pub(crate) fn avm2_tracks_as_menu(object: InteractiveObject<'_>) -> bool {
+        let dobj = object.as_displayobject();
+        if !dobj.movie().is_action_script_3() {
+            return false;
+        }
+        if let Some(mc) = dobj.as_movie_clip() {
+            mc.track_as_menu()
+        } else if let Some(button) = dobj.as_avm2_button() {
+            button.button_tracking() == crate::display_object::ButtonTracking::Menu
+        } else {
+            false
+        }
+    }
+
     pub fn run_actions(context: &mut UpdateContext<'_>) {
         // Note that actions can queue further actions, so a while loop is necessary here.
         while let Some(action) = context.action_queue.pop_action() {
@@ -2342,6 +2380,12 @@ impl Player {
                     Avm1::notify_system_listeners(action.clip, listener, method, &args, context);
                 }
             }
+        }
+
+        // Timffle: background `ShaderJob`s finish after the script turn that queued them
+        // (their `complete` handlers may queue more, hence inside this function).
+        if !context.avm2.shader_jobs.is_empty() {
+            crate::avm2::globals::flash::display::shader_job::run_pending(context);
         }
     }
 
