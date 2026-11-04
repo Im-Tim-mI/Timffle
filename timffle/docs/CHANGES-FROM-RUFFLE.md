@@ -108,6 +108,19 @@
 - **`wmodeGPU`**：頁面要求 `wmode=gpu` 且由 GPU 繪圖後端（WebGPU／WebGL／wgpu）繪製時 true，否則 false（真 Flash standalone：false）。
 - **沒有該功能的機器上 Flash 的行為**：`softKeyboardRect` 永遠 (0,0,0,0) 且每次同一個物件（播放器沒有自己的軟鍵盤；瀏覽器的螢幕鍵盤在舞台之外、大小不公開）；`displayContextInfo` null、唯讀；`constructor` 讀 null、寫入忽略（Flash 32 量到）。
 
+### 第 2 組：系統與網路（flash.system.System 12 項、flash.net.SharedObject 12 項）
+
+- **參考值來自真 Flash**：`timffle/difftest/src/D44System.hx`（ime、processCPUUsage、useCodePage、vmVersion、三個記憶體值的關係、disposeXML 前後每個節點的狀態、pauseForGCIfCollectionImminent 的各種參數）、`D46SystemExit.hx`（pause／resume 期間 enterFrame 是否前進、exit 在 remote 沙箱的錯誤；每個危險呼叫前先回報一次）與 `D45SharedObject.hx`（每個成員的回傳值與錯誤碼、AMF0／AMF3 的 size、getRemote 的鍵、connect 的事件順序），在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出。測試 `shared_object_members` 的 98 行與它逐行相同；`system_members` 除了本機沒有 IME（`IME.isSupported` false）與記憶體數值只比性質（>0、4 KiB 整數倍）外相同。
+- **記憶體**（`core/src/memory.rs`）：Flash 回報自己的堆積（`totalMemory` 使用中、`freeMemory` 配置但未用、`privateMemory` 整個行程，都是 4 KiB 頁）。Ruffle 沒有自己的堆積，所以 `CountingAllocator` 包住桌面版、網頁版與測試二進位的全域配置器（desktop/src/main.rs 在 `tracy` 特性外、web/src/lib.rs、tests/tests/regression_tests.rs），算出 Rust 目前配置的位元組當 `totalMemory`；`privateMemory` 問平台（wasm 線性記憶體大小、Linux 的 `/proc/self/statm` RSS）；`freeMemory` = private − total。沒裝計數器的前端 total 退成行程大小。測試執行檔跟別的測試共用行程，所以測試只比每個值自己的性質。
+- **`disposeXML`**：Flash 量到的規則是把節點**以下**拆開——每個子孫 `parent()` 成 null（根節點的 `parent()` 仍是 undefined，所以 `E4XNodeData` 多一個 `disposed` 旗標讓 `XML.parent()` 分辨）、子節點清單清空，節點本身保留子節點清單、名稱與屬性，屬性保留父節點；文字節點與 null 不動。
+- **`pauseForGCIfCollectionImminent(imminence)`**：gc-arena 的 `allocation_debt() / total_gc_count()` 當「下次回收有多近」的估計，達到 `imminence`（NaN 當 0.75，夾在 0..1）就設 `full_gc_requested`，跟 `Loader.unloadAndStop(true)` 一樣在這次更新後跑完整週期。
+- **`exit(code)`**：瀏覽器 `SecurityError #2018`，非 local-trusted `#2017`（真 Flash standalone 從 HTTP 載入也是 remote 沙箱、丟 #2017），其餘呼叫新的 `UiBackend::exit`——桌面版送 `RuffleEvent::ExitRequested` 結束事件迴圈，沒有這能力的宿主忽略。
+- **`ime`**：`IME` 是 `[Ruffle(Abstract)]`，物件由 Rust 建立（`SystemClasses::ime`），每個播放器一個；`IME` 的成員本身屬第 5 組。**`useCodePage`** 讀寫 `SystemProperties::use_codepage`（AVM1 `System.useCodePage` 同一個，`loader.rs` 用它決定文字解碼）。**`vmVersion`** "2.1 sec cyclone"（Flash 32 的 AVM2 版本字串）。
+- **沒有該功能的機器上 Flash 的行為**：`pause()`／`resume()` 是除錯器掛鉤，發行版播放器不停（量到 pause 後 500 ms 內 enterFrame 前進了 17 次），所以是真的什麼都不做；`processCPUUsage` 是 AIR 專屬，Flash Player 回 int 0。
+- **`SharedObject.objectEncoding`／`defaultObjectEncoding`**：`SharedObjectObject` 記住 AMF 版本，`new_lso` 用它序列化（上游一律 AMF3）；只接受 0／3（`ArgumentError #2008`）。`defaultObjectEncoding` 存在 `Avm2` 上、照 Flash 不驗證（量到 1、2、5 都存得進去），新物件 0 → AMF0、其餘 AMF3。`preventBackup` 也在 `Avm2` 上：設定前讀回 null（Flash Player 的回答），所以 getter 是 native。
+- **遠端共用物件**（`getRemote`）：路徑必須是 rtmp／rtmpt／rtmps／rtmpe／rtmpte／rtmfp（量到 null 與 http 路徑都是 `Error #2134`；name null `TypeError #2007`）；鍵是 (name, path, persistence)，放在 `avm2_shared_objects` 同一張表、鍵以 `rtmp-remote://` 開頭（本機鍵一定以主機名開頭，不會撞）；`flush()` `#2130`、`clear()` 不碰磁碟、播放器結束時的統一 flush 跳過它們。`connect()`：本機物件、null 或未連線的 NetConnection 丟 `#2139`；已連線（Ruffle 只有 `connect(null)` 與 Flash Remoting，沒有 RTMP）先對物件派送 `NetStatusEvent` code "SharedObject.UriMismatch"、level "error"，再丟 `#2139`——與真 Flash 對 URI 不符的連線一樣。`send()`、`setDirty()`（null `#2007`）、`close()`、`fps` 在沒有伺服器連線時沒有可做的事（Flash 也不報錯；`setProperty()` 現在會呼叫 `setDirty()`）。`client` 預設是物件本身，null 或非物件 `TypeError #2004`。
+- **AIR 專屬**：`deleteAll(url)`／`getDiskUsage(url)` 在 Flash Player 對任何 URL（含自己的 URL）都是 `Error #2014`，null `#2007`，Timffle 照做，不刪也不算。AVM1 的 `SharedObject.deleteAll`／`getDiskUsage` 仍是上游的 stub（不在 AVM2 stub-report 範圍）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
