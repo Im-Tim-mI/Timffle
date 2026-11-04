@@ -1,5 +1,4 @@
 num_ticks = 1
-known_failure = true
 
 [[compilers]]
 type = "Asc"
@@ -8,8 +7,6 @@ class = "Test"
 scripts = ["Test.as"]
 swf_version = 41
 
-# TODO This output differs from FP due to the
-#   winding behavior not being implemented.
 [image_comparisons.output]
 trigger = 1
 

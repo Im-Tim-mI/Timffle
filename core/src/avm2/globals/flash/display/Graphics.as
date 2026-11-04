@@ -117,8 +117,31 @@ package flash.display {
             culling:String = "none"
         ):void;
 
+        // Timffle: like Flash's playerglobal, a GraphicsPath item goes through
+        // drawPathObject() -> drawPath() (visible in error stack traces and sharing
+        // drawPath's fill-group rules); other items are handled natively one by one.
         [API("662")]
-        public native function drawGraphicsData(graphicsData:Vector.<IGraphicsData>):void;
+        public function drawGraphicsData(graphicsData:Vector.<IGraphicsData>):void {
+            if (graphicsData == null) {
+                Error.throwError(TypeError, 2007, "graphicsData");
+            }
+            for (var i:int = 0; i < graphicsData.length; i++) {
+                var item:IGraphicsData = graphicsData[i];
+                if (item is GraphicsPath) {
+                    this.drawPathObject(GraphicsPath(item));
+                } else if (item != null) {
+                    this.drawGraphicsDataItem(item);
+                }
+            }
+        }
+
+        private function drawPathObject(path:GraphicsPath):void {
+            if (path.commands != null && path.data != null) {
+                this.drawPath(path.commands, path.data, path.winding);
+            }
+        }
+
+        private native function drawGraphicsDataItem(item:IGraphicsData):void;
 
         [API("662")]
         public function lineShaderStyle(shader:Shader, matrix:Matrix = null):void {

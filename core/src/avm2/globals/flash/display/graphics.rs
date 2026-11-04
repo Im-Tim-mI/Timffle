@@ -1016,14 +1016,9 @@ pub fn draw_path<'gc>(
         .parse()
         .map_err(|_| make_error_2008(activation, "winding"))?;
 
-    // FIXME - implement fill behavior described in the Flash docs
-    // (which is different from just running each command sequentially on `Graphics`)
-    avm2_stub_method!(
-        activation,
-        "flash.display.Graphics",
-        "drawPath",
-        "fill behavior"
-    );
+    // Timffle: the fill behaviour described in the Flash docs (own fill group per
+    // winding rule, strokes never implicitly closed) is implemented by `process_commands`
+    // on top of `Drawing::begin_path_group`/`begin_path_stroke`.
 
     let commands = commands
         .as_vector_storage()
@@ -1057,24 +1052,6 @@ pub fn draw_triangles<'gc>(
             TriangleCulling::from_string(culling)
                 .ok_or_else(|| make_error_2004(activation, Error2004Type::ArgumentError))?
         };
-
-        // FIXME Triangles should be drawn using non-zero winding rule.
-        //   When fixed, update output.expected.png of avm2/graphics_draw_triangles.
-        avm2_stub_method!(
-            activation,
-            "flash.display.Graphics",
-            "drawTriangles",
-            "winding behavior"
-        );
-
-        if uvt_data.is_some() {
-            avm2_stub_method!(
-                activation,
-                "flash.display.Graphics",
-                "drawTriangles",
-                "with uvt data"
-            );
-        }
 
         draw_triangles_internal(
             activation,
@@ -1208,6 +1185,21 @@ impl TriangleData {
             Self::Sequential { triangles } => Either::Right(triangles.iter().copied()),
         }
     }
+
+    // Timffle: the vertex indices (into the `vertices` vector) of every triangle, in the
+    // same order as `iter_triangles`; used to look up UVT data.
+    fn iter_vertex_indices(&self) -> impl Iterator<Item = [usize; 3]> + '_ {
+        match self {
+            Self::Indexed { indices, .. } => Either::Left(
+                indices
+                    .iter()
+                    .map(|&[i0, i1, i2]| [i0 as usize, i1 as usize, i2 as usize]),
+            ),
+            Self::Sequential { triangles } => Either::Right(
+                (0..triangles.len()).map(|i| [i * 3, i * 3 + 1, i * 3 + 2]),
+            ),
+        }
+    }
 }
 
 fn make_point<'gc>([x, y]: &[Value<'gc>; 2]) -> Point<Twips> {
@@ -1237,69 +1229,295 @@ impl TriangleCulling {
         }
     }
 
+    fn orientation([a, b, c]: [Point<Twips>; 3]) -> i64 {
+        let ax = a.x.get() as i64;
+        let ay = a.y.get() as i64;
+        let bx = b.x.get() as i64;
+        let by = b.y.get() as i64;
+        let cx = c.x.get() as i64;
+        let cy = c.y.get() as i64;
+        (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+    }
+
     #[inline]
     fn cull(self, points: [Point<Twips>; 3]) -> bool {
-        fn triangle_orientation([a, b, c]: [Point<Twips>; 3]) -> i64 {
-            let ax = a.x.get() as i64;
-            let ay = a.y.get() as i64;
-            let bx = b.x.get() as i64;
-            let by = b.y.get() as i64;
-            let cx = c.x.get() as i64;
-            let cy = c.y.get() as i64;
-            (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-        }
-
         match self {
             Self::None => false,
-            Self::Positive => triangle_orientation(points) >= 0,
-            Self::Negative => triangle_orientation(points) <= 0,
+            Self::Positive => Self::orientation(points) >= 0,
+            Self::Negative => Self::orientation(points) <= 0,
         }
     }
 }
 
+// Timffle: real `drawTriangles`. Measured on Flash Player 32 (timffle/difftest/src/
+// D55Graphics.hx, D56Graphics2.hx, D57Winding.hx):
+// * every call is its own fill group and overlapping triangles form a union whatever
+//   their orientation (drawn with a consistent orientation under the non-zero rule);
+// * `uvtData` must hold 2 or 3 numbers per vertex, otherwise ArgumentError #2004, even
+//   without a bitmap fill;
+// * with a bitmap fill, UVs map the bitmap onto each triangle (the fill matrix is
+//   ignored, repeat/smooth are kept); a third `t` value gives perspective-correct
+//   mapping (u/v weighted by t), approximated by subdividing the triangle;
+// * a gradient fill with uvtData draws nothing; a solid fill ignores the UVs.
 fn draw_triangles_internal<'gc>(
     activation: &mut Activation<'_, 'gc>,
     drawing: &mut Drawing,
     vertices: &Object<'gc>,
     indices: Option<&Object<'gc>>,
-    _uvt_data: Option<&Object<'gc>>,
+    uvt_data: Option<&Object<'gc>>,
     culling: TriangleCulling,
 ) -> Result<(), Error<'gc>> {
+    let num_vertices = vertices
+        .as_vector_storage()
+        .expect("vertices is not a Vector")
+        .length()
+        / 2;
+
+    let uvt: Option<Vec<f64>> = if let Some(uvt_data) = uvt_data {
+        let storage = uvt_data
+            .as_vector_storage()
+            .expect("uvtData is not a Vector");
+        let len = storage.length();
+        if len != num_vertices * 2 && len != num_vertices * 3 {
+            return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        }
+        Some(storage.storage().iter().map(|v| v.as_f64()).collect())
+    } else {
+        None
+    };
+
     let Some(data) = TriangleData::new(activation, vertices, indices)? else {
         return Ok(());
     };
 
-    for [a, b, c] in data.iter_triangles().filter(|&tri| !culling.cull(tri)) {
-        drawing.draw_command(DrawCommand::MoveTo(a));
-        drawing.draw_command(DrawCommand::LineTo(b));
-        drawing.draw_command(DrawCommand::LineTo(c));
-        drawing.draw_command(DrawCommand::LineTo(a));
+    let Some(fill_style) = drawing.current_fill_style().cloned() else {
+        // No fill: only the stroke is drawn (triangles still need their own group so
+        // later commands do not join them).
+        for [a, b, c] in data.iter_triangles().filter(|&tri| !culling.cull(tri)) {
+            drawing.draw_command(DrawCommand::MoveTo(a));
+            drawing.draw_command(DrawCommand::LineTo(b));
+            drawing.draw_command(DrawCommand::LineTo(c));
+            drawing.draw_command(DrawCommand::LineTo(a));
+        }
+        return Ok(());
+    };
+
+    let textured = match (&uvt, &fill_style) {
+        (Some(_), FillStyle::Bitmap { .. }) => true,
+        (Some(_), FillStyle::Color(_)) | (None, _) => false,
+        // Flash draws nothing for a gradient fill with UV data.
+        (Some(_), _) => {
+            drawing.begin_triangles_group(fill_style);
+            return Ok(());
+        }
+    };
+
+    drawing.begin_triangles_group(fill_style.clone());
+
+    if !textured {
+        for tri in data.iter_triangles().filter(|&tri| !culling.cull(tri)) {
+            let [a, b, c] = orient(tri);
+            drawing.draw_command_in_group(DrawCommand::MoveTo(a));
+            drawing.draw_command_in_group(DrawCommand::LineTo(b));
+            drawing.draw_command_in_group(DrawCommand::LineTo(c));
+            drawing.draw_command_in_group(DrawCommand::LineTo(a));
+        }
+        return Ok(());
     }
+
+    let uvt = uvt.expect("checked above");
+    let stride = uvt.len() / num_vertices.max(1);
+    let (bitmap_width, bitmap_height) = match &fill_style {
+        FillStyle::Bitmap { id, .. } => {
+            use ruffle_render::bitmap::BitmapSource;
+            let size = drawing
+                .bitmap_size(*id)
+                .expect("bitmap fill refers to a registered bitmap");
+            (size.width as f64, size.height as f64)
+        }
+        _ => unreachable!(),
+    };
+
+    let uvt_at = |vertex: usize| -> [f64; 3] {
+        let base = vertex * stride;
+        let t = if stride == 3 { uvt[base + 2] } else { 1.0 };
+        [uvt[base] * bitmap_width, uvt[base + 1] * bitmap_height, t]
+    };
+
+    for (tri, verts) in data
+        .iter_triangles()
+        .zip(data.iter_vertex_indices())
+        .filter(|&(tri, _)| !culling.cull(tri))
+    {
+        let tv = [
+            TexturedVertex {
+                p: tri[0],
+                uvt: uvt_at(verts[0]),
+            },
+            TexturedVertex {
+                p: tri[1],
+                uvt: uvt_at(verts[1]),
+            },
+            TexturedVertex {
+                p: tri[2],
+                uvt: uvt_at(verts[2]),
+            },
+        ];
+        draw_textured_triangle(drawing, &fill_style, tv, 0);
+    }
+
+    // Leave a fresh triangles group with the original fill style so the next ordinary
+    // command continues with it.
+    drawing.begin_triangles_group(fill_style);
 
     Ok(())
 }
 
-/// Implements `Graphics.drawGraphicsData`
-pub fn draw_graphics_data<'gc>(
+/// Timffle: put a triangle into a consistent orientation so that all triangles of a
+/// `drawTriangles` group have the same winding direction (union under non-zero).
+fn orient([a, b, c]: [Point<Twips>; 3]) -> [Point<Twips>; 3] {
+    if TriangleCulling::orientation([a, b, c]) < 0 {
+        [a, c, b]
+    } else {
+        [a, b, c]
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TexturedVertex {
+    p: Point<Twips>,
+    /// u and v in bitmap pixels, t as given (1 without perspective).
+    uvt: [f64; 3],
+}
+
+impl TexturedVertex {
+    /// Perspective-correct midpoint of an edge: u and v are interpolated weighted by t.
+    fn midpoint(self, other: Self) -> Self {
+        let [u0, v0, t0] = self.uvt;
+        let [u1, v1, t1] = other.uvt;
+        let tsum = t0 + t1;
+        let (u, v) = if tsum.abs() > f64::EPSILON {
+            ((u0 * t0 + u1 * t1) / tsum, (v0 * t0 + v1 * t1) / tsum)
+        } else {
+            ((u0 + u1) / 2.0, (v0 + v1) / 2.0)
+        };
+        Self {
+            p: Point::new(
+                Twips::new((self.p.x.get() + other.p.x.get()) / 2),
+                Twips::new((self.p.y.get() + other.p.y.get()) / 2),
+            ),
+            uvt: [u, v, tsum / 2.0],
+        }
+    }
+}
+
+/// Timffle: draw one textured triangle as a bitmap fill whose matrix maps the bitmap
+/// onto the triangle. Triangles whose `t` values differ (perspective) are subdivided
+/// into affine pieces until the perspective error is small.
+fn draw_textured_triangle(
+    drawing: &mut Drawing,
+    fill_style: &FillStyle,
+    tv: [TexturedVertex; 3],
+    depth: u32,
+) {
+    const MAX_DEPTH: u32 = 5;
+    const MIN_EDGE: i32 = 4 * Twips::TWIPS_PER_PIXEL as i32;
+
+    let ts = [tv[0].uvt[2], tv[1].uvt[2], tv[2].uvt[2]];
+    let t_min = ts.iter().cloned().fold(f64::INFINITY, f64::min);
+    let t_max = ts.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let needs_split = t_min > 0.0 && t_max / t_min > 1.02;
+    let edge = |a: Point<Twips>, b: Point<Twips>| {
+        (a.x.get() - b.x.get()).abs().max((a.y.get() - b.y.get()).abs())
+    };
+    let longest = edge(tv[0].p, tv[1].p)
+        .max(edge(tv[1].p, tv[2].p))
+        .max(edge(tv[2].p, tv[0].p));
+
+    if needs_split && depth < MAX_DEPTH && longest > MIN_EDGE {
+        let m01 = tv[0].midpoint(tv[1]);
+        let m12 = tv[1].midpoint(tv[2]);
+        let m20 = tv[2].midpoint(tv[0]);
+        draw_textured_triangle(drawing, fill_style, [tv[0], m01, m20], depth + 1);
+        draw_textured_triangle(drawing, fill_style, [m01, tv[1], m12], depth + 1);
+        draw_textured_triangle(drawing, fill_style, [m20, m12, tv[2]], depth + 1);
+        draw_textured_triangle(drawing, fill_style, [m01, m12, m20], depth + 1);
+        return;
+    }
+
+    let [a, b, c] = [tv[0].p, tv[1].p, tv[2].p];
+    let (p0, p1, p2) = (
+        (a.x.get() as f64, a.y.get() as f64),
+        (b.x.get() as f64, b.y.get() as f64),
+        (c.x.get() as f64, c.y.get() as f64),
+    );
+    let (b0, b1, b2) = (
+        (tv[0].uvt[0], tv[0].uvt[1]),
+        (tv[1].uvt[0], tv[1].uvt[1]),
+        (tv[2].uvt[0], tv[2].uvt[1]),
+    );
+    // Affine map M with M * (u_i, v_i) = p_i (bitmap pixels -> twips).
+    let (db1x, db1y) = (b1.0 - b0.0, b1.1 - b0.1);
+    let (db2x, db2y) = (b2.0 - b0.0, b2.1 - b0.1);
+    let (dp1x, dp1y) = (p1.0 - p0.0, p1.1 - p0.1);
+    let (dp2x, dp2y) = (p2.0 - p0.0, p2.1 - p0.1);
+    let det = db1x * db2y - db2x * db1y;
+    let style = if det.abs() > 1e-9 {
+        let ma = (dp1x * db2y - dp2x * db1y) / det;
+        let mc = (dp2x * db1x - dp1x * db2x) / det;
+        let mb = (dp1y * db2y - dp2y * db1y) / det;
+        let md = (dp2y * db1x - dp1y * db2x) / det;
+        let tx = p0.0 - ma * b0.0 - mc * b0.1;
+        let ty = p0.1 - mb * b0.0 - md * b0.1;
+        let matrix = Matrix::from(ruffle_render::matrix::Matrix {
+            a: ma as f32,
+            b: mb as f32,
+            c: mc as f32,
+            d: md as f32,
+            tx: Twips::new(tx.round() as i32),
+            ty: Twips::new(ty.round() as i32),
+        });
+        match fill_style {
+            FillStyle::Bitmap {
+                id,
+                is_smoothed,
+                is_repeating,
+                ..
+            } => FillStyle::Bitmap {
+                id: *id,
+                matrix,
+                is_smoothed: *is_smoothed,
+                is_repeating: *is_repeating,
+            },
+            other => other.clone(),
+        }
+    } else {
+        // Degenerate UVs: the whole triangle samples one bitmap point.
+        fill_style.clone()
+    };
+
+    let [a, b, c] = orient([a, b, c]);
+    drawing.begin_triangles_group(style);
+    drawing.draw_command_in_group(DrawCommand::MoveTo(a));
+    drawing.draw_command_in_group(DrawCommand::LineTo(b));
+    drawing.draw_command_in_group(DrawCommand::LineTo(c));
+    drawing.draw_command_in_group(DrawCommand::LineTo(a));
+}
+
+/// Implements `Graphics.drawGraphicsDataItem` (one non-GraphicsPath item of
+/// `drawGraphicsData`; GraphicsPath items go through `drawPath` in Graphics.as).
+// Timffle: was `drawGraphicsData` over the whole vector.
+pub fn draw_graphics_data_item<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
+    let obj = args.get_object(activation, 0, "item")?;
+    let this = this.as_display_object().expect("Bad this");
 
-    if let Some(vector) = args
-        .get_object(activation, 0, "graphicsData")?
-        .as_vector_storage()
-    {
-        let this = this.as_display_object().expect("Bad this");
-
-        if let Some(mut drawing) = this.as_drawing() {
-            for elem in vector.iter() {
-                if let Some(obj) = elem.as_object() {
-                    handle_igraphics_data(activation, &mut drawing, &obj)?;
-                }
-            }
-        };
+    if let Some(mut drawing) = this.as_drawing() {
+        handle_igraphics_data(activation, &mut drawing, &obj)?;
     }
 
     Ok(Value::Undefined)
@@ -1401,7 +1619,10 @@ fn process_commands<'gc>(
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
 
-    drawing.set_fill_rule(Some(fill_rule));
+    // Timffle: Flash's drawPath fill rules — own fill group per winding rule (merged with
+    // a directly preceding drawPath of the same rule), strokes never implicitly closed.
+    drawing.begin_path_group(fill_rule);
+    drawing.begin_path_stroke();
 
     fn process_command<'gc>(
         activation: &mut Activation<'_, 'gc>,
@@ -1417,37 +1638,37 @@ fn process_commands<'gc>(
             // MOVE_TO
             1 => {
                 let point = read_point(activation, data, data_index)?;
-                drawing.draw_command(DrawCommand::MoveTo(point));
+                drawing.draw_command_in_group(DrawCommand::MoveTo(point));
             }
             // LINE_TO
             2 => {
                 let point = read_point(activation, data, data_index)?;
-                drawing.draw_command(DrawCommand::LineTo(point));
+                drawing.draw_command_in_group(DrawCommand::LineTo(point));
             }
             // CURVE_TO
             3 => {
                 let control = read_point(activation, data, data_index)?;
                 let anchor = read_point(activation, data, data_index)?;
-                drawing.draw_command(DrawCommand::QuadraticCurveTo { control, anchor });
+                drawing.draw_command_in_group(DrawCommand::QuadraticCurveTo { control, anchor });
             }
             // WIDE_MOVE_TO
             4 => {
                 *data_index += 2;
                 let point = read_point(activation, data, data_index)?;
-                drawing.draw_command(DrawCommand::MoveTo(point));
+                drawing.draw_command_in_group(DrawCommand::MoveTo(point));
             }
             // WIDE_LINE_TO
             5 => {
                 *data_index += 2;
                 let point = read_point(activation, data, data_index)?;
-                drawing.draw_command(DrawCommand::LineTo(point));
+                drawing.draw_command_in_group(DrawCommand::LineTo(point));
             }
             // CUBIC_CURVE_TO
             6 => {
                 let control_a = read_point(activation, data, data_index)?;
                 let control_b = read_point(activation, data, data_index)?;
                 let anchor = read_point(activation, data, data_index)?;
-                drawing.draw_command(DrawCommand::CubicCurveTo {
+                drawing.draw_command_in_group(DrawCommand::CubicCurveTo {
                     control_a,
                     control_b,
                     anchor,
@@ -1473,8 +1694,9 @@ fn process_commands<'gc>(
         }
     }
 
-    // Reset winding rule after drawing commands
-    drawing.set_fill_rule(None);
+    // Timffle: the drawPath stroke sub-path ends here (never implicitly closed); the fill
+    // group stays open so a following drawPath with the same rule joins it.
+    drawing.end_path_stroke();
 
     Ok(())
 }
@@ -1612,23 +1834,6 @@ fn handle_graphics_triangle_path<'gc>(
         .as_object();
 
     if let Some(vertices) = vertices {
-        // FIXME Triangles should be drawn using non-zero winding rule.
-        avm2_stub_method!(
-            activation,
-            "flash.display.Graphics",
-            "drawGraphicsData",
-            "GraphicsTrianglePath winding behavior"
-        );
-
-        if uvt_data.is_some() {
-            avm2_stub_method!(
-                activation,
-                "flash.display.Graphics",
-                "drawGraphicsData",
-                "GraphicsTrianglePath with uvt data"
-            );
-        }
-
         draw_triangles_internal(
             activation,
             drawing,

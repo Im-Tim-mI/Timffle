@@ -8,6 +8,22 @@ use ruffle_render::shape_utils::{
 use std::cell::OnceCell;
 use swf::{FillStyle, LineStyle, Point, Rectangle, Twips};
 
+// Timffle: which API started a fill group. Flash Player keeps the sub-paths of one
+// `beginFill` in separate groups: ordinary drawing commands (moveTo/lineTo/drawRect…)
+// share an even-odd group, every `drawPath`/`GraphicsPath` call starts a group with its
+// own winding rule (consecutive calls with the same rule merge), and every
+// `drawTriangles`/`GraphicsTrianglePath` call is its own group (measured on Flash 32,
+// timffle/difftest/src/D57Winding.hx).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FillOrigin {
+    /// moveTo/lineTo/curveTo/drawRect/… commands.
+    Commands,
+    /// `Graphics.drawPath` / `GraphicsPath` with the given winding rule.
+    Path(FillRule),
+    /// `Graphics.drawTriangles` / `GraphicsTrianglePath` (rendered as a union).
+    Triangles,
+}
+
 #[derive(Clone, Debug)]
 pub struct Drawing {
     render_handle: OnceCell<ShapeHandle>,
@@ -122,6 +138,16 @@ impl Drawing {
 
     /// Set fill style and rule.
     pub fn new_fill(&mut self, style: Option<FillStyle>, rule: Option<FillRule>) {
+        self.new_fill_with_origin(style, rule, FillOrigin::Commands);
+    }
+
+    // Timffle: start a new fill group (see `FillOrigin`).
+    fn new_fill_with_origin(
+        &mut self,
+        style: Option<FillStyle>,
+        rule: Option<FillRule>,
+        origin: FillOrigin,
+    ) {
         self.close_path();
         if let Some(existing) = self.current_fill.take() {
             self.paths.push(DrawingPath::Fill(existing));
@@ -131,11 +157,13 @@ impl Drawing {
         if let Some(mut existing) = self.current_line.take() {
             existing.is_closed = self.cursor == self.fill_start;
             let style = existing.style.clone();
+            let auto_close = existing.auto_close;
             self.paths.push(DrawingPath::Line(existing));
             self.current_line = Some(DrawingLine {
                 style,
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 is_closed: false,
+                auto_close,
             });
         }
         if let Some(style) = style {
@@ -143,10 +171,68 @@ impl Drawing {
                 style,
                 rule: rule.unwrap_or(self.default_winding_rule),
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
+                origin,
             });
         }
         self.fill_start = self.cursor;
         self.mark_dirty();
+    }
+
+    /// Timffle: the style of the fill that is currently open, if any.
+    pub fn current_fill_style(&self) -> Option<&FillStyle> {
+        self.current_fill.as_ref().map(|fill| &fill.style)
+    }
+
+    /// Timffle: start (or continue) the fill group of a `drawPath` call with the given
+    /// winding rule. Consecutive `drawPath` calls with the same rule share one group;
+    /// anything else starts a new group with the current fill style.
+    pub fn begin_path_group(&mut self, rule: FillRule) {
+        if let Some(fill) = &self.current_fill {
+            if fill.origin == FillOrigin::Path(rule) {
+                return;
+            }
+            let style = fill.style.clone();
+            self.new_fill_with_origin(Some(style), Some(rule), FillOrigin::Path(rule));
+        }
+    }
+
+    /// Timffle: start a `drawTriangles` fill group with the given style (the current
+    /// fill style, or a per-triangle bitmap fill for textured triangles). Triangles are
+    /// drawn with a consistent orientation under the non-zero rule, so overlapping
+    /// triangles form a union like in Flash Player.
+    pub fn begin_triangles_group(&mut self, style: FillStyle) {
+        self.new_fill_with_origin(Some(style), Some(FillRule::NonZero), FillOrigin::Triangles);
+    }
+
+    /// Timffle: `drawPath` strokes are never implicitly closed (Flash's documented rule),
+    /// unlike lineTo strokes inside a fill. Starts a new stroke sub-path with the current
+    /// line style that will not get the closing segment.
+    pub fn begin_path_stroke(&mut self) {
+        self.split_line(false);
+    }
+
+    /// Timffle: end the `drawPath` stroke sub-path; later lineTo strokes close normally.
+    pub fn end_path_stroke(&mut self) {
+        self.split_line(true);
+    }
+
+    fn split_line(&mut self, auto_close: bool) {
+        if let Some(mut existing) = self.current_line.take() {
+            existing.is_closed = self.cursor == self.fill_start;
+            let style = existing.style.clone();
+            if self.current_fill.is_some() {
+                self.pending_lines.push(existing);
+            } else {
+                self.paths.push(DrawingPath::Line(existing));
+            }
+            self.current_line = Some(DrawingLine {
+                style,
+                commands: vec![DrawCommand::MoveTo(self.cursor)],
+                is_closed: false,
+                auto_close,
+            });
+            self.mark_dirty();
+        }
     }
 
     pub fn clear(&mut self) {
@@ -179,6 +265,7 @@ impl Drawing {
                 style,
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 is_closed: false,
+                auto_close: true,
             });
         }
 
@@ -192,6 +279,20 @@ impl Drawing {
     }
 
     pub fn draw_command(&mut self, command: DrawCommand) {
+        // Timffle: an ordinary command after a drawPath/drawTriangles group starts a new
+        // even-odd group with the same fill style (Flash keeps them apart).
+        if let Some(fill) = &self.current_fill
+            && fill.origin != FillOrigin::Commands
+        {
+            let style = fill.style.clone();
+            let rule = self.default_winding_rule;
+            self.new_fill_with_origin(Some(style), Some(rule), FillOrigin::Commands);
+        }
+        self.draw_command_in_group(command);
+    }
+
+    /// Timffle: like `draw_command`, but keeps the current drawPath/drawTriangles group.
+    pub fn draw_command_in_group(&mut self, command: DrawCommand) {
         let add_to_bounds = if let DrawCommand::MoveTo(move_to) = &command {
             // Close any pending fills before moving.
             self.close_path();
@@ -277,7 +378,8 @@ impl Drawing {
 
             for line in &self.pending_lines {
                 let mut commands = line.commands.to_owned();
-                let is_closed = if self.current_fill.is_some() {
+                // Timffle: drawPath strokes are never implicitly closed.
+                let is_closed = if self.current_fill.is_some() && line.auto_close {
                     commands.push(DrawCommand::LineTo(self.fill_start));
                     true
                 } else {
@@ -292,7 +394,7 @@ impl Drawing {
 
             if let Some(line) = &self.current_line {
                 let mut commands = line.commands.to_owned();
-                let is_closed = if self.current_fill.is_some() {
+                let is_closed = if self.current_fill.is_some() && line.auto_close {
                     commands.push(DrawCommand::LineTo(self.fill_start));
                     true
                 } else {
@@ -389,6 +491,7 @@ impl Drawing {
 
             // Stroke auto-closes if part of a fill; also check the closing line segment.
             if self.current_fill.is_some()
+                && line.auto_close
                 && self.cursor != self.fill_start
                 && shape_utils::draw_command_stroke_hit_test(
                     &[
@@ -413,7 +516,9 @@ impl Drawing {
             && self.cursor != self.fill_start
         {
             fill.commands.push(DrawCommand::LineTo(self.fill_start));
-            if let Some(line) = &mut self.current_line {
+            if let Some(line) = &mut self.current_line
+                && line.auto_close
+            {
                 line.commands.push(DrawCommand::LineTo(self.fill_start));
             }
             self.mark_dirty();
@@ -438,6 +543,8 @@ struct DrawingFill {
     style: FillStyle,
     rule: FillRule,
     commands: Vec<DrawCommand>,
+    // Timffle: which API started this group (see `FillOrigin`).
+    origin: FillOrigin,
 }
 
 #[derive(Debug, Clone)]
@@ -445,6 +552,8 @@ struct DrawingLine {
     style: LineStyle,
     commands: Vec<DrawCommand>,
     is_closed: bool,
+    // Timffle: false for drawPath strokes, which never get the implicit closing segment.
+    auto_close: bool,
 }
 
 #[derive(Debug, Clone)]
