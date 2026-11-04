@@ -54,7 +54,11 @@ fn host(runtime: PlayerRuntime) -> Host {
 
 fn version_string(activation: &mut Activation<'_, '_>) -> String {
     let host = host(activation.avm2().player_runtime);
-    format!("{} {},0,0,0", host.platform, activation.avm2().player_version)
+    format!(
+        "{} {},0,0,0",
+        host.platform,
+        activation.avm2().player_version
+    )
 }
 
 fn player_type(activation: &mut Activation<'_, '_>) -> &'static str {
@@ -70,7 +74,8 @@ fn player_type(activation: &mut Activation<'_, '_>) -> &'static str {
 }
 
 /// The screen size as Flash reports it: the viewport, adjusted for HiDPI.
-fn screen_resolution(activation: &mut Activation<'_, '_>) -> (f64, f64) {
+/// Timffle: shared with `Stage.fullScreenWidth` / `fullScreenHeight`.
+pub fn screen_resolution(activation: &mut Activation<'_, '_>) -> (f64, f64) {
     let viewport_dimensions = activation.context.renderer.viewport_dimensions();
     let width = f64::from(viewport_dimensions.width) / viewport_dimensions.scale_factor;
     let height = f64::from(viewport_dimensions.height) / viewport_dimensions.scale_factor;
@@ -207,18 +212,33 @@ capability_getter!(get_has_embedded_video, SystemCapabilities::EMBEDDED_VIDEO);
 capability_getter!(get_has_ime, SystemCapabilities::IME);
 capability_getter!(get_has_mp3, SystemCapabilities::MP3);
 capability_getter!(get_has_printing, SystemCapabilities::PRINTING);
-capability_getter!(get_has_screen_broadcast, SystemCapabilities::SCREEN_BROADCAST);
+capability_getter!(
+    get_has_screen_broadcast,
+    SystemCapabilities::SCREEN_BROADCAST
+);
 capability_getter!(get_has_screen_playback, SystemCapabilities::SCREEN_PLAYBACK);
 capability_getter!(get_has_streaming_audio, SystemCapabilities::STREAMING_AUDIO);
 capability_getter!(get_has_streaming_video, SystemCapabilities::STREAMING_VIDEO);
 capability_getter!(get_has_tls, SystemCapabilities::TLS);
 capability_getter!(get_has_video_encoder, SystemCapabilities::VIDEO_ENCODER);
 capability_getter!(get_is_debugger, SystemCapabilities::DEBUGGER);
-capability_getter!(get_is_embedded_in_acrobat, SystemCapabilities::ACROBAT_EMBEDDED);
-capability_getter!(get_supports32bit_processes, SystemCapabilities::PROCESS_32_BIT);
-capability_getter!(get_supports64bit_processes, SystemCapabilities::PROCESS_64_BIT);
+capability_getter!(
+    get_is_embedded_in_acrobat,
+    SystemCapabilities::ACROBAT_EMBEDDED
+);
+capability_getter!(
+    get_supports32bit_processes,
+    SystemCapabilities::PROCESS_32_BIT
+);
+capability_getter!(
+    get_supports64bit_processes,
+    SystemCapabilities::PROCESS_64_BIT
+);
 inverse_capability_getter!(get_av_hardware_disable, SystemCapabilities::AV_HARDWARE);
-inverse_capability_getter!(get_local_file_read_disable, SystemCapabilities::LOCAL_FILE_READ);
+inverse_capability_getter!(
+    get_local_file_read_disable,
+    SystemCapabilities::LOCAL_FILE_READ
+);
 
 /// Implements `flash.system.Capabilities._internal`
 #[allow(non_snake_case)]
@@ -303,14 +323,17 @@ pub fn get_server_string<'gc>(
     let (width, height) = screen_resolution(activation);
     let player_type = player_type(activation);
     let language = language(activation);
-    let server_string = activation.context.system.get_server_string(&ServerStringHost {
-        version: &version,
-        manufacturer: host.manufacturer,
-        os: host.os,
-        language: &language,
-        player_type,
-        width: width as u32,
-        height: height as u32,
-    });
+    let server_string = activation
+        .context
+        .system
+        .get_server_string(&ServerStringHost {
+            version: &version,
+            manufacturer: host.manufacturer,
+            os: host.os,
+            language: &language,
+            player_type,
+            width: width as u32,
+            height: height as u32,
+        });
     Ok(AvmString::new_utf8(activation.gc(), server_string).into())
 }

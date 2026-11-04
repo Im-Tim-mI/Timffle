@@ -130,6 +130,17 @@ pub struct StageData<'gc> {
     /// Whether to allow the stage's displayState to be changed.
     allow_fullscreen: Cell<bool>,
 
+    /// Timffle: `Stage.fullScreenSourceRect`, the part of the stage that is
+    /// scaled to fill the screen in full-screen mode (`None`: the whole stage).
+    full_screen_source_rect: Cell<Option<FullScreenSourceRect>>,
+
+    /// Timffle: `Stage.mouseLock`; only ever true in full-screen mode.
+    mouse_lock: Cell<bool>,
+
+    /// Timffle: the size in stage pixels of the content that `letterbox_matrix`
+    /// scales into the viewport (the movie, or `full_screen_source_rect`).
+    letterbox_content_size: Cell<(f64, f64)>,
+
     /// Whether or not a RENDER event should be dispatched on the next render
     invalidated: Cell<bool>,
 
@@ -177,6 +188,9 @@ impl<'gc> Stage<'gc> {
                 align: Default::default(),
                 forced_align: Cell::new(false),
                 allow_fullscreen: Cell::new(true),
+                full_screen_source_rect: Cell::new(None),
+                mouse_lock: Cell::new(false),
+                letterbox_content_size: Cell::new((0.0, 0.0)),
                 use_bitmap_downsampling: Cell::new(false),
                 view_bounds: Default::default(),
                 window_mode: Default::default(),
@@ -353,6 +367,47 @@ impl<'gc> Stage<'gc> {
         self.0.allow_fullscreen.set(allow);
     }
 
+    /// Timffle: `Stage.fullScreenSourceRect`.
+    pub fn full_screen_source_rect(self) -> Option<FullScreenSourceRect> {
+        self.0.full_screen_source_rect.get()
+    }
+
+    /// Timffle: set `Stage.fullScreenSourceRect`; takes effect immediately
+    /// when the stage is already full screen (as in Flash Player).
+    pub fn set_full_screen_source_rect(
+        self,
+        context: &mut UpdateContext<'gc>,
+        rect: Option<FullScreenSourceRect>,
+    ) {
+        self.0.full_screen_source_rect.set(rect);
+        if self.is_fullscreen() {
+            self.build_matrices(context);
+        }
+    }
+
+    /// Timffle: `Stage.mouseLock`.
+    pub fn mouse_lock(self) -> bool {
+        self.0.mouse_lock.get()
+    }
+
+    /// Timffle: lock or release the mouse pointer (`Stage.mouseLock`). The
+    /// caller checks that the stage is full screen; the host decides whether
+    /// it can lock the pointer at all.
+    pub fn set_mouse_lock(self, context: &mut UpdateContext<'gc>, lock: bool) {
+        if lock == self.0.mouse_lock.get() {
+            return;
+        }
+        if context.ui.set_mouse_lock(lock) {
+            self.0.mouse_lock.set(lock);
+        }
+    }
+
+    /// Timffle: the host released (or granted) the pointer lock on its own,
+    /// e.g. the user pressed Escape in the browser.
+    pub fn set_mouse_lock_state(self, locked: bool) {
+        self.0.mouse_lock.set(locked);
+    }
+
     fn is_fullscreen_state(display_state: StageDisplayState) -> bool {
         display_state == StageDisplayState::FullScreen
             || display_state == StageDisplayState::FullScreenInteractive
@@ -402,6 +457,16 @@ impl<'gc> Stage<'gc> {
 
         if result.is_ok() {
             self.0.display_state.set(display_state);
+            // Timffle: leaving full screen releases the mouse lock (Flash
+            // Player reads mouseLock as false again afterwards).
+            if !self.is_fullscreen() && self.0.mouse_lock.get() {
+                context.ui.set_mouse_lock(false);
+                self.0.mouse_lock.set(false);
+            }
+            // Timffle: fullScreenSourceRect applies only while full screen.
+            if self.0.full_screen_source_rect.get().is_some() {
+                self.build_matrices(context);
+            }
             self.fire_fullscreen_event(context);
         }
     }
@@ -472,6 +537,11 @@ impl<'gc> Stage<'gc> {
         // If content changes the scale mode or alignment, it signals that it is size-aware.
         // For example, `NoScale` is used to make responsive layouts; don't letterbox over it.
         let letterbox = self.0.letterbox.get();
+        // Timffle: a full-screen source rectangle is always scaled with black
+        // borders, whatever the scale mode.
+        if self.is_fullscreen() && self.0.full_screen_source_rect.get().is_some() {
+            return true;
+        }
         self.0.scale_mode.get() == StageScaleMode::ShowAll
             && self.0.align.get().is_empty()
             && self.0.window_mode.get() != WindowMode::Transparent
@@ -505,6 +575,48 @@ impl<'gc> Stage<'gc> {
 
         let viewport_width = viewport_size.width as f64;
         let viewport_height = viewport_size.height as f64;
+
+        // Timffle: in full-screen mode with a `fullScreenSourceRect`, that part
+        // of the stage is scaled (keeping its aspect ratio, centred, black
+        // borders) to fill the screen instead of the whole movie.
+        if self.is_fullscreen()
+            && let Some(rect) = self.0.full_screen_source_rect.get()
+        {
+            let rect_width = f64::from(rect.width);
+            let rect_height = f64::from(rect.height);
+            let scale = (viewport_width / rect_width).min(viewport_height / rect_height);
+            let tx = (viewport_width - rect_width * scale) / 2.0 - f64::from(rect.x) * scale;
+            let ty = (viewport_height - rect_height * scale) / 2.0 - f64::from(rect.y) * scale;
+            let stage_tx = {
+                let movie = self.movie();
+                let stage_size = movie.stage_size();
+                Matrix::translate(stage_size.x_min, stage_size.y_min)
+            };
+            let letterbox_matrix = Matrix {
+                a: scale as f32,
+                b: 0.0,
+                c: 0.0,
+                d: scale as f32,
+                tx: Twips::from_pixels(tx),
+                ty: Twips::from_pixels(ty),
+            };
+            self.0.letterbox_matrix.set(letterbox_matrix);
+            self.0.letterbox_content_size.set((rect_width, rect_height));
+            self.0
+                .viewport_matrix
+                .set(letterbox_matrix * stage_tx.inverse().unwrap());
+            let view_bounds = Rectangle {
+                x_min: Twips::from_pixels(f64::from(rect.x)),
+                y_min: Twips::from_pixels(f64::from(rect.y)),
+                x_max: Twips::from_pixels(f64::from(rect.x) + rect_width),
+                y_max: Twips::from_pixels(f64::from(rect.y) + rect_height),
+            };
+            self.0.view_bounds.set(stage_tx * view_bounds);
+            if scale_mode == StageScaleMode::NoScale && stage_size_changed {
+                self.fire_resize_event(context);
+            }
+            return;
+        }
 
         let movie_aspect = movie_width / movie_height;
         let viewport_aspect = viewport_width / viewport_height;
@@ -573,6 +685,9 @@ impl<'gc> Stage<'gc> {
             ty: Twips::from_pixels(ty),
         };
         self.0.letterbox_matrix.set(letterbox_matrix);
+        self.0
+            .letterbox_content_size
+            .set((movie_width, movie_height));
         self.0
             .viewport_matrix
             .set(letterbox_matrix * stage_tx.inverse().unwrap());
@@ -665,7 +780,9 @@ impl<'gc> Stage<'gc> {
 
         let letterbox_matrix = self.0.letterbox_matrix.get();
 
-        let (movie_width, movie_height) = self.0.movie_size.get();
+        // Timffle: the letterboxed content is the movie, or the
+        // fullScreenSourceRect in full-screen mode.
+        let (movie_width, movie_height) = self.0.letterbox_content_size.get();
         let movie_width = movie_width as f32 * letterbox_matrix.a;
         let movie_height = movie_height as f32 * letterbox_matrix.d;
 
@@ -951,6 +1068,42 @@ impl<'gc> TInteractiveObject<'gc> for Stage<'gc> {
 }
 
 pub struct ParseEnumError;
+
+/// Timffle: `Stage.fullScreenSourceRect` as Flash Player stores it: integer
+/// stage pixels, with the size clamped to Flash Player's limits (measured on
+/// Flash Player 32: at least 302 x 74, at most 2880 x 2880).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FullScreenSourceRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+impl FullScreenSourceRect {
+    pub const MIN_WIDTH: i32 = 302;
+    pub const MIN_HEIGHT: i32 = 74;
+    pub const MAX_SIZE: i32 = 2880;
+
+    /// Round and clamp a rectangle the way Flash Player does (`NaN` becomes
+    /// `int(NaN)` = -2147483648, halves round to even).
+    pub fn from_f64(x: f64, y: f64, width: f64, height: f64) -> Self {
+        fn to_int(v: f64) -> i32 {
+            if v.is_nan() {
+                i32::MIN
+            } else {
+                v.round_ties_even()
+                    .clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32
+            }
+        }
+        Self {
+            x: to_int(x),
+            y: to_int(y),
+            width: to_int(width).clamp(Self::MIN_WIDTH, Self::MAX_SIZE),
+            height: to_int(height).clamp(Self::MIN_HEIGHT, Self::MAX_SIZE),
+        }
+    }
+}
 
 /// The scale mode of a stage.
 /// This controls the behavior when the player viewport size differs from the SWF size.

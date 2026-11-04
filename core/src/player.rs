@@ -877,6 +877,14 @@ impl Player {
         })
     }
 
+    /// Timffle: the host reports that the pointer lock changed on its own
+    /// (for example the user pressed Escape in the browser).
+    pub fn set_mouse_lock(&mut self, locked: bool) {
+        self.mutate_with_update_context(|context| {
+            context.stage.set_mouse_lock_state(locked);
+        });
+    }
+
     pub fn set_fullscreen(&mut self, is_fullscreen: bool) {
         self.mutate_with_update_context(|context| {
             let display_state = if is_fullscreen {

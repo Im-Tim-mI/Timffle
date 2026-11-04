@@ -287,6 +287,11 @@ impl UiBackend for WebUiBackend {
         }
     }
 
+    // Timffle: `Stage.mouseLock` through the browser's Pointer Lock API.
+    fn set_mouse_lock(&mut self, lock: bool) -> bool {
+        self.js_player.set_mouse_lock(lock)
+    }
+
     fn set_fullscreen(&mut self, is_full: bool) -> Result<(), FullscreenError> {
         match self.js_player.set_fullscreen(is_full) {
             Ok(_) => Ok(()),

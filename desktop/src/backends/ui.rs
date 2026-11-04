@@ -25,7 +25,7 @@ use tokio::io::AsyncReadExt;
 use url::Url;
 use winit::event_loop::EventLoopProxy;
 use winit::raw_window_handle::HasDisplayHandle;
-use winit::window::{Fullscreen, Window};
+use winit::window::{CursorGrabMode, Fullscreen, Window};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceFontRenderer {
@@ -251,6 +251,19 @@ impl UiBackend for DesktopUiBackend {
             None
         });
         Ok(())
+    }
+
+    // Timffle: `Stage.mouseLock` grabs the cursor; platforms without a real
+    // lock (X11) confine it to the window instead.
+    fn set_mouse_lock(&mut self, lock: bool) -> bool {
+        if lock {
+            self.window
+                .set_cursor_grab(CursorGrabMode::Locked)
+                .or_else(|_| self.window.set_cursor_grab(CursorGrabMode::Confined))
+                .is_ok()
+        } else {
+            self.window.set_cursor_grab(CursorGrabMode::None).is_ok()
+        }
     }
 
     fn display_root_movie_download_failed_message(&self, _invalid_swf: bool, _fetch_error: String) {

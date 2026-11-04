@@ -196,6 +196,11 @@ unsafe extern "C" {
     #[wasm_bindgen(catch, method, js_name = "setFullscreen")]
     fn set_fullscreen(this: &JavascriptPlayer, is_full: bool) -> Result<(), JsValue>;
 
+    // Timffle: `Stage.mouseLock` (Pointer Lock API); returns whether the
+    // request was made.
+    #[wasm_bindgen(method, js_name = "setMouseLock")]
+    fn set_mouse_lock(this: &JavascriptPlayer, lock: bool) -> bool;
+
     #[wasm_bindgen(method, js_name = "setMetadata")]
     fn set_metadata(this: &JavascriptPlayer, metadata: JsValue);
 
@@ -524,6 +529,12 @@ impl RuffleHandle {
 
     pub fn set_fullscreen(&self, is_fullscreen: bool) {
         let _ = self.with_core_mut(|core| core.set_fullscreen(is_fullscreen));
+    }
+
+    /// Timffle: the page reports that the pointer lock changed (the user
+    /// pressed Escape, or the browser granted/refused the request).
+    pub fn set_mouse_lock(&self, locked: bool) {
+        let _ = self.with_core_mut(|core| core.set_mouse_lock(locked));
     }
 
     pub fn clear_custom_menu_items(&self) {

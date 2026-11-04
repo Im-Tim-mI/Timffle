@@ -124,6 +124,14 @@ pub trait UiBackend: Any {
 
     fn set_fullscreen(&mut self, is_full: bool) -> Result<(), FullscreenError>;
 
+    /// Timffle: lock (`true`) or release (`false`) the mouse pointer for
+    /// `Stage.mouseLock`. Returns whether the request was honoured; a host
+    /// without pointer lock refuses to lock and the stage keeps reporting
+    /// `mouseLock` as false, like Flash Player on such a platform.
+    fn set_mouse_lock(&mut self, lock: bool) -> bool {
+        !lock
+    }
+
     /// Displays a message about an error during root movie download.
     /// In particular, on web this can be a CORS error, which we can sidestep
     /// by providing a direct .swf link instead.
