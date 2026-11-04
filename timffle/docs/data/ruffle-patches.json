@@ -1,11 +1,11 @@
 {
- "measured": "2026-10-25",
+ "measured": "2026-11-04",
  "ruffle": {
   "commit": "46fec3f",
   "label": "nightly-2026-10-13"
  },
  "timffle": {
-  "commit": "9096355ce"
+  "commit": "c181461b6"
  },
  "overall": {
   "ruffle": {
@@ -16,7 +16,7 @@
   "timffle": {
    "points": 4560,
    "implemented": 4187,
-   "stubbed": 422
+   "stubbed": 421
   }
  },
  "groups": {
@@ -41,7 +41,7 @@
    "timffle": {
     "points": 57,
     "implemented": 55,
-    "stubbed": 5
+    "stubbed": 4
    }
   }
  },
@@ -84,6 +84,11 @@
   {
    "class": "flash.display.Loader",
    "member": "close()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Loader",
+   "member": "unloadAndStop()",
    "was": "stub"
   },
   {
@@ -170,14 +175,14 @@
  },
  "changes": {
   "engine": {
-   "files": 53,
-   "insertions": 3940,
-   "deletions": 853
+   "files": 113,
+   "insertions": 10291,
+   "deletions": 1220
   },
   "extension": {
-   "files": 110,
-   "insertions": 27863,
-   "deletions": 478
+   "files": 111,
+   "insertions": 28164,
+   "deletions": 507
   }
  }
 }

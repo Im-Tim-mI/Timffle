@@ -18,7 +18,7 @@
 
 <p align="center"><a href="README.md">English</a> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <b>简体中文</b></p>
 
-<p align="center">版本 <code>0.8.0.26316</code>（基于 Ruffle nightly 2026-10-13）｜ 授权 MIT 或 Apache-2.0（任选其一）</p>
+<p align="center">版本 <code>0.8.0.26343</code>（基于 Ruffle nightly 2026-10-13）｜ 授权 MIT 或 Apache-2.0（任选其一）</p>
 
 > [!IMPORTANT]
 > **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，与 Ruffle 项目、Ruffle LLC、淘米网络（Taomee）没有隶属或合作关系，也没有得到它们的认可。** Flash 模拟内核几乎全部是 Ruffle 与其[数百位贡献者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 历史、作者记录与授权文件。
@@ -34,7 +34,8 @@ Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 
 1. **TCP Socket 连接**。一个只需安装一次的连接助手（由 Chrome 按需启动）把游戏的 Socket 转接到游戏服务器，而扩展程序决定**哪些网站可以使用**：你允许的网站，以及第一次要求连接时经你同意的网站。
 2. **在线游戏需要的兼容性修正**：用真实的在线游戏找出来，并与 Adobe Flash Player 32 逐行比对——`LocalConnection`、`URLStream`、`Loader`／`URLLoader` 的取消、3D 透视与 `Matrix3D`、AMF3 循环参照…；少了这些，游戏会卡住、点了没反应，或画面位置错误。
-3. **看得到的中文**。Ruffle 内置的字体没有中文字；Timffle 用浏览器的字体绘制设备字体的文字，并依游戏指定的 Windows 字体的度量定位。
+3. **看得到、也打得出的中文**。Ruffle 内置的字体没有中文字；Timffle 用浏览器的字体绘制设备字体的文字，并依游戏指定的 Windows 字体的度量定位，也让浏览器的输入法能在 Flash 文本框里组字（注音等）。
+4. **为这些游戏调整过的绘图引擎**。网页播放器优先用 WebGPU 绘图（浏览器没有 WebGPU 时用 WebGL2），混合模式只在需要的地方才解析，而且和 Flash 一样在一个完整帧跑完后才画出画面。对象多的场景能跑满速，主线程留给游戏的程序。
 
 全部打包成**一个 Chrome 插件包**：下载、安装，打开游戏网址就能登录、玩。
 
@@ -49,6 +50,9 @@ Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 - **由你决定哪些网站能用 Socket**：网站必须在你的「一律允许」清单里，或在它第一次尝试时由你回答询问（建议拒绝，只有在线游戏可以允许）。工具栏的弹出窗口可以一键允许或拒绝目前的网站。
 - **保守的安全设计**：助手只连公开网络地址（唯一的例外：本身放在局域网 IP 上、你允许过的网站，可以连回它自己那个地址）、不监听任何连接端口、不常驻、不记录连接内容；只有这个扩展程序的 ID 能调用它。
 - **以真 Flash 为标准答案**：对 Ruffle 的兼容性修正，都用 Adobe Flash Player 32 的实际输出逐行比对（30 项黄金答案）。
+- **WebGPU 优先的绘图**：播放器先试 WebGPU、再退回 WebGL2，自动切换。混合模式（Overlay、Hardlight…）只在混合对象需要的地方、需要的时候才解析抗锯齿的舞台；WebGPU 的同步像素读回与 PixelBender 着色器也修到能用。Mac mini M2 上一个混合对象很多的游戏画面，在 Retina 屏幕从 8.7 帧变 22.9 帧，主线程从 99% 忙降到约 20%。
+- **和 Flash 一样的帧时序**：Socket、网络与计时器事件先跑、再跑游戏帧，画出来的永远是一个完整帧跑完的状态；对象不再有一帧没上色，计时器驱动的游戏也不会被挡住不画。
+- **显示帧数**：弹出窗口与设置页的开关，在游戏角落放一个半透明小方块，显示每秒画出的张数、游戏本身的帧率与屏幕更新率；可拖到任一角落。
 - **看得到中文**：设备字体的文字使用浏览器的字体，并依游戏指定的 Windows 字体（SimSun、Arial Black、Tahoma…）的度量定位。
 - **36 种界面语言，和 Ruffle 一样**：页面跟着浏览器的语言（英文与繁体中文由作者撰写，其余 34 种是机器翻译；见[语言](#语言)）。
 - **淘米台湾的游戏开箱即用**：默认允许四个游戏网站使用 Socket 连接。
@@ -189,7 +193,7 @@ Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使�
 - 下拉列表可改成「**每次访问时询问**」（从两个清单移除，下次再问）、「**一律允许**」或「**一律拒绝**」。要取消一律允许或一律拒绝，就改回「每次访问时询问」。
 - 这个标签页里**其他网站的框架**如果已经被询问过，也会列在下面，各有自己的按钮与菜单。
 - 状态栏也会显示这个标签页「本次访问」的允许或拒绝。
-- 同一页的其他选项是 Ruffle 原有的播放设置（设备字体、模拟的 Flash 版本、ActionScript 运行时间上限等）。「**Device font renderer**」默认是 Canvas（用浏览器的字体），中文才显示得出来；在那里选 Embedded 可以改回 Ruffle 内置的字体。
+- **显示帧数**（弹出窗口与设置页都有）会在游戏角落显示每秒画出的张数，立即生效，不用重新加载。同一页的其他选项是 Ruffle 原有的播放设置（设备字体、模拟的 Flash 版本、ActionScript 运行时间上限等）。「**Device font renderer**」默认是 Canvas（用浏览器的字体），中文才显示得出来；在那里选 Embedded 可以改回 Ruffle 内置的字体。
 
 ## 语言
 
@@ -246,6 +250,7 @@ Chrome 扩展程序（Manifest V3）
 - **ActionScript 2 的 `XMLSocket`** 与 `flash.net.Socket` 走同一条 Socket 路径，但只测试过 `flash.net.Socket`。
 - **平台**：Windows、macOS、Ubuntu 已由作者实机测试（2026-10-26）；自动化测试只在 Linux 的 Chrome（无头模式）与 Wine 上跑。助手**未签名**：Windows 会出现 SmartScreen 警告，macOS 第一次要到「系统设置」→「隐私与安全性」允许。没有在 Firefox 与 Safari 上试过。
 - **品牌**：只有网页版（扩展程序、网页 Demo、播放器画面）改成 Timffle；桌面版、Safari 扩展程序、npm 包的文字与标识符仍是上游 Ruffle 的，**不要以 Timffle 名义分发它们的构建**（见 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。
+- **WebGPU**：WebGPU 路径在 Mac mini M2（真 GPU）与无头 Chrome 验证过，没有 WebGPU 的机器退回 WebGL2 也验证过；还没有在有真 GPU 的 Windows 电脑与 Android 实机上完整验证。画面若有异常，可在选项页把渲染器改成 `wgpu-webgl`。
 - **3D**：嵌套的「投影拥有者」与 Flash 不同；Flash 对 3D 图做约 1 像素的双线性滤波，Timffle 边缘较利落；透视只在 wgpu 渲染器实现。`Matrix3D.determinant`／`invert` 与 Flash 差在最后一位有效数字。
 - **命中测试**：Flash 的 `hitTestPoint(x, y, true)` 以整数像素判断，Timffle 用精确坐标；边缘偶有 1～2 格差异。
 - **网页版递归深度**：WebAssembly 调用堆栈比 Flash 浅，保护上限 900 层；赛车地图少数远距离寻路会被截断。
@@ -266,14 +271,14 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 | `vendor: Add rust-flash-lso …` ＋ `flash-lso: Fix AMF3 encoder reference indices` | 以 subtree 收录 [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso)（含其完整历史）并修正 AMF3 编码器 |
 | `web: Rebrand the web extension and player UI as Timffle` | 用户看得到的名称、图标与链接改成 Timffle（见 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)） |
 
-之后的 commit 加上了第一次连接时的询问、弹出窗口与设置清单、canvas 文字的 Windows 字体度量，以及各个发行版（见 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每项修正的细节与原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改过的 Ruffle 文件清单（Apache-2.0 第 4(b) 条的「修改声明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差异：`git diff 46fec3f -- . ':!timffle'`。
+之后的 commit 加上了第一次连接时的询问、弹出窗口与设置清单、canvas 文字的 Windows 字体度量、文本框里的输入法组字、WebGPU 优先的绘图引擎（按需解析混合对象、同步读回、WebGPU 上的 PixelBender）、Flash 的帧时序、帧数显示，以及各个发行版（见 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每项修正的细节与原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改过的 Ruffle 文件清单（Apache-2.0 第 4(b) 条的「修改声明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差异：`git diff 46fec3f -- . ':!timffle'`。
 
 ### Timffle 对 Ruffle 的修补
 
-<p align="center"><img src="timffle/docs/images/zh-CN/ruffle-patches.svg" width="100%" alt="Timffle 对 Ruffle 的修补：AVM2 API 从 82.1% 到 82.6%；3D API 从 79.7% 到 100%；网络与 LocalConnection 的 4 个类别从 75.4% 到 87.7%；另有 Socket 连接、中文字型、网域查找等 API 统计看不到的修补"></p>
+<p align="center"><img src="timffle/docs/images/zh-CN/ruffle-patches.svg" width="100%" alt="Timffle 对 Ruffle 的修补：AVM2 API 从 82.1% 到 82.6%；3D API 从 79.7% 到 100%；网络与 LocalConnection 的 4 个类别从 75.4% 到 89.5%；另有 Socket 连接、中文字型与输入、网域查找、WebGPU 优先的绘图引擎等 API 统计看不到的修补"></p>
 
-- **怎么算的**：用 Ruffle 官网同一套统计工具（[`tools/stub-report`](tools/stub-report) 加 [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)），各跑一次 Ruffle `46fec3f` 与 Timffle（2026-10-25 的 `9096355ce`）。每个 Flash Player API 算一项，空壳（stub）画成橘色、不算实现，算法和 Ruffle 官网相同。**这只看 API 有没有实现，不代表行为完全相同**；行为以真 Flash Player 32 的实测为准，见 [`timffle/difftest/expected/`](timffle/difftest/expected/) 的 30 份黄金答案（3D 15 份、网络与 LocalConnection 14 份、基本 1 份）。
-- **补齐的 23 个 API**：`DisplayObject` 的 `z`、`rotationX`／`rotationY`／`rotationZ`、`scaleZ`、`globalToLocal3D()`、`local3DToGlobal()`；`Transform` 的 `matrix3D`、`perspectiveProjection`、`getRelativeMatrix3D()`；`PerspectiveProjection` 的 `fieldOfView`、`focalLength`、`projectionCenter`；`Matrix3D` 的 `pointAt()`、`recompose()`；`Utils3D.pointTowards()`；`URLStream` 的 `stop()`、`position`、`length`、`objectEncoding`；`LocalConnection.isPerUser`；`Loader.close()`、`URLLoader.close()`。
+- **怎么算的**：用 Ruffle 官网同一套统计工具（[`tools/stub-report`](tools/stub-report) 加 [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)），各跑一次 Ruffle `46fec3f` 与 Timffle（2026-11-04 的 `c181461b6`）。每个 Flash Player API 算一项，空壳（stub）画成橘色、不算实现，算法和 Ruffle 官网相同。**这只看 API 有没有实现，不代表行为完全相同**；行为以真 Flash Player 32 的实测为准，见 [`timffle/difftest/expected/`](timffle/difftest/expected/) 的 30 份黄金答案（3D 15 份、网络与 LocalConnection 14 份、基本 1 份）。
+- **补齐的 24 个 API**：`DisplayObject` 的 `z`、`rotationX`／`rotationY`／`rotationZ`、`scaleZ`、`globalToLocal3D()`、`local3DToGlobal()`；`Transform` 的 `matrix3D`、`perspectiveProjection`、`getRelativeMatrix3D()`；`PerspectiveProjection` 的 `fieldOfView`、`focalLength`、`projectionCenter`；`Matrix3D` 的 `pointAt()`、`recompose()`；`Utils3D.pointTowards()`；`URLStream` 的 `stop()`、`position`、`length`、`objectEncoding`；`LocalConnection.isPerUser`；`Loader.close()`、`Loader.unloadAndStop()`、`URLLoader.close()`。
 - **3D API** 指 `Vector3D`、`Matrix3D`、`Utils3D`、`PerspectiveProjection`，加上 `DisplayObject` 与 `Transform` 的 3D 成员（共 79 项）；**网络与 LocalConnection** 指 `URLStream`、`URLLoader`、`LocalConnection`、`Loader` 四个类别（共 57 项）。图与数字由 [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py) 产生，数字存在 [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json)。
 
 ## 罗技优惠码
@@ -292,8 +297,8 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26316 timffle/scripts/build-extension.sh   # 构建 wasm 与 Chrome 扩展程序 → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26316 timffle/scripts/package-release.sh   # 交叉编译助手（7 个平台）并打包发行 ZIP（含授权文件）→ timffle/build/out/
+VERSION4=0.8.0.26343 timffle/scripts/build-extension.sh   # 构建 wasm 与 Chrome 扩展程序 → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26343 timffle/scripts/package-release.sh   # 交叉编译助手（7 个平台）并打包发行 ZIP（含授权文件）→ timffle/build/out/
 ```
 
 构建脚本默认会把构建机的家目录与用户名从 wasm 里改写掉，打包脚本打包前后都会检查，发现就拒绝产出发行 ZIP。步骤、工具版本、扩展程序密钥与常见问题：[`timffle/docs/BUILD.md`](timffle/docs/BUILD.md)。Ruffle 原有的桌面版等其他部分，构建方式与上游相同（见 [`README.ruffle.md`](README.ruffle.md)），但请先读 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)。

@@ -18,7 +18,7 @@
 
 <p align="center"><b>English</b> ・ <a href="README.zh-TW.md">繁體中文</a> ・ <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">Version <code>0.8.0.26316</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
+<p align="center">Version <code>0.8.0.26343</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
 > **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
@@ -34,7 +34,8 @@ Timffle is a Ruffle fork made for these games. It adds:
 
 1. **TCP sockets.** A small connection helper (installed once, started by Chrome on demand) relays the game's socket to the game server, and the extension decides **which sites may use it**: the sites you allow, and the sites you approve the first time they ask.
 2. **The compatibility fixes online games need**, found by running real online games and compared line by line with Adobe Flash Player 32: `LocalConnection`, `URLStream`, `Loader`/`URLLoader` cancellation, 3D perspective and `Matrix3D`, AMF3 reference cycles, …; otherwise a game hangs, ignores clicks or draws things in the wrong place.
-3. **Chinese text that shows up.** Ruffle's built-in font has no Chinese glyphs; Timffle draws device-font text with the browser's fonts, positioned by the metrics of the Windows fonts the games ask for.
+3. **Chinese text that shows up, and Chinese that can be typed.** Ruffle's built-in font has no Chinese glyphs; Timffle draws device-font text with the browser's fonts, positioned by the metrics of the Windows fonts the games ask for, and lets the browser's input method compose Chinese inside Flash text fields.
+4. **A renderer tuned for these games.** The web player draws with WebGPU first (WebGL2 where the browser has no WebGPU), resolves blend modes only where a blend needs it, and draws every picture at the end of a complete frame, as Flash does. Busy scenes run at full speed and the main thread stays free for the game's script.
 
 Everything ships as **one Chrome extension package**: download it, install it, open the game's address and log in.
 
@@ -49,6 +50,9 @@ Everything ships as **one Chrome extension package**: download it, install it, o
 - **You decide which sites get sockets**: a site must be on your always-allow list, or you answer the first-use question when it first tries (we recommend denying; only online games should be allowed). The toolbar popup allows or denies the current site in one click.
 - **Conservative security design**: the helper connects to public internet addresses only (one exception: a website you allowed that is itself served from a local-network IP address may connect back to that one address), listens on no port, does not stay running and records no traffic; only this extension's ID can call it.
 - **Real Flash as the reference**: every compatibility fix for Ruffle is compared line by line with the output of Adobe Flash Player 32 (30 golden files).
+- **WebGPU-first rendering**: the player tries WebGPU before WebGL2 and falls back by itself. Blend modes (Overlay, Hardlight, …) resolve the anti-aliased stage only where and when a blend needs it, and WebGPU's synchronous pixel readback and PixelBender shaders were made to work. On a Mac mini M2 a blend-heavy game screen went from 8.7 to 22.9 fps on a Retina display, with the main thread about 20 % busy instead of 99 %.
+- **Flash's frame timing**: socket, network and timer events run before the movie's frame, so every picture shows the state at the end of a complete frame; objects no longer flash uncoloured for a frame, and timer-driven games are not held back.
+- **Show frame rate**: a switch in the popup and on the settings page puts a small translucent box in a corner of the game with the pictures drawn per second, the movie's own frame rate and the display's refresh rate; drag it to any corner.
 - **Chinese text shows up**: device-font text uses the browser's fonts, positioned by the metrics of the Windows fonts the games ask for (SimSun, Arial Black, Tahoma, …).
 - **36 interface languages, like Ruffle**: the pages follow the browser's language (English and Traditional Chinese are written by the author, the other 34 are machine translations; see [Languages](#languages)).
 - **Taomee Taiwan's games out of the box**: the four game sites are allowed to use sockets by default.
@@ -189,7 +193,7 @@ Click the Timffle icon on the browser toolbar; the "Socket connections" section 
 - The drop-down switches the site to "**Ask on every visit**" (removed from both lists; asked again next time), "**Always allow**" or "**Always deny**". To cancel an always-allow or always-deny, switch it back to "Ask on every visit".
 - **Frames of other websites** in this tab that were asked about are listed below, each with its own button and drop-down.
 - The status line also shows this tab's allow or deny for "this visit".
-- The other options on that page are Ruffle's usual playback settings (device fonts, emulated Flash version, ActionScript time limit, …). **Device font renderer** defaults to Canvas (the browser's fonts), which is what makes Chinese text show up; choose Embedded there to go back to Ruffle's built-in font.
+- **Show frame rate** (popup and settings page) shows a small box with the pictures drawn per second in a corner of the game; it applies at once, no reload. The other options on that page are Ruffle's usual playback settings (device fonts, emulated Flash version, ActionScript time limit, …). **Device font renderer** defaults to Canvas (the browser's fonts), which is what makes Chinese text show up; choose Embedded there to go back to Ruffle's built-in font.
 
 ## Languages
 
@@ -246,6 +250,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 - **ActionScript 2 `XMLSocket`** goes through the same socket path as `flash.net.Socket`, but only `flash.net.Socket` has been tested.
 - **Platforms**: Windows, macOS and Ubuntu were tested by the author on real machines (2026-10-26); the automated tests run only in Chrome on Linux (headless) and under Wine. The helper is **not signed**: Windows shows a SmartScreen warning, and on macOS you allow it once in System Settings → Privacy & Security. Not tried in Firefox or Safari.
 - **Branding**: only the web UI (extension, web demo, player screens) is renamed Timffle; the texts and identifiers of the desktop app, the Safari extension and the npm packages are still upstream Ruffle's, so **do not distribute builds of those under the Timffle name** (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)).
+- **WebGPU**: the WebGPU path was verified on a Mac mini M2 (real GPU) and in headless Chrome, and the fallback to WebGL2 on machines without WebGPU; it has not been fully verified on Windows machines with a real GPU or on Android devices. If something looks wrong, set the renderer to `wgpu-webgl` on the options page.
 - **3D**: nested "projection owners" differ from Flash; Flash bilinear-filters 3D pictures by about 1 px, Timffle's edges are crisper; perspective is implemented in the wgpu renderer only. `Matrix3D.determinant`/`invert` differ from Flash in the last significant digit.
 - **Hit testing**: Flash's `hitTestPoint(x, y, true)` works on whole pixels, Timffle on exact coordinates; edges occasionally differ by 1–2 cells.
 - **Recursion depth on the web**: the WebAssembly call stack is shallower than Flash's; the guard limit is 900 levels, and a few long kart-map paths are cut short.
@@ -266,14 +271,14 @@ Timffle is based on Ruffle `nightly-2026-10-13` (commit [`46fec3f`](https://gith
 | `vendor: Add rust-flash-lso …` + `flash-lso: Fix AMF3 encoder reference indices` | [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso) as a subtree (with its history) and a fix in its AMF3 encoder |
 | `web: Rebrand the web extension and player UI as Timffle` | User-visible names, icons and links changed to Timffle (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)) |
 
-Later commits add the first-use question, the popup and the settings lists, the Windows font metrics for canvas text, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
+Later commits add the first-use question, the popup and the settings lists, the Windows font metrics for canvas text, input-method composition in text fields, the WebGPU-first renderer (on-demand blend resolves, synchronous readback, PixelBender on WebGPU), Flash's frame timing, the frame-rate box, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
 
 ### What Timffle patches in Ruffle
 
-<p align="center"><img src="timffle/docs/images/ruffle-patches.svg" width="100%" alt="What Timffle patches in Ruffle: AVM2 API from 82.1% to 82.6%; 3D APIs from 79.7% to 100%; four networking and LocalConnection classes from 75.4% to 87.7%; plus fixes an API count can't show, such as sockets, Chinese fonts and domain lookup"></p>
+<p align="center"><img src="timffle/docs/images/ruffle-patches.svg" width="100%" alt="What Timffle patches in Ruffle: AVM2 API from 82.1% to 82.6%; 3D APIs from 79.7% to 100%; four networking and LocalConnection classes from 75.4% to 89.5%; plus fixes an API count can't show, such as sockets, Chinese fonts and input, domain lookup, and the WebGPU-first renderer"></p>
 
-- **How it is measured**: with the same tool as Ruffle's website ([`tools/stub-report`](tools/stub-report) and [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)), run once on Ruffle `46fec3f` and once on Timffle (`9096355ce`, 2026-10-25). Every Flash Player API counts as one item; stubs are drawn orange and do not count as implemented, the same scoring as on Ruffle's website. **It only shows whether an API is implemented, not that it behaves exactly like Flash**; behaviour is checked against real Flash Player 32 with the 30 golden files in [`timffle/difftest/expected/`](timffle/difftest/expected/) (3D 15, networking and LocalConnection 14, basic 1).
-- **The 23 APIs filled in**: `DisplayObject`'s `z`, `rotationX`/`rotationY`/`rotationZ`, `scaleZ`, `globalToLocal3D()`, `local3DToGlobal()`; `Transform`'s `matrix3D`, `perspectiveProjection`, `getRelativeMatrix3D()`; `PerspectiveProjection`'s `fieldOfView`, `focalLength`, `projectionCenter`; `Matrix3D`'s `pointAt()`, `recompose()`; `Utils3D.pointTowards()`; `URLStream`'s `stop()`, `position`, `length`, `objectEncoding`; `LocalConnection.isPerUser`; `Loader.close()`, `URLLoader.close()`.
+- **How it is measured**: with the same tool as Ruffle's website ([`tools/stub-report`](tools/stub-report) and [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)), run once on Ruffle `46fec3f` and once on Timffle (`c181461b6`, 2026-11-04). Every Flash Player API counts as one item; stubs are drawn orange and do not count as implemented, the same scoring as on Ruffle's website. **It only shows whether an API is implemented, not that it behaves exactly like Flash**; behaviour is checked against real Flash Player 32 with the 30 golden files in [`timffle/difftest/expected/`](timffle/difftest/expected/) (3D 15, networking and LocalConnection 14, basic 1).
+- **The 24 APIs filled in**: `DisplayObject`'s `z`, `rotationX`/`rotationY`/`rotationZ`, `scaleZ`, `globalToLocal3D()`, `local3DToGlobal()`; `Transform`'s `matrix3D`, `perspectiveProjection`, `getRelativeMatrix3D()`; `PerspectiveProjection`'s `fieldOfView`, `focalLength`, `projectionCenter`; `Matrix3D`'s `pointAt()`, `recompose()`; `Utils3D.pointTowards()`; `URLStream`'s `stop()`, `position`, `length`, `objectEncoding`; `LocalConnection.isPerUser`; `Loader.close()`, `Loader.unloadAndStop()`, `URLLoader.close()`.
 - **3D APIs** are `Vector3D`, `Matrix3D`, `Utils3D`, `PerspectiveProjection` and the 3D members of `DisplayObject` and `Transform` (79 items); **networking and LocalConnection** are the classes `URLStream`, `URLLoader`, `LocalConnection` and `Loader` (57 items). The picture and the numbers come from [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py); the numbers are in [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json).
 
 ## Logitech discount code
@@ -292,8 +297,8 @@ Needs git, Rust 1.99 with `wasm32-unknown-unknown`, wasm-bindgen CLI 0.2.127 (mu
 
 ```sh
 git clone https://github.com/Im-Tim-mI/Timffle.git && cd Timffle
-VERSION4=0.8.0.26316 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
-VERSION4=0.8.0.26316 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
+VERSION4=0.8.0.26343 timffle/scripts/build-extension.sh   # wasm + extension → web/packages/extension/dist/ruffle_extension.zip
+VERSION4=0.8.0.26343 timffle/scripts/package-release.sh   # helper for 7 platforms + release ZIP with licences → timffle/build/out/
 ```
 
 The build script rewrites the build machine's home directory and user name out of the wasm by default, and the packaging script checks before and after packaging and refuses to produce a release ZIP that still carries them. See [`timffle/docs/BUILD.md`](timffle/docs/BUILD.md). The other parts of Ruffle (desktop app etc.) build as upstream does ([`README.ruffle.md`](README.ruffle.md)), but read [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md) first.
