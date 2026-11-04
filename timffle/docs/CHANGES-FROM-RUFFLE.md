@@ -85,6 +85,15 @@
 - **`Loader.load()` / `loadBytes()` 重複使用**：移除「重複使用 Loader」的空殼標記；取消前一次載入、卸載舊內容、沿用同一個 `contentLoaderInfo` 早已實作，由 `loader_reuse` 測試涵蓋。
 - **`URLLoader.addEventListener()`**：Flash 的 playerglobal 在 URLLoader 上宣告了這個覆寫（只為了文件化事件），行為與 `EventDispatcher` 相同；補上覆寫。**`URLStream.diskCacheEnabled`**：只有 AIR 會把下載快取到磁碟，瀏覽器裡的 Flash Player 永遠是 false（唯讀）。測試 `urlloader_urlstream_members`。
 - 與真 Flash 仍不同：被載入的子 SWF 在自己的建構式裡讀 `loaderInfo.sameDomain` 等屬性，Ruffle 會丟 `Error #2099`（載入串流要到第一幀之後才切換成已載入；上游既有）。
+- **`Loader.load()` 的「加入子物件的時機」空殼**（`core/src/loader.rs`）暫緩：Flash 是在一次 `enterFrame` 之後才把載入的內容掛到 Loader 底下，Ruffle 在第一幀跑完就立刻掛上；要改動載入排程並重新量 `large_preload_*` 三個測試的時序，需要真 Flash 的時序黃金答案，列為待決。
+
+### 第 2 組：系統（flash.system.Capabilities，全部 37 個成員）
+
+- **一個來源**：原本 AVM2 的 `Capabilities` 有 26 個 getter 是空殼常數、`_internal` 與 `cpuAddressSize` 不存在，而 AVM1 的 `System.capabilities` 另外讀 `core/src/system_properties.rs`，且那裡的旗標全部是 false（`hasAudio` 在 AVM1 回 false）。現在兩個 VM 都讀 `SystemProperties`（`capabilities.rs` 全部改成 native）。
+- **旗標照「這個播放器真的有什麼」設**：Flash Player 本身固定具備的為 true——`hasAudio`、`hasStreamingAudio`、`hasStreamingVideo`、`hasEmbeddedVideo`、`hasMP3`、`hasAudioEncoder`／`hasVideoEncoder`（Speex／H.264 編碼器內建於播放器，沒有麥克風、攝影機的機器上 Flash 也回 true）、`hasTLS`、`supports32BitProcesses`；`avHardwareDisable`／`localFileReadDisable` 為 false（沒有 mms.cfg 的管理禁用）。**沒有該功能的機器上 Flash 的行為**：`hasAccessibility` false（沒有無障礙橋接）、`hasIME` false（與 `IME.isSupported` 一致）、`hasPrinting` false（沒有 `PrintJob`）、`hasScreenBroadcast`／`hasScreenPlayback` false（FMS 螢幕分享；桌面版 Flash 32 兩者都是 false）、`isDebugger` false（發行版）、`isEmbeddedInAcrobat` false、`touchscreenType` "none"、`hasMultiChannelAudio()` 對任何參數（含 `""`、null）都 false（Dolby／DTS 直通只有電視版有）。
+- **依機器而定的**：`cpuArchitecture` 取建置目標（x86／ARM／PowerPC／SPARC；wasm 看不到主機 CPU，跟假裝的 Windows 一樣報 x86）；`cpuAddressSize` 是播放器的指標寬度（64 位元原生 → 64，wasm32 → 32；Flash 32 standalone 32 位元也報 32）；`supports64BitProcesses` 在 64 位元建置與瀏覽器裡 true；`manufacturer` 與 `os`／`version` 同一份主機描述（Flash Player 執行期一律「Adobe Windows」／「Windows 8」／「WIN 32,0,0,0」，AIR 執行期照真實 OS）；`maxLevelIDC` "5.1"、`screenColor` "color"、`_internal` 37（未文件化；真 Flash 32.0.0.465 對任何 SWF 都回 37）。`cpuAddressSize` 是 Flash 32 才有的 API，Ruffle 的 API 版本表只到 AIR 29，所以所有 SWF 版本都看得到。
+- **`serverString` 重做**：欄位與順序照 Flash Player 32 量到的（`A,SA,SV,EV,MP3,AE,VE,ACC,PR,SP,SB,DEB,V,M,R,COL,AR,OS,ARCH,L,IME,PR32,PR64,CAS,PT,AVD,LFD,WD,TLS,ML,DP`），編碼同 `escape()`（字母、數字、`-_.` 不編碼，空白是 `%20`）。Ruffle 原本（只有 AVM1 用）少了 `V`、`ARCH`、`PR32`、`PR64`、`CAS`、`WD`、`TLS`、`ML` 八個欄位、`ACC` 的真假相反、`M` 與 `OS` 被編碼兩次。
+- **參考值來自真 Flash**：`timffle/difftest/src/D41Capabilities.hx`（探測用，沒有黃金答案）在 Wine 下的 Flash Player 32.0.0.465 standalone 跑出每個成員與 `serverString`；與 Timffle 唯一刻意不同的是 `hasPrinting`／`PR`（Wine 的 Windows 有列印功能，Timffle 沒有）。測試 `capabilities_members`（依機器而定的成員只檢查與 `serverString` 一致，不印值）。
 
 ## 已知與真 Flash 還不同的地方
 
