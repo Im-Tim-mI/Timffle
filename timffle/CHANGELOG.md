@@ -52,6 +52,7 @@
 - **`Matrix3D.appendRotation` 的 NaN／無限大 pivot**：照 Flash 把 pivot 當成完整的 `T(p)·R·T(-p)` 乘積，pivot 有 NaN 或無限大時整個矩陣變成 NaN（原本第 4 列留著 0,0,0,1）；有限 pivot 的結果不變。`avm2/matrix3d_append_rotation` 與 Flash 的 `output.txt` 相同，取消 `known_failure`。
 - **`TextBlock.recreateTextLine` 與 TextLine 子物件照真 Flash**：重建的行回到新行的顯示狀態（位置、縮放、旋轉、3D、alpha、混合模式、遮罩、visible、`cacheAsBitmap`、`opaqueBackground` 歸零，子物件移除、事件監聽者清掉，名稱與父物件保留）；原地重建時後面的行變成 invalid、連結不變，搬到別處時舊串列接起來並讓其後的行 invalid、新位置原本的行被換掉（invalid、斷開連結）；TextLine 現在真的是容器（`addChild` 有效、子物件畫在文字上面，`tabChildren` 固定 false）。`avm2/textblock_recreateline` 與 Flash 相同、取消 `known_failure`；`textblock_line_changes` 仍是已知失敗（`static` 行的情況，已知差異檔更新）。
 - **ApplicationDomain：子網域自己先定義的類別不被父網域後來載入的同名類別蓋掉**：名稱查找仍然父網域優先（26292），但找到的名稱若子網域自己也有定義（只會發生在子網域先定義、父網域後來才載入同名定義時），回子網域自己的，與 Flash 相同；`avm2/loader_duplicate_class` 通過，其他 `loader*`、`*domain*` 測試照常通過。
+- **`NetConnection.call` 的請求在同一個 tick 送出**：26335 把網路連線的更新移到影格之前後，影格裡排入的 AMF 請求要等到下一個 tick 才送，晚於同一影格送出的 LocalConnection 訊息；現在送出請求改在影格之後（只是發出請求，不影響畫面）。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 

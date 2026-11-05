@@ -572,13 +572,12 @@ impl Player {
         self.frame_accumulator += dt;
         let frame_duration = self.frame_duration();
 
-        // Timffle: events that arrive between frames (socket data, net connections, timers)
+        // Timffle: events that arrive between frames (socket data, timers)
         // run before this tick's frames, so a picture drawn after the tick shows the state
         // at the end of the last frame, as Flash Player draws it. Ruffle ran them after the
         // frames, so an object a timer had just placed was drawn before its constructor and
         // frame-1 script ran (摩爾莊園 lamu drawn uncoloured for one frame).
         self.update_sockets();
-        self.update_net_connections();
         self.update_timers(dt);
 
         let max_frames_per_tick = self.max_frames_per_tick();
@@ -607,6 +606,13 @@ impl Player {
                 break;
             }
         }
+
+        // Timffle: outgoing NetConnection packets (`NetConnection.call` queued by this
+        // tick's timers and frames) are sent after the frames, so a call made in a
+        // frame goes out in the same tick, before LocalConnection messages sent in
+        // that frame arrive (`avm1/amf_array_serialization`). It only starts
+        // requests, so running it after the frames does not change what is drawn.
+        self.update_net_connections();
 
         // Now that we're done running code,
         // we can stop pretending that more time passed than actually did.
