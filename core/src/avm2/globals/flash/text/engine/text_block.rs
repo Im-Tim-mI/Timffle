@@ -1,17 +1,22 @@
 use crate::avm2::Avm2;
 use crate::avm2::Avm2StrRepresentable;
 use crate::avm2::activation::Activation;
-use crate::avm2::error::{Error, Error2004Type, make_error_2004, make_error_2008, make_error_2175};
+use crate::avm2::error::{
+    Error, Error2004Type, Error2006Type, make_error_2004, make_error_2006, make_error_2008,
+    make_error_2175,
+};
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::flash::display::display_object::initialize_for_allocator;
 use crate::avm2::object::{ContentElementObject, ElementData, VectorObject};
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
+use crate::avm2_stub_setter;
 use crate::display_object::{DisplayObject, EditText, TDisplayObject, TextLine};
-use crate::fte::{TextBaselineValue, TextLineCreationResultValue, TextRotationValue};
+use crate::fte::{
+    TextBaselineValue, TextLineCreationResultValue, TextLineValidity, TextRotationValue,
+};
 use crate::html::{FormatSpans, TextFormat, TextSpan};
 use crate::string::{WStr, WString};
-use crate::{avm2_stub_getter, avm2_stub_setter};
 
 pub use crate::avm2::object::text_block_allocator;
 
@@ -25,17 +30,11 @@ pub fn get_apply_non_linear_font_scaling<'gc>(
 }
 
 pub fn set_apply_non_linear_font_scaling<'gc>(
-    activation: &mut Activation<'_, 'gc>,
+    _activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap().as_text_block_object().unwrap();
-
-    avm2_stub_setter!(
-        activation,
-        "flash.text.engine.TextBlock",
-        "applyNonLinearFontScaling"
-    );
 
     this.set_apply_non_linear_font_scaling(args.get_bool(0));
 
@@ -60,12 +59,6 @@ pub fn set_baseline_font_description<'gc>(
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap().as_text_block_object().unwrap();
-
-    avm2_stub_setter!(
-        activation,
-        "flash.text.engine.TextBlock",
-        "baselineFontDescription"
-    );
 
     let value = args
         .try_get_object(0)
@@ -96,12 +89,6 @@ pub fn set_baseline_font_size<'gc>(
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
 
-    avm2_stub_setter!(
-        activation,
-        "flash.text.engine.TextBlock",
-        "baselineFontSize"
-    );
-
     this.set_baseline_font_size(value);
 
     Ok(Value::Undefined)
@@ -127,8 +114,6 @@ pub fn set_baseline_zero<'gc>(
     let value = TextBaselineValue::from_avm2_str(&value)
         .filter(|v| !matches!(v, TextBaselineValue::UseDominantBaseline))
         .ok_or_else(|| make_error_2008(activation, "baselineZero"))?;
-
-    avm2_stub_setter!(activation, "flash.text.engine.TextBlock", "baselineZero");
 
     this.set_baseline_zero(value);
 
@@ -183,8 +168,6 @@ pub fn set_line_rotation<'gc>(
         .filter(|v| !matches!(v, TextRotationValue::Auto))
         .ok_or_else(|| make_error_2008(activation, "lineRotation"))?;
 
-    avm2_stub_setter!(activation, "flash.text.engine.TextBlock", "lineRotation");
-
     this.set_line_rotation(value);
 
     Ok(Value::Undefined)
@@ -213,8 +196,6 @@ pub fn set_tab_stops<'gc>(
         .and_then(|v| v.as_vector_object())
         .map(|v| VectorObject::from_vector(v.storage().clone(), activation));
 
-    avm2_stub_setter!(activation, "flash.text.engine.TextBlock", "tabStops");
-
     this.set_tab_stops(tab_stops, activation.gc());
 
     Ok(Value::Undefined)
@@ -240,8 +221,6 @@ pub fn set_text_justifier<'gc>(
     let this = this.as_object().unwrap().as_text_block_object().unwrap();
 
     let justifier = args.get_object(activation, 0, "textJustifier")?;
-
-    avm2_stub_setter!(activation, "flash.text.engine.TextBlock", "textJustifier");
 
     this.set_text_justifier(justifier, activation.gc());
 
@@ -295,18 +274,143 @@ pub fn get_text_line_creation_result<'gc>(
         .unwrap_or(Value::Null))
 }
 
+// Timffle: the first line in the block's line list whose validity is not
+// `valid` (lines after a released/recreated line, or after `content` changed).
 pub fn get_first_invalid_line<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(
-        activation,
-        "flash.text.engine.TextBlock",
-        "firstInvalidLine"
-    );
+    let this = this.as_object().unwrap().as_text_block_object().unwrap();
 
-    Ok(Value::Null)
+    let line = this
+        .lines()
+        .find(|l| !matches!(l.validity(), TextLineValidity::Valid))
+        .and_then(|l| l.object2())
+        .map(Value::from);
+
+    Ok(line.unwrap_or(Value::Null))
+}
+
+// Timffle: `TextBlock.getTextLineAtCharIndex` — the line containing the
+// character; RangeError #2006 when the index is outside the block's text.
+pub fn get_text_line_at_char_index<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap().as_text_block_object().unwrap();
+    let index = args.get_i32(0);
+    let text_len = this.content().map(|c| c.raw_text_len()).unwrap_or(0);
+    if index < 0 || index as usize >= text_len {
+        return Err(make_error_2006(activation, Error2006Type::RangeError));
+    }
+    let index = index as u32;
+    let line = this
+        .lines()
+        .find(|l| l.begin_index() <= index && index < l.end_index())
+        .and_then(|l| l.object2())
+        .map(Value::from);
+    Ok(line.unwrap_or(Value::Null))
+}
+
+// Timffle: atom and word boundaries over the block's raw text. An atom is a
+// grapheme cluster (UAX #29 extended grapheme cluster), a word boundary is a
+// UAX #29 word boundary; both are what Flash's text engine reports for
+// Latin text. RangeError #2006 when `afterCharIndex`/`beforeCharIndex` is
+// outside the text.
+fn block_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    block: crate::avm2::object::TextBlockObject<'gc>,
+) -> String {
+    block
+        .content()
+        .and_then(|c| c.raw_text(activation))
+        .map(|s| s.to_string())
+        .unwrap_or_default()
+}
+
+/// Maps a UTF-16 index to a byte index of `text` (and back) for the
+/// segmentation routines.
+fn utf16_to_byte(text: &str, idx: usize) -> usize {
+    let mut units = 0;
+    for (b, ch) in text.char_indices() {
+        if units >= idx {
+            return b;
+        }
+        units += ch.len_utf16();
+    }
+    text.len()
+}
+
+fn byte_to_utf16(text: &str, b: usize) -> usize {
+    text[..b].encode_utf16().count()
+}
+
+fn boundary_impl<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+    forward: bool,
+    word: bool,
+) -> Result<Value<'gc>, Error<'gc>> {
+    use unicode_segmentation::UnicodeSegmentation;
+
+    let this = this.as_object().unwrap().as_text_block_object().unwrap();
+    let index = args.get_i32(0);
+    let text = block_text(activation, this);
+    let len16 = text.encode_utf16().count();
+    if index < 0 || index as usize >= len16 {
+        return Err(make_error_2006(activation, Error2006Type::RangeError));
+    }
+    let at = utf16_to_byte(&text, index as usize);
+    let mut boundaries: Vec<usize> = if word {
+        text.split_word_bound_indices().map(|(i, _)| i).collect()
+    } else {
+        text.grapheme_indices(true).map(|(i, _)| i).collect()
+    };
+    boundaries.push(text.len());
+    let result = if forward {
+        boundaries.iter().copied().find(|&b| b > at)
+    } else {
+        boundaries.iter().rev().copied().find(|&b| b < at)
+    };
+    Ok(match result {
+        Some(b) => Value::from_usize_lossy(byte_to_utf16(&text, b)),
+        None => (-1).into(),
+    })
+}
+
+pub fn find_next_atom_boundary<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    boundary_impl(activation, this, args, true, false)
+}
+
+pub fn find_previous_atom_boundary<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    boundary_impl(activation, this, args, false, false)
+}
+
+pub fn find_next_word_boundary<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    boundary_impl(activation, this, args, true, true)
+}
+
+pub fn find_previous_word_boundary<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    boundary_impl(activation, this, args, false, true)
 }
 
 pub fn get_first_line<'gc>(
@@ -325,13 +429,11 @@ pub fn get_first_line<'gc>(
 }
 
 pub fn get_last_line<'gc>(
-    activation: &mut Activation<'_, 'gc>,
+    _activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap().as_text_block_object().unwrap();
-
-    avm2_stub_getter!(activation, "flash.text.engine.TextBlock", "lastLine");
 
     let line = this
         .lines()
@@ -447,6 +549,9 @@ pub fn do_create_text_line<'gc>(
         .and_then(|o| o.as_text_line());
 
     let width = args.get_f64(2);
+    // Timffle: `lineOffset` and `fitSomething` were previously ignored.
+    let line_offset = args.get_f64(3);
+    let fit_something = args.get_bool(4);
 
     let content = block.content().expect("Guaranteed by AS checks");
 
@@ -509,16 +614,75 @@ pub fn do_create_text_line<'gc>(
     let text_line_instance = text_line.object2().expect("Already created the object2");
     let fallback = text_line.fallback();
 
-    let subtext = &text[previous_position..next_position];
+    let mut subtext = &text[previous_position..next_position];
+    let mut next_position = next_position;
 
     fallback.set_text(subtext, activation.context);
 
-    let format = spans
+    let mut format = spans
         .span(0)
         .expect("Non-empty text should have at least one span")
         .get_text_format();
 
-    apply_format(activation, fallback, format, line_index);
+    // Timffle: `lineOffset` is the extra space before the first atom, i.e.
+    // the first-line indent of the laid-out paragraph.
+    if line_offset != 0.0 {
+        format.indent = Some(line_offset);
+    }
+
+    // Timffle: `TextBlock.tabStops` positions drive the line's tab layout.
+    if let Some(tab_stops) = block.tab_stops() {
+        let positions = tab_stops
+            .storage()
+            .iter()
+            .filter_map(|v| v.as_object())
+            .filter_map(|o| o.as_tab_stop_object())
+            .map(|t| t.position())
+            .collect::<Vec<_>>();
+        format.tab_stops = Some(positions);
+    }
+
+    apply_format(activation, fallback, format.clone(), line_index);
+
+    // Timffle: a `TextLine` holds exactly one laid-out line. The fallback
+    // `EditText` wraps at `width`; keep only the characters of its first
+    // visual line so the rest is left for the next `createTextLine` call.
+    let (first_line_end, first_line_width) = {
+        let layout = fallback.layout();
+        match layout.lines().first() {
+            Some(line) => (line.end(), line.bounds().width().to_pixels()),
+            None => (subtext.len(), 0.0),
+        }
+    };
+    if first_line_end < subtext.len() {
+        if first_line_end == 0 && !fit_something {
+            // Nothing fits in `width` and the caller did not ask to fit
+            // something anyway: Flash returns null with `insufficientWidth`.
+            block.set_text_line_creation_result(Some(
+                TextLineCreationResultValue::InsufficientWidth,
+            ));
+            return Ok(Value::Null);
+        }
+        let cut = first_line_end.max(1);
+        next_position = previous_position + cut;
+        subtext = &text[previous_position..next_position];
+        fallback.set_text(subtext, activation.context);
+        apply_format(activation, fallback, format, line_index);
+    } else if first_line_width > width && !fit_something && width < f64::from(i32::MAX) {
+        block.set_text_line_creation_result(Some(TextLineCreationResultValue::InsufficientWidth));
+        return Ok(Value::Null);
+    }
+
+    // Timffle: `TextBlock.lineRotation` rotates the whole line display object.
+    let rotation = match block.line_rotation() {
+        TextRotationValue::Rotate0 | TextRotationValue::Auto => 0.0_f64,
+        TextRotationValue::Rotate90 => 90.0,
+        TextRotationValue::Rotate180 => 180.0,
+        TextRotationValue::Rotate270 => 270.0,
+    };
+    text_line.set_rotation(crate::types::Degrees::from_radians(
+        (rotation as f64).to_radians(),
+    ));
 
     // FIXME: This needs to use `intrinsic_bounds` to measure the width
     // of the provided text, and set the width of the EditText to that.
@@ -605,8 +769,13 @@ fn handle_content_element<'gc>(
                 handle_content_element(*element, all_text, all_spans)?;
             }
         }
-        ElementData::Graphic => {
-            // TODO
+        ElementData::Graphic { .. } => {
+            // Timffle: a graphic occupies one U+FDEF character in the block's
+            // text, formatted with the element's format (Flash requires one).
+            all_text.push(0xFDEF);
+            let format = format.ok_or(HandleContentError::NullElementFormat)?;
+            let text_format = format.as_text_format();
+            all_spans.push(TextSpan::with_length_and_format(1, &text_format));
         }
         ElementData::Invalid => {
             unreachable!(

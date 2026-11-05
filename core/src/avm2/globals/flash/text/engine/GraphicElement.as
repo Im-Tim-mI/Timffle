@@ -1,11 +1,11 @@
 package flash.text.engine {
-    import __ruffle__.stub_constructor;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-
     import flash.display.DisplayObject;
     import flash.events.EventDispatcher;
 
+    // Timffle: `graphic`, `elementWidth` and `elementHeight` are stored on the
+    // element (natives) and the graphic occupies one U+FDEF character in the
+    // block's raw text, as in Flash Player. The layout does not yet reserve an
+    // inline box of elementWidth x elementHeight for it.
     [API("662")]
     public final class GraphicElement extends ContentElement {
         public function GraphicElement(
@@ -18,37 +18,21 @@ package flash.text.engine {
         ) {
             super(elementFormat, eventMirror, textRotation);
 
-            stub_constructor("flash.text.engine.GraphicElement");
-
             this.init();
+            this.graphic = graphic;
+            this.elementWidth = elementWidth;
+            this.elementHeight = elementHeight;
         }
 
         private native function init():void;
 
-        public function get elementHeight():Number {
-            stub_getter("flash.text.engine.GraphicElement", "elementHeight");
-            return 15.0;
-        }
-        public function set elementHeight(value:Number):void {
-            stub_setter("flash.text.engine.GraphicElement", "elementHeight");
-        }
+        public native function get elementHeight():Number;
+        public native function set elementHeight(value:Number):void;
 
-        public function get elementWidth():Number {
-            stub_getter("flash.text.engine.GraphicElement", "elementWidth");
-            return 15.0;
-        }
+        public native function get elementWidth():Number;
+        public native function set elementWidth(value:Number):void;
 
-        public function set elementWidth(value:Number):void {
-            stub_setter("flash.text.engine.GraphicElement", "elementWidth");
-        }
-
-        public function get graphic():DisplayObject {
-            stub_getter("flash.text.engine.GraphicElement", "graphic");
-            return null;
-        }
-
-        public function set graphic(value:DisplayObject):void {
-            stub_setter("flash.text.engine.GraphicElement", "graphic");
-        }
+        public native function get graphic():DisplayObject;
+        public native function set graphic(value:DisplayObject):void;
     }
 }

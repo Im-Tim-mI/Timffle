@@ -156,6 +156,18 @@ impl<'gc> TextBlockObject<'gc> {
             line.set_validity(TextLineValidity::Invalid, mc);
         }
 
+        // Timffle: keep `ContentElement.textBlock` in sync.
+        if let Some(old) = self.content()
+            && old
+                .owning_text_block()
+                .is_some_and(|b| Object::ptr_eq(b, self))
+        {
+            old.set_owning_text_block(None, mc);
+        }
+        if let Some(new) = value {
+            new.set_owning_text_block(Some(self), mc);
+        }
+
         unlock!(Gc::write(mc, self.0), TextBlockObjectData, content).set(value);
     }
 

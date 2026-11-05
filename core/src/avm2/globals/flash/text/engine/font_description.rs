@@ -220,3 +220,51 @@ pub fn set_locked<'gc>(
     this.set_locked(args.get_bool(0));
     Ok(Value::Undefined)
 }
+
+// Timffle: FontDescription.isFontCompatible / isDeviceFontCompatible.
+pub fn is_font_compatible_native<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let name = args.get_string_non_null(activation, 0, "fontName")?;
+    let bold = args.get_bool(1);
+    let italic = args.get_bool(2);
+    let movie = activation.caller_movie_or_root();
+    let found = activation
+        .context
+        .library
+        .get_embedded_font_by_name(
+            &name.to_utf8_lossy(),
+            crate::font::FontType::EmbeddedCFF,
+            bold,
+            italic,
+            Some(movie),
+        )
+        .is_some();
+    Ok(found.into())
+}
+
+pub fn is_device_font_compatible_native<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let name = args.get_string_non_null(activation, 0, "fontName")?;
+    let bold = args.get_bool(1);
+    let italic = args.get_bool(2);
+    let name = name.to_utf8_lossy();
+    let context = &mut *activation.context;
+    let found = context
+        .library
+        .get_or_load_device_font(
+            &name,
+            bold,
+            italic,
+            &*context.ui,
+            &mut *context.renderer,
+            context.gc_context,
+        )
+        .is_some();
+    Ok(found.into())
+}

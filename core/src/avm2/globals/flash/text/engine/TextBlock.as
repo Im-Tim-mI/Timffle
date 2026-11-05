@@ -1,7 +1,4 @@
 package flash.text.engine {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
-
     [API("662")]
     [Ruffle(InstanceAllocator)]
     public final class TextBlock {
@@ -96,8 +93,6 @@ package flash.text.engine {
                 Error.throwError(ArgumentError, 2004);
             }
 
-            stub_method("flash.text.engine.TextBlock", "createTextLine");
-
             return this.DoCreateTextLine(null, previousLine, width, lineOffset, fitSomething);
         }
 
@@ -128,8 +123,6 @@ package flash.text.engine {
             // Clear AS-side properties of the text line
             textLine.userData = null;
 
-            stub_method("flash.text.engine.TextBlock", "recreateTextLine");
-
             return this.DoCreateTextLine(textLine, previousLine, width, lineOffset, fitSomething);
         }
 
@@ -142,5 +135,55 @@ package flash.text.engine {
         public native function get lastLine():TextLine;
 
         public native function releaseLines(start:TextLine, end:TextLine):void;
+
+        // Timffle: new members.
+        public native function getTextLineAtCharIndex(charIndex:int):TextLine;
+
+        public native function findNextAtomBoundary(afterCharIndex:int):int;
+        public native function findPreviousAtomBoundary(beforeCharIndex:int):int;
+        public native function findNextWordBoundary(afterCharIndex:int):int;
+        public native function findPreviousWordBoundary(beforeCharIndex:int):int;
+
+        // Flash Player keeps shaping data of the content between
+        // createTextLine calls and this method frees it. This player lays out
+        // each line from the content directly and keeps no such cache, so
+        // there is nothing to release.
+        public function releaseLineCreationData():void { }
+
+        // Flash Player's dump() format is undocumented; this prints the block's
+        // settings, content tree and lines as XML.
+        public function dump():String {
+            var out:String = "<TextBlock baselineZero=\"" + this.baselineZero
+                + "\" bidiLevel=\"" + this.bidiLevel
+                + "\" lineRotation=\"" + this.lineRotation
+                + "\" textLineCreationResult=\"" + this.textLineCreationResult + "\">\n";
+            out += dumpElement(this.content, "  ");
+            for (var line:TextLine = this.firstLine; line != null; line = line.nextLine) {
+                out += "  <TextLine textBlockBeginIndex=\"" + line.textBlockBeginIndex
+                    + "\" rawTextLength=\"" + line.rawTextLength
+                    + "\" validity=\"" + line.validity + "\"/>\n";
+            }
+            return out + "</TextBlock>";
+        }
+
+        private static function dumpElement(element:ContentElement, indent:String):String {
+            if (element == null) {
+                return "";
+            }
+            if (element is GroupElement) {
+                var group:GroupElement = GroupElement(element);
+                var out:String = indent + "<GroupElement>\n";
+                for (var i:int = 0; i < group.elementCount; i++) {
+                    out += dumpElement(group.getElementAt(i), indent + "  ");
+                }
+                return out + indent + "</GroupElement>\n";
+            }
+            if (element is GraphicElement) {
+                var g:GraphicElement = GraphicElement(element);
+                return indent + "<GraphicElement elementWidth=\"" + g.elementWidth
+                    + "\" elementHeight=\"" + g.elementHeight + "\"/>\n";
+            }
+            return indent + "<TextElement text=\"" + element.text + "\"/>\n";
+        }
     }
 }

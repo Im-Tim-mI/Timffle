@@ -6,7 +6,6 @@ use crate::avm2::function::FunctionArgs;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::fte::TextRotationValue;
-use crate::{avm2_stub_getter, avm2_stub_setter};
 
 pub use crate::avm2::object::content_element_allocator;
 
@@ -62,51 +61,59 @@ pub fn set_element_format<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: `textBlock`, `textBlockBeginIndex` and `groupElement` are real
+// bookkeeping now: `GroupElement.setElements`/`replaceElements` and
+// `TextBlock.content` record the owner on each element.
 pub fn get_text_block<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
-) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.text.engine.ContentElement", "textBlock");
-    Ok(Value::Null)
-}
-
-pub fn get_text_block_begin_index<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
-) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(
-        activation,
-        "flash.text.engine.ContentElement",
-        "textBlockBeginIndex"
-    );
-    Ok((-1).into())
-}
-
-pub fn get_group_element<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
-) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(
-        activation,
-        "flash.text.engine.ContentElement",
-        "groupElement"
-    );
-    Ok(Value::Null)
-}
-
-pub fn get_event_mirror<'gc>(
-    activation: &mut Activation<'_, 'gc>,
+    _activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(
-        activation,
-        "flash.text.engine.ContentElement",
-        "eventMirror"
-    );
+    let this = this
+        .as_object()
+        .unwrap()
+        .as_content_element_object()
+        .unwrap();
+    Ok(this.text_block().map(Value::from).unwrap_or(Value::Null))
+}
+
+pub fn get_text_block_begin_index<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this
+        .as_object()
+        .unwrap()
+        .as_content_element_object()
+        .unwrap();
+    Ok(this
+        .text_block_begin_index()
+        .map(Value::from_usize_lossy)
+        .unwrap_or((-1).into()))
+}
+
+pub fn get_group_element<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this
+        .as_object()
+        .unwrap()
+        .as_content_element_object()
+        .unwrap();
+    Ok(this.group_element().map(Value::from).unwrap_or(Value::Null))
+}
+
+// Timffle: `eventMirror` is stored on the element and used by
+// `TextLine.mirrorRegions`; the mirroring of events dispatched to the line is
+// done by `TextLine` in ActionScript.
+pub fn get_event_mirror<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
     let this = this
         .as_object()
         .unwrap()
@@ -120,11 +127,6 @@ pub fn set_event_mirror<'gc>(
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_setter!(
-        activation,
-        "flash.text.engine.ContentElement",
-        "eventMirror"
-    );
     let this = this
         .as_object()
         .unwrap()
@@ -134,16 +136,13 @@ pub fn set_event_mirror<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: `textRotation` is validated, stored and reported through
+// `TextLine.getAtomTextRotation`; glyphs are not drawn rotated yet.
 pub fn get_text_rotation<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(
-        activation,
-        "flash.text.engine.ContentElement",
-        "textRotation"
-    );
     let this = this
         .as_object()
         .unwrap()
@@ -157,11 +156,6 @@ pub fn set_text_rotation<'gc>(
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_setter!(
-        activation,
-        "flash.text.engine.ContentElement",
-        "textRotation"
-    );
     let this = this
         .as_object()
         .unwrap()
@@ -176,11 +170,41 @@ pub fn set_text_rotation<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: `rawText` includes the U+FDEF placeholder of each `GraphicElement`.
 pub fn get_raw_text<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this
+        .as_object()
+        .unwrap()
+        .as_content_element_object()
+        .unwrap();
+    Ok(match this.raw_text(activation) {
+        Some(s) => s.into(),
+        None => Value::Null,
+    })
+}
+
+// Timffle: helper for `GroupElement.getElementAtCharIndex` and the atom
+// queries of `TextLine`.
+pub fn leaf_at_char_index<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.text.engine.ContentElement", "rawText");
-    get_text(activation, this, args)
+    let this = this
+        .as_object()
+        .unwrap()
+        .as_content_element_object()
+        .unwrap();
+    let index = args.get_i32(0);
+    let Ok(index) = usize::try_from(index) else {
+        return Ok(Value::Null);
+    };
+    Ok(this
+        .leaf_at_char_index(index)
+        .map(|(e, _)| Value::from(e))
+        .unwrap_or(Value::Null))
 }

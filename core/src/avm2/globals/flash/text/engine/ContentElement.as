@@ -35,5 +35,9 @@ package flash.text.engine {
 
         public native function get textRotation():String;
         public native function set textRotation(textRotation:String):void;
+
+        // Timffle: the leaf element (TextElement/GraphicElement) that holds the
+        // character at `charIndex` of this element's text, or null.
+        internal native function leafAtCharIndex(charIndex:int):ContentElement;
     }
 }

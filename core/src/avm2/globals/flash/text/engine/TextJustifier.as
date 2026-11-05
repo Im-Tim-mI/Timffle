@@ -1,6 +1,4 @@
 package flash.text.engine {
-    import __ruffle__.stub_setter;
-
     import flash.utils.getQualifiedClassName;
 
     [API("662")]
@@ -44,6 +42,23 @@ package flash.text.engine {
 
         public function clone():TextJustifier {
             return null;
+        }
+
+        // Timffle: per the reference, East Asian locales (Chinese, Japanese,
+        // Korean) get an EastAsianJustifier, every other locale a
+        // SpaceJustifier, both with lineJustification "unjustified".
+        public static function getJustifierForLocale(locale:String):TextJustifier {
+            if (locale == null) {
+                throw new TypeError("Error #2007: Parameter locale must be non-null.", 2007);
+            }
+            if (locale.length < 2) {
+                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+            }
+            var lang:String = locale.toLowerCase().split("-")[0].split("_")[0];
+            if (lang == "ja" || lang == "zh" || lang == "ko") {
+                return new EastAsianJustifier(locale, LineJustification.UNJUSTIFIED);
+            }
+            return new SpaceJustifier(locale, LineJustification.UNJUSTIFIED);
         }
     }
 }
