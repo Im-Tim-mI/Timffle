@@ -352,8 +352,8 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
   - 數值：實心色經 Flash 的 8 位元預乘來回 `p = round(c·a/255)`、`c' = floor(p·255/a)`（STATUS：7 個樣本中符合 5 個，精確公式未知；alpha 0 回 0x000000）、alpha = floor(a·255)/255；漸層 colors 為含 alpha 位元組的 ARGB uint、alphas = a/255、ratios 原值、matrix 如給定（f32）、focalPointRatio 經 Fixed8；點陣圖填色 matrix = 給定值 ×4095/4096、repeat 永遠 true、smooth 永遠 false、`bitmapData` 是同一個物件（`Drawing::bitmap_objects` 用 `DynamicRoot` 抓住 AVM2 物件，`ObjectRoot`）；lineGradientStyle／lineBitmapStyle 的填色出現在 `GraphicsStroke.fill`；空的或 clear() 過的 → 空 Vector。
   - 幾何：`cubicCurveTo` 回報成 4 條二次曲線（在 t = ¼、½、¾ 切開，控制點 = (3(Q1+Q2)−Q0−Q3)/4，座標取整到 twips）；`draw_round_rect_internal` 改成從 (x+w, y+h−ry) 出發順時針、每個角兩段二次曲線、直邊長度為 0 時仍有一個零長 LineTo（Flash 的順序；只是同一迴圈換起點，渲染不變）。
   - `recurse=true`：自己的 transform **不**套用，可見的子物件（`iter_render_list` 順序，`visible=false` 跳過）遞迴附加，路徑座標與漸層／點陣圖矩陣乘上子物件相對於被查詢物件的矩陣。
-- **`beginShaderFill(shader, matrix)`／`lineShaderStyle(shader, matrix)`／`GraphicsShaderFill`**（`graphics.rs`、`drawing.rs`）：`Drawing::add_shader_fill` 記下 Pixel Bender handle、參數（用 ShaderJob 的 `get_shader_args` 在呼叫當下複製）與矩陣，回一個點陣圖填色樣式，id ≥ 0x8000 代表著色器填色；`BitmapSource::bitmap_size`／`bitmap_handle` 在圖形第一次向渲染器登記時才算：填色（與筆畫）的邊界經矩陣反矩陣映回著色器座標，從原點起取一張 `ceil(max)`（1～4096）大小的空材質，用 `run_pixelbender_shader(PixelBenderTarget::Bitmap)` 算一次，之後當成不重複、不平滑的點陣圖填色（矩陣 = 給定矩陣 × 20）。**近似**：著色器只在提交後第一次繪製時靜態算一次，之後改 `shader.data.*` 不會重算（直到繪圖內容改變）；`outCoord()` 從 0 起算，所以只有落在正象限的填色座標與 Flash 相同；渲染器跑不了（本機沒有 GPU 的 null renderer）時填色仍登記、畫成透明並印一次 warn，不會 panic。錯誤：`shader` 為 null → TypeError #2007；Shader 沒有位元碼 → ArgumentError #2004（Adobe 文件只說 ArgumentError，代碼是推論）。`readGraphicsData` 回 `GraphicsShaderFill(shader 同一物件, matrix)`（Flash 對著色器填色的回報未量測）。
-- **`BitmapData.applyFilter(src, sourceRect, destPoint, ShaderFilter)`**（`bitmap_data.rs`）：sourceRect 不是整張來源時，把該區域（夾在來源範圍內）用 `operations::copy_pixels` 複製到一張同透明度的暫存 BitmapData，著色器在暫存圖上跑（`outCoord()` 從矩形左上角起算，與其他濾鏡的子矩形一致），結果寫到 destPoint；寬或高夾成 0 時不做事。
+- **`beginShaderFill(shader, matrix)`／`lineShaderStyle(shader, matrix)`／`GraphicsShaderFill`**（`graphics.rs`、`drawing.rs`）：`Drawing::add_shader_fill` 記下 Pixel Bender handle、參數（用 ShaderJob 的 `get_shader_args` 在呼叫當下複製）與矩陣，回一個點陣圖填色樣式，id ≥ 0x8000 代表著色器填色；`BitmapSource::bitmap_size`／`bitmap_handle` 在圖形第一次向渲染器登記時才算：填色（與筆畫）的邊界經矩陣反矩陣映回著色器座標，從原點起取一張 `ceil(max)`（1～4096）大小的空材質，用 `run_pixelbender_shader(PixelBenderTarget::Bitmap)` 算一次，之後當成不重複、不平滑的點陣圖填色（矩陣 = 給定矩陣 × 20）。**近似**：著色器只在提交後第一次繪製時靜態算一次，之後改 `shader.data.*` 不會重算（直到繪圖內容改變）；`outCoord()` 從 0 起算，所以只有落在正象限的填色座標與 Flash 相同；渲染器跑不了（本機沒有 GPU 的 null renderer）時填色仍登記、畫成透明並印一次 warn，不會 panic。錯誤：`shader` 為 null → TypeError #2007；Shader 沒有位元碼 → ArgumentError #2171（Flash 32 量到）。`readGraphicsData` 照 Flash 32 把著色器填色與著色器筆畫連同它們的路徑省略（只有它們的形狀回空 Vector；`drawGraphicsData` 的 `GraphicsShaderFill` 也一樣），其他填色照常回報（GPU 驗證時量到並修正，見下節）。
+- **`BitmapData.applyFilter(src, sourceRect, destPoint, ShaderFilter)`**（`bitmap_data.rs`）：照 Flash 32 量到的規則（GPU 驗證時改寫，見下節）：著色器的第一個影像輸入是整張來源，`outCoord()` 就是目的像素，所以目的 (x, y) 拿到來源 (x, y) 的著色器結果（來源外讀到透明黑）；寫入範圍是來源大小、位於 `destPoint - 2 × sourceRect 左上角` 的視窗，夾在目的圖內，sourceRect 的寬高不參與（空矩形也會寫）。著色器沒有影像輸入 → ArgumentError #2167。
 
 ### 第 4 組：Stage3D 貼圖格式（Context3D.createTexture 的 packed／compressed 格式、Texture／CubeTexture 的 ATF 上傳）
 
@@ -367,7 +367,7 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 
 - 每種格式都真的上傳：BGRA 照舊；打包格式量化；`compressed`／`compressedAlpha` 照 Adobe 文件只在「行動平台不支援執行期貼圖壓縮」時丟 `ArgumentError #3675`，桌面版會執行期壓縮——BC 儲存時用新的 BC1／BC3 編碼器（端點取最亮／最暗像素、每像素取最近的調色盤項；alpha 取最大／最小的 8 階），RGBA8 儲存時編碼後再解碼（精度損失與真的壓縮一致），ETC2 儲存（行動 GPU）丟 #3675；`rgbaHalfFloat` 的 BitmapData 轉半精度（自寫 f32→f16 捨入到偶數）。
 - `uploadFromByteArray` 每像素位元組數依格式：BGRA／壓縮 4、打包 2（小端 u16：565 為 r 15..11、g 10..5、b 4..0；4444 為 a 15..12、r 11..8、g 7..4、b 3..0——Adobe 參考沒有寫佈局，採 Starling／OpenFL 的解讀，見 (c)）、半精度 8（原樣）；`byteArrayOffset` 起不足該層所需位元組 → `RangeError #3669`「Bad input size」（之前是 panic）。
-- `miplevel` 超出層數 → `ArgumentError #3674`「Miplevel too large」（Adobe 文件的錯誤名稱；上一批用 #3669）。來源比該層大 → #3675（Adobe「Invalid BitmapData Error」，碼未查到，見 (c)）。
+- `miplevel` 超出層數 → `ArgumentError #3674`「Miplevel too large」（Adobe 文件的錯誤名稱；上一批用 #3669）。來源比該層大時 Flash 32 接受並取左上角該層大小的部分（量到；先前丟 #3675，GPU 驗證時修正）。
 - `Context3DObject::copy_pixels_to_texture` 改為接「貼圖自己儲存佈局的位元組 + 來源寬高」，RGBA8 像素或 DXT／ETC2 區塊都走同一條 `CopyBitmapToTexture`；wgpu 端的複製改用區塊數向上取整計算每列位元組、複製範圍進位到區塊大小、每列一律補到 256 對齊（之前 DXT5 的 4×4 以下 mip 層與 16 像素寬的列會違反 wgpu 的對齊規則）。
 
 **Texture／CubeTexture.uploadCompressedTextureFromByteArray（ATF）**（`render/src/atf.rs`、`core/.../textures/atf_upload.rs`（新）、`atf_jpegxr.rs`（只剩 JPEG-XR 解碼，錯誤改為回傳而非 panic）、`atf_jpegxr_stub.rs`）：
@@ -393,6 +393,15 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
   - `surfaceSelector` 的立方體面選擇本來就有效（view 的 `base_array_layer`），額外輸出同樣支援。
 - `drawToBitmapData(destination, srcRect = null, destPoint = null)`：AIR 25 簽名。讀的是**後緩衝區**（Adobe：「the back render buffer, not the front buffer shown on stage」，要擷取畫面請在 `present()` 前呼叫）。實作是 `RenderBackend::copy_stage3d_to_bitmap`（wgpu：`copy_texture_to_texture` 進 BitmapData 的紋理，再用和 `BitmapData.draw()` 相同的 `QueueSyncHandle` 在下次讀取像素時同步回 CPU），所以不縮放、不混色、顏色視為預乘（Adobe：「the rendering context does not check the format」）。`srcRect` 預設整個後緩衝區、`destPoint` 預設 (0,0)；超出 BitmapData 的部分裁掉（Adobe：「it is not scaled to fit the bitmap」）。錯誤：`srcRect` 超出後緩衝區、`destPoint` 超出 BitmapData 或任一值 NaN → Error #3802（「Offset outside stage coordinate bound.」）；context 已 dispose → #3694；BitmapData 已 dispose → #2015。還沒 `configureBackBuffer()` 時什麼都不做。
 - 附帶：`clear()` 在 Ruffle 裡延遲到下一個 render pass 才執行，只 `clear()` 不畫三角形的幀原本不會顯示；現在 `present()` 與 `drawToBitmapData()` 前會用空 render pass 把待處理的 clear 套用（Flash 的 clear 是立即的）。
+
+### GPU 驗證（GeForce GT 720，nouveau／NVK，2026-11-05）
+
+上面各批在沒有 GPU 的容器只過了 `cargo check`。這次在 GT 720 上跑全部 Stage3D／9 格縮放／著色器填色／ShaderFilter 測試，並把新測試裡「依語意手寫」的期望值改用 Wine 下的 Flash Player 32 錄（每個都跑兩次、輸出相同）：
+
+- **Stage3D 上傳**：比 mip 層大的 BitmapData 取左上角（先前丟 #3675）；CubeTexture side > 5 丟 `#3673`（先前 wgpu 驗證錯誤 panic）；ATF 的 mip 層小於 4×4 時以整塊計算 JPEG-XR 影像大小（先前 512×512 的 COMPRESSED_ALPHA 在第 8 層丟 #3677，既有的 `stage3d_texture_bytearray_compressed_alpha` 整張黑）；`totalGPUMemory` 的 API 版本改成 SWF 33（先前標成 API 721，SWF 32 以上都看不到，`stage3d_texture_formats` 丟 #1069）。新測試 `stage3d_uploads_flash`（= `timffle/difftest` 的 `d63stage3d`，Flash 錄的 60 行，含手寫 AGAL 的 mip 取樣像素）。
+- **著色器填色**：`drawGraphicsData` 的 `GraphicsShaderFill` 真的套用（先前仍是上游的「印警告、不填色」）；沒有位元碼的 Shader `#2171`；readGraphicsData 省略著色器填色。
+- **ShaderFilter**：`applyFilter` 照量到的規則重寫（見上面第 2 組）。`bitmapdata_applyfilter_shader` 改用有影像輸入的 `tintype.pbj`（原本的 `simple_shader.pbj` 沒有輸入，真 Flash 直接丟 #2167）。
+- **測試環境**：`driverInfo` 在回歸測試固定成 `Dummy Ruffle driver`（見已知差異表）。
 
 ## 已知與真 Flash 還不同的地方
 
@@ -452,10 +461,9 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | `Condition(null)`／`Worker.start()` 的錯誤碼 | 以執行期錯誤清單推定：`new Condition(null)` `#1519`、primordial worker 的 `start()` `#1511`（而不是 `#1521`）；沒有真 Flash 證實。 |
 | `Security.disableAVM1Loading` 的 `#2110` | 真 Flash 只讓能碰 stage 的 AS3 SWF 設定；Timffle 接受所有 AVM2 呼叫端。 |
 | 項目 | 說明 |
-| `Context3D.driverInfo` 字串 | 格式仿 Flash 的 `OpenGL Vendor=… Version=… Renderer=…`，但內容來自 wgpu 轉接器；`dispose()` 後回 `"Disposed"` 是依 OpenFL／常見實作，沒有用真 Flash 驗證。 |
-| `maxBackBufferWidth/Height` 超出範圍 | 文件只說「不能大於系統上限、不能小於 32／最後設定值」，沒說丟什麼錯；這裡夾值不丟錯。 |
+| `Context3D.driverInfo` 字串 | 格式仿 Flash 的 `OpenGL Vendor=… Version=… Renderer=…`，內容來自 wgpu 轉接器（例：`Vulkan (Direct Mode) Vendor=NVK Version=Mesa 25.2.8… Renderer=GeForce GT 720 (NVK GK208B)`）；Wine 下的 Flash 32 回 `DirectX11`。`dispose()` 後的 `"Disposed"` 已以 Flash 32 證實。回歸測試把它固定成上游的 `Dummy Ruffle driver`（`Descriptors::context3d_driver_info_override`），讓會印出它的影像黃金答案不隨機器改變。 |
 | `totalGPUMemory` 的程式大小 | 用 AGAL 位元組數代替驅動程式實際配置量。 |
-| Stage3D 測試 | 本容器沒有 Vulkan ICD／EGL，wgpu 找不到轉接器：`stage3d_members` 只涵蓋不需要 context 的部分（`supportsVideoTexture`、`new VideoTexture()` #2012、`TextureBase.dispose()`、`stage3Ds`）；`dispose()`→#3694、`totalGPUMemory`、`backBuffer*`、`maxBackBuffer*` 的程式碼只經 `cargo check` 與人工閱讀，未在此機器執行。合併後請在有 GPU 的機器跑 `cargo test -p tests --test tests -- stage3d`。 |
+| Stage3D 測試 | 2026-11-05 在 GeForce GT 720（nouveau／NVK Vulkan，wgpu 直接用 Vulkan）跑過：`-- stage3d` 加 `--features imgtests,jpegxr` 41 支全過（只開 imgtests 時 4 支需要 jpegxr 的被略過、37 支過）。唯一的差異是 `stage3d_bitmap`：SWF 自己上傳 mip 層並以 `mipnearest` 取樣，黃金圖是上游在只有第 0 層時由 Ruffle 畫的（強制只取第 0 層就與它相符，最大差 2）；真 Flash 32 會取樣上傳的 mip 層（`stage3d_uploads_flash` 量到），所以標成 `[image_comparisons.output] known_failure`，`output.ruffle.png` 是現在的畫面，黃金圖未改。 |
 | 項目 | 差異 |
 | ContentElement.textRotation／TextBlock.baselineZero／applyNonLinearFontScaling／textJustifier／baselineFont* | 值儲存、驗證並可讀回，但版面不旋轉個別字形、不換基線零點、不做 justification 與非線性縮放；`getBaselinePosition` 以 roman 基線為 0 回報，而 TextLine 的繪製原點仍是 EditText 的左上角（上游既有差異）。 |
 | TextBlock.dump()／TextLine.dump() | Flash 的 XML 格式無文件，輸出為自訂格式。 |
@@ -471,20 +479,18 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | `DisplayObject.scale9Grid` 的矩形精度 | 沿用上游整數像素四捨五入；真 Flash 可能保留 twips（0.05 px）精度，未驗證。 |
 | `scale9Grid` 中央區縮到負寬度時 | 這裡收縮到 0（四角相接）；真 Flash 的行為未驗證。 |
 | `scale9Grid` 容器含 timeline 遮罩（clip depth） | 不切，整體照常縮放。 |
-| `Texture.uploadFromBitmapData` miplevel 超出層數 | 丟 #3669；真 Flash 的錯誤碼未驗證。 |
-| 9 格縮放／mip 鏈的像素結果 | 此容器沒有 GPU，`scale9grid_render`、`stage3d_leftovers` 與 33 支 stage3d 測試未執行。 |
+| 9 格縮放／mip 鏈的像素結果 | 2026-11-05 在 GT 720 上跑過：`scale9grid_render` 的 13 個取樣點與 Flash 32（Wine）逐行相同；mip 鏈：`mipnearest` 在縮小 4 倍時取到第 2 層、`mipnone` 只取第 0 層、比該層大的 BitmapData 取左上角，都與 Flash 32 相同（`stage3d_uploads_flash`）。仍未量：`miplinear` 的混合比例、各向異性過濾。 |
 | `Mouse.registerCursor` 的錯誤碼 | Adobe 參考沒有 Throws：null 參數 `TypeError #2007` 有黃金輸出證實；`data` 為 null／空、影格大於 32×32、名稱是內建名稱時 Timffle 丟 `ArgumentError #2004`，已 dispose 的影格丟 `ArgumentError #2015`——真 Flash 丟哪個碼（或是否默默接受再不顯示）未驗證。`hotSpot` 為 null 視為 (0,0)、負值夾成 0，未驗證。 |
 | 自訂游標的顯示 | 桌面版只顯示第一張影格（winit 0.30 桌面無動畫游標）且未編譯驗證；網頁版的輪播用 `setInterval`，`frameRate` 很高時瀏覽器會節流；游標離開 canvas 時瀏覽器自然回到系統游標（Flash 也是「只在 stage 內顯示」）。 |
 | AMF0 參照編號 | AVM2（`ByteArray`／`LocalConnection`／`NetConnection`／AMF0 `SharedObject`）依規格只給複合物件編號；AVM1 `.sol` 依真 Flash 黃金檔每個值編號。AVM1 寫、AVM2 讀（或反過來）同一個含參照的 AMF0 `.sol` 時，兩套編號對不上；真 Flash 在這種跨 VM 情形的行為未驗證。AVM1 `LocalConnection`／`NetConnection` 的值樹在記憶體中沒有解碼器，AVM1 → AVM2 的參照仍是 undefined（之前就是）。 |
-| `Graphics.readGraphicsData` | 結構依 STATUS 第 8 批整理的 Flash 32 事實重建（原始結果檔沒有進 git）。未經 Flash 驗證的推論：三角形群組與空填色的回報、lineTo 未 moveTo 時以目前筆位置當起點（`M(0,0)`）、填色路徑不含隱含封閉段、`GraphicsStroke` 的 pixelHinting／scaleMode／caps／joints／miterLimit 一律回 `false/normal/none/round/3`（照 STATUS 的字面）、drawPath+endFill 後多出的一段封閉筆畫（Ruffle 第 8 批的渲染就是這樣）、著色器填色的回報、`recurse` 時子物件的筆畫粗細不乘比例。座標：Ruffle 把像素截斷成 twips（`Twips::from_pixels`），Flash 四捨五入，圓的控制點等非整數座標可差 0.05 px。`beginGradientFill(matrix=null)`：Flash 回報 a=d=1/8.192（0.12207），Ruffle 存的是單位矩陣所以回 1（Ruffle 以單位矩陣渲染 null 矩陣漸層，是否與 Flash 的 200 px 漸層框一致未驗證）。實心色的預乘來回公式只符合 7 個樣本中的 5 個。 |
-| `Graphics.beginShaderFill`／`lineShaderStyle` | 著色器在第一次繪製時靜態算一次（Flash 每次繪製都算）；`outCoord()` 從 0 起算，負座標的填色會被夾掉；渲染器不支援 Pixel Bender（canvas／無 GPU）時畫成透明。像素結果未在 GPU 機器上驗證。 |
-| `BitmapData.applyFilter(ShaderFilter, 子矩形)` | Flash 在 x/y 非 0 時有奇怪的平移／裁切、x=y=0 時忽略 width/height（上游註解）；Timffle 把子矩形當成一張獨立的來源圖處理，邊緣行為未以真 Flash 驗證。 |
+| `Graphics.readGraphicsData` | 結構依 STATUS 第 8 批整理的 Flash 32 事實重建（原始結果檔沒有進 git）。未經 Flash 驗證的推論：三角形群組與空填色的回報、lineTo 未 moveTo 時以目前筆位置當起點（`M(0,0)`）、填色路徑不含隱含封閉段、`GraphicsStroke` 的 pixelHinting／scaleMode／caps／joints／miterLimit 一律回 `false/normal/none/round/3`（照 STATUS 的字面）、drawPath+endFill 後多出的一段封閉筆畫（Ruffle 第 8 批的渲染就是這樣）、`recurse` 時子物件的筆畫粗細不乘比例。座標：Ruffle 把像素截斷成 twips（`Twips::from_pixels`），Flash 四捨五入，圓的控制點等非整數座標可差 0.05 px。`beginGradientFill(matrix=null)`：Flash 回報 a=d=1/8.192（0.12207），Ruffle 存的是單位矩陣所以回 1（Ruffle 以單位矩陣渲染 null 矩陣漸層，是否與 Flash 的 200 px 漸層框一致未驗證）。實心色的預乘來回公式只符合 7 個樣本中的 5 個。著色器填色與著色器筆畫連同路徑省略（Flash 32 量到）。 |
+| `Graphics.beginShaderFill`／`lineShaderStyle` | 著色器在第一次繪製時靜態算一次（Flash 每次繪製都算）；`outCoord()` 從 0 起算，負座標的填色會被夾掉；渲染器不支援 Pixel Bender（canvas／無 GPU）時畫成透明。`graphics_shader_fill` 的填色、矩陣、筆畫與 `drawGraphicsData` 取樣點在 GT 720 上與 Flash 32 相同。 |
+| `BitmapData.applyFilter(ShaderFilter, 子矩形)` | 規則由 Flash 32 的 17 種情形（8×8 的欄／列漸層、8／12 寬的來源與目的混搭）歸納，全部逐像素相同；負的 destPoint、小數的 sourceRect、多個影像輸入的著色器未量。 |
 | 項目 | 說明 |
-| Stage3D 打包格式的 `uploadFromByteArray` 位元組佈局 | Adobe 參考沒有寫 565／4444 的 ByteArray 佈局；採小端 u16（565：r 15..11／g 10..5／b 4..0；4444：a 15..12／r 11..8／g 7..4／b 3..0，Starling／OpenFL 的解讀），未以真 Flash 驗證。 |
+| Stage3D 打包格式的 `uploadFromByteArray` 位元組佈局 | Adobe 參考沒有寫 565／4444 的 ByteArray 佈局；採小端 u16（565：r 15..11／g 10..5／b 4..0；4444：a 15..12／r 11..8／g 7..4／b 3..0，Starling／OpenFL 的解讀）；長度規則（每像素 2 位元組、不足 RangeError #3669、多的忽略）Flash 32 量到相同，位元組佈局本身仍未驗證。 |
 | Stage3D 壓縮貼圖的執行期壓縮 | 桌面 Flash 把 BitmapData 上傳到 `compressed`／`compressedAlpha` 貼圖時做 DXT 壓縮；Timffle 的 BC1／BC3 編碼器（最亮／最暗端點、最近調色盤項）比 Flash 的編碼器簡單，壓縮後的顏色可能略有不同（量化等級相同）。 |
-| Stage3D 貼圖上傳的錯誤碼 | `#3674`（miplevel）、`#3677`（解碼失敗／ATF 版本）、`RangeError #3669`（資料太短）、`#3675`（格式不符）依 Adobe 文件的錯誤名稱對應 `error_messages.rs`；來源比 mip 層大的「Invalid BitmapData Error」碼查不到，用 #3675。ATF 上傳到 `bgra` 貼圖維持上游的「接受並解碼」，真 Flash 是否接受未驗證。 |
+| Stage3D 貼圖上傳的錯誤碼 | Flash 32 量到相同的：`#3674`（miplevel，Texture 與 CubeTexture、BitmapData 與 ByteArray）、`RangeError #3669`（資料太短、offset 超出，含 ATF）、`#3677`（無效的 ATF）、`#3673`（cube side 6；先前會讓 wgpu panic）、`#2008`（mipfilter／wrap／filter 字串錯）。仍是依文件推定的：`#3675`（格式不符）、`#3679`（大小不符）；ATF 上傳到 `bgra` 貼圖維持上游的「接受並解碼」，真 Flash 是否接受未驗證。 |
 | Stage3D 在 ETC2-only 的 GPU | 壓縮貼圖存成 ETC2 時，`uploadFromBitmapData` 丟 #3675、只含 DXT 的 ATF 丟 #3675——與 Flash 在行動平台相同，但 `stage3d_texture_formats` 的黃金輸出是桌面行為（BC 或 RGBA8 儲存）。 |
-| Stage3D 測試 | 本容器沒有 GPU：`stage3d_texture_formats`（以及既有的 `stage3d_*` ATF 影像測試）無法執行，黃金輸出依 Adobe 文件與實作語意手寫；`cargo test -p ruffle_render --lib compressed` 的 9 個解碼器單元測試有跑。合併後請在有 GPU 的機器跑 `cargo test -p tests --test tests -- stage3d`。 |
 | 項目 | 差異 |
 | --- | --- |
 | `Context3D.configureBackBuffer` wantsBestResolution | 裝置像素比與瀏覽器縮放在這個播放器是同一個視埠縮放係數，`wantsBestResolutionOnBrowserZoom` 單獨開時以呼叫當時的係數為基準算比例；Flash 另外會對 Stage 送 `Event.BROWSER_ZOOM_CHANGE`，這裡沒有送。`backBufferWidth/Height` 回報裝置像素大小，是依 Adobe 對瀏覽器縮放的描述推論，未用真 Flash 量過。 |

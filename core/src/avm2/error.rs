@@ -1283,6 +1283,12 @@ make_error_fn!(
 // Timffle: Stage3D texture uploads ("Miplevel too large", "Texture decoding
 // failed", RangeError "Bad input size" for a ByteArray that is too short).
 make_error_fn!(make_error_3674, 3674, argument_error);
+// Timffle: CubeTexture side outside 0..5 (measured on Flash 32).
+make_error_fn!(make_error_3673, 3673, argument_error);
+// Timffle: a Shader without byte code used as a fill (measured on Flash 32).
+make_error_fn!(make_error_2171, 2171, argument_error);
+// Timffle: a ShaderFilter whose shader has no image input (measured on Flash 32).
+make_error_fn!(make_error_2167, 2167, argument_error);
 make_error_fn!(make_error_3677, 3677, argument_error);
 make_error_fn!(make_error_3669_range, 3669, range_error);
 

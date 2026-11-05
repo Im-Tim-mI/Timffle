@@ -1,0 +1,10 @@
+# Timffle: Stage3D texture uploads (mip levels, BitmapData larger/smaller than
+# the level, cube sides, ByteArray sizes, packed/compressed formats, sampler
+# mip filters, mipnearest sampling of a level filled from an oversized
+# BitmapData, drawToBitmapData, maxBackBufferWidth clamping, dispose).
+# output.txt recorded twice (identical) with Flash Player 32 under Wine;
+# source in timffle/difftest/src/D63Stage3D.hx (difftest d63stage3d).
+num_frames = 200
+
+[player_options]
+with_renderer = { optional = false, quality = "low" }

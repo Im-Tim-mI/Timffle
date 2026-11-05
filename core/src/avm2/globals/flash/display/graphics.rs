@@ -1,7 +1,9 @@
 //! `flash.display.Graphics` builtin/prototype
 
 use crate::avm2::activation::Activation;
-use crate::avm2::error::{Error2004Type, make_error_2004, make_error_2007, make_error_2008};
+use crate::avm2::error::{
+    Error2004Type, make_error_2004, make_error_2007, make_error_2008, make_error_2171,
+};
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::flash::display::shader_job::get_shader_args;
 use crate::avm2::globals::flash::geom::transform::object_to_matrix;
@@ -1604,8 +1606,25 @@ fn read_display_object_graphics<'gc>(
         None => (Vec::new(), Vec::new(), Vec::new()),
     };
 
+    // Timffle: Flash Player 32 leaves shader fills and shader strokes out of
+    // readGraphicsData (with their path; a shape that only has them reads as an empty
+    // vector), keeping everything else; measured in tests/tests/swfs/avm2/graphics_shader_fill.
+    let is_shader_style = |style: &FillStyle| match style {
+        FillStyle::Bitmap { id, .. } => shader_fills.iter().any(|(i, ..)| i == id),
+        _ => false,
+    };
     let mut last_was_stroke = false;
     for item in items {
+        let skip = match &item {
+            GraphicsReadItem::Fill { style, .. } => is_shader_style(style),
+            GraphicsReadItem::Stroke { style, .. } => is_shader_style(style.fill_style()),
+        };
+        if skip {
+            // The closing GraphicsEndFill after a final stroke goes with it (a plain
+            // stroke followed by a shader stroke reads without one).
+            last_was_stroke = false;
+            continue;
+        }
         match item {
             GraphicsReadItem::Fill {
                 style,
@@ -2132,8 +2151,9 @@ fn handle_igraphics_data<'gc>(
         let style = handle_solid_fill(activation, obj)?;
         drawing.set_fill_style(Some(style));
     } else if class == activation.avm2().class_defs().graphicsshaderfill {
-        tracing::warn!("Graphics shader fill unimplemented {:?}", class);
-        drawing.set_fill_style(None);
+        // Timffle: same as beginShaderFill (null shader: TypeError #2007).
+        let style = handle_igraphics_fill(activation, drawing, obj)?;
+        drawing.set_fill_style(style);
     } else if class == activation.avm2().class_defs().graphicsstroke {
         let thickness = obj
             .get_slot(graphics_stroke_slots::THICKNESS)
@@ -2446,8 +2466,7 @@ fn stash_object<'gc>(activation: &mut Activation<'_, 'gc>, object: Object<'gc>) 
 
 /// Timffle: the fill style of a `beginShaderFill` / `lineShaderStyle` / `GraphicsShaderFill`
 /// (see `Drawing::add_shader_fill`). `shader` must not be null (TypeError #2007); a Shader
-/// without byte code throws ArgumentError #2004 (Flash's documented error family for a
-/// shader that cannot be used as a fill; the exact code was not measured).
+/// without byte code throws ArgumentError #2171 (both measured on Flash Player 32).
 fn shader_fill_style<'gc>(
     activation: &mut Activation<'_, 'gc>,
     drawing: &mut Drawing,
@@ -2460,7 +2479,8 @@ fn shader_fill_style<'gc>(
         .and_then(|data| data.as_shader_data())
         .is_some_and(|data| data.pixel_bender_shader().is_some());
     if !has_shader {
-        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        // Flash Player 32: ArgumentError #2171 "The Shader object contains no byte code".
+        return Err(make_error_2171(activation));
     }
     let (handle, arguments) = get_shader_args(shader, activation)?;
     let matrix = matrix

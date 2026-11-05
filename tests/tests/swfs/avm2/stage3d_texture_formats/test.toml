@@ -8,4 +8,4 @@ type = "Asc"
 target = "test.swf"
 class = "Test"
 scripts = ["Test.as"]
-swf_version = 32
+swf_version = 33

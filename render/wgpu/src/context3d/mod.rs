@@ -1465,6 +1465,9 @@ impl Context3D for WgpuContext3D {
     // GLSL=..." or "Direct3D11 (Direct Mode) Vendor=... Renderer=...". We follow the same
     // "API Vendor=... Version=... Renderer=..." shape using the wgpu adapter's data.
     fn driver_info(&self) -> String {
+        if let Some(fixed) = &self.descriptors.context3d_driver_info_override {
+            return fixed.clone();
+        }
         let info = self.descriptors.adapter.get_info();
         let api = match info.backend {
             wgpu::Backend::Vulkan => "Vulkan",

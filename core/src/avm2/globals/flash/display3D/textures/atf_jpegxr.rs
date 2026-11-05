@@ -21,6 +21,10 @@ pub fn decode_jpegxr_level(
 ) -> Result<LevelData, String> {
     let atf_texture_width = width;
     let atf_texture_height = height;
+    // Timffle: the block-based formats store whole 4x4 blocks, so mip levels
+    // smaller than a block (2x2, 1x1) still hold one block per dimension.
+    let blocks_w = width.div_ceil(4);
+    let blocks_h = height.div_ceil(4);
     match data {
         ATFTextureData::JpegXR(bytes) => {
             let image = jpegxr_to_tiff(
@@ -48,22 +52,16 @@ pub fn decode_jpegxr_level(
             // 'COMPRESSED_ALPHA' images are encoded in a very strange way. The LZMA-compressed DXT1/DXT5
             // sections just hold the DXT lookup table block. The associated values for each block
             // are stored in JPEG-XR images, which are optionally compressed
-            let (jpegxr_alpha, pixel_format) = jpegxr_to_tiff(
-                atf_texture_width / 4,
-                atf_texture_height / 2,
-                &mut Cursor::new(orig_jpegxr_alpha),
-            )?;
+            let (jpegxr_alpha, pixel_format) =
+                jpegxr_to_tiff(blocks_w, blocks_h * 2, &mut Cursor::new(orig_jpegxr_alpha))?;
 
             let jpegxr_alpha = jpegxr_alpha.to_rgba8();
             if pixel_format != PixelFormat::PixelFormat8bppGray {
                 return Err("Unexpected JPEG-XR alpha format".into());
             }
 
-            let jpegxr_bgr = jpegxr_to_raw_pixels(
-                atf_texture_width / 4,
-                atf_texture_height / 2,
-                &mut Cursor::new(orig_jpegxr_bgr),
-            )?;
+            let jpegxr_bgr =
+                jpegxr_to_raw_pixels(blocks_w, blocks_h * 2, &mut Cursor::new(orig_jpegxr_bgr))?;
 
             let mut reconstructed_dxt = vec![];
 
@@ -77,7 +75,7 @@ pub fn decode_jpegxr_level(
                 return Err("Dxt data doesn't match jpegxr data".into());
             }
 
-            let second_half = ((atf_texture_width / 4) * (atf_texture_height / 4)) as usize;
+            let second_half = (blocks_w * blocks_h) as usize;
 
             // The two values for each pixels are split across the upper and lower halves of the image.
             // See https://github.com/adobe/dds2atf/blob/cbc479be2e77daa273306161af571f8255aec78d/pvr2atfcore.cpp#L884
@@ -119,16 +117,13 @@ pub fn decode_jpegxr_level(
             jpegxr_rgb,
         } => {
             let lookup = atf_lzma_decompress(dxt1_lookup_compressed)?;
-            let colors = jpegxr_to_raw_pixels(
-                atf_texture_width / 4,
-                atf_texture_height / 2,
-                &mut Cursor::new(jpegxr_rgb),
-            )?;
+            let colors =
+                jpegxr_to_raw_pixels(blocks_w, blocks_h * 2, &mut Cursor::new(jpegxr_rgb))?;
             let num_blocks = lookup.len() / 4;
             if colors.len() / 4 != num_blocks {
                 return Err("DXT1 lookup data doesn't match jpegxr data".into());
             }
-            let second_half = ((atf_texture_width / 4) * (atf_texture_height / 4)) as usize;
+            let second_half = (blocks_w * blocks_h) as usize;
             let mut reconstructed = Vec::with_capacity(num_blocks * 8);
             for i in 0..num_blocks {
                 reconstructed.extend(&colors[i * 2..(i + 1) * 2]);

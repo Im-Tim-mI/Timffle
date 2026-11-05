@@ -4,7 +4,9 @@ use ruffle_render::compressed::{self, CompressedFormat};
 use super::atf_upload::do_compressed_upload;
 use crate::avm2::Activation;
 use crate::avm2::Value;
-use crate::avm2::error::{make_error_3669_range, make_error_3674, make_error_3675};
+use crate::avm2::error::{
+    make_error_3669_range, make_error_3673, make_error_3674, make_error_3675,
+};
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::object::TextureObject;
 use crate::avm2::parameters::ParametersExt;
@@ -32,6 +34,15 @@ fn bytes_per_pixel(format: Context3DTextureFormat) -> usize {
         Context3DTextureFormat::BgraPacked | Context3DTextureFormat::BgrPacked => 2,
         Context3DTextureFormat::RgbaHalfFloat => 8,
     }
+}
+
+/// Checks the cube side (Flash 32: ArgumentError #3673 "Cube side must be
+/// [0..5]" for side 6; without the check the copy overruns the texture).
+fn check_side<'gc>(activation: &mut Activation<'_, 'gc>, side: u32) -> Result<(), Error<'gc>> {
+    if side > 5 {
+        return Err(make_error_3673(activation));
+    }
+    Ok(())
 }
 
 /// Checks `mip_level` and returns the level's size (Flash: "Miplevel Too Large").
@@ -87,10 +98,26 @@ pub fn upload_rgba<'gc>(
     mip_level: u32,
 ) -> Result<(), Error<'gc>> {
     let (level_w, level_h) = level_size(activation, texture, mip_level)?;
-    if width > level_w || height > level_h || width == 0 || height == 0 {
-        // Flash: "Invalid BitmapData Error" - the image does not fit the level.
+    if width == 0 || height == 0 {
+        // Flash: "Invalid BitmapData Error".
         return Err(make_error_3675(activation));
     }
+    // Flash copies the top-left `level` sized part of a larger BitmapData
+    // (content that fills one half-size BitmapData per level and re-uses it
+    // for every smaller level renders correctly in Flash); a smaller one
+    // fills the top-left part of the level.
+    let (width, height) = if width > level_w || height > level_h {
+        let w = width.min(level_w);
+        let h = height.min(level_h);
+        let mut cropped = Vec::with_capacity((w * h * 4) as usize);
+        for row in rgba.chunks_exact((width * 4) as usize).take(h as usize) {
+            cropped.extend_from_slice(&row[..(w * 4) as usize]);
+        }
+        rgba = cropped;
+        (w, h)
+    } else {
+        (width, height)
+    };
     let format = texture.original_format();
     let storage = texture.handle().compressed_format();
     let bytes: Vec<u8> = match format {
@@ -159,6 +186,7 @@ pub fn do_copy<'gc>(
     side: u32,
     mip_level: u32,
 ) -> Result<(), Error<'gc>> {
+    check_side(activation, side)?; // Timffle
     let (width, height) = level_size(activation, texture, mip_level)?;
     let format = texture.original_format();
     let len = (width * height) as usize * bytes_per_pixel(format);
@@ -206,6 +234,7 @@ pub fn do_copy_bitmap_data<'gc>(
     side: u32,
     mip_level: u32,
 ) -> Result<(), Error<'gc>> {
+    check_side(activation, side)?; // Timffle
     let (rgba, width, height) = {
         let sync = source.sync(activation.context.renderer);
         let raw = sync.borrow();

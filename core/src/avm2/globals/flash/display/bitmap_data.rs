@@ -5,7 +5,7 @@ use crate::avm2::activation::Activation;
 use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::error::{
     Error2004Type, Error2006Type, make_error_2004, make_error_2005, make_error_2006,
-    make_error_2008, make_error_2015, make_error_2027,
+    make_error_2008, make_error_2015, make_error_2027, make_error_2167,
 };
 use crate::avm2::filters::FilterAvm2Ext;
 use crate::avm2::function::FunctionArgs;
@@ -30,7 +30,7 @@ use crate::swf::BlendMode;
 use ruffle_render::filters::Filter;
 use ruffle_render::transform::Transform;
 use std::str::FromStr;
-use swf::{Rectangle, Twips};
+use swf::Twips;
 
 // Computes the integer x,y,width,height values from
 // the given `Rectangle`. This method performs `x + width`
@@ -1143,61 +1143,6 @@ pub fn apply_filter<'gc>(
         let filter = args.get_object(activation, 3, "filter")?;
         let filter = Filter::from_avm2_object(activation, filter)?;
 
-        let mut source_point = (
-            source_rect.x_min.to_pixels().floor() as u32,
-            source_rect.y_min.to_pixels().floor() as u32,
-        );
-        let mut source_size = (
-            source_rect.width().to_pixels().ceil() as u32,
-            source_rect.height().to_pixels().ceil() as u32,
-        );
-        // Timffle: a ShaderFilter over a sourceRect that is not the whole source: the
-        // region is copied into a temporary bitmap of the rect's size (clamped to the
-        // source) and the shader runs over that bitmap, so outCoord() starts at the
-        // rect's corner like for the other filters. Flash's behaviour at the rect's
-        // edges (it crops/translates oddly for a non-zero x/y, and ignores width/height
-        // when x = y = 0) is not reproduced; see timffle/docs/CHANGES-FROM-RUFFLE.md.
-        let mut source_bitmap = source_bitmap;
-        if matches!(filter, Filter::ShaderFilter(_)) {
-            let source_bitmap_rect = Rectangle {
-                x_min: Twips::ZERO,
-                x_max: Twips::from_pixels(source_bitmap.width() as f64),
-                y_min: Twips::ZERO,
-                y_max: Twips::from_pixels(source_bitmap.height() as f64),
-            };
-            if source_rect != source_bitmap_rect {
-                let max_width = source_bitmap.width().saturating_sub(source_point.0);
-                let max_height = source_bitmap.height().saturating_sub(source_point.1);
-                let width = source_size.0.min(max_width);
-                let height = source_size.1.min(max_height);
-                if width == 0 || height == 0 {
-                    return Ok(Value::Undefined);
-                }
-                let temporary = BitmapData::new(
-                    activation.gc(),
-                    width,
-                    height,
-                    source_bitmap.transparency(),
-                    0,
-                );
-                operations::copy_pixels(
-                    activation.context,
-                    temporary,
-                    source_bitmap,
-                    (
-                        source_point.0 as i32,
-                        source_point.1 as i32,
-                        width as i32,
-                        height as i32,
-                    ),
-                    (0, 0),
-                    false,
-                );
-                source_bitmap = temporary;
-                source_point = (0, 0);
-                source_size = (width, height);
-            }
-        }
         let dest_point = args.get_object(activation, 2, "destPoint")?;
         let dest_point = (
             dest_point
@@ -1206,6 +1151,76 @@ pub fn apply_filter<'gc>(
             dest_point
                 .get_slot(point_slots::Y)
                 .coerce_to_i32(activation)?,
+        );
+
+        // Timffle: a ShaderFilter follows Flash Player 32's own rule (measured, see
+        // tests/tests/swfs/avm2/bitmapdata_applyfilter_shader): the shader's first image
+        // input is the whole source and outCoord() is the destination pixel, so pixel
+        // (x, y) of the destination gets the shader's result for source pixel (x, y)
+        // (outside the source the input reads transparent black). The pixels written
+        // are a source-sized window at `destPoint - 2 * sourceRect.topLeft`, clipped to
+        // the destination; sourceRect's width and height play no part (an empty
+        // sourceRect writes too). A shader without an image input is rejected.
+        if let Filter::ShaderFilter(shader_filter) = &filter {
+            use ruffle_render::pixel_bender_support::PixelBenderShaderArgument;
+            if !shader_filter
+                .shader_args
+                .iter()
+                .any(|arg| matches!(arg, PixelBenderShaderArgument::ImageInput { .. }))
+            {
+                return Err(make_error_2167(activation));
+            }
+            let window = |rect_min: Twips, dest: i32, source_len: u32, dest_len: u32| {
+                let origin = dest as i64 - 2 * rect_min.to_pixels().floor() as i64;
+                let start = origin.max(0);
+                let end = (origin + source_len as i64).min(dest_len as i64);
+                (start, end)
+            };
+            let (x0, x1) = window(
+                source_rect.x_min,
+                dest_point.0,
+                source_bitmap.width(),
+                dest_bitmap.width(),
+            );
+            let (y0, y1) = window(
+                source_rect.y_min,
+                dest_point.1,
+                source_bitmap.height(),
+                dest_bitmap.height(),
+            );
+            if x1 <= x0 || y1 <= y0 {
+                return Ok(Value::Undefined);
+            }
+            // The shader output for every pixel up to the window's far corner, then
+            // the window itself copied into place.
+            let output = BitmapData::new(activation.gc(), x1 as u32, y1 as u32, true, 0);
+            operations::apply_filter(
+                activation.context,
+                output,
+                source_bitmap,
+                (0, 0),
+                (x1 as u32, y1 as u32),
+                (0, 0),
+                filter,
+            );
+            operations::copy_pixels(
+                activation.context,
+                dest_bitmap,
+                output,
+                (x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32),
+                (x0 as i32, y0 as i32),
+                false,
+            );
+            return Ok(Value::Undefined);
+        }
+
+        let source_point = (
+            source_rect.x_min.to_pixels().floor() as u32,
+            source_rect.y_min.to_pixels().floor() as u32,
+        );
+        let source_size = (
+            source_rect.width().to_pixels().ceil() as u32,
+            source_rect.height().to_pixels().ceil() as u32,
         );
 
         operations::apply_filter(
