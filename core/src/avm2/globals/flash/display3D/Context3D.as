@@ -100,7 +100,8 @@ package flash.display3D {
         public native function get driverInfo():String;
 
         // Timffle: bytes held by this context's buffers, textures and programs.
-        [API("721")]
+        // Flash Player 22 / AIR 22 (SWF 33): API mark 660 + ApiVersion::SWF_33.
+        [API("714")]
         public native function get totalGPUMemory():int;
 
         private var _enableErrorChecking:Boolean = false;
