@@ -733,8 +733,8 @@
     "static supportsNativeCursor",
     "static unregisterCursor()"
    ],
-   "status": "partial",
-   "note": "supportsCursor done; registerCursor/unregisterCursor/supportsNativeCursor need a UiBackend custom-cursor method (web CSS cursor url, winit CustomCursor) — not done | batch leftovers: registerCursor/unregisterCursor/supportsNativeCursor not started (time box); design in pending/leftovers.md (UiBackend set_custom_cursor + supports_native_cursor, web CSS cursor url(), desktop winit CustomCursor)."
+   "status": "done",
+   "note": "supportsCursor done; registerCursor/unregisterCursor/supportsNativeCursor need a UiBackend custom-cursor method (web CSS cursor url, winit CustomCursor) — not done | batch leftovers: registerCursor/unregisterCursor/supportsNativeCursor not started (time box); design in pending/leftovers.md (UiBackend set_custom_cursor + supports_native_cursor, web CSS cursor url(), desktop winit CustomCursor). | mouse_amf0: registerCursor/unregisterCursor/supportsNativeCursor real (UiBackend::supports_native_cursor + set_custom_cursor; web CSS cursor url() PNG + setInterval animation, desktop winit CustomCursor first frame only, unverified build); errors: null -> #2007, data null/empty, frame >32x32, builtin name -> ArgumentError #2004 (unverified in Flash), disposed frame -> #2015. Test mouse_register_cursor."
   },
   {
    "class": "flash.ui.MouseCursorData",
@@ -746,7 +746,7 @@
     "hotSpot"
    ],
    "status": "done",
-   "note": "plain data holder per reference; used once Mouse.registerCursor is real"
+   "note": "plain data holder per reference; used once Mouse.registerCursor is real | used by Mouse.registerCursor (frames copied at registration)."
   },
   {
    "class": "flash.ui.Multitouch",
@@ -773,8 +773,8 @@
     "shareable",
     "writeObject()"
    ],
-   "status": "partial",
-   "note": "atomics + shareable done; writeObject repeated-object stub remains for AMF0 (flash-lso amf0 writer writes no references) | merger: the AMF0 object-reference commit (c803d3d2 on the agent branch) made shared_object_self_ref_avm1 and localconnection_cyclic_args fail (they pass without it) and was dropped; writeObject AMF0 references stay stubbed — redo with the vendored decoder reference-table fix."
+   "status": "done",
+   "note": "atomics + shareable done; writeObject repeated-object stub remains for AMF0 (flash-lso amf0 writer writes no references) | merger: the AMF0 object-reference commit (c803d3d2 on the agent branch) made shared_object_self_ref_avm1 and localconnection_cyclic_args fail (they pass without it) and was dropped; writeObject AMF0 references stay stubbed — redo with the vendored decoder reference-table fix. | mouse_amf0: writeObject AMF0 object references real (spec 2.9 complex-object table, parent before children; decoder ids 2^32+n; AVM1 .sol every-value numbering kept, shared_object_self_ref_avm1 and localconnection_cyclic_args green). Test bytearray_amf0_references."
   },
   {
    "class": "flash.xml.XMLDocument",
