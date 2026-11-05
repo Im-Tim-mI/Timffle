@@ -2,7 +2,6 @@ package flash.display3D {
     import flash.display.BitmapData;
     import flash.events.EventDispatcher;
     import flash.geom.Matrix3D;
-    import flash.geom.Point;
     import flash.geom.Rectangle;
     import flash.utils.ByteArray;
     import flash.display3D.textures.CubeTexture;
@@ -190,8 +189,10 @@ package flash.display3D {
         ):void;
 
         // Timffle: real back-buffer readback (GPU copy + the BitmapData sync
-        // path); srcRect/destPoint are the AIR 25 additions. See context_3d.rs.
-        public native function drawToBitmapData(destination:BitmapData, srcRect:Rectangle = null, destPoint:Point = null):void;
+        // path). See context_3d.rs. Flash Player 32 declares only `destination`
+        // (playerglobal 32.0, avm2/all_classes/display3D); srcRect/destPoint are
+        // the AIR 25 additions and cannot be passed here (#1063, as in Flash).
+        public native function drawToBitmapData(destination:BitmapData):void;
 
         public native function dispose(recreate:Boolean = true):void;
     }

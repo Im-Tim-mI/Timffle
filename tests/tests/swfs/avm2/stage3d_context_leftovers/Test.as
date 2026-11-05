@@ -1,5 +1,5 @@
 // Timffle: Context3D leftovers — configureBackBuffer wantsBestResolution*,
-// drawToBitmapData (back-buffer readback, srcRect/destPoint, Error #3802,
+// drawToBitmapData (back-buffer readback, AIR-only srcRect/destPoint refused,
 // disposed targets) and setRenderToTexture colorOutputIndex (multiple render
 // targets: range #3770, profile #3779, mismatched targets #3761, fragment
 // programs writing oc0..oc3, oc4 #3760). Needs a Context3D, i.e. a GPU; the
@@ -59,17 +59,10 @@ package {
 
             var bmp2:BitmapData = new BitmapData(32, 32, false, 0);
             ctx.clear(0, 0, 1, 1);
-            ctx.drawToBitmapData(bmp2, new Rectangle(0, 0, 16, 16), new Point(8, 8));
-            trace("drawToBitmapData srcRect/destPoint: " + bmp2.getPixel(4, 4).toString(16) + " " + bmp2.getPixel(12, 12).toString(16) + " " + bmp2.getPixel(28, 28).toString(16));
-
-            trace("drawToBitmapData srcRect out of bounds: " + errorId(function():void {
-                ctx.drawToBitmapData(bmp2, new Rectangle(0, 0, 100, 100));
-            }));
-            trace("drawToBitmapData destPoint out of bounds: " + errorId(function():void {
-                ctx.drawToBitmapData(bmp2, null, new Point(32, 0));
-            }));
-            trace("drawToBitmapData NaN: " + errorId(function():void {
-                ctx.drawToBitmapData(bmp2, new Rectangle(NaN, 0, 1, 1));
+            // srcRect/destPoint are AIR 25 parameters: Flash Player 32 declares only
+            // `destination`, so passing them is an argument count mismatch.
+            trace("drawToBitmapData srcRect/destPoint: " + errorId(function():void {
+                Object(ctx).drawToBitmapData(bmp2, new Rectangle(0, 0, 16, 16), new Point(8, 8));
             }));
             // Larger buffer than bitmap: clipped, not scaled.
             trace("drawToBitmapData clipped: " + errorId(function():void {

@@ -2,10 +2,7 @@ context created: standard
 configureBackBuffer: 64x64
 configureBackBuffer best resolution: 64x64
 drawToBitmapData: ff0000
-drawToBitmapData srcRect/destPoint: 0 ff 0
-drawToBitmapData srcRect out of bounds: 3802
-drawToBitmapData destPoint out of bounds: 3802
-drawToBitmapData NaN: 3802
+drawToBitmapData srcRect/destPoint: 1063
 drawToBitmapData clipped: ok ff
 drawToBitmapData disposed bitmap: 2015
 setRenderToTexture colorOutputIndex 4: 3770

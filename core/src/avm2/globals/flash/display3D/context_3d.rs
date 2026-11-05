@@ -5,10 +5,9 @@ use crate::avm2::Value;
 use crate::avm2::error::{
     make_error_2008, make_error_3669, make_error_3670, make_error_3671, make_error_3761,
     make_error_3770, make_error_3771, make_error_3772, make_error_3773, make_error_3779,
-    make_error_3780, make_error_3781, make_error_3802,
+    make_error_3780, make_error_3781,
 };
 use crate::avm2::function::FunctionArgs;
-use crate::avm2::globals::slots::flash_geom_point as point_slots;
 use crate::avm2::globals::slots::flash_geom_rectangle as rectangle_slots;
 use crate::avm2::parameters::ParametersExt;
 use crate::bitmap::operations;
@@ -150,15 +149,14 @@ pub fn configure_back_buffer<'gc>(
     Ok(Value::Undefined)
 }
 
-/// Timffle: `Context3D.drawToBitmapData(destination, srcRect = null, destPoint = null)`.
+/// Timffle: `Context3D.drawToBitmapData(destination)`.
 ///
 /// "Draws the current render buffer to a bitmap" — the *back* buffer, "not the
 /// front buffer shown on stage", so the pixels drawn since the last `present()`
-/// (call it right before `present()` to capture a frame). `srcRect` (default: the
-/// whole back buffer) is copied to `destPoint` (default 0,0) of the bitmap; "the
-/// image is not scaled to fit the bitmap", what does not fit is clipped. A
-/// `srcRect` outside the back buffer or a `destPoint` outside the bitmap (or NaN)
-/// throws Error #3802 ("Offset outside stage coordinate bound."); a disposed
+/// (call it right before `present()` to capture a frame). The whole back buffer
+/// is copied to (0, 0) of the bitmap; "the image is not scaled to fit the
+/// bitmap", what does not fit is clipped. (AIR 25 adds `srcRect`/`destPoint`,
+/// whose out-of-range values are Error #3802; Flash Player has neither.) A disposed
 /// context throws Error #3694 and a disposed bitmap Error #2015. The copy is a
 /// GPU texture copy that the BitmapData syncs back to the CPU on its next read,
 /// like `BitmapData.draw()`; the colours are taken as premultiplied ("The
@@ -184,51 +182,14 @@ pub fn draw_to_bitmap_data<'gc>(
         return Ok(Value::Undefined);
     };
 
-    let (src_x, src_y, src_w, src_h) = match args.try_get_object(1) {
-        Some(rect) => (
-            rect.get_slot(rectangle_slots::X).as_f64(),
-            rect.get_slot(rectangle_slots::Y).as_f64(),
-            rect.get_slot(rectangle_slots::WIDTH).as_f64(),
-            rect.get_slot(rectangle_slots::HEIGHT).as_f64(),
-        ),
-        None => (0.0, 0.0, buffer_width as f64, buffer_height as f64),
-    };
-    let (dest_x, dest_y) = match args.try_get_object(2) {
-        Some(point) => (
-            point.get_slot(point_slots::X).as_f64(),
-            point.get_slot(point_slots::Y).as_f64(),
-        ),
-        None => (0.0, 0.0),
-    };
-
-    let in_bounds = [src_x, src_y, src_w, src_h, dest_x, dest_y]
-        .iter()
-        .all(|v| v.is_finite())
-        && src_x >= 0.0
-        && src_y >= 0.0
-        && src_w >= 0.0
-        && src_h >= 0.0
-        && src_x + src_w <= buffer_width as f64
-        && src_y + src_h <= buffer_height as f64
-        && dest_x >= 0.0
-        && dest_y >= 0.0
-        && dest_x < destination.width() as f64
-        && dest_y < destination.height() as f64;
-    if !in_bounds {
-        return Err(make_error_3802(activation));
-    }
-    let region = PixelRegion::for_region(src_x as u32, src_y as u32, src_w as u32, src_h as u32);
+    // Flash Player declares only `destination`: the whole back buffer goes to
+    // (0, 0) of the bitmap (AIR 25's srcRect/destPoint cannot be passed).
+    let region = PixelRegion::for_region(0, 0, buffer_width, buffer_height);
     if region.width() == 0 || region.height() == 0 {
         return Ok(Value::Undefined);
     }
 
-    if !operations::copy_stage3d(
-        activation.context,
-        destination,
-        source,
-        region,
-        (dest_x as u32, dest_y as u32),
-    ) {
+    if !operations::copy_stage3d(activation.context, destination, source, region, (0, 0)) {
         tracing::warn!(
             "Context3D.drawToBitmapData: the render backend could not copy the back buffer"
         );
