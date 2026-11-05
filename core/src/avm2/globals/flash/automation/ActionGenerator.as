@@ -5,7 +5,8 @@ package flash.automation {
     // event reaches the stage -- exactly as in the shipping Flash Player, where the package
     // is present in playerglobal but inert. Null arguments are refused like every other
     // non-null parameter (#2007).
-    [API("667")]
+    // No API version mark: Flash Player 32 shows flash.automation to every SWF version
+    // (playerglobal 32.0 has none, avm2/automation_classes runs at SWF 9).
     public class ActionGenerator {
         public function ActionGenerator() {
         }

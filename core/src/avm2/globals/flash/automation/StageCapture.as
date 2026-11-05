@@ -10,7 +10,8 @@ package flash.automation {
     // `fileNameBase`) are stored as documented; `capturePTS` is the presentation time of the
     // last capture, which never happened (0). An unknown capture type or source is #2008
     // like the other enumerated values.
-    [API("667")]
+    // No API version mark: Flash Player 32 shows flash.automation to every SWF version
+    // (playerglobal 32.0 has none, avm2/automation_classes runs at SWF 9).
     public class StageCapture extends EventDispatcher {
         public static const CURRENT:String = "current";
         public static const MULTIPLE:String = "multiple";

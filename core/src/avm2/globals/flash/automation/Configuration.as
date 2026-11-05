@@ -4,7 +4,8 @@ package flash.automation {
     // is empty and `deviceConfiguration` is a stored string that configures nothing (the
     // reference documents both as plain String properties; the values an automation player
     // would report are not public).
-    [API("667")]
+    // No API version mark: Flash Player 32 shows flash.automation to every SWF version
+    // (playerglobal 32.0 has none, avm2/automation_classes runs at SWF 9).
     public class Configuration {
         private static var _deviceConfiguration:String = "";
 
