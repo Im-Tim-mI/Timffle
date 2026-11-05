@@ -1406,6 +1406,17 @@ pub fn draw<'gc>(
 
     // Calculate the maximum potential area that this draw call will affect
     let mut bounds = transform.matrix * source.bounds();
+    // Timffle: filters (applied below, see `use_bitmap_cache`) reach beyond the flat bounds.
+    if let IBitmapDrawable::DisplayObject(object) = &source
+        && !source_has_3d
+        && context.renderer.supports_offscreen_bitmap_cache()
+    {
+        bounds = bounds.union(&object.render_bounds_with_transform(
+            &transform.matrix,
+            true,
+            &Matrix::IDENTITY,
+        ));
+    }
     if let IBitmapDrawable::DisplayObject(object) = &source
         && source_has_3d
     {
@@ -1515,6 +1526,7 @@ pub fn draw<'gc>(
     }
 
     let mut cache_draws = vec![];
+    let use_bitmap_cache = context.renderer.supports_offscreen_bitmap_cache(); // Timffle
     let mut render_context = RenderContext {
         renderer: context.renderer,
         commands: CommandList::new(),
@@ -1524,7 +1536,13 @@ pub fn draw<'gc>(
         ui: context.ui,
         transform_stack: &mut transform_stack,
         is_offscreen: true,
-        use_bitmap_cache: false,
+        // Timffle: filters of the drawn object and of its children are applied, as in
+        // Flash Player 32 (difftest d66drawfilters: blur, glow, drop shadow and colour
+        // matrix on the object itself or on a child, at the filtered object's place).
+        // They are drawn through the objects' cacheAsBitmap pictures, which only
+        // backends that support `render_offscreen_with_cache` can do.
+        use_bitmap_cache,
+        in_bitmap_draw: true,
         stage: context.stage,
     };
 
@@ -1595,13 +1613,14 @@ pub fn draw<'gc>(
         dirty_region.union(old);
     }
 
-    assert!(
-        cache_draws.is_empty(),
-        "BitmapData.draw() should not use cacheAsBitmap"
+    // Timffle: the cacheAsBitmap pictures (filters) are drawn first.
+    let image = context.renderer.render_offscreen_with_cache(
+        handle,
+        commands,
+        quality,
+        dirty_region,
+        cache_draws,
     );
-    let image = context
-        .renderer
-        .render_offscreen(handle, commands, quality, dirty_region);
 
     match image {
         Some(sync_handle) => {

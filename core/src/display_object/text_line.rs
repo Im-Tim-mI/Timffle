@@ -86,6 +86,7 @@ impl<'gc> TextLine<'gc> {
         movie: SwfMovie<'gc>,
         fallback: EditText<'gc>,
     ) -> Self {
+        fallback.set_unclipped(true); // Timffle: TextLines do not clip their glyphs.
         TextLine(Gc::new(
             context.gc(),
             TextLineData {

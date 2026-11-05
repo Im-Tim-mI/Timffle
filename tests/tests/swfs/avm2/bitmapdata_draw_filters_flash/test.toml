@@ -1,0 +1,12 @@
+# Timffle: BitmapData.draw applies the filters of the drawn object itself and
+# of its children (blur quality 1/3, with a translated or scaled matrix, colour
+# matrix, glow, drop shadow), at the filtered object's place, and the filters
+# are not scaled by the draw matrix. Prints the extents of the filtered square
+# per row/column threshold (raw values differ by a few levels between blur
+# implementations). output.txt recorded twice (identical) with Flash Player 32
+# under Wine; source in timffle/difftest/src/D66DrawFilters.hx (difftest
+# d66drawfilters).
+num_frames = 1
+
+[player_options]
+with_renderer = { optional = false }

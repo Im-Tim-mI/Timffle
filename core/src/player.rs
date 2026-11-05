@@ -2273,6 +2273,7 @@ impl Player {
                 transform_stack: &mut this.transform_stack,
                 is_offscreen: false,
                 use_bitmap_cache: true,
+                in_bitmap_draw: false, // Timffle
                 stage,
             };
 
