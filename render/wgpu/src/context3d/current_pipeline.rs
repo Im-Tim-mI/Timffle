@@ -298,6 +298,34 @@ impl CurrentPipeline {
         let wgpu_samplers =
             self.sampler_configs
                 .map(|sampler| match (sampler.wrapping, sampler.filter) {
+                    // Timffle: `mipnearest` with a linear or anisotropic filter
+                    // takes the nearest level, as in Flash Player 32 (the
+                    // samplers below would blend two levels).
+                    (wrapping, filter)
+                        if sampler.mipmap == naga_agal::Mipmap::Nearest
+                            && filter != Filter::Nearest =>
+                    {
+                        let (address_mode_u, address_mode_v) = match wrapping {
+                            Wrapping::Clamp => (
+                                wgpu::AddressMode::ClampToEdge,
+                                wgpu::AddressMode::ClampToEdge,
+                            ),
+                            Wrapping::Repeat => {
+                                (wgpu::AddressMode::Repeat, wgpu::AddressMode::Repeat)
+                            }
+                            Wrapping::ClampURepeatV => {
+                                (wgpu::AddressMode::ClampToEdge, wgpu::AddressMode::Repeat)
+                            }
+                            Wrapping::RepeatUClampV => {
+                                (wgpu::AddressMode::Repeat, wgpu::AddressMode::ClampToEdge)
+                            }
+                        };
+                        &descriptors.bitmap_samplers.linear_mip_nearest[&WgpuSamplerConfig {
+                            anisotropy_clamp: 1,
+                            address_mode_u,
+                            address_mode_v,
+                        }]
+                    }
                     (Wrapping::Clamp, Filter::Linear) => &descriptors.bitmap_samplers.clamp_linear,
                     (Wrapping::Clamp, Filter::Nearest) => {
                         &descriptors.bitmap_samplers.clamp_nearest

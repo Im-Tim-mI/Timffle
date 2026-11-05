@@ -1,18 +1,21 @@
 # This is the SWF from the https://code.tutsplus.com/tutorials/build-a-stage3d-shoot-em-up-sprite-test--active-11005
 # It performs Stage3D bitmap rendering, and uses multiple different VertexBuffers in the same pipeline
 num_frames = 50
-# Timffle: known failure since Stage3D textures have real mip chains. The SWF
-# uploads its own mip levels and samples with <mipnearest>; the golden was
-# rendered by Ruffle when only level 0 existed (forcing level-0 sampling makes
-# it match again, max difference 2). Real Flash 32 does sample the uploaded
-# levels (difftest d63stage3d, test stage3d_uploads_flash), so the golden no
-# longer shows Flash's picture; it is kept unchanged until it is re-recorded.
-# output.ruffle.png is Ruffle's current (mip-sampled) picture.
+# Timffle: output.expected.png was recorded with Flash Player 32.0.0.465
+# (standalone, Wine 11.19 on Xvfb; Context3D.driverInfo "DirectX11", wined3d
+# OpenGL renderer on llvmpipe) from a copy of test.swf whose Math.random() returns avmplus's
+# sequence for the seed this harness uses (DeterministicLocaleBackend, the
+# same numbers Ruffle draws here) and whose enterFrame handlers stop after the
+# 49th sprite update, i.e. the state Ruffle shows after 50 frames; the stage
+# was read from the screen (twice, identical). Sprite positions match exactly.
+# Outliers (colour channels > 16, GT 720 / NVK): 3,660 in the title text
+# (device font _sans: Wine's Arial substitute in Flash, Ruffle's default font
+# here) and 489 in two sprites whose size sits at the mipnearest
+# switch point (level of detail 0.46 / 0.50, where GPUs round differently).
 
 [image_comparisons.output]
-tolerance = 4
-max_outliers = 24
-known_failure = true
+tolerance = 16
+max_outliers = 4500
 
 [player_options]
 with_renderer = { optional = false, quality = "low" }
