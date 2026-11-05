@@ -45,6 +45,7 @@
 - **TextBlock 斷行與 bidiLevel、Mouse.registerCursor 用真 Flash 32 驗證**：`createTextLine` 改成 Flash 的斷行機會（連字號、`/`、`?`、`!`、ZWSP 之後可斷，數字與標點內不斷，CJK 字間可斷、避頭尾），行尾空白懸在寬度外；`bidiLevel` 只看奇偶；`registerCursor` 的錯誤碼改成 Flash 的（空向量與負 `hotSpot` `#2008`，內建名稱與 null `data` 接受），`MouseCursorData.hotSpot = null` 丟 `#2007`、`frameRate` 負值讀回 0。新測試 `cursor_textblock_flash32`（`supportsNativeCursor` 由主機決定，標 `known_failure`）。
 - **Graphics.readGraphicsData 用真 Flash 32 重錄**：每個填色子路徑報出封閉線段、`drawPath` 後只有隱含封閉段的筆畫不報、填色矩陣的平移取整數像素、焦點比例照 Flash 讀回。新測試 `graphics_read_graphics_data_flash32`（顏色往返與曲線座標捨入仍不同，標 `known_failure`），舊的推定測試 `graphics_read_graphics_data` 的預期輸出隨之更新。
 - **合併後回歸修正：`Key.isToggled(Key.CAPSLOCK)`**：播放器自己看過某個鎖定鍵（Caps Lock／Num Lock）按下之後，只跟著那個鍵切換，打出來的字母大小寫不再覆寫它（真 Flash 錄的 `avm1/key_isToggled` 第 7 行又是 true）；還沒看過鎖定鍵時仍由字母／數字鍵盤推斷。
+- **`from_gnash/misc-ming.all/NetStream-SquareTest` 已知差異檔更新**：NetStream 的 `NetStream.Buffer.Full` 改成緩衝滿 `bufferTime` 才送（e3ab43250）之後，AVM1 這支測試的 `Buffer.Full` 移到 `Play.Start` 之後，和真 Flash 錄的 `output.txt` 一樣（之前在 `Play.Start` 前面）；`output.ruffle.txt` 只有這 3 行換位置。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 

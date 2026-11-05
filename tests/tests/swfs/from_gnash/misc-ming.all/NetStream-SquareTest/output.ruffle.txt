@@ -125,6 +125,8 @@ PASSED: Math.round(video._rotation*100)/100  ==  45 [NetStream-SquareTest.c:467]
 PASSED: typeof(video.hitTest)  ==  'undefined' [NetStream-SquareTest.c:471]
 PASSED: typeof(video.getBounds)  ==  'undefined' [NetStream-SquareTest.c:472]
 The video on the right is an OGG theora stream. It will appear in Gnash, but not the Adobe player
+ bufferLength:2 bytesLoaded:21482 currentFps:false time:0
+Key down: 112
 PASSED: true
 PASSED: true
 PASSED: 2 == 2
@@ -136,12 +138,10 @@ PASSED: undefined == undefined
 PASSED: 66 == 66
 PASSED: true
 PASSED: undefined == undefined
-onStatus(NetStream.Buffer.Full) called
- bufferLength:2 bytesLoaded:21482 currentFps:false time:0
-Key down: 112
 onStatus(NetStream.Play.Start) called
 PASSED: No duplicated Play.Start notification
 2. Verify video hasn't started, then press space to continue.
+onStatus(NetStream.Buffer.Full) called
 onMetaData: filesize:21482 audiocodecid:2 stereo:false audiosamplesize:16 audiosamplerate:44100 videocodecid:2 framerate:5 videodatarate:0 height:96 width:128 duration:2.299 
 PASSED: onMetaData should be notified after Play.Start
 PASSED: 1 == 1 (single argument)
