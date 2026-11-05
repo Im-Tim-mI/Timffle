@@ -327,6 +327,11 @@ pub struct TextureWrapper {
 impl IndexBuffer for IndexBufferWrapper {}
 impl VertexBuffer for VertexBufferWrapper {}
 impl ruffle_render::backend::Texture for TextureWrapper {
+    // Timffle
+    fn mip_level_count(&self) -> u32 {
+        self.texture.mip_level_count()
+    }
+
     fn width(&self) -> u32 {
         self.texture.width()
     }
@@ -421,12 +426,12 @@ impl Context3D for WgpuContext3D {
             TextureUsages::RENDER_ATTACHMENT
         };
 
-        if streaming_levels != 0 {
-            return Err(Error::Unimplemented(
-                format!("streamingLevels={streaming_levels}").into(),
-            ));
-        }
-
+        // Timffle: a (power-of-two) Texture always has a full mip chain that
+        // `uploadFromBitmapData(…, miplevel)` and friends fill level by level;
+        // `streamingLevels` only tells Flash which levels may arrive later, so it
+        // needs no separate storage. RectangleTexture (not power of two) has one
+        // level, like Flash.
+        let _ = streaming_levels;
         let texture = self.descriptors.device.create_texture(&TextureDescriptor {
             label: None,
             size: Extent3d {
@@ -434,7 +439,7 @@ impl Context3D for WgpuContext3D {
                 height,
                 depth_or_array_layers: 1,
             },
-            mip_level_count: 1,
+            mip_level_count: mip_chain_levels(width, height),
             sample_count: 1,
             dimension: TextureDimension::D2,
             format,
@@ -453,13 +458,8 @@ impl Context3D for WgpuContext3D {
     ) -> Result<Rc<dyn ruffle_render::backend::Texture>, Error> {
         let format = convert_texture_format(format);
 
-        if streaming_levels != 0 {
-            tracing::warn!(
-                "createCubeTexture: streaming_levels={} is not yet implemented",
-                streaming_levels,
-            );
-        }
-
+        // Timffle: full mip chain, see `create_texture`.
+        let _ = streaming_levels;
         let texture = self.descriptors.device.create_texture(&TextureDescriptor {
             label: None,
             size: Extent3d {
@@ -467,7 +467,7 @@ impl Context3D for WgpuContext3D {
                 height: size,
                 depth_or_array_layers: 6,
             },
-            mip_level_count: 1,
+            mip_level_count: mip_chain_levels(size, size),
             sample_count: 1,
             dimension: TextureDimension::D2,
             format,
@@ -788,6 +788,8 @@ impl Context3D for WgpuContext3D {
                 let view_desc = TextureViewDescriptor {
                     base_array_layer: surface_selector,
                     array_layer_count: Some(1),
+                    // Timffle: textures carry a mip chain; rendering targets level 0.
+                    mip_level_count: Some(1),
                     dimension: Some(wgpu::TextureViewDimension::D2),
                     ..Default::default()
                 };
@@ -985,6 +987,7 @@ impl Context3D for WgpuContext3D {
                 source_height,
                 dest,
                 layer,
+                mip_level,
             } => {
                 let dest = Rc::<dyn Any>::downcast::<TextureWrapper>(dest).unwrap();
 
@@ -1051,7 +1054,7 @@ impl Context3D for WgpuContext3D {
                     },
                     wgpu::TexelCopyTextureInfo {
                         texture: &dest.texture,
-                        mip_level: 0,
+                        mip_level, // Timffle
                         origin: wgpu::Origin3d {
                             x: 0,
                             y: 0,
@@ -1081,9 +1084,17 @@ impl Context3D for WgpuContext3D {
                         view.dimension = Some(wgpu::TextureViewDimension::Cube);
                         view.array_layer_count = Some(6);
                     }
+                    // Timffle: a second view restricted to level 0 is bound while
+                    // the sampler's mipfilter is "mipnone", so levels that were
+                    // never uploaded cannot bleed into the result.
+                    let base_view = wgpu::TextureViewDescriptor {
+                        mip_level_count: Some(1),
+                        ..view.clone()
+                    };
 
                     Some(BoundTextureData {
                         view: texture_wrapper.texture.create_view(&view),
+                        base_level_view: texture_wrapper.texture.create_view(&base_view),
                         id: texture,
                         cube,
                     })
@@ -1181,9 +1192,14 @@ impl Context3D for WgpuContext3D {
                 sampler,
                 wrap,
                 filter,
+                mip_filter,
             } => {
-                self.current_pipeline
-                    .update_sampler_state_at(sampler as usize, wrap, filter);
+                self.current_pipeline.update_sampler_state_at(
+                    sampler as usize,
+                    wrap,
+                    filter,
+                    mip_filter,
+                );
             }
             Context3DCommand::SetScissorRectangle { rect } => {
                 self.scissor_rectangle = rect;
@@ -1301,6 +1317,15 @@ fn convert_texture_format(input: Context3DTextureFormat) -> wgpu::TextureFormat 
         Context3DTextureFormat::Compressed => TextureFormat::Rgba8Unorm,
         Context3DTextureFormat::RgbaHalfFloat => TextureFormat::Rgba16Float,
     }
+}
+
+// Timffle: number of levels in a full mip chain down to 1x1 (1 when the size
+// is not a power of two, where Flash has no mipmaps either).
+fn mip_chain_levels(width: u32, height: u32) -> u32 {
+    if width == 0 || height == 0 || !width.is_power_of_two() || !height.is_power_of_two() {
+        return 1;
+    }
+    32 - width.max(height).leading_zeros()
 }
 
 // Rounds up 'len' to the nearest multiple of COPY_BUFFER_ALIGNMENT

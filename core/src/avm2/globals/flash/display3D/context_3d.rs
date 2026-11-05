@@ -686,14 +686,8 @@ pub fn set_render_to_texture<'gc>(
         }
     }
 
-    if anti_alias != 0 {
-        avm2_stub_method!(
-            activation,
-            "flash.display3D.Context3D",
-            "setRenderToTexture",
-            "antiAlias != 0"
-        );
-    }
+    // Timffle: antiAlias is real — the wgpu backend renders into a multisampled
+    // texture of the requested sample count and resolves it into the target.
 
     if color_output_index != 0 {
         avm2_stub_method!(
@@ -815,21 +809,15 @@ pub fn set_sampler_state_at<'gc>(
             .parse()
             .map_err(|_| make_error_2008(activation, "filter"))?;
 
-        let mip_filter = args.get_string_non_null(activation, 3, "mipfilter")?;
-
         // Timffle: anisotropic filters are applied by the wgpu backend
-        // (SamplerDescriptor::anisotropy_clamp), so they are no longer stubbed.
+        // (SamplerDescriptor::anisotropy_clamp) and mip filters select the
+        // texture's mip chain, so neither is stubbed any more.
+        let mip_filter = args
+            .get_string_non_null(activation, 3, "mipfilter")?
+            .parse()
+            .map_err(|_| make_error_2008(activation, "mipfilter"))?;
 
-        if &*mip_filter != b"mipnone" {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "setSamplerStateAt",
-                "mipFilter != 'none'"
-            );
-        }
-
-        context.set_sampler_state_at(sampler, wrap, filter);
+        context.set_sampler_state_at(sampler, wrap, filter, mip_filter);
     }
     Ok(Value::Undefined)
 }

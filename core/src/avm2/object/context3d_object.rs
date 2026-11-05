@@ -417,27 +417,35 @@ impl<'gc> Context3DObject<'gc> {
         });
     }
 
+    // Timffle: `mip_level` selects the level written; the source must fit that
+    // level (`dest size >> mip_level`), partial (smaller) uploads are allowed as
+    // in Flash. Returns false when the level does not exist or the source does
+    // not fit.
     pub(crate) fn copy_bitmapdata_to_texture(
         self,
         source: &BitmapRawData<'gc>,
         dest: Rc<dyn Texture>,
         layer: u32,
-    ) {
-        // Note - Flash appears to allow a source that's larger than the destination.
-        // Let's leave in this assertion to see if there any real SWFS relying on this
-        // behavior.
-        assert!(
-            source.width() <= dest.width(),
-            "Source width {:?} larger than dest width {:?}",
-            source.width(),
-            dest.width()
+        mip_level: u32,
+    ) -> bool {
+        if mip_level >= dest.mip_level_count() {
+            return false;
+        }
+        let (level_w, level_h) = (
+            (dest.width() >> mip_level).max(1),
+            (dest.height() >> mip_level).max(1),
         );
-        assert!(
-            source.height() <= dest.height(),
-            "Source height {:?} larger than dest height {:?}",
-            source.height(),
-            dest.height()
-        );
+        if source.width() > level_w || source.height() > level_h {
+            tracing::warn!(
+                "Texture upload of {}x{} does not fit mip level {} ({}x{})",
+                source.width(),
+                source.height(),
+                mip_level,
+                level_w,
+                level_h
+            );
+            return false;
+        }
 
         self.with_context_3d(|ctx| {
             ctx.process_command(Context3DCommand::CopyBitmapToTexture {
@@ -446,19 +454,32 @@ impl<'gc> Context3DObject<'gc> {
                 source_height: source.height(),
                 dest,
                 layer,
+                mip_level,
             })
         });
+        true
     }
 
     #[cfg_attr(not(feature = "jpegxr"), allow(unused))]
-    pub(crate) fn copy_pixels_to_texture(self, source: Vec<u8>, dest: Rc<dyn Texture>, layer: u32) {
+    pub(crate) fn copy_pixels_to_texture(
+        self,
+        source: Vec<u8>,
+        dest: Rc<dyn Texture>,
+        layer: u32,
+        mip_level: u32,
+    ) {
+        let (level_w, level_h) = (
+            (dest.width() >> mip_level).max(1),
+            (dest.height() >> mip_level).max(1),
+        );
         self.with_context_3d(|ctx| {
             ctx.process_command(Context3DCommand::CopyBitmapToTexture {
                 source: &source,
-                source_width: dest.width(),
-                source_height: dest.height(),
+                source_width: level_w,
+                source_height: level_h,
                 dest,
                 layer,
+                mip_level,
             })
         });
     }
@@ -526,12 +547,14 @@ impl<'gc> Context3DObject<'gc> {
         sampler: u32,
         wrap: ruffle_render::backend::Context3DWrapMode,
         filter: ruffle_render::backend::Context3DTextureFilter,
+        mip_filter: ruffle_render::backend::Context3DMipFilter,
     ) {
         self.with_context_3d(|ctx| {
             ctx.process_command(Context3DCommand::SetSamplerStateAt {
                 sampler,
                 wrap,
                 filter,
+                mip_filter, // Timffle
             })
         });
     }

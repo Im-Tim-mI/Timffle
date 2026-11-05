@@ -134,6 +134,8 @@ pub struct BoundTextureData {
     /// uses `view`
     pub id: Rc<dyn Texture>,
     pub view: TextureView,
+    // Timffle: the same texture restricted to mip level 0 (mipfilter "mipnone").
+    pub base_level_view: TextureView,
     pub cube: bool,
 }
 
@@ -369,7 +371,14 @@ impl CurrentPipeline {
             if let Some(bound_texture) = bound_texture {
                 bind_group_entries.push(BindGroupEntry {
                     binding: naga_agal::TEXTURE_START_BIND_INDEX + i as u32,
-                    resource: BindingResource::TextureView(&bound_texture.view),
+                    // Timffle: without a mip filter only level 0 is visible.
+                    resource: BindingResource::TextureView(
+                        if self.sampler_configs[i].mipmap == naga_agal::Mipmap::Disable {
+                            &bound_texture.base_level_view
+                        } else {
+                            &bound_texture.view
+                        },
+                    ),
                 });
                 bind_group_entries.push(BindGroupEntry {
                     binding: naga_agal::TEXTURE_SAMPLER_START_BIND_INDEX + i as u32,
@@ -611,7 +620,9 @@ impl CurrentPipeline {
         sampler: usize,
         wrap: ruffle_render::backend::Context3DWrapMode,
         filter: ruffle_render::backend::Context3DTextureFilter,
+        mip_filter: ruffle_render::backend::Context3DMipFilter,
     ) {
+        use ruffle_render::backend::Context3DMipFilter;
         let sampler_config = SamplerConfig {
             wrapping: match wrap {
                 Context3DWrapMode::Clamp => Wrapping::Clamp,
@@ -627,8 +638,12 @@ impl CurrentPipeline {
                 Context3DTextureFilter::Anisotropic8X => Filter::Anisotropic8x,
                 Context3DTextureFilter::Anisotropic16X => Filter::Anisotropic16x,
             },
-            // FIXME - implement this
-            mipmap: naga_agal::Mipmap::Disable,
+            // Timffle: real; the bound view is cut to level 0 for `Disable`.
+            mipmap: match mip_filter {
+                Context3DMipFilter::None => naga_agal::Mipmap::Disable,
+                Context3DMipFilter::Nearest => naga_agal::Mipmap::Nearest,
+                Context3DMipFilter::Linear => naga_agal::Mipmap::Linear,
+            },
         };
         self.dirty.set(true);
         self.sampler_configs[sampler] = sampler_config;

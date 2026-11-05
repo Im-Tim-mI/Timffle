@@ -151,6 +151,11 @@ pub trait ShaderModule: Any {}
 pub trait Texture: Any + Debug {
     fn width(&self) -> u32;
     fn height(&self) -> u32;
+    // Timffle: number of mip levels the GPU texture holds (1 when the texture
+    // has no mip chain, e.g. a RectangleTexture).
+    fn mip_level_count(&self) -> u32 {
+        1
+    }
 }
 
 pub trait RawTexture: Any + Debug {
@@ -523,6 +528,31 @@ impl FromWStr for Context3DTextureFilter {
         }
     }
 }
+// Timffle: `Context3D.setSamplerStateAt` mipfilter ("mipnone" / "mipnearest" /
+// "miplinear"). Textures carry a full mip chain, so the filter is real.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Context3DMipFilter {
+    None,
+    Nearest,
+    Linear,
+}
+
+impl FromWStr for Context3DMipFilter {
+    type Err = ();
+
+    fn from_wstr(s: &WStr) -> Result<Self, Self::Err> {
+        if s == b"mipnone" {
+            Ok(Context3DMipFilter::None)
+        } else if s == b"mipnearest" {
+            Ok(Context3DMipFilter::Nearest)
+        } else if s == b"miplinear" {
+            Ok(Context3DMipFilter::Linear)
+        } else {
+            Err(())
+        }
+    }
+}
+
 pub enum Context3DCommand<'a> {
     Clear {
         red: f64,
@@ -591,6 +621,8 @@ pub enum Context3DCommand<'a> {
         source_height: u32,
         dest: Rc<dyn Texture>,
         layer: u32,
+        // Timffle: the mip level written (`miplevel` of the upload* methods).
+        mip_level: u32,
     },
     SetTextureAt {
         sampler: u32,
@@ -615,6 +647,8 @@ pub enum Context3DCommand<'a> {
         sampler: u32,
         wrap: Context3DWrapMode,
         filter: Context3DTextureFilter,
+        // Timffle
+        mip_filter: Context3DMipFilter,
     },
     SetScissorRectangle {
         rect: Option<Rectangle<Twips>>,

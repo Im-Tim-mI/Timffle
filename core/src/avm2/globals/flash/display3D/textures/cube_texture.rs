@@ -3,6 +3,7 @@ use ruffle_render::backend::Context3DTextureFormat;
 use crate::avm2::Activation;
 use crate::avm2::Error;
 use crate::avm2::Value;
+use crate::avm2::error::make_error_3669;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::flash::display3D::textures::atf_jpegxr::do_compressed_upload;
 use crate::avm2::parameters::ParametersExt;
@@ -17,12 +18,8 @@ pub fn upload_from_byte_array<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    // This should work, but it's currently untested
-    avm2_stub_method!(
-        activation,
-        "flash.display3D.textures.CubeTexture",
-        "uploadFromByteArray"
-    );
+    // Timffle: same path as Texture.uploadFromByteArray (BGRA bytes of the
+    // given side and mip level), no longer marked untested.
     let texture = this.as_texture().unwrap();
     texture.check_disposed(activation)?; // Timffle
     texture.context3d().check_disposed(activation)?;
@@ -49,13 +46,7 @@ pub fn upload_compressed_texture_from_byte_array_internal<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    // This should work, but it's currently untested
-    avm2_stub_method!(
-        activation,
-        "flash.display3D.textures.CubeTexture",
-        "uploadCompressedTextureFromByteArray"
-    );
-
+    // Timffle: same ATF path as Texture (cube map faces), no longer marked untested.
     let texture = this.as_texture().unwrap();
     texture.check_disposed(activation)?; // Timffle
     texture.context3d().check_disposed(activation)?;
@@ -92,21 +83,16 @@ pub fn upload_from_bitmap_data<'gc>(
         if let Some(source) = source_obj.as_bitmap_data() {
             let side = args.get_u32(1);
             let mip_level = args.get_u32(2);
-            if mip_level == 0 {
-                texture.context3d().copy_bitmapdata_to_texture(
-                    &source.sync(activation.context.renderer).borrow(),
-                    texture.handle(),
-                    // FIXME - is this right?
-                    side,
-                );
-            } else {
-                avm2_stub_method!(
-                    activation,
-                    "flash.display3D.textures.CubeTexture",
-                    "uploadFromBitmapData",
-                    "with miplevel != 0"
-                );
+            // Timffle: any mip level (see Texture.uploadFromBitmapData).
+            if mip_level >= texture.handle().mip_level_count() {
+                return Err(make_error_3669(activation));
             }
+            texture.context3d().copy_bitmapdata_to_texture(
+                &source.sync(activation.context.renderer).borrow(),
+                texture.handle(),
+                side,
+                mip_level,
+            );
         } else {
             unreachable!("Argument is BitmapData-typed");
         }

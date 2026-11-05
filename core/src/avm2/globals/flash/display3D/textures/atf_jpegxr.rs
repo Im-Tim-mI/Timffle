@@ -33,12 +33,46 @@ pub fn do_compressed_upload<'gc>(
         return Err(make_error_3675(activation));
     }
 
-    // Just use the first mip level for now. We ignore the builtin format - the JPEG-XR format
-    // appears to override it
-    let bitmap = match &atf_texture.face_mip_data[0][0] {
+    // Timffle: every face and every mip level the ATF file carries is uploaded
+    // (the texture has a full mip chain). We ignore the builtin format - the
+    // JPEG-XR format appears to override it.
+    let num_faces = atf_texture.face_mip_data.len();
+    let max_levels = texture.handle().mip_level_count() as usize;
+    for face in 0..num_faces {
+        for level in 0..atf_texture.face_mip_data[face].len().min(max_levels) {
+            let level_w = (atf_texture.width >> level).max(1);
+            let level_h = (atf_texture.height >> level).max(1);
+            let bitmap = decode_atf_level(
+                activation,
+                &atf_texture.face_mip_data[face][level],
+                level_w,
+                level_h,
+            )?;
+            texture.context3d().copy_pixels_to_texture(
+                bitmap,
+                texture.handle(),
+                face as u32,
+                level as u32,
+            );
+        }
+    }
+    Ok(())
+}
+
+// Timffle: one face/level of an ATF file as the bytes the GPU texture takes
+// (RGBA8 for JPEG-XR levels, DXT5 blocks for the compressed-alpha formats).
+fn decode_atf_level<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    data: &ATFTextureData,
+    width: u32,
+    height: u32,
+) -> Result<Vec<u8>, Error<'gc>> {
+    let atf_texture_width = width;
+    let atf_texture_height = height;
+    let bitmap = match data {
         ATFTextureData::JpegXR(bytes) => jpegxr_to_tiff(
-            atf_texture.width,
-            atf_texture.height,
+            atf_texture_width,
+            atf_texture_height,
             &mut Cursor::new(bytes),
         )
         .0
@@ -76,8 +110,8 @@ pub fn do_compressed_upload<'gc>(
             // sections just hold the DXT lookup table block. The associated values for each block
             // are stored in JPEG-XR images, which are optionally compressed
             let (jpegxr_alpha, pixel_format) = jpegxr_to_tiff(
-                atf_texture.width / 4,
-                atf_texture.height / 2,
+                atf_texture_width / 4,
+                atf_texture_height / 2,
                 &mut Cursor::new(orig_jpegxr_alpha),
             );
 
@@ -89,8 +123,8 @@ pub fn do_compressed_upload<'gc>(
             );
 
             let jpegxr_bgr = jpegxr_to_raw_pixels(
-                atf_texture.width / 4,
-                atf_texture.height / 2,
+                atf_texture_width / 4,
+                atf_texture_height / 2,
                 &mut Cursor::new(orig_jpegxr_bgr),
             );
 
@@ -109,7 +143,7 @@ pub fn do_compressed_upload<'gc>(
                 "Dxt data doesn't match jpegxr data"
             );
 
-            let second_half = ((atf_texture.width / 4) * (atf_texture.height / 4)) as usize;
+            let second_half = ((atf_texture_width / 4) * (atf_texture_height / 4)) as usize;
 
             // The two values for each pixels are split across the upper and lower halves of the image.
             // See https://github.com/adobe/dds2atf/blob/cbc479be2e77daa273306161af571f8255aec78d/pvr2atfcore.cpp#L884
@@ -163,15 +197,10 @@ pub fn do_compressed_upload<'gc>(
             dxt5.clone()
         }
         ATFTextureData::Unknown(_) => {
-            return Err(format!("Unsupported ATF format: {:?}", atf_texture.format).into());
+            return Err("Unsupported ATF format".into());
         }
     };
-
-    texture
-        .context3d()
-        .copy_pixels_to_texture(bitmap, texture.handle(), 0);
-
-    Ok(())
+    Ok(bitmap)
 }
 
 fn jpegxr_to_raw_pixels<R: Read + Seek>(atf_width: u32, atf_height: u32, bytes: R) -> Vec<u8> {

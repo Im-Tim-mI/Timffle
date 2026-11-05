@@ -1,0 +1,10 @@
+mip filters: mipnone mipnearest miplinear
+context created
+texture with streamingLevels: true
+mip uploads: ok
+mip 4: 3669
+byte upload mip 1: ok
+cube uploads: ok
+sampler mip filters: ok
+bad mipfilter: 2008
+render to texture with antiAlias 4: ok

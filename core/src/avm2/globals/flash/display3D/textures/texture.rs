@@ -3,6 +3,7 @@ use ruffle_render::backend::Context3DTextureFormat;
 use super::atf_jpegxr::do_compressed_upload;
 use crate::avm2::Activation;
 use crate::avm2::Value;
+use crate::avm2::error::make_error_3669;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::object::TextureObject;
 use crate::avm2::parameters::ParametersExt;
@@ -19,22 +20,18 @@ pub fn do_copy<'gc>(
     side: u32,
     mip_level: u32,
 ) -> Result<(), Error<'gc>> {
-    if mip_level != 0 {
-        avm2_stub_method!(
-            activation,
-            "flash.display3D.textures.Texture",
-            "uploadFromByteArray",
-            "with miplevel != 0"
-        );
-        return Ok(());
+    // Timffle: `mip_level` selects the level; its size is the texture's size
+    // halved per level (Flash reads width*height*4 bytes of that level).
+    if mip_level >= texture.handle().mip_level_count() {
+        return Err(make_error_3669(activation));
     }
 
     // FIXME - see if we can avoid this intermediate BitmapData, and copy
     // directly from a buffer to the target GPU texture
     let bitmap_data = match texture.original_format() {
         Context3DTextureFormat::Bgra => {
-            let width = texture.handle().width();
-            let height = texture.handle().height();
+            let width = (texture.handle().width() >> mip_level).max(1);
+            let height = (texture.handle().height() >> mip_level).max(1);
 
             let bytearray = data.as_bytearray().unwrap();
 
@@ -64,6 +61,7 @@ pub fn do_copy<'gc>(
         &bitmap_data.sync(activation.context.renderer).borrow(),
         texture.handle(),
         side,
+        mip_level,
     );
     Ok(())
 }
@@ -131,20 +129,17 @@ pub fn upload_from_bitmap_data<'gc>(
 
         if let Some(source) = source_obj.as_bitmap_data() {
             let mip_level = args.get_u32(1);
-            if mip_level == 0 {
-                texture.context3d().copy_bitmapdata_to_texture(
-                    &source.sync(activation.context.renderer).borrow(),
-                    texture.handle(),
-                    0,
-                );
-            } else {
-                avm2_stub_method!(
-                    activation,
-                    "flash.display3D.textures.Texture",
-                    "uploadFromBitmapData",
-                    "with miplevel != 0"
-                );
+            // Timffle: any level of the mip chain; a level the texture does not
+            // have is ArgumentError #3669 (bad input size) like Flash.
+            if mip_level >= texture.handle().mip_level_count() {
+                return Err(make_error_3669(activation));
             }
+            texture.context3d().copy_bitmapdata_to_texture(
+                &source.sync(activation.context.renderer).borrow(),
+                texture.handle(),
+                0,
+                mip_level,
+            );
         } else {
             unreachable!("Argument is BitmapData-typed");
         }
