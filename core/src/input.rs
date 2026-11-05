@@ -84,6 +84,8 @@ pub struct InputManager {
 
     keys_down: HashSet<KeyCode>,
     keys_toggled: HashSet<KeyCode>,
+    /// Timffle: lock keys whose toggle the player has followed itself (see `infer_lock_state`).
+    locks_seen: HashSet<KeyCode>,
     last_key: KeyCode,
     last_char: Option<char>,
     last_click: Option<ClickEventData>,
@@ -100,6 +102,7 @@ impl InputManager {
             keys_down_phys_loc: HashSet::new(),
             keys_down: HashSet::new(),
             keys_toggled: HashSet::new(),
+            locks_seen: HashSet::new(),
             last_key: KeyCode::UNKNOWN,
             last_char: None,
             last_click: None,
@@ -119,6 +122,7 @@ impl InputManager {
         if key_code == KeyCode::UNKNOWN || self.keys_down.contains(&key_code) {
             return;
         }
+        self.locks_seen.insert(key_code);
         if self.keys_toggled.contains(&key_code) {
             self.keys_toggled.remove(&key_code);
         } else {
@@ -132,6 +136,10 @@ impl InputManager {
     // numpad key reveals the real state -- an uppercase letter without Shift (or lowercase
     // with Shift) means Caps Lock is on; a numpad key that produced a digit means Num Lock is
     // on, one that produced a navigation key means it is off -- so it is corrected from them.
+    // Once the player has seen a lock key pressed it follows that key's toggles only, like
+    // Flash Player reading the lock state: a typed letter no longer overrides it (Flash's
+    // `Key.isToggled(Key.CAPSLOCK)` stays true after Caps Lock even if a lowercase letter
+    // arrives, avm1/key_isToggled).
     fn infer_lock_state(&mut self, key: KeyDescriptor) {
         let shift = self.keys_down.contains(&KeyCode::SHIFT);
         match key.logical_key {
@@ -164,6 +172,9 @@ impl InputManager {
 
     // Timffle: see `infer_lock_state`.
     fn set_toggled(&mut self, key_code: KeyCode, toggled: bool) {
+        if self.locks_seen.contains(&key_code) {
+            return;
+        }
         if toggled {
             self.keys_toggled.insert(key_code);
         } else {
