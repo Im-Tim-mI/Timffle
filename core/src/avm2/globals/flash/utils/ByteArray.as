@@ -1,14 +1,17 @@
 package flash.utils {
-    import __ruffle__.stub_setter;
-
     [Ruffle(InstanceAllocator)]
     public class ByteArray implements IDataInput2, IDataOutput2 {
+        // Timffle: `shareable` is the flag that lets a worker's MessageChannel pass this
+        // ByteArray's memory instead of a copy. This player has no Workers
+        // (`WorkerDomain.isSupported` is false), so, like Flash Player on a platform without
+        // them, the flag only records the setting: it starts false, the setter stores the
+        // value (the AVM makes the buffer shareable on the first `true`; nothing is copied
+        // on `false` afterwards -- the property simply reads the stored value), and no other
+        // behaviour depends on it.
         private var _shareable:Boolean = false;
 
         [API("684")]
         public function set shareable(shareable:Boolean):void {
-            stub_setter("flash.utils.ByteArray", "shareable");
-
             this._shareable = shareable;
         }
 
@@ -16,6 +19,12 @@ package flash.utils {
         public function get shareable():Boolean {
             return this._shareable;
         }
+
+        // Timffle: the AIR 3.4 / Flash Player 11.4 atomic operations for shared byte arrays.
+        [API("684")]
+        public native function atomicCompareAndSwapIntAt(byteIndex:int, expectedValue:int, newValue:int):int;
+        [API("684")]
+        public native function atomicCompareAndSwapLength(expectedLength:int, newLength:int):int;
 
         public static native function get defaultObjectEncoding():uint;
         public static native function set defaultObjectEncoding(encoding:uint):void;

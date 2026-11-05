@@ -10,9 +10,12 @@ package flash.ui {
         public static native function get cursor():String;
         public static native function set cursor(value:String):void;
 
+        // Timffle: "whether the computer or device displays a persistent cursor": every host
+        // this player runs on drives it with a pointer (Capabilities.touchscreenType is
+        // "none" -- no touch input reaches the player as touch), and a pointer host shows a
+        // cursor, like desktop Flash Player; only a finger-touch device has none.
         public static function get supportsCursor():Boolean {
-            stub_getter("flash.ui.Mouse", "supportsCursor");
-            return true;
+            return flash.system.Capabilities.touchscreenType != flash.system.TouchscreenType.FINGER;
         }
         public static function get supportsNativeCursor():Boolean {
             stub_getter("flash.ui.Mouse", "supportsNativeCursor");

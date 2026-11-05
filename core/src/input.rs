@@ -126,6 +126,51 @@ impl InputManager {
         }
     }
 
+    // Timffle: the player is never told the host's Caps Lock / Num Lock state (winit has no
+    // lock-state API; the web build passes key events only), so `Keyboard.capsLock` and
+    // `numLock` start as "off" and follow the lock keys (`toggle_key`). A typed letter or a
+    // numpad key reveals the real state -- an uppercase letter without Shift (or lowercase
+    // with Shift) means Caps Lock is on; a numpad key that produced a digit means Num Lock is
+    // on, one that produced a navigation key means it is off -- so it is corrected from them.
+    fn infer_lock_state(&mut self, key: KeyDescriptor) {
+        let shift = self.keys_down.contains(&KeyCode::SHIFT);
+        match key.logical_key {
+            LogicalKey::Character(ch) if ch.is_ascii_alphabetic() => {
+                let caps_lock = ch.is_ascii_uppercase() != shift;
+                self.set_toggled(KeyCode::CAPS_LOCK, caps_lock);
+            }
+            LogicalKey::Character(ch)
+                if key.key_location == KeyLocation::Numpad && ch.is_ascii_digit() =>
+            {
+                self.set_toggled(KeyCode::NUM_LOCK, true);
+            }
+            LogicalKey::Named(
+                NamedKey::ArrowUp
+                | NamedKey::ArrowDown
+                | NamedKey::ArrowLeft
+                | NamedKey::ArrowRight
+                | NamedKey::Home
+                | NamedKey::End
+                | NamedKey::PageUp
+                | NamedKey::PageDown
+                | NamedKey::Insert
+                | NamedKey::Delete,
+            ) if key.key_location == KeyLocation::Numpad => {
+                self.set_toggled(KeyCode::NUM_LOCK, false);
+            }
+            _ => {}
+        }
+    }
+
+    // Timffle: see `infer_lock_state`.
+    fn set_toggled(&mut self, key_code: KeyCode, toggled: bool) {
+        if toggled {
+            self.keys_toggled.insert(key_code);
+        } else {
+            self.keys_toggled.remove(&key_code);
+        }
+    }
+
     fn remove_key(&mut self, key_code: KeyCode) {
         self.last_key = key_code;
         if key_code != KeyCode::UNKNOWN {
@@ -168,6 +213,8 @@ impl InputManager {
             PlayerEvent::KeyDown { key } => {
                 self.keys_down_phys_loc
                     .insert((key.physical_key, key.key_location));
+
+                self.infer_lock_state(key);
 
                 let key_code = self.map_to_key_code(key)?;
                 let key_char = self.map_to_key_char(key);
