@@ -638,7 +638,8 @@
    "stubbed": [
     "static enumerateFonts()"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "enumerateFonts(true) 列出已載入的裝置字型與內建名稱的實作；主機沒有列舉系統全部字型的 API（desktop fontconfig／web 都沒有），要列全部需要新的 UiBackend 呼叫。"
   },
   {
    "class": "flash.text.TextField",
@@ -655,7 +656,8 @@
     "textInteractionMode",
     "useRichTextClipboard"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "8 個都做了；getImageReference 一律 null（播放器不載入 <img>）、getRawText/getXMLText/insertXMLText 未文件化照名稱推定。"
   },
   {
    "class": "flash.text.TextRenderer",
@@ -668,7 +670,8 @@
     "static maxLevel",
     "static setAdvancedAntiAliasingTable()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "antiAliasType/displayMode/maxLevel/setAdvancedAntiAliasingTable 驗證並存起來；光柵器沒有 CSM 階段所以不影響繪圖（Flash 在沒有 CSM 的平台亦然）。錯誤碼未在真 Flash 量過。"
   },
   {
    "class": "flash.text.TextSnapshot",
@@ -685,7 +688,8 @@
     "setSelectColor()",
     "setSelected()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "9 個全部真的實作（含選取高亮繪圖）；字框順序與無度量字型的行為未在真 Flash 量過。"
   },
   {
    "class": "flash.ui.ContextMenu",
@@ -697,7 +701,8 @@
    "stubbed": [
     "static isSupported"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "clone/link/isSupported done (ui_members); link stored but the native menu does not show the link items yet"
   },
   {
    "class": "flash.ui.Keyboard",
@@ -709,7 +714,8 @@
     "static numLock",
     "static physicalKeyboardType"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "capsLock/numLock tracked from key events (InputManager::infer_lock_state), hasVirtualKeyboard/physicalKeyboardType from touchscreenType; isAccessible still a stub (not in this batch's list)"
   },
   {
    "class": "flash.ui.Mouse",
@@ -721,7 +727,8 @@
     "static supportsNativeCursor",
     "static unregisterCursor()"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "supportsCursor done; registerCursor/unregisterCursor/supportsNativeCursor need a UiBackend custom-cursor method (web CSS cursor url, winit CustomCursor) — not done"
   },
   {
    "class": "flash.ui.MouseCursorData",
@@ -732,7 +739,8 @@
     "frameRate",
     "hotSpot"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "plain data holder per reference; used once Mouse.registerCursor is real"
   },
   {
    "class": "flash.ui.Multitouch",
@@ -745,7 +753,8 @@
     "static supportsTouchEvents"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "no-touch host values, inputMode validated"
   },
   {
    "class": "flash.utils.ByteArray",
@@ -758,7 +767,8 @@
     "shareable",
     "writeObject()"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "atomics + shareable done; writeObject repeated-object stub remains for AMF0 (flash-lso amf0 writer writes no references)"
   },
   {
    "class": "flash.xml.XMLDocument",
@@ -1116,7 +1126,8 @@
     "generateActions()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "inert in the non-automation player"
   },
   {
    "class": "flash.automation.Configuration",
@@ -1126,7 +1137,8 @@
     "static testAutomationConfiguration"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "stored/empty strings; real automation values unknown"
   },
   {
    "class": "flash.automation.StageCapture",
@@ -1141,7 +1153,8 @@
     "fileNameBase"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "inert capture, settings stored"
   },
   {
    "class": "flash.concurrent.Condition",
@@ -1183,7 +1196,8 @@
     "verticalAccuracy"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "new data class; toString order unverified"
   },
   {
    "class": "flash.media.AVSegmentedSource",
@@ -1688,7 +1702,8 @@
     "static isSupported"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "no printing: isSupported false, start false, addPage #2057"
   },
   {
    "class": "flash.sampler",
@@ -1713,7 +1728,8 @@
     "startSampling()",
     "stopSampling()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "release-player AVM behaviour; getMemberNames/isGetterSetter/getSavedThis/getLexicalScopes real natives (sampler.rs)"
   },
   {
    "class": "flash.sampler.NewObjectSample",
@@ -1723,7 +1739,8 @@
     "object",
     "size"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "weak object + size"
   },
   {
    "class": "flash.sensors.Accelerometer",
@@ -1733,7 +1750,8 @@
     "muted",
     "setRequestedUpdateInterval()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "muted true, negative interval #2004"
   },
   {
    "class": "flash.sensors.Geolocation",
@@ -1743,7 +1761,8 @@
     "muted",
     "setRequestedUpdateInterval()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "muted true, negative interval #2004"
   },
   {
    "class": "flash.system.AuthorizedFeatures",
@@ -1831,7 +1850,8 @@
     "value"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "#2012 constructor, removed-device semantics"
   },
   {
    "class": "flash.ui.GameInputDevice",
@@ -1848,7 +1868,8 @@
     "stopCachingSamples()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "#2012 constructor, removed-device semantics"
   }
  ]
 }
