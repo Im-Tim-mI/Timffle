@@ -50,6 +50,7 @@
 - **三支已知失敗測試現在與真 Flash 相同**：`avm2/matrix3d_recompose_edge_cases`、`from_shumway/…/matrix3d/TransformBasics`、`from_shumway/flash_net_classes` 的輸出已與 Flash 錄的 `output.txt` 逐行相同，取消 `known_failure` 並刪除 `output.ruffle.txt`。
 - **`from_shumway/flash_utils_Timer` 改跑 4 個 tick**：計時器在影格之前跑（26335）後，第一個影格在播放器時間 83 ms 才跑；`Timer` 本來就從 `start()` 起算（建立前的時間不算進去），200 ms 的計時器在 start 後 249 ms 的第 4 個 tick 觸發，與以前第 3 個 tick 的相對時間相同，Flash 的 `output.txt` 不變。
 - **`Matrix3D.appendRotation` 的 NaN／無限大 pivot**：照 Flash 把 pivot 當成完整的 `T(p)·R·T(-p)` 乘積，pivot 有 NaN 或無限大時整個矩陣變成 NaN（原本第 4 列留著 0,0,0,1）；有限 pivot 的結果不變。`avm2/matrix3d_append_rotation` 與 Flash 的 `output.txt` 相同，取消 `known_failure`。
+- **`TextBlock.recreateTextLine` 與 TextLine 子物件照真 Flash**：重建的行回到新行的顯示狀態（位置、縮放、旋轉、3D、alpha、混合模式、遮罩、visible、`cacheAsBitmap`、`opaqueBackground` 歸零，子物件移除、事件監聽者清掉，名稱與父物件保留）；原地重建時後面的行變成 invalid、連結不變，搬到別處時舊串列接起來並讓其後的行 invalid、新位置原本的行被換掉（invalid、斷開連結）；TextLine 現在真的是容器（`addChild` 有效、子物件畫在文字上面，`tabChildren` 固定 false）。`avm2/textblock_recreateline` 與 Flash 相同、取消 `known_failure`；`textblock_line_changes` 仍是已知失敗（`static` 行的情況，已知差異檔更新）。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 
