@@ -1280,6 +1280,12 @@ make_error_fn!(
     argument_error
 );
 
+// Timffle: Stage3D texture uploads ("Miplevel too large", "Texture decoding
+// failed", RangeError "Bad input size" for a ByteArray that is too short).
+make_error_fn!(make_error_3674, 3674, argument_error);
+make_error_fn!(make_error_3677, 3677, argument_error);
+make_error_fn!(make_error_3669_range, 3669, range_error);
+
 make_error_fn!(make_error_3771, 3771, argument_error);
 make_error_fn!(make_error_3772, 3772, argument_error);
 make_error_fn!(make_error_3773, 3773, argument_error);

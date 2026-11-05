@@ -156,6 +156,12 @@ pub trait Texture: Any + Debug {
     fn mip_level_count(&self) -> u32 {
         1
     }
+    // Timffle: the block format the GPU texture stores natively when the
+    // backend could honour a COMPRESSED / COMPRESSED_ALPHA request with a
+    // compressed format (None: RGBA8 storage, uploads are decoded on the CPU).
+    fn compressed_format(&self) -> Option<crate::compressed::CompressedFormat> {
+        None
+    }
 }
 
 pub trait RawTexture: Any + Debug {

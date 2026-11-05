@@ -1,85 +1,38 @@
-use crate::avm2::activation::Activation;
-use crate::avm2::bytearray::ByteArrayStorage;
-use crate::avm2::error::{Error, make_error_3675, make_error_3679};
-use crate::avm2::object::{Object, TextureObject};
-use crate::avm2_stub_method;
-use ruffle_render::atf::ATFTexture;
+//! Timffle: the JPEG-XR based ATF payloads (formats 0/1 RGB(A) JPEG-XR,
+//! 2 COMPRESSED and 4 COMPRESSED_ALPHA) decoded into RGBA8 pixels or DXT
+//! blocks. The container itself and the raw payloads are handled in
+//! `atf_upload`, which is compiled without the `jpegxr` feature too.
+
+use super::atf_upload::LevelData;
 use ruffle_render::atf::ATFTextureData;
+use ruffle_render::compressed::CompressedFormat;
 use std::io::Cursor;
 
 use jpegxr::PixelFormat;
 use std::io::Read;
 use std::io::Seek;
 
-pub fn do_compressed_upload<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    texture: TextureObject<'gc>,
-    data: Object<'gc>,
-    byte_array_offset: usize,
-    is_cube: bool,
-) -> Result<(), Error<'gc>> {
-    let bytes = data.as_bytearray().unwrap();
-    let raw_atf = &ByteArrayStorage::bytes(&bytes)[byte_array_offset..];
-
-    let atf_texture = ATFTexture::from_bytes(raw_atf).expect("Failed to parse ATF texture");
-
-    if atf_texture.width != texture.handle().width()
-        || atf_texture.height != texture.handle().height()
-    {
-        return Err(make_error_3679(activation));
-    }
-
-    if is_cube != atf_texture.cubemap {
-        return Err(make_error_3675(activation));
-    }
-
-    // Timffle: every face and every mip level the ATF file carries is uploaded
-    // (the texture has a full mip chain). We ignore the builtin format - the
-    // JPEG-XR format appears to override it.
-    let num_faces = atf_texture.face_mip_data.len();
-    let max_levels = texture.handle().mip_level_count() as usize;
-    for face in 0..num_faces {
-        for level in 0..atf_texture.face_mip_data[face].len().min(max_levels) {
-            let level_w = (atf_texture.width >> level).max(1);
-            let level_h = (atf_texture.height >> level).max(1);
-            let bitmap = decode_atf_level(
-                activation,
-                &atf_texture.face_mip_data[face][level],
-                level_w,
-                level_h,
-            )?;
-            texture.context3d().copy_pixels_to_texture(
-                bitmap,
-                texture.handle(),
-                face as u32,
-                level as u32,
-            );
-        }
-    }
-    Ok(())
-}
-
-// Timffle: one face/level of an ATF file as the bytes the GPU texture takes
-// (RGBA8 for JPEG-XR levels, DXT5 blocks for the compressed-alpha formats).
-fn decode_atf_level<'gc>(
-    activation: &mut Activation<'_, 'gc>,
+/// One face/level of an ATF file as the bytes the GPU texture takes (RGBA8
+/// for JPEG-XR levels, DXT1/DXT5 blocks for the compressed formats).
+pub fn decode_jpegxr_level(
     data: &ATFTextureData,
     width: u32,
     height: u32,
-) -> Result<Vec<u8>, Error<'gc>> {
+) -> Result<LevelData, String> {
     let atf_texture_width = width;
     let atf_texture_height = height;
-    let bitmap = match data {
-        ATFTextureData::JpegXR(bytes) => jpegxr_to_tiff(
-            atf_texture_width,
-            atf_texture_height,
-            &mut Cursor::new(bytes),
-        )
-        .0
-        .to_rgba8()
-        .pixels()
-        .flat_map(|p| p.0)
-        .collect(),
+    match data {
+        ATFTextureData::JpegXR(bytes) => {
+            let image = jpegxr_to_tiff(
+                atf_texture_width,
+                atf_texture_height,
+                &mut Cursor::new(bytes),
+            )?
+            .0;
+            Ok(LevelData::Rgba(
+                image.to_rgba8().pixels().flat_map(|p| p.0).collect(),
+            ))
+        }
         ATFTextureData::CompressedAlpha {
             dxt1_alpha_compressed,
             jpegxr_alpha: orig_jpegxr_alpha,
@@ -89,22 +42,8 @@ fn decode_atf_level<'gc>(
             // See https://github.com/adobe/dds2atf/issues/5
             // The ATF format uses a weird version of LZMA that doesn't store the uncompressed length.
             // Compute it ourselves, and insert it where it should be
-            let mut dxt1_alpha_compressed = dxt1_alpha_compressed.clone();
-            let mut dxt5_rgb_compressed = dxt5_rgb_compressed.clone();
-
-            let dxt1_uncompressed_length = u64::MAX;
-            let dxt5_uncompressed_length = u64::MAX;
-
-            dxt1_alpha_compressed.splice(5..5, dxt1_uncompressed_length.to_le_bytes());
-            dxt5_rgb_compressed.splice(5..5, dxt5_uncompressed_length.to_le_bytes());
-
-            let mut dxt1_alpha = Vec::with_capacity(dxt1_alpha_compressed.len());
-            lzma_rs::lzma_decompress(&mut dxt1_alpha_compressed.as_slice(), &mut dxt1_alpha)
-                .expect("Failed to decompress DXT1 alpha");
-
-            let mut dxt5_rgb = Vec::with_capacity(dxt5_rgb_compressed.len());
-            lzma_rs::lzma_decompress(&mut dxt5_rgb_compressed.as_slice(), &mut dxt5_rgb)
-                .expect("Failed to decompress DXT5 RGB");
+            let dxt1_alpha = atf_lzma_decompress(dxt1_alpha_compressed)?;
+            let dxt5_rgb = atf_lzma_decompress(dxt5_rgb_compressed)?;
 
             // 'COMPRESSED_ALPHA' images are encoded in a very strange way. The LZMA-compressed DXT1/DXT5
             // sections just hold the DXT lookup table block. The associated values for each block
@@ -113,35 +52,30 @@ fn decode_atf_level<'gc>(
                 atf_texture_width / 4,
                 atf_texture_height / 2,
                 &mut Cursor::new(orig_jpegxr_alpha),
-            );
+            )?;
 
             let jpegxr_alpha = jpegxr_alpha.to_rgba8();
-            assert_eq!(
-                pixel_format,
-                PixelFormat::PixelFormat8bppGray,
-                "Unexpected JPEG-XR alpha format"
-            );
+            if pixel_format != PixelFormat::PixelFormat8bppGray {
+                return Err("Unexpected JPEG-XR alpha format".into());
+            }
 
             let jpegxr_bgr = jpegxr_to_raw_pixels(
                 atf_texture_width / 4,
                 atf_texture_height / 2,
                 &mut Cursor::new(orig_jpegxr_bgr),
-            );
+            )?;
 
             let mut reconstructed_dxt = vec![];
 
-            assert_eq!(dxt1_alpha.len() / 6, dxt5_rgb.len() / 4, "Bad DXT data");
-            assert_eq!(
-                jpegxr_alpha.as_raw().len() / 8,
-                jpegxr_bgr.len() / 4,
-                "Bad JPEG-XR data"
-            );
-
-            assert_eq!(
-                dxt1_alpha.len() / 6,
-                jpegxr_alpha.as_raw().len() / 8,
-                "Dxt data doesn't match jpegxr data"
-            );
+            if dxt1_alpha.len() / 6 != dxt5_rgb.len() / 4 {
+                return Err("Bad DXT data".into());
+            }
+            if jpegxr_alpha.as_raw().len() / 8 != jpegxr_bgr.len() / 4 {
+                return Err("Bad JPEG-XR data".into());
+            }
+            if dxt1_alpha.len() / 6 != jpegxr_alpha.as_raw().len() / 8 {
+                return Err("Dxt data doesn't match jpegxr data".into());
+            }
 
             let second_half = ((atf_texture_width / 4) * (atf_texture_height / 4)) as usize;
 
@@ -175,45 +109,72 @@ fn decode_atf_level<'gc>(
                 reconstructed_dxt.extend(rgb_lookup_table);
             }
 
-            reconstructed_dxt
+            Ok(LevelData::Blocks(CompressedFormat::Dxt5, reconstructed_dxt))
         }
-        ATFTextureData::CompressedRawAlpha {
-            dxt5,
-            pvrtc: _,
-            etc1: _,
-            etc2: _,
+        // Timffle: COMPRESSED (DXT1) is the RGB half of the layout above: an
+        // LZMA stream of 4-byte lookup tables plus a JPEG-XR image whose upper
+        // and lower halves hold the two 16-bit endpoint colours of each block.
+        ATFTextureData::CompressedDxt1 {
+            dxt1_lookup_compressed,
+            jpegxr_rgb,
         } => {
-            // DXT5 seems to be the most widely supported, so let's use that for now.
-            // TODO - fallback to other formats if DXT5 data isn't present
-            // (or if we're on Android/iOS).
-            if dxt5.is_empty() {
-                avm2_stub_method!(
-                    activation,
-                    "flash.display3D.textures.Texture",
-                    "uploadCompressedTextureFromByteArray",
-                    "with empty DXT5 data in CompressedRawAlpha"
-                );
+            let lookup = atf_lzma_decompress(dxt1_lookup_compressed)?;
+            let colors = jpegxr_to_raw_pixels(
+                atf_texture_width / 4,
+                atf_texture_height / 2,
+                &mut Cursor::new(jpegxr_rgb),
+            )?;
+            let num_blocks = lookup.len() / 4;
+            if colors.len() / 4 != num_blocks {
+                return Err("DXT1 lookup data doesn't match jpegxr data".into());
             }
-            dxt5.clone()
+            let second_half = ((atf_texture_width / 4) * (atf_texture_height / 4)) as usize;
+            let mut reconstructed = Vec::with_capacity(num_blocks * 8);
+            for i in 0..num_blocks {
+                reconstructed.extend(&colors[i * 2..(i + 1) * 2]);
+                reconstructed
+                    .extend(&colors[second_half * 2 + i * 2..second_half * 2 + (i + 1) * 2]);
+                reconstructed.extend(&lookup[i * 4..(i + 1) * 4]);
+            }
+            Ok(LevelData::Blocks(CompressedFormat::Dxt1, reconstructed))
         }
-        ATFTextureData::Unknown(_) => {
-            return Err("Unsupported ATF format".into());
+        ATFTextureData::Raw { .. } | ATFTextureData::Unknown(_) => {
+            Err("not a JPEG-XR payload".into())
         }
-    };
-    Ok(bitmap)
+    }
 }
 
-fn jpegxr_to_raw_pixels<R: Read + Seek>(atf_width: u32, atf_height: u32, bytes: R) -> Vec<u8> {
-    let mut decoder =
-        jpegxr::ImageDecode::with_reader(bytes).expect("Failed to decode JPEG-XR image");
+// Timffle: ATF's LZMA streams omit the uncompressed length; insert "unknown".
+fn atf_lzma_decompress(compressed: &[u8]) -> Result<Vec<u8>, String> {
+    if compressed.len() < 5 {
+        return Err("LZMA stream too short".into());
+    }
+    let mut with_len = compressed.to_vec();
+    with_len.splice(5..5, u64::MAX.to_le_bytes());
+    let mut out = Vec::with_capacity(compressed.len() * 4);
+    lzma_rs::lzma_decompress(&mut with_len.as_slice(), &mut out)
+        .map_err(|e| format!("LZMA decoding failed: {e:?}"))?;
+    Ok(out)
+}
+
+fn jpegxr_to_raw_pixels<R: Read + Seek>(
+    atf_width: u32,
+    atf_height: u32,
+    bytes: R,
+) -> Result<Vec<u8>, String> {
+    let mut decoder = jpegxr::ImageDecode::with_reader(bytes)
+        .map_err(|e| format!("Failed to decode JPEG-XR image: {e:?}"))?;
 
     let pixel_format = decoder
         .get_pixel_format()
-        .expect("Failed to get pixel format");
-    let (jpeg_width, jpeg_height) = decoder.get_size().expect("Failed to get JPEG-XR size");
+        .map_err(|e| format!("Failed to get pixel format: {e:?}"))?;
+    let (jpeg_width, jpeg_height) = decoder
+        .get_size()
+        .map_err(|e| format!("Failed to get JPEG-XR size: {e:?}"))?;
 
-    assert_eq!(jpeg_width as u32, atf_width, "Mismatched JPEG-XR width");
-    assert_eq!(jpeg_height as u32, atf_height, "Mismatched JPEG-XR height");
+    if jpeg_width as u32 != atf_width || jpeg_height as u32 != atf_height {
+        return Err("Mismatched JPEG-XR size".into());
+    }
 
     let info = jpegxr::PixelInfo::from_format(pixel_format);
     let stride = jpeg_width as usize * info.bits_per_pixel() / 8;
@@ -224,28 +185,31 @@ fn jpegxr_to_raw_pixels<R: Read + Seek>(atf_width: u32, atf_height: u32, bytes: 
 
     decoder
         .copy_all(&mut output, stride)
-        .expect("Failed to decode");
-    output
+        .map_err(|e| format!("Failed to decode: {e:?}"))?;
+    Ok(output)
 }
 
 fn jpegxr_to_tiff<R: Read + Seek>(
     atf_width: u32,
     atf_height: u32,
     bytes: R,
-) -> (image::DynamicImage, jpegxr::PixelFormat) {
-    let mut decoder =
-        jpegxr::ImageDecode::with_reader(bytes).expect("Failed to decode JPEG-XR image");
+) -> Result<(image::DynamicImage, jpegxr::PixelFormat), String> {
+    let mut decoder = jpegxr::ImageDecode::with_reader(bytes)
+        .map_err(|e| format!("Failed to decode JPEG-XR image: {e:?}"))?;
 
     let pixel_format = decoder
         .get_pixel_format()
-        .expect("Failed to get pixel format");
+        .map_err(|e| format!("Failed to get pixel format: {e:?}"))?;
 
-    let (jpeg_width, jpeg_height) = decoder.get_size().expect("Failed to get JPEG-XR size");
+    let (jpeg_width, jpeg_height) = decoder
+        .get_size()
+        .map_err(|e| format!("Failed to get JPEG-XR size: {e:?}"))?;
     let jpeg_width = jpeg_width as u32;
     let jpeg_height = jpeg_height as u32;
 
-    assert_eq!(jpeg_width, atf_width, "Mismatched JPEG-XR width");
-    assert_eq!(jpeg_height, atf_height, "Mismatched JPEG-XR height");
+    if jpeg_width != atf_width || jpeg_height != atf_height {
+        return Err("Mismatched JPEG-XR size".into());
+    }
 
     let info = jpegxr::PixelInfo::from_format(pixel_format);
     let stride = jpeg_width as usize * info.bits_per_pixel() / 8;
@@ -257,12 +221,14 @@ fn jpegxr_to_tiff<R: Read + Seek>(
     let mut bmp_buffer = vec![0; size];
     decoder
         .convert_to_tiff(&mut Cursor::new(&mut bmp_buffer))
-        .expect("Failed to convert to bitmap");
+        .map_err(|e| format!("Failed to convert to bitmap: {e:?}"))?;
 
     let image_reader =
         image::ImageReader::with_format(Cursor::new(bmp_buffer), image::ImageFormat::Tiff);
-    (
-        image_reader.decode().expect("Failed to decode Bitmap"),
+    Ok((
+        image_reader
+            .decode()
+            .map_err(|e| format!("Failed to decode Bitmap: {e}"))?,
         pixel_format,
-    )
+    ))
 }

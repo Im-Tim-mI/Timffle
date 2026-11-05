@@ -5,7 +5,6 @@ use crate::avm2::activation::Activation;
 use crate::avm2::object::TObject;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::value::Value;
-use crate::avm2_stub_method;
 use crate::bitmap::bitmap_data::BitmapRawData;
 use crate::context::{RenderContext, UpdateContext};
 use gc_arena::{Collect, Gc, GcWeak};
@@ -177,7 +176,6 @@ impl<'gc> Context3DObject<'gc> {
         class: ClassObject<'gc>,
         activation: &mut Activation<'_, 'gc>,
     ) -> Result<Value<'gc>, Error<'gc>> {
-        check_texture_stub(activation, format);
         let texture = self.with_context_3d(|ctx| {
             ctx.create_texture(
                 width,
@@ -460,23 +458,22 @@ impl<'gc> Context3DObject<'gc> {
         true
     }
 
-    #[cfg_attr(not(feature = "jpegxr"), allow(unused))]
+    // Timffle: raw bytes in the texture's own storage layout (RGBA8 pixels or
+    // DXT/ETC2 blocks) for a `source_width` x `source_height` area of a level.
     pub(crate) fn copy_pixels_to_texture(
         self,
-        source: Vec<u8>,
+        source: &[u8],
+        source_width: u32,
+        source_height: u32,
         dest: Rc<dyn Texture>,
         layer: u32,
         mip_level: u32,
     ) {
-        let (level_w, level_h) = (
-            (dest.width() >> mip_level).max(1),
-            (dest.height() >> mip_level).max(1),
-        );
         self.with_context_3d(|ctx| {
             ctx.process_command(Context3DCommand::CopyBitmapToTexture {
-                source: &source,
-                source_width: level_w,
-                source_height: level_h,
+                source,
+                source_width,
+                source_height,
                 dest,
                 layer,
                 mip_level,
@@ -522,7 +519,6 @@ impl<'gc> Context3DObject<'gc> {
         streaming_levels: u32,
         activation: &mut Activation<'_, 'gc>,
     ) -> Result<Value<'gc>, Error<'gc>> {
-        check_texture_stub(activation, format);
         let texture = self.with_context_3d(|ctx| {
             ctx.create_cube_texture(
                 size,
@@ -657,29 +653,5 @@ impl<'gc> TObject<'gc> for Context3DObject<'gc> {
 impl std::fmt::Debug for Context3DObject<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Context3D")
-    }
-}
-
-// This would ideally be placed closer to the actual usage, but
-// we don't have stub support in 'render' crates
-fn check_texture_stub(activation: &mut Activation<'_, '_>, format: Context3DTextureFormat) {
-    match format {
-        Context3DTextureFormat::BgrPacked => {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "createTexture",
-                "with BgrPacked"
-            );
-        }
-        Context3DTextureFormat::Compressed => {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "createTexture",
-                "with Compressed"
-            );
-        }
-        _ => {}
     }
 }

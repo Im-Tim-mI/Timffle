@@ -4,6 +4,7 @@ use ruffle_render::backend::{
     Context3DVertexBufferFormat, IndexBuffer, ProgramType, ShaderModule, VertexBuffer,
 };
 use ruffle_render::bitmap::BitmapHandle;
+use ruffle_render::compressed::CompressedFormat; // Timffle
 use ruffle_render::error::Error;
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -322,6 +323,8 @@ pub struct VertexBufferWrapper {
 #[derive(Debug)]
 pub struct TextureWrapper {
     texture: wgpu::Texture,
+    // Timffle: Some when the texture stores DXT/ETC2 blocks natively.
+    compressed: Option<CompressedFormat>,
 }
 
 impl IndexBuffer for IndexBufferWrapper {}
@@ -330,6 +333,9 @@ impl ruffle_render::backend::Texture for TextureWrapper {
     // Timffle
     fn mip_level_count(&self) -> u32 {
         self.texture.mip_level_count()
+    }
+    fn compressed_format(&self) -> Option<CompressedFormat> {
+        self.compressed
     }
 
     fn width(&self) -> u32 {
@@ -416,11 +422,14 @@ impl Context3D for WgpuContext3D {
         _optimize_for_render_to_texture: bool,
         streaming_levels: u32,
     ) -> Result<Rc<dyn ruffle_render::backend::Texture>, Error> {
-        let format = convert_texture_format(format);
+        // Timffle: compressed formats are stored natively when the adapter
+        // has the feature (BC on desktop, ETC2 on mobile), RGBA8 otherwise.
+        let (format, compressed) =
+            convert_texture_format(format, self.descriptors.device.features());
 
         // Wgpu doesn't support using this as a render attachment. Hopefully no swfs try
         // to use it as one.
-        let render_attachment = if matches!(format, TextureFormat::Bc3RgbaUnorm) {
+        let render_attachment = if compressed.is_some() {
             TextureUsages::empty()
         } else {
             TextureUsages::RENDER_ATTACHMENT
@@ -446,7 +455,10 @@ impl Context3D for WgpuContext3D {
             view_formats: &[format],
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | render_attachment,
         });
-        Ok(Rc::new(TextureWrapper { texture }))
+        Ok(Rc::new(TextureWrapper {
+            texture,
+            compressed,
+        }))
     }
 
     fn create_cube_texture(
@@ -456,7 +468,14 @@ impl Context3D for WgpuContext3D {
         _optimize_for_render_to_texture: bool,
         streaming_levels: u32,
     ) -> Result<Rc<dyn ruffle_render::backend::Texture>, Error> {
-        let format = convert_texture_format(format);
+        // Timffle: native compressed storage when available, see `create_texture`.
+        let (format, compressed) =
+            convert_texture_format(format, self.descriptors.device.features());
+        let render_attachment = if compressed.is_some() {
+            TextureUsages::empty()
+        } else {
+            TextureUsages::RENDER_ATTACHMENT
+        };
 
         // Timffle: full mip chain, see `create_texture`.
         let _ = streaming_levels;
@@ -475,11 +494,12 @@ impl Context3D for WgpuContext3D {
             // Note - `optimize_for_render_to_texture` is just a hint, so
             // have to use `TextureUsages::TEXTURE_BINDING` even if the hint
             // is `false`.
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_DST
-                | TextureUsages::RENDER_ATTACHMENT,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | render_attachment,
         });
-        Ok(Rc::new(TextureWrapper { texture }))
+        Ok(Rc::new(TextureWrapper {
+            texture,
+            compressed,
+        }))
     }
 
     fn upload_shaders(
@@ -996,19 +1016,20 @@ impl Context3D for WgpuContext3D {
                 // If we were to use `self.buffer_command_encoder.copy_texture_to_texture`, the
                 // BitmapData's gpu texture might be modified before we actually submit
                 // `buffer_command_encoder` to the device.
+                // Timffle: block formats copy whole blocks, so a level smaller
+                // than a block (the tail of a mip chain) still copies one block
+                // and the copy extent is rounded up to the block size.
                 let dest_format = dest.texture.format();
-                let src_bytes_per_row = dest_format.block_copy_size(None).unwrap()
-                    * (source_width / dest_format.block_dimensions().0);
-
-                let rows_per_image = source_height / dest_format.block_dimensions().1;
+                let (block_w, block_h) = dest_format.block_dimensions();
+                let blocks_per_row = source_width.div_ceil(block_w);
+                let src_bytes_per_row = dest_format.block_copy_size(None).unwrap() * blocks_per_row;
+                let rows_per_image = source_height.div_ceil(block_h);
+                let copy_width = blocks_per_row * block_w;
+                let copy_height = rows_per_image * block_h;
 
                 // Wgpu requires us to pad the image rows to a multiple of COPY_BYTES_PER_ROW_ALIGNMENT
                 let dest_bytes_per_row =
-                    if matches!(dest.texture.format(), wgpu::TextureFormat::Rgba8Unorm) {
-                        (source_width * 4).next_multiple_of(COPY_BYTES_PER_ROW_ALIGNMENT)
-                    } else {
-                        src_bytes_per_row
-                    };
+                    src_bytes_per_row.next_multiple_of(COPY_BYTES_PER_ROW_ALIGNMENT);
                 let dest_size = dest_bytes_per_row as u64 * rows_per_image as u64;
                 assert!(
                     dest_bytes_per_row >= src_bytes_per_row && dest_size >= source.len() as u64
@@ -1064,8 +1085,8 @@ impl Context3D for WgpuContext3D {
                     },
                     // The copy size uses the original image, with the original row size
                     wgpu::Extent3d {
-                        width: source_width,
-                        height: source_height,
+                        width: copy_width,   // Timffle
+                        height: copy_height, // Timffle
                         depth_or_array_layers: 1,
                     },
                 );
@@ -1290,32 +1311,52 @@ pub struct ClearColor {
     mask: u32,
 }
 
-fn convert_texture_format(input: Context3DTextureFormat) -> wgpu::TextureFormat {
+// Timffle: the wgpu storage for a Stage3D texture format and, for the
+// compressed formats, the block format the texture stores natively.
+fn convert_texture_format(
+    input: Context3DTextureFormat,
+    features: wgpu::Features,
+) -> (wgpu::TextureFormat, Option<CompressedFormat>) {
+    let bc = features.contains(wgpu::Features::TEXTURE_COMPRESSION_BC);
+    let etc2 = features.contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2);
     match input {
-        // Some of these formats are unsupported by wgpu to various degrees:
-        // * Bgra doesn't exist in webgl
-        //
-        // Instead, we just use Rgba8Unorm, which is the closest thing we have.
-        // When we implement Texture.uploadFromByteArray, we'll need to convert
-        // the user-supplied data to Rgba8Unorm.
-        //
-        // The Rgba8Unorm format stores more data for each channel, so this
-        // will result in (hopefully minor) rendering differences.
-        Context3DTextureFormat::Bgra => TextureFormat::Rgba8Unorm,
-        Context3DTextureFormat::BgraPacked => TextureFormat::Rgba8Unorm,
-        // Wgpu doesn't have 'Rgb8Unorm', so we use 'Rgba8Unorm' instead.
-        // Applications *should* use an opaque Bitmap with this format, so the
-        // alpha channel should be set to 1.0 and have no effect.
-        // FIXME: Validate that this is actually the case, and throw an
-        // error if we get an unexpected bitmap from ActionScript
-        Context3DTextureFormat::BgrPacked => TextureFormat::Rgba8Unorm,
-        // Starling claims that this is dxt5, which has an alpha channel
-        Context3DTextureFormat::CompressedAlpha => TextureFormat::Bc3RgbaUnorm,
-        // Starling claims that this is dxt1. It's unclear if there's supposed
-        // to be an alpha channel, so we're relying on SWFS doing "the right thing"
-        // as with BgrPacked
-        Context3DTextureFormat::Compressed => TextureFormat::Rgba8Unorm,
-        Context3DTextureFormat::RgbaHalfFloat => TextureFormat::Rgba16Float,
+        // Bgra doesn't exist in webgl, so we use Rgba8Unorm (the uploads
+        // convert the user-supplied data).
+        Context3DTextureFormat::Bgra => (TextureFormat::Rgba8Unorm, None),
+        // The packed 16-bit formats have no sampled equivalent on every wgpu
+        // backend; the uploads quantise the pixels to 4-4-4-4 / 5-6-5 and
+        // expand them back, so sampling has exactly Flash's precision.
+        Context3DTextureFormat::BgraPacked => (TextureFormat::Rgba8Unorm, None),
+        Context3DTextureFormat::BgrPacked => (TextureFormat::Rgba8Unorm, None),
+        // "compressed" is DXT1 and "compressedAlpha" DXT5 (Flash's ATF tools):
+        // stored natively when the adapter decodes them, otherwise as ETC2
+        // (mobile GPUs; the ATF's ETC payload or ETC1 blocks go in unchanged)
+        // and otherwise as RGBA8 that the CPU decoders fill.
+        Context3DTextureFormat::Compressed => {
+            if bc {
+                (TextureFormat::Bc1RgbaUnorm, Some(CompressedFormat::Dxt1))
+            } else if etc2 {
+                (
+                    TextureFormat::Etc2Rgb8Unorm,
+                    Some(CompressedFormat::Etc2Rgb),
+                )
+            } else {
+                (TextureFormat::Rgba8Unorm, None)
+            }
+        }
+        Context3DTextureFormat::CompressedAlpha => {
+            if bc {
+                (TextureFormat::Bc3RgbaUnorm, Some(CompressedFormat::Dxt5))
+            } else if etc2 {
+                (
+                    TextureFormat::Etc2Rgba8Unorm,
+                    Some(CompressedFormat::Etc2Rgba),
+                )
+            } else {
+                (TextureFormat::Rgba8Unorm, None)
+            }
+        }
+        Context3DTextureFormat::RgbaHalfFloat => (TextureFormat::Rgba16Float, None),
     }
 }
 

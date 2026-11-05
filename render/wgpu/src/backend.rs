@@ -1279,6 +1279,7 @@ async fn request_device(
 
     let optional_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
         | wgpu::Features::TEXTURE_COMPRESSION_BC
+        | wgpu::Features::TEXTURE_COMPRESSION_ETC2 // Timffle: Stage3D compressed textures on mobile GPUs
         | wgpu::Features::FLOAT32_FILTERABLE
         | GpuProfiler::ALL_WGPU_TIMER_FEATURES;
 

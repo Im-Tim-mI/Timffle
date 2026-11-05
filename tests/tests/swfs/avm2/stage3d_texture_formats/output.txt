@@ -1,0 +1,61 @@
+bgra GPU bytes: 64
+bgra uploadFromBitmapData: ok
+bgra uploadFromBitmapData level 1: ok
+bgra uploadFromBitmapData level 2: ok
+bgra uploadFromBitmapData level 3: 3674
+bgra uploadFromByteArray: ok
+bgra uploadFromByteArray offset: ok
+bgra uploadFromByteArray short: 3669
+bgra uploadFromByteArray level 1: ok
+bgrPacked565 GPU bytes: 32
+bgrPacked565 uploadFromBitmapData: ok
+bgrPacked565 uploadFromBitmapData level 1: ok
+bgrPacked565 uploadFromBitmapData level 2: ok
+bgrPacked565 uploadFromBitmapData level 3: 3674
+bgrPacked565 uploadFromByteArray: ok
+bgrPacked565 uploadFromByteArray offset: ok
+bgrPacked565 uploadFromByteArray short: 3669
+bgrPacked565 uploadFromByteArray level 1: ok
+bgraPacked4444 GPU bytes: 32
+bgraPacked4444 uploadFromBitmapData: ok
+bgraPacked4444 uploadFromBitmapData level 1: ok
+bgraPacked4444 uploadFromBitmapData level 2: ok
+bgraPacked4444 uploadFromBitmapData level 3: 3674
+bgraPacked4444 uploadFromByteArray: ok
+bgraPacked4444 uploadFromByteArray offset: ok
+bgraPacked4444 uploadFromByteArray short: 3669
+bgraPacked4444 uploadFromByteArray level 1: ok
+compressed GPU bytes: 8
+compressed uploadFromBitmapData: ok
+compressed uploadFromBitmapData level 1: ok
+compressed uploadFromBitmapData level 2: ok
+compressed uploadFromBitmapData level 3: 3674
+compressed uploadFromByteArray: ok
+compressed uploadFromByteArray offset: ok
+compressed uploadFromByteArray short: 3669
+compressed uploadFromByteArray level 1: ok
+compressedAlpha GPU bytes: 16
+compressedAlpha uploadFromBitmapData: ok
+compressedAlpha uploadFromBitmapData level 1: ok
+compressedAlpha uploadFromBitmapData level 2: ok
+compressedAlpha uploadFromBitmapData level 3: 3674
+compressedAlpha uploadFromByteArray: ok
+compressedAlpha uploadFromByteArray offset: ok
+compressedAlpha uploadFromByteArray short: 3669
+compressedAlpha uploadFromByteArray level 1: ok
+DXT1 ATF into compressed: ok
+DXT5 ATF into compressedAlpha: ok
+DXT5 ATF into compressed: 3675
+DXT1 ATF into compressedAlpha: 3675
+8x8 ATF into 4x4: 3679
+cube ATF into Texture: 3675
+garbage ATF: 3677
+ATF offset past the end: 3669
+ATF at an offset: ok
+cube ATF into CubeTexture: ok
+flat ATF into CubeTexture: 3675
+cube uploadFromBitmapData side 5: ok
+cube uploadFromByteArray side 2 level 1: ok
+async DXT5 ATF: ok
+sync part done
+textureReady: textureReady true
