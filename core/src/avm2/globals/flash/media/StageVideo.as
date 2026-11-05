@@ -14,10 +14,12 @@ package flash.media {
     // `StageVideoAvailability.UNAVAILABLE`). The eight objects in
     // `Stage.stageVideos` are made natively (`new StageVideo()` is #2012) and
     // field initializers never run, so the geometry is created on first use.
-    // `viewPort`, `zoom`, `pan` and `depth` are stored with the reference's
-    // validation (viewPort x/y within -8192..8191, zoom 1..8 per axis, pan
-    // -1..1 per axis, otherwise `RangeError` with the documented text and the
-    // last valid value kept). Attaching a NetStream (or AVStream) to an
+    // `viewPort`, `zoom`, `pan` and `depth` are stored with Flash Player 32's
+    // validation (measured, tests/tests/swfs/avm2/stagevideo_bounds): a NaN
+    // (or, for viewPort, infinite) component or a negative viewPort size is
+    // `RangeError #2004`; viewPort x/y outside -8192..8191, a width or height
+    // above 8191, zoom outside 1..16 or pan outside -1..1 is `RangeError
+    // #2006`; the last valid value is kept. Attaching a NetStream (or AVStream) to an
     // unavailable StageVideo answers, on the next frame, with
     // `StageVideoEvent.RENDER_STATE` carrying
     // `RENDER_STATUS_UNAVAILABLE`, the reference's cue to fall back to a
@@ -31,6 +33,7 @@ package flash.media {
         private var _pan:Point;
         private var _zoom:Point;
         private var _depth:int;
+        private var _colorSpaces:Vector.<String>;
 
         [API("667")]
         public function attachNetStream(netStream:NetStream):void {
@@ -64,7 +67,11 @@ package flash.media {
 
         [API("667")]
         public function get colorSpaces():Vector.<String> {
-            return new Vector.<String>();
+            // Flash Player hands out the same Vector every time.
+            if (!this._colorSpaces) {
+                this._colorSpaces = new Vector.<String>();
+            }
+            return this._colorSpaces;
         }
 
         [API("667")]
@@ -90,8 +97,11 @@ package flash.media {
             if (value == null) {
                 Error.throwError(TypeError, 2007, "pan");
             }
+            if (isNaN(value.x) || isNaN(value.y)) {
+                Error.throwError(RangeError, 2004);
+            }
             if (!(value.x >= -1 && value.x <= 1 && value.y >= -1 && value.y <= 1)) {
-                throw new RangeError("The Point value is not valid.");
+                Error.throwError(RangeError, 2006);
             }
             this._pan = value.clone();
         }
@@ -119,9 +129,17 @@ package flash.media {
             if (value == null) {
                 Error.throwError(TypeError, 2007, "viewPort");
             }
-            if (!(value.x >= -8192 && value.x <= 8191 && value.y >= -8192 && value.y <= 8191
-                && value.width >= 0 && value.height >= 0)) {
-                throw new RangeError("The Rectangle value is not valid.");
+            if (!isFinite(value.x) || !isFinite(value.y) || !isFinite(value.width) || !isFinite(value.height)) {
+                Error.throwError(RangeError, 2004);
+            }
+            if (!(value.x >= -8192 && value.x <= 8191 && value.y >= -8192 && value.y <= 8191)) {
+                Error.throwError(RangeError, 2006);
+            }
+            if (value.width < 0 || value.height < 0) {
+                Error.throwError(RangeError, 2004);
+            }
+            if (value.width > 8191 || value.height > 8191) {
+                Error.throwError(RangeError, 2006);
             }
             this._viewPort = value.clone();
         }
@@ -139,8 +157,11 @@ package flash.media {
             if (value == null) {
                 Error.throwError(TypeError, 2007, "zoom");
             }
-            if (!(value.x >= 1 && value.x <= 8 && value.y >= 1 && value.y <= 8)) {
-                throw new RangeError("The Point value is not valid.");
+            if (isNaN(value.x) || isNaN(value.y)) {
+                Error.throwError(RangeError, 2004);
+            }
+            if (!(value.x >= 1 && value.x <= 16 && value.y >= 1 && value.y <= 16)) {
+                Error.throwError(RangeError, 2006);
             }
             this._zoom = value.clone();
         }

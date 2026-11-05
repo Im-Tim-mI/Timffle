@@ -33,6 +33,8 @@ package flash.display {
         private var _softKeyboardRect:Rectangle;
         // Timffle: created on first use; the same Vector and StageVideo objects afterwards.
         private var _stageVideos:Vector.<StageVideo>;
+        // Timffle: a stage video availability report is already queued.
+        private var _availabilityPending:Boolean;
 
         override public function set accessibilityImplementation(value:AccessibilityImplementation):void {
             Error.throwError(IllegalOperationError, 2071);
@@ -58,14 +60,18 @@ package flash.display {
             useWeakReference:Boolean = false
         ):void {
             super.addEventListener(type, listener, useCapture, priority, useWeakReference);
-            // Timffle: Flash Player reports the stage video availability to a
-            // newly registered listener on the following frame. This player
-            // has no hardware video surface, so the answer is always
-            // `unavailable` with reason `StageVideoAvailabilityReason.UNAVAILABLE`
-            // (no driver to name).
-            if (type == StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY) {
+            // Timffle: Flash Player reports the stage video availability after a
+            // listener is registered, once per frame however many listeners were
+            // added in it, to every listener of the stage (measured on Flash
+            // Player 32, tests/tests/swfs/avm2/stagevideo_bounds). This player has
+            // no hardware video surface, so the answer is always `unavailable`
+            // with reason `StageVideoAvailabilityReason.UNAVAILABLE` (no driver
+            // to name).
+            if (type == StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY && !this._availabilityPending) {
+                this._availabilityPending = true;
                 var self:Stage = this;
                 setTimeout(function():void {
+                    self._availabilityPending = false;
                     var event:StageVideoAvailabilityEvent = new StageVideoAvailabilityEvent(
                         StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY, false, false,
                         StageVideoAvailability.UNAVAILABLE

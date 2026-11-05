@@ -1,19 +1,18 @@
 package flash.media {
-    import flash.errors.IllegalOperationError;
     import flash.events.EventDispatcher;
 
     // Timffle: audio output device selection (Flash Player 27+ on Windows and
     // macOS). This player plays through the one output the browser or
     // operating system gives it and has no device enumeration, so it answers
-    // like Flash Player on a platform where the feature is not enabled:
-    // `isSupported` false, no device names, no selected device (-1), and
-    // never an `audioOutputChange` event. The singleton still exists through
-    // `audioDeviceManager` (the reference says clients must use it, so the
-    // constructor is `ArgumentError #2012` like other player-created
-    // classes), and setting `selectedDeviceIndex` keeps the reference's
-    // user-invoked-action restriction: `IllegalOperationError #2176` outside
-    // a mouse or keyboard event; inside one there is no device to switch to,
-    // so nothing changes.
+    // like Flash Player with an empty device list: `isSupported` false, no
+    // device names, no selected device (-1), and never an `audioOutputChange`
+    // event. The singleton exists through `audioDeviceManager`; the
+    // constructor is `ArgumentError #2012` (measured on Flash Player 32,
+    // tests/tests/swfs/avm2/stagevideo_bounds). Flash Player 32 accepts a new
+    // `selectedDeviceIndex` outside a mouse or keyboard event too (it does not
+    // apply the user-invoked-action rule here) and answers an index outside
+    // `deviceNames` with `RangeError #1125` (measured with two devices: 5, -1
+    // and -2 throw); with no device every index is outside the list.
     [API("724")]
     public final class AudioDeviceManager extends EventDispatcher {
         private static var _instance:AudioDeviceManager = null;
@@ -48,11 +47,7 @@ package flash.media {
         }
 
         public function set selectedDeviceIndex(value:int):void {
-            if (!AudioDeviceManager.isUserInvoked()) {
-                Error.throwError(IllegalOperationError, 2176);
-            }
+            Error.throwError(RangeError, 1125, value, this.deviceNames.length);
         }
-
-        private static native function isUserInvoked():Boolean;
     }
 }
