@@ -156,8 +156,8 @@
    "stubbed": [
     "scale9Grid"
    ],
-   "status": "todo",
-   "note": "scale9Grid getter/setter already store the rect; the stub is because rendering ignores the grid. Needs real 9-slice rendering (own batch)."
+   "status": "done",
+   "note": "scale9Grid getter/setter already store the rect; the stub is because rendering ignores the grid. Needs real 9-slice rendering (own batch). | render2: scale9Grid real 9-slice rendering (per-region transform + stencil clip in render_base, own matrix only, rotated/3D/text/bitmap/video excluded per reference), setter #2004 when the rect is outside getBounds(this) or the object is empty, null clears. Tests scale9grid_members (pass) + scale9grid_render (needs GPU, not run here)."
   },
   {
    "class": "flash.display.DisplayObjectContainer",
@@ -1062,7 +1062,7 @@
     "setSamplerStateAt()"
    ],
    "status": "partial",
-   "note": "stage3d batch: totalGPUMemory, backBufferWidth/Height, maxBackBufferWidth/Height, driverInfo, createVideoTexture (null, supportsVideoTexture false), dispose (#3694 + wgpu release + recreate), setSamplerStateAt anisotropic real. Left: configureBackBuffer wantsBestResolution*, createTexture BgrPacked/Compressed, drawToBitmapData (needs wgpu readback), setRenderToTexture antiAlias/colorOutputIndex markers, setSamplerStateAt mipfilter (textures have 1 mip level)."
+   "note": "stage3d batch: totalGPUMemory, backBufferWidth/Height, maxBackBufferWidth/Height, driverInfo, createVideoTexture (null, supportsVideoTexture false), dispose (#3694 + wgpu release + recreate), setSamplerStateAt anisotropic real. Left: configureBackBuffer wantsBestResolution*, createTexture BgrPacked/Compressed, drawToBitmapData (needs wgpu readback), setRenderToTexture antiAlias/colorOutputIndex markers, setSamplerStateAt mipfilter (textures have 1 mip level). | render2: setSamplerStateAt mipfilter real (mip chains), setRenderToTexture antiAlias marker removed (wgpu MSAA resolve already real), createTexture streamingLevels accepted. Left: createTexture BgrPacked/Compressed (RGBA8 storage, no 565/DXT1), setRenderToTexture colorOutputIndex>0 (MRT), configureBackBuffer wantsBestResolution* (needs DPR-scaled back buffer + 1/scale draw), drawToBitmapData (front-buffer readback via render_offscreen)."
   },
   {
    "class": "flash.display3D.IndexBuffer3D",
@@ -1104,7 +1104,7 @@
     "uploadFromByteArray()"
    ],
    "status": "partial",
-   "note": "async upload real (textureReady). Left: 'untested' markers on uploadFromByteArray/uploadCompressedTextureFromByteArray, miplevel != 0, unsupported ATF formats."
+   "note": "async upload real (textureReady). Left: 'untested' markers on uploadFromByteArray/uploadCompressedTextureFromByteArray, miplevel != 0, unsupported ATF formats. | render2: untested markers removed, per-side mip uploads real (#3669 beyond the chain). Left: uploadCompressedTextureFromByteArray for non-BGRA formats."
   },
   {
    "class": "flash.display3D.textures.Texture",
@@ -1115,8 +1115,8 @@
     "uploadFromBitmapData()",
     "uploadFromByteArray()"
    ],
-   "status": "todo",
-   "note": "miplevel != 0 uploads need mip-chain textures in wgpu; ATF formats beyond BGRA/DXT5 need decoders."
+   "status": "partial",
+   "note": "miplevel != 0 uploads need mip-chain textures in wgpu; ATF formats beyond BGRA/DXT5 need decoders. | render2: uploadFromBitmapData/uploadFromByteArray at any miplevel (#3669 beyond the chain), ATF uploads fill all levels. Left: uploadFromByteArray for non-BGRA formats, uploadCompressedTextureFromByteArray for unsupported ATF formats (raw DXT1/ETC/PVRTC: no decoder crate)."
   },
   {
    "class": "flash.display3D.textures.TextureBase",

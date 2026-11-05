@@ -305,6 +305,25 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 - **TextBlock.bidiLevel**（`text_block.rs` `resolve_bidi`、`display_object/text_line.rs` `LineBidi`）：以 `unicode-bidi` 0.3.18（新依賴，純 Rust；desktop 已在 Cargo.lock 用它）做 UAX #9：`bidiLevel` 當段落嵌入層級（0 LTR、1 RTL，較大的值照 UAX #9 當明確層級），`BidiInfo::visual_runs` 取視覺順序的 run，RTL run 的字元反轉後組成視覺字串交給後備 EditText 繪製；TextLine 另存邏輯字串、邏輯→視覺的 UTF-16 位置對應與每個單元的解析層級。`rawTextLength`／`textBlockBeginIndex`／atom 索引都以邏輯順序計，`getAtomBounds`／`getAtomCenter`／`getAtomIndexAtPoint` 經對應表找視覺位置的字形邊界；`getAtomBidiLevel` 改為 native，回 atom 第一個字元的解析層級（例如 `"abc"` 在 `bidiLevel = 1` 下全是 2；`"12 34"` 在 1 下是 2,2,1,2,2、視覺順序是「34 12」；`"ab 12"` 在 1 下全是 2——UAX #9 W7 把跟在 L 後面的數字當 L）。`recreateTextLine` 會把重用行的後備 EditText 寬度改成新的 `width` 再排（否則沿用舊寬度不會重新斷行）。改 `bidiLevel`（值不同時）把 block 已有的行全設 `invalid`（Adobe 文件：「Changing it sets all previously broken lines to INVALID」）；負值 `ArgumentError #2004`（原有）。全 LTR 的文字在層級 0 下對應表是恆等，既有行為不變。含孤立代理對的文字無法轉成 UTF-8 做解析，維持邏輯順序、層級＝段落層級。
 - 新測試 `textblock_width_splitting`（Noto Sans 裝置字型，`test.toml` 的 `[default_fonts]`／`[fonts.noto_sans]` 與 `text_members` 相同）：寬度由量到的 `"aaaa"`／`"aaaa aaaa"` 的 `textWidth` 推算，涵蓋兩字／一字放得下、字寬剛好等於 `width`、字中硬斷（emergency）、放不下（null＋insufficientWidth）、`fitSomething`、明確換行與自動斷行混合、GroupElement、`recreateTextLine` 重斷與 insufficientWidth、`bidiLevel` 層級與視覺順序、負值錯誤、改值使行 invalid。
 
+### 第 N 組：9 格縮放與 Stage3D mip 鏈（render2）
+
+**flash.display.DisplayObject.scale9Grid**（`core/src/display_object.rs` 的 `render_self_with_scaling_grid`、`core/src/avm2/globals/flash/display/display_object.rs`）：
+
+- 行為：格線只看物件自己的矩陣（`scaleX`／`scaleY`／`width`／`height` 改的那個）；有旋轉或斜切（b、c ≠ 0）或 matrix3d 時整個物件照常縮放。分區以物件未變換的 bounds（含子物件、含筆畫）為準，縮放後整體仍恰好覆蓋 `bounds × scale`；中央區在縮到比四角總和還小時收縮到 0（不反向）。
+- 參與對象：物件自己的向量圖（MovieClip／Sprite 的 drawing）、直接子物件中的 Graphic／MorphShape／MovieClip／Avm2Button／LoaderDisplay，且子物件沒有旋轉／斜切／3D、沒有自己的 scale9Grid；Bitmap／EditText／Text／TextLine／Video 子物件照常縮放（Adobe：「all text and gradients are scaled normally」「bitmaps… stretched to fit their shapes」）。子物件依顯示順序分成「參與」連續段，每段畫 9 次。
+- 有 timeline 遮罩（clip depth）的容器走原本的路徑（不切）。cacheAsBitmap 的離屏繪製也會切。
+- setter：矩形須在 `getBounds(this)` 內，否則 ArgumentError #2004（Adobe：「Throws ArgumentError — If you pass an invalid argument」；社群普遍記錄為 #2004）。沒有內容的物件任何矩形都超出 bounds → #2004。null 清除。Stage 仍是 #2071（原有）。
+- 矩形的座標沿用上游 `object_to_rectangle` 的整數像素四捨五入（10.123 → 10）；真 Flash 可能保留 twips 精度——未驗證，列在 (c)。
+
+**flash.display3D（Context3D、Texture、CubeTexture）**（`render/src/backend.rs`、`render/wgpu/src/context3d/mod.rs`、`current_pipeline.rs`、`core/src/avm2/object/context3d_object.rs`、`core/src/avm2/globals/flash/display3D/**`）：
+
+- `createTexture`／`createCubeTexture`：寬高都是 2 的冪次時建立完整 mip 鏈（到 1×1），`streamingLevels` 不再拒絕（Flash 的 streamingLevels 只是告訴播放器哪些層會晚點到，不需要另外的儲存）；RectangleTexture 仍是單層（Flash 也沒有 mipmap）。新的 `Texture::mip_level_count()`。
+- `uploadFromBitmapData(source, miplevel)`／`uploadFromByteArray(data, offset, miplevel)`（Texture 與 CubeTexture 的 side 版本）：寫入第 n 層（`CopyBitmapToTexture` 多了 `mip_level`），來源要能放進該層（允許較小的部分上傳，如上游）；miplevel ≥ 層數丟 ArgumentError #3669（「Bad input size」——Flash 對尺寸不符用這個碼；精確碼未以真 Flash 驗證）。
+- ATF（`uploadCompressedTextureFromByteArray`）：檔案裡每個面、每一層都解碼上傳（之前只上傳第 0 層）。
+- `setSamplerStateAt(…, mipfilter)`：`mipnone`／`mipnearest`／`miplinear` 傳到 wgpu（naga_agal 的 Mipmap），無效字串 #2008；mipnone 時綁定只含第 0 層的 texture view，避免從未上傳的 mip 層被取樣成黑色。
+- `setRenderToTexture(…, antiAlias)`：wgpu 後端本來就以 antiAlias 的取樣數建立多重取樣貼圖並 resolve 到目標，只是留著空殼標記——移除；WebGL 上仍會退回 1（上游警告）。
+- 還是空殼（見 (d)）：`createTexture` 的 BGR_PACKED／COMPRESSED 格式（存成 RGBA8，上傳自 BitmapData 可用，但沒有 565 量化、DXT1 需要 BC 功能或 CPU 解碼器）、`setRenderToTexture` 的 colorOutputIndex > 0（多重渲染目標；Flash 只在 standard profile 支援，錯誤碼未查到）、`configureBackBuffer` 的 wantsBestResolution／wantsBestResolutionOnBrowserZoom（需要把 back buffer 乘上裝置像素比並在 Stage3D 繪製時縮回——設計：Context3DObject 記住比例、`render()` 乘 1/比例、backBufferWidth 回報放大後的值）、`drawToBitmapData`（需要把 front buffer 經 `render_offscreen` + sync 讀回 BitmapData：可用 `commands.render_stage3d(handle, transform)` 配合 BitmapData.draw 的 readback 路徑）、Texture／CubeTexture 的非 BGRA `uploadFromByteArray` 與不支援的 ATF 格式（RawCompressed DXT1／ETC1／ETC2／PVRTC：Cargo.lock 沒有解碼器 crate，wgpu 的 BC／ETC2 功能要看 adapter）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -389,5 +408,11 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 | `shared_object_self_ref_avm1` | 此 AVM1 測試在本批次後輸出 `Foo.self: undefined`（期望值是 Flash 讀回一份複本：`[object Object]` / `eq foo: false`）；由於期望輸出本身不是「同一實例」，疑為既有失敗，但未能在基底重跑確認——merger 請在 PRO_bata 跑一次 `cargo test -p tests --test tests -- shared_object_self_ref_avm1` 對照。 |
 | `TextBlock.createTextLine` 的斷行機會 | 斷行機會沿用 EditText 的換行規則（空白／tab；U+200B 不是斷點，Flash 的 UAX #14 會在 ZWSP、連字號後、CJK 字之間等處斷行）；`emergency` 的判定是「斷在非空白之後」。`lineOffset` 仍當第一行縮排（前一批的做法），Flash 的 `lineOffset` 只影響 tab 原點。`insufficientWidth` 的判定是第一個字素的右緣超過 `width`，Flash 以第一個 atom 的 advance 判定（含字距時可能差一點）。 |
 | `TextBlock.bidiLevel` | 層級解析與 run 反轉照 UAX #9（`unicode-bidi`），但沒有阿拉伯文連寫字形、鏡像括號（`TextLineMirrorRegion` 以外的 glyph mirroring）與 RTL 段落的行原點對齊（Flash 在 `bidiLevel = 1` 時行從右邊的 `width` 起算、`textWidth` 以右為基準）；`getAtomBidiLevel` 的預期值取自 UAX #9，未用真 Flash 錄製。 |
+| 項目 | 狀況 |
+| `DisplayObject.scale9Grid` 的矩形精度 | 沿用上游整數像素四捨五入；真 Flash 可能保留 twips（0.05 px）精度，未驗證。 |
+| `scale9Grid` 中央區縮到負寬度時 | 這裡收縮到 0（四角相接）；真 Flash 的行為未驗證。 |
+| `scale9Grid` 容器含 timeline 遮罩（clip depth） | 不切，整體照常縮放。 |
+| `Texture.uploadFromBitmapData` miplevel 超出層數 | 丟 #3669；真 Flash 的錯誤碼未驗證。 |
+| 9 格縮放／mip 鏈的像素結果 | 此容器沒有 GPU，`scale9grid_render`、`stage3d_leftovers` 與 33 支 stage3d 測試未執行。 |
 
 > 這些差異都是已知的，**沒有被藏起來**——黃金答案不會為了讓測試通過而被改寫。其中一部分是用需要遊戲檔案的探針量到的，那些探針沒有放進 repo，所以上表是結論而不是可直接重現的測試。
