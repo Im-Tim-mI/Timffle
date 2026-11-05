@@ -118,6 +118,23 @@ pub fn get_bytes_available<'gc>(
     Ok(Value::Undefined)
 }
 
+/// Timffle: `Socket.bytesPending`: the unflushed write buffer; #2002 on a socket that is not open.
+pub fn get_bytes_pending<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(socket) = this.as_socket() {
+        assert_socket_open!(activation, socket);
+
+        return Ok(Value::from_usize_lossy(socket.write_buffer().len()));
+    }
+
+    Ok(Value::Undefined)
+}
+
 pub fn get_endian<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -716,12 +733,11 @@ pub fn write_object<'gc>(
             ObjectEncoding::Amf3 => AMFVersion::AMF3,
         };
 
-        let amf = crate::avm2::amf::serialize_value(
-            activation,
-            obj,
-            amf_version,
-            &mut Default::default(),
-        );
+        // Timffle: a thrown `ObjectEncoding.dynamicPropertyWriter` aborts the write.
+        let mut object_table = crate::avm2::amf::ObjectTable::default();
+        let amf =
+            crate::avm2::amf::serialize_value(activation, obj, amf_version, &mut object_table);
+        object_table.take_error()?;
 
         let element = Element::new("", Rc::new(amf));
         let mut lso = flash_lso::types::Lso::new(vec![element], "", amf_version);

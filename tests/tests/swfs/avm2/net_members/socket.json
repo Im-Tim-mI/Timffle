@@ -1,0 +1,17 @@
+[
+  {
+    "type": "Receive",
+    "expected": [
+      0,
+      0,
+      3,
+      232,
+      97,
+      98,
+      99
+    ]
+  },
+  {
+    "type": "WaitForDisconnect"
+  }
+]

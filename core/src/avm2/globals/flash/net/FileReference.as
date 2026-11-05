@@ -34,13 +34,14 @@ package flash.net {
 
         public native function browse(typeFilter:Array = null):Boolean;
 
-        public function cancel():void {
-            stub_method("flash.net.FileReference", "cancel");
-        }
+        // Timffle: stops a running download or upload from reporting (no `cancel` event, as
+        // documented); harmless on an idle object.
+        public native function cancel():void;
 
-        public function download(request:URLRequest, defaultFileName:String = null):void {
-            stub_method("flash.net.FileReference", "download");
-        }
+        // Timffle: the save dialog first (`select`, or `cancel`), then the request
+        // (`open`, `progress`, `complete`, or `ioError`). Flash Player 32: a null request
+        // or url is #2007, a dialog that is already open is #2041.
+        public native function download(request:URLRequest, defaultFileName:String = null):void;
 
         public native function load():void;
 
@@ -75,13 +76,15 @@ package flash.net {
         // NOTE: The bytearray passed to this function will be cleared
         private native function saveInternal(data:ByteArray, defaultFileName:String):void;
 
-        public function upload(
+        // Timffle: a multipart/form-data POST of the selected file (`open`, `progress`,
+        // `complete`, `uploadCompleteData` with the server's answer; `httpStatus` + `ioError`
+        // on failure). Flash Player 32 error order: null request #2007, null field name #2007,
+        // empty field name #2085, nothing selected #2037, null url #2007.
+        public native function upload(
             request:URLRequest,
             uploadDataFieldName:String = "Filedata",
             testUpload:Boolean = false
-        ):void {
-            stub_method("flash.net.FileReference", "upload");
-        }
+        ):void;
 
         [API("681")]
         public function uploadUnencoded(request:URLRequest):void {

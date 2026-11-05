@@ -239,6 +239,17 @@ pub struct Avm2<'gc> {
     /// `Clipboard.getData()` is allowed in Flash Player.
     pub in_paste_event: bool,
 
+    /// Timffle: `ObjectEncoding.dynamicPropertyWriter` (an `IDynamicPropertyWriter`), consulted
+    /// by the AMF serializer for the dynamic properties of dynamic objects.
+    pub dynamic_property_writer: Option<Object<'gc>>,
+
+    /// Timffle: every `NetStream` still alive, for `NetMonitor.listStreams()`.
+    pub net_streams: Vec<object::NetStreamObjectWeak<'gc>>,
+
+    /// Timffle: the `NetMonitor`s still alive; each gets `netStreamCreate` when a `NetStream`
+    /// is constructed.
+    pub net_monitors: Vec<WeakObject<'gc>>,
+
     /// Set while a `StackOverflowError` is being constructed. Building the error object runs
     /// ActionScript constructors, which must not trip `MAX_CALL_DEPTH` again.
     building_stack_overflow_error: bool,
@@ -299,6 +310,9 @@ impl<'gc> Avm2<'gc> {
             in_user_interaction: false,
             shader_jobs: Vec::new(),
             in_paste_event: false,
+            dynamic_property_writer: None,
+            net_streams: Vec::new(),
+            net_monitors: Vec::new(),
             building_stack_overflow_error: false,
         }
     }

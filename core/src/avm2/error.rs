@@ -1109,6 +1109,8 @@ pub fn make_error_2027<'gc>(
 make_error_fn!(make_error_2029, 2029, io_error);
 make_error_fn!(make_error_2030, 2030, eof_error);
 make_error_fn!(make_error_2037, 2037, error);
+// Timffle: a file dialog is already open (`FileReferenceList.browse`, `FileReference.download`).
+make_error_fn!(make_error_2041, 2041, illegal_operation_error);
 // Timffle: `Stage.mouseLock` set outside full-screen mode.
 make_error_fn!(make_error_3707, 3707, error);
 make_error_fn!(make_error_2052, 2052, argument_error);
@@ -1131,6 +1133,21 @@ pub fn make_error_2085<'gc>(activation: &mut Activation<'_, 'gc>, param_name: &s
 
 make_error_fn!(make_error_2097, 2097, argument_error);
 make_error_fn!(make_error_2099, 2099, error);
+
+/// Timffle: a network SWF reached for a `file:` URL (`sendToURL`).
+#[inline(never)]
+#[cold]
+pub fn make_error_2148<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    swf_url: &str,
+    resource: &str,
+) -> Error<'gc> {
+    make_error!(security_error(
+        activation,
+        error_message!(2148, swf_url, resource),
+        2148,
+    ))
+}
 
 #[inline(never)]
 #[cold]

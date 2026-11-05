@@ -20,6 +20,10 @@ package flash.net {
         [Ruffle(NativeAccessible)]
         private var _data:Object;
 
+        // Timffle: set once a loader has used this request (`useRedirectedURL` needs it).
+        [Ruffle(NativeAccessible)]
+        private var _loaded:Boolean = false;
+
         public function URLRequest(url:String = null) {
             this._url = url;
         }
@@ -76,6 +80,24 @@ package flash.net {
 
         public function set digest(value:String):void {
             this._digest = value;
+        }
+
+        // Timffle: Flash Player 32 (measured, timffle/difftest/src/D62Net.hx) only validates the
+        // arguments: a null `url` is #2007, a null source is ignored, a source that was never
+        // loaded is Error #2037, and a loaded source (redirected or not) leaves `url` unchanged.
+        // The player never records a redirected URL (`HTTPStatusEvent.responseURL` is AIR-only),
+        // so there is nothing to substitute.
+        [API("690")]
+        public function useRedirectedURL(sourceRequest:URLRequest, wholeURL:Boolean = false, pattern:* = null, replace:String = null):void {
+            if (this._url == null) {
+                throw new TypeError("Error #2007: Parameter url must be non-null.", 2007);
+            }
+            if (sourceRequest == null) {
+                return;
+            }
+            if (!sourceRequest._loaded) {
+                throw new Error("Error #2037: Functions called in incorrect sequence, or earlier call was unsuccessful.", 2037);
+            }
         }
     }
 }
