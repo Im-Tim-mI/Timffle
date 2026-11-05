@@ -7,10 +7,12 @@ package flash.automation {
     // normal player a StageCapture captures nothing: `capture()` writes no file and
     // dispatches no `capture` event, `captureBitmapData()` has no capture to return (null),
     // `cancel()` has nothing to cancel. The settings (`captureSource`, `clipRect`,
-    // `fileNameBase`) are stored as documented; `capturePTS` is the presentation time of the
-    // last capture, which never happened (0). An unknown capture type or source is #2008
-    // like the other enumerated values.
-    [API("667")]
+    // `fileNameBase`) are stored as documented. Flash Player 32 (measured): `capturePTS` is -1
+    // (no capture), `captureSource` starts at "raster", `fileNameBase` at null, `capture()`
+    // takes any type without an error, and `captureSource` is #2007 for null and #2008 for an
+    // unknown value.
+    // (No API version: the upstream test `avm2/automation_classes`, recorded with Flash,
+    // sees the class from a SWF 9.)
     public class StageCapture extends EventDispatcher {
         public static const CURRENT:String = "current";
         public static const MULTIPLE:String = "multiple";
@@ -19,16 +21,16 @@ package flash.automation {
         public static const SCREEN:String = "screen";
         public static const STAGE:String = "stage";
 
-        private var _captureSource:String = STAGE;
+        private var _captureSource:String = RASTER;
         private var _clipRect:Rectangle = null;
-        private var _fileNameBase:String = "capture";
+        private var _fileNameBase:String = null;
 
         public function StageCapture() {
             super();
         }
 
         public function get capturePTS():Number {
-            return 0;
+            return -1;
         }
 
         public function get captureSource():String {
@@ -36,6 +38,9 @@ package flash.automation {
         }
 
         public function set captureSource(value:String):void {
+            if (value == null) {
+                throw new TypeError("Error #2007: Parameter captureSource must be non-null.", 2007);
+            }
             if (value != STAGE && value != SCREEN && value != RASTER) {
                 throw new ArgumentError("Error #2008: Parameter captureSource must be one of the accepted values.", 2008);
             }
@@ -63,9 +68,6 @@ package flash.automation {
         }
 
         public function capture(type:String):void {
-            if (type != CURRENT && type != NEXT && type != MULTIPLE) {
-                throw new ArgumentError("Error #2008: Parameter type must be one of the accepted values.", 2008);
-            }
             // Not an automation player: nothing is captured and no event is dispatched.
         }
 

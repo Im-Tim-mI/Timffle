@@ -208,7 +208,7 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | changed | `core/src/avm2/globals/flash/printing/PrintJob.as` |
 | changed | `core/src/avm2/globals/flash/profiler.as` |
 | changed | `core/src/avm2/globals/flash/sampler.as` |
-| added by Timffle | `core/src/avm2/globals/flash/sampler.rs` |
+| added by Timffle | `core/src/avm2/globals/flash/sampler.rs` (getSamples only) |
 | changed | `core/src/avm2/globals/flash/sampler/NewObjectSample.as` |
 | changed | `core/src/avm2/globals/flash/sensors/Accelerometer.as` |
 | changed | `core/src/avm2/globals/flash/sensors/Geolocation.as` |

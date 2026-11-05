@@ -1,52 +1,52 @@
 // GameInput
-isSupported false numDevices 0
+isSupported true numDevices 0
 new GameInputDevice() THREW ArgumentError 2012
 new GameInputControl() THREW ArgumentError 2012
 MAX_BUFFER_SIZE 32000
 // automation
 generate ok
-generateAction(null) THREW TypeError 2007
-generateActions(null) THREW TypeError 2007
-deviceConfiguration []
-deviceConfiguration set tablet
-testAutomationConfiguration []
-capture defaults 0 stage null capture
+generateAction(null) no error
+generateActions(null) no error
+deviceConfiguration [null]
+deviceConfiguration set null
+testAutomationConfiguration [Status = 3
+]
+capture defaults -1 raster null null
 capture set screen shot
 captureSource bogus THREW ArgumentError 2008
-capture bogus THREW ArgumentError 2008
+capture bogus no error
 captureBitmapData null
 // PrintJob
 isSupported false
-orientation portrait
-orientation set landscape
-orientation bogus THREW ArgumentError 2008
+orientation 0
+orientation set THREW ReferenceError 1074
 sizes 0 0 0 0
 start false
 addPage THREW Error 2057
 send returned
 // sampler
-getSampleCount 0
-getSamples null
+getSampleCount -1
+getSamples undefined
 samples iterated 0
 getSize 0 0
 getInvocationCount -1
 getGetterInvocationCount -1
 getSetterInvocationCount -1
 getMasterString null null
-isGetterSetter acc true
+isGetterSetter acc false
 isGetterSetter slot false
 isGetterSetter method false
 isGetterSetter missing false
 isGetterSetter null false
-getMemberNames field,hasOwnProperty,hello,isPrototypeOf,prop,propertyIsEnumerable,secret
-getMemberNames dynamic alpha,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,zeta
-getMemberNames class instanceNames field,hasOwnProperty,hello,isPrototypeOf,prop,propertyIsEnumerable,secret
-getMemberNames class hasOwnProperty,isPrototypeOf,propertyIsEnumerable,prototype,staticField
-getMemberNames null undefined
-getSavedThis bound true
-getSavedThis plain undefined
-getSavedThis null undefined
-getLexicalScopes true true global
+getMemberNames 
+getMemberNames dynamic 
+getMemberNames class instanceNames 
+getMemberNames class 
+getMemberNames null null
+getSavedThis bound false
+getSavedThis plain null
+getSavedThis null null
+getLexicalScopes null
 getLexicalScopes null null
 // sensors
 Accelerometer false true

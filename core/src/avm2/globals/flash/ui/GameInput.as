@@ -3,8 +3,10 @@ package flash.ui {
 
     [API("688")]
     public final class GameInput extends EventDispatcher {
+        // Timffle: Flash Player 32 on Windows reports game input as supported even with no
+        // controller attached (numDevices 0), measured; devices would come from the runtime.
         public static function get isSupported():Boolean {
-            return false;
+            return true;
         }
 
         public static function get numDevices():int {

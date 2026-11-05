@@ -9,10 +9,12 @@ package flash.printing {
     // ever active, so the members documented as "available only after a call to start()"
     // (pageWidth/pageHeight/paperWidth/paperHeight) stay 0, `addPage()` throws the
     // documented Error (#2057, the page could not be added) and `send()` "does not succeed"
-    // silently. `orientation` is the stored setting (validated against PrintJobOrientation,
-    // #2008); the default page orientation of a job that cannot start is portrait.
+    // silently. `orientation` is the page orientation of the started job: Flash Player 32
+    // reads "0" before `start()` (measured). The setter exists only in AIR; in Flash Player
+    // the property is read-only (assigning is ReferenceError #1074, measured), so there is
+    // no setter here (an AIR-only setter next to a public getter would not be hidden).
     public class PrintJob extends EventDispatcher {
-        private var _orientation:String = PrintJobOrientation.PORTRAIT;
+        private var _orientation:String = "0";
 
         public function PrintJob() {
             super();
@@ -25,13 +27,6 @@ package flash.printing {
 
         public function get orientation():String {
             return this._orientation;
-        }
-
-        public function set orientation(value:String):void {
-            if (value != PrintJobOrientation.PORTRAIT && value != PrintJobOrientation.LANDSCAPE) {
-                throw new ArgumentError("Error #2008: Parameter orientation must be one of the accepted values.", 2008);
-            }
-            this._orientation = value;
         }
 
         public function get pageHeight():int {

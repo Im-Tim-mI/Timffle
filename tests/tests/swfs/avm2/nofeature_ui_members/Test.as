@@ -62,9 +62,8 @@ public class Test extends Sprite {
         trace("isSupported", PrintJob.isSupported);
         var job:PrintJob = new PrintJob();
         trace("orientation", job.orientation);
-        job.orientation = PrintJobOrientation.LANDSCAPE;
-        trace("orientation set", job.orientation);
-        attempt("orientation bogus", function():void { job.orientation = "bogus"; });
+        // Read-only in Flash Player 32 (ReferenceError #1074, measured).
+        attempt("orientation set", function():void { Object(job).orientation = PrintJobOrientation.LANDSCAPE; });
         trace("sizes", job.pageWidth, job.pageHeight, job.paperWidth, job.paperHeight);
         trace("start", job.start());
         attempt("addPage", function():void { job.addPage(new Sprite()); });
@@ -126,7 +125,8 @@ public class Test extends Sprite {
         trace("getSavedThis plain", getSavedThis(function():void {}));
         trace("getSavedThis null", getSavedThis(null));
         var scopes:Array = getLexicalScopes(function():void {});
-        trace("getLexicalScopes", scopes != null, scopes.length > 0, scopes[0] === this ? "this" : getQualifiedClassName(scopes[0]));
+        // The release Flash Player 32 returns null here (measured).
+        trace("getLexicalScopes", scopes);
         trace("getLexicalScopes null", getLexicalScopes(null));
 
         trace("// sensors");

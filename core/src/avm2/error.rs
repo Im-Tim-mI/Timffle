@@ -920,6 +920,7 @@ pub fn make_error_1128<'gc>(
 make_error_fn!(make_error_1129, 1129, type_error);
 make_error_fn!(make_error_1131, 1131, type_error);
 make_error_fn!(make_error_1132, 1132, syntax_error);
+make_error_fn!(make_error_1000, 1000, error); // Timffle
 make_error_fn!(make_error_1504, 1504, error);
 make_error_fn!(make_error_1506, 1506, range_error);
 

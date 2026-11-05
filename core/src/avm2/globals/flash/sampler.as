@@ -1,12 +1,10 @@
 // Timffle: Flash Player's release build has no sampler (the memory/CPU profiler only exists
 // in the debugger player). The AVM's sampler functions check for it first and, without it,
 // do nothing (startSampling, stopSampling, pauseSampling, clearSamples, sampleInternalAllocs,
-// setSamplerCallback), count nothing (getSampleCount 0, getSize 0, getInvocationCount family
-// -1 = "not counted") and give no samples (getSamples undefined). The reflective functions
-// that do not need the profiler are real: getMemberNames, isGetterSetter, getSavedThis and
-// getLexicalScopes inspect the object/closure; getMasterString is null because this player
-// never shares a string's buffer between a string and its substrings (Flash's "dependent"
-// strings), so no string has a master.
+// setSamplerCallback) and answer as Flash Player 32 release measured
+// (timffle/difftest/src/S3Misc.hx): getSampleCount -1, getSize 0, the getInvocationCount
+// family -1, getSamples undefined, getMemberNames / getLexicalScopes / getSavedThis /
+// getMasterString null, isGetterSetter false.
 package flash.sampler {
     public function clearSamples():void {
     }
@@ -19,23 +17,28 @@ package flash.sampler {
         return -1;
     }
 
-    public native function getLexicalScopes(fun:Function):Array;
+    public function getLexicalScopes(fun:Function):Array {
+        return null;
+    }
 
     public function getMasterString(str:String):String {
         return null;
     }
 
-    public native function getMemberNames(obj:Object, instanceNames:Boolean = false):Object;
+    public function getMemberNames(obj:Object, instanceNames:Boolean = false):Object {
+        return null;
+    }
 
     public function getSampleCount():Number {
-        return 0;
+        return -1;
     }
 
-    public function getSamples():Object {
-        return undefined;
-    }
+    // Native so the result stays `undefined` (an AS `Object` return would turn it into null).
+    public native function getSamples():Object;
 
-    public native function getSavedThis(fun:Function):Object;
+    public function getSavedThis(fun:Function):Object {
+        return null;
+    }
 
     public function getSetterInvocationCount(obj:Object, name:QName):Number {
         return -1;
@@ -45,7 +48,9 @@ package flash.sampler {
         return 0;
     }
 
-    public native function isGetterSetter(obj:Object, name:QName):Boolean;
+    public function isGetterSetter(obj:Object, name:QName):Boolean {
+        return false;
+    }
 
     public function pauseSampling():void {
     }

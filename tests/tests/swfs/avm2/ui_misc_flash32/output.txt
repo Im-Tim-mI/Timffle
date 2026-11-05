@@ -1,0 +1,84 @@
+// Keyboard
+capsLock=false numLock=false hasVirtualKeyboard=false physicalKeyboardType=alphanumeric
+isAccessible=true
+// ContextMenu
+link default=null isSupported=true items=0 clipboardMenu=false clipboardItems=flash.ui::ContextMenuClipboardItems
+link after set same=true url=http://example.com/x
+link after mutate url=http://example.com/y
+link after null=null
+link with data accepted url=http://example.com/x
+link with null url accepted=true
+assigned to root: same=true
+// ByteArray atomics
+shareable default=false
+casLength(16,8)=16 length=8
+casLength(16,4)=8 length=8
+casLength negative new THREW Error #1000
+casLength(-1,4)=8 length=8
+casLength(8,1000000)=8 length=1000000
+casInt(0,0,7)=0 again=7 byte0=7
+casInt unaligned THREW RangeError #1506
+casInt negative THREW RangeError #1506
+casInt past end THREW RangeError #1506
+casInt(12,0,7)=0
+casInt 13 THREW RangeError #1506
+shareable after set=true
+// flash.automation
+ActionGenerator ok
+generateAction(null) ok
+mouse action type=mouseMove x=10 y=10 delta=0
+generateAction(mouse) ok
+generateActions(null) ok
+generateActions vector THREW TypeError #1034
+mouse bogus type=bogus
+keyboard bogus type=bogus code=65
+type after set zzz=zzz
+deviceConfiguration=[null] testAutomationConfiguration=[Status = 3
+]
+deviceConfiguration after set=[null]
+deviceConfiguration after null=[null]
+capturePTS=-1 captureSource=raster clipRect=null fileNameBase=null
+captureBitmapData=null
+capture(bogus) ok
+capture(null) ok
+capture(nextFrame) ok
+captureSource bogus THREW ArgumentError #2008
+captureSource null THREW TypeError #2007
+fileNameBase after null=null
+cancel ok
+// GameInput
+isSupported=true numDevices=0
+getDeviceAt(0) THREW RangeError #1506
+getDeviceAt(-1) THREW RangeError #1506
+new GameInputDevice THREW ArgumentError #2012
+new GameInputControl THREW ArgumentError #2012
+// PrintJob
+hasPrinting=true isSupported=true isActive=undefined
+orientation typeof=string isNull=false
+pageWidth=0 pageHeight=0 paperWidth=0 paperHeight=0 orientation=0 isActive=undefined
+addPage before start THREW Error #2057
+addPage null THREW Error #2057
+send before start ok
+terminate before start THREW ReferenceError #1069
+orientation bogus THREW ReferenceError #1074
+orientation landscape THREW ReferenceError #1074
+orientation null THREW ReferenceError #1074
+addPage options bad THREW ReferenceError #1056
+supportsPageSetupDialog? false selectPaperSize? false terminate? false isActive? false
+// GeolocationEvent
+flash.events.GeolocationEvent=false flash.sensors.Geolocation=false flash.sensors.Accelerometer=true flash.events.AccelerometerEvent=true flash.events.StatusEvent=true
+// flash.sampler
+getSamples=null isNull=true isUndefined=true
+getSampleCount=-1 getSize=0 getInvocationCount=-1 getGetterInvocationCount=-1 getSetterInvocationCount=-1 isGetterSetter=false
+getMemberNames obj=null isArray=false
+names=
+getMemberNames(Sprite,true) count>50=false as3ns=0 has x=false has addChild=false has hasOwnProperty=0
+getMemberNames(Sprite,false) count=0 first=
+getSavedThis=null getLexicalScopes=null getMasterString=null
+other sampler calls ok
+getMemberNames(null)=null
+getSize(null)=0
+getInvocationCount(null,null)=-1
+new Sample=flash.sampler::Sample
+new NewObjectSample=flash.sampler::NewObjectSample
+new StackFrame=flash.sampler::StackFrame
