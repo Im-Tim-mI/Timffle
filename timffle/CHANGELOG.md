@@ -54,6 +54,7 @@
 - **ApplicationDomain：子網域自己先定義的類別不被父網域後來載入的同名類別蓋掉**：名稱查找仍然父網域優先（26292），但找到的名稱若子網域自己也有定義（只會發生在子網域先定義、父網域後來才載入同名定義時），回子網域自己的，與 Flash 相同；`avm2/loader_duplicate_class` 通過，其他 `loader*`、`*domain*` 測試照常通過。
 - **`NetConnection.call` 的請求在同一個 tick 送出**：26335 把網路連線的更新移到影格之前後，影格裡排入的 AMF 請求要等到下一個 tick 才送，晚於同一影格送出的 LocalConnection 訊息；現在送出請求改在影格之後（只是發出請求，不影響畫面）。
 - **AVM1 NetConnection／LocalConnection 的 AMF0 位元組與 Flash 相同**：巢狀陣列只有小於 `length` 的索引屬性時寫成 strict array（空洞寫 `undefined`；SharedObject 照 Flash 的 .sol 仍是 ECMA array），參考編號照 Flash 只算物件、陣列、Date 與 XML（被序列化的物件本身是 0），不再把數字、字串等也算進去（`vendor/rust-flash-lso` 加 `Amf0Writer::without_primitive_references`）。`avm1/amf_array_serialization`、`avm1/amf0_serde_suite`（追蹤輸出）、`avm1/netconnection_serialize_arrays` 與 Flash 相同，取消 `known_failure`；`amf0_serde_suite` 的 SharedObject 檔仍是已知差異。
+- **`avm1/edittext_ime_focus_lost` 對齊 tick**：與 `flash_utils_Timer` 同一個原因（1 fps，計時器在影格之前跑，`setTimeout` 改在下一個 tick 開頭觸發，相對影格的順序不變）；`input.json` 在最後一個輸入法事件前多一個 Wait、`num_ticks` 9，Flash 的 `output.txt` 不變。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 
