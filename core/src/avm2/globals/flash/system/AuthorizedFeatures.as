@@ -1,6 +1,8 @@
 package flash.system {
     import flash.display.AVLoader;
     import flash.media.AVStream;
+    import flash.media.AVURLLoader;
+    import flash.media.AVURLStream;
     import flash.net.URLStream;
 
     // Timffle: an `AuthorizedFeatures` token unlocks Adobe Primetime features
@@ -26,6 +28,22 @@ package flash.system {
         }
 
         public function enableHLSPlayback(stream:AVStream):Boolean {
+            return false;
+        }
+
+        public function enableAVURLLoader(loader:AVURLLoader):Boolean {
+            return false;
+        }
+
+        public function enableAVURLStream(stream:AVURLStream):Boolean {
+            return false;
+        }
+
+        // Flash's playerglobal types this parameter `MediaPlayer`, a class
+        // that no public playerglobal defines (the Haxe externs generated
+        // from the SWC resolve it to Dynamic); `Object` accepts whatever a
+        // caller has. Nothing is authorized here either way.
+        public function enableMediaPlayerHLSPlayback(player:Object):Boolean {
             return false;
         }
     }
