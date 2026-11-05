@@ -1,0 +1,21 @@
+default: null
+set on empty: 2004 true
+get: (x=10, y=10, w=80, h=30)
+copy: (x=10, y=10, w=80, h=30)
+rounded: (x=10, y=10, w=20, h=20)
+bad (x=-1, y=0, w=10, h=10): 2004 true
+bad (x=0, y=0, w=101, h=10): 2004 true
+bad (x=0, y=0, w=10, h=51): 2004 true
+bad (x=10, y=10, w=-5, h=5): 2004 true
+bad (x=95, y=45, w=10, h=10): 2004 true
+still: (x=10, y=10, w=20, h=20)
+exact: (x=0, y=0, w=100, h=50)
+zero: (x=50, y=25, w=0, h=0)
+cleared: null
+scaled size: 300x100
+scaled grid: (x=10, y=10, w=80, h=30)
+rotated grid kept: (x=10, y=10, w=80, h=30)
+child bounds: (x=22, y=22, w=4, h=4)
+child bounds out: 2004 true
+stage: 2071
+stage get: null

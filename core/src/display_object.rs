@@ -1390,7 +1390,7 @@ pub fn render_base<'gc>(
                 use_bitmap_cache: true,
                 stage: context.stage,
             };
-            this.render_self(&mut offscreen_context);
+            render_self_with_scaling_grid(this, &mut offscreen_context); // Timffle: scale9Grid
             offscreen_context.cache_draws.push(BitmapCacheEntry {
                 handle: cache_info.bitmap.handle.clone(),
                 commands: offscreen_context.commands,
@@ -1474,7 +1474,7 @@ pub fn render_base<'gc>(
         apply_standard_mask_and_scroll(
             this,
             context,
-            |context| this.render_self(context),
+            |context| render_self_with_scaling_grid(this, context), // Timffle: scale9Grid
             &options,
         );
     }
@@ -1502,6 +1502,235 @@ pub fn render_base<'gc>(
     if options.apply_transform {
         context.transform_stack.pop();
     }
+}
+
+// Timffle: 9-slice scaling (`DisplayObject.scale9Grid` / `DefineScalingGrid`).
+//
+// Flash divides the object's own coordinate space into nine regions around the
+// grid rectangle. When the object is scaled (by its own matrix, which is what
+// `scaleX`/`scaleY`/`width`/`height` change), the four corner regions keep their
+// size, the top/bottom regions stretch horizontally only, the left/right regions
+// vertically only and the centre both ways, so that the scaled object still
+// covers exactly `bounds * scale`. A rotated (or skewed, or 3D) object ignores
+// the grid and scales normally.
+//
+// Per the AS3 reference the grid applies to the object's own vector graphics and
+// to the vector graphics of its direct children; text, bitmaps and video are
+// scaled normally, as are children that are rotated or carry a grid of their
+// own. This is implemented by rendering the participating content once per
+// region, each time under a per-region affine transform and a rectangular
+// stencil mask (the same mechanism `scrollRect` uses).
+struct ScalingGridRegion {
+    /// The region, in the object's own (unscaled) coordinates.
+    clip: Rectangle<Twips>,
+    /// Matrix to push on top of the object's own transform: it cancels the
+    /// object's scale and applies the region's stretch/translation instead.
+    matrix: Matrix,
+}
+
+/// The per-axis mapping of a 9-slice grid: three segments (outer, centre, outer)
+/// with `(scale, offset)` each, in pixels, plus the segment boundaries.
+fn scaling_grid_axis(
+    obj_min: Twips,
+    obj_max: Twips,
+    grid_min: Twips,
+    grid_max: Twips,
+    scale: f32,
+) -> [(Twips, Twips, f32, f32); 3] {
+    let (b0, b1) = (obj_min.to_pixels() as f32, obj_max.to_pixels() as f32);
+    let (g0, g1) = (
+        grid_min
+            .to_pixels()
+            .clamp(obj_min.to_pixels(), obj_max.to_pixels()) as f32,
+        grid_max
+            .to_pixels()
+            .clamp(obj_min.to_pixels(), obj_max.to_pixels()) as f32,
+    );
+    // Scaled extent of the object along this axis.
+    let (s0, s1) = (b0 * scale, b1 * scale);
+    // The two outer segments keep their size.
+    let low_scale = 1.0;
+    let low_offset = s0 - b0;
+    let high_scale = 1.0;
+    let high_offset = s1 - b1;
+    // The centre gets whatever is left over.
+    let centre_target_min = s0 + (g0 - b0);
+    let centre_target_max = s1 - (b1 - g1);
+    let centre_target = (centre_target_max - centre_target_min).max(0.0);
+    let centre_scale = if g1 > g0 {
+        centre_target / (g1 - g0)
+    } else {
+        0.0
+    };
+    let centre_offset = centre_target_min - centre_scale * g0;
+    // Content never lies outside the bounds; a generous margin on the outer
+    // edges keeps anti-aliased edge pixels from being cut by the mask.
+    let margin = Twips::from_pixels(4096.0);
+    let g0_t = Twips::from_pixels(g0 as f64);
+    let g1_t = Twips::from_pixels(g1 as f64);
+    [
+        (obj_min - margin, g0_t, low_scale, low_offset),
+        (g0_t, g1_t, centre_scale, centre_offset),
+        (g1_t, obj_max + margin, high_scale, high_offset),
+    ]
+}
+
+/// The nine regions of `this`'s scaling grid for its current scale, or `None`
+/// when the grid does not apply (no grid, not scaled, rotated/skewed or 3D).
+fn scaling_grid_regions<'gc>(this: DisplayObject<'gc>) -> Option<Vec<ScalingGridRegion>> {
+    let grid = this.scaling_grid();
+    if !grid.is_valid() {
+        return None;
+    }
+    let base = this.base();
+    if base.matrix3d.get().is_some() {
+        return None;
+    }
+    let m = base.matrix();
+    let (sx, sy) = (m.a, m.d);
+    if m.b != 0.0 || m.c != 0.0 || sx == 0.0 || sy == 0.0 || (sx == 1.0 && sy == 1.0) {
+        return None;
+    }
+    let bounds = this.bounds(BoundsMode::Engine);
+    if !bounds.is_valid() || bounds.width() <= Twips::ZERO || bounds.height() <= Twips::ZERO {
+        return None;
+    }
+    let xs = scaling_grid_axis(bounds.x_min, bounds.x_max, grid.x_min, grid.x_max, sx);
+    let ys = scaling_grid_axis(bounds.y_min, bounds.y_max, grid.y_min, grid.y_max, sy);
+    let mut regions = Vec::with_capacity(9);
+    for (y0, y1, ay, by) in ys {
+        for (x0, x1, ax, bx) in xs {
+            if x1 <= x0 || y1 <= y0 || ax == 0.0 || ay == 0.0 {
+                continue;
+            }
+            regions.push(ScalingGridRegion {
+                clip: Rectangle {
+                    x_min: x0,
+                    x_max: x1,
+                    y_min: y0,
+                    y_max: y1,
+                },
+                matrix: Matrix {
+                    a: ax / sx,
+                    b: 0.0,
+                    c: 0.0,
+                    d: ay / sy,
+                    tx: Twips::from_pixels((bx / sx) as f64),
+                    ty: Twips::from_pixels((by / sy) as f64),
+                },
+            });
+        }
+    }
+    Some(regions)
+}
+
+/// Whether a direct child of a 9-sliced object takes part in the slicing.
+fn child_follows_scaling_grid<'gc>(child: DisplayObject<'gc>) -> bool {
+    if matches!(
+        child,
+        DisplayObject::Bitmap(_)
+            | DisplayObject::EditText(_)
+            | DisplayObject::Text(_)
+            | DisplayObject::TextLine(_)
+            | DisplayObject::Video(_)
+            | DisplayObject::Stage(_)
+    ) {
+        return false;
+    }
+    if child.scaling_grid().is_valid() {
+        return false;
+    }
+    let base = child.base();
+    let m = base.matrix();
+    base.matrix3d.get().is_none() && m.b == 0.0 && m.c == 0.0
+}
+
+/// Renders `draw` once per grid region, under the region's transform and clip.
+fn render_in_scaling_grid_regions<'gc>(
+    context: &mut RenderContext<'_, 'gc>,
+    regions: &[ScalingGridRegion],
+    mut draw: impl FnMut(&mut RenderContext<'_, 'gc>),
+) {
+    for region in regions {
+        context.transform_stack.push(&Transform {
+            matrix: region.matrix,
+            color_transform: Default::default(),
+            perspective_projection: None,
+            matrix3d: None,
+        });
+        let rect_mat = context.transform_stack.transform().matrix
+            * Matrix::create_box_from_rectangle(&region.clip);
+        context.commands.push_mask();
+        // The color doesn't matter, as this is a mask.
+        context.commands.draw_rect(Color::WHITE, rect_mat);
+        context.commands.activate_mask();
+        draw(context);
+        context.commands.deactivate_mask();
+        context.commands.draw_rect(Color::WHITE, rect_mat);
+        context.commands.pop_mask();
+        context.transform_stack.pop();
+    }
+}
+
+/// `render_self`, split into nine regions when the object's scale9Grid applies.
+pub fn render_self_with_scaling_grid<'gc>(
+    this: DisplayObject<'gc>,
+    context: &mut RenderContext<'_, 'gc>,
+) {
+    let Some(regions) = scaling_grid_regions(this) else {
+        this.render_self(context);
+        return;
+    };
+    if regions.is_empty() {
+        return;
+    }
+    let Some(mc) = this.as_movie_clip() else {
+        if child_follows_scaling_grid(this) {
+            render_in_scaling_grid_regions(context, &regions, |context| this.render_self(context));
+        } else {
+            this.render_self(context);
+        }
+        return;
+    };
+    // Timeline masks (clip depths) among the children keep the normal path.
+    if mc.iter_render_list().any(|c| c.clip_depth() > 0) {
+        this.render_self(context);
+        return;
+    }
+    if mc.drawing().is_some() {
+        render_in_scaling_grid_regions(context, &regions, |context| {
+            if let Some(drawing) = mc.drawing() {
+                drawing.render(context);
+            }
+        });
+    }
+    // Children in render order: runs of participating children are drawn per
+    // region, the others (text, bitmaps, rotated children, …) scale normally.
+    let mut run: Vec<DisplayObject<'gc>> = Vec::new();
+    let flush = |run: &mut Vec<DisplayObject<'gc>>, context: &mut RenderContext<'_, 'gc>| {
+        if run.is_empty() {
+            return;
+        }
+        render_in_scaling_grid_regions(context, &regions, |context| {
+            for child in run.iter() {
+                child.render(context);
+            }
+        });
+        run.clear();
+    };
+    for child in mc.iter_render_list() {
+        child.pre_render(context);
+        if !(child.visible() || context.commands.drawing_mask()) {
+            continue;
+        }
+        if child_follows_scaling_grid(child) {
+            run.push(child);
+        } else {
+            flush(&mut run, context);
+            child.render(context);
+        }
+    }
+    flush(&mut run, context);
 }
 
 /// This applies the **standard** method of `mask` and `scrollRect`.

@@ -1,0 +1,13 @@
+# Timffle: needs a renderer (BitmapData.draw); run on a machine with a GPU
+# (--features imgtests). The expected pixels follow Flash's 9-slice rules.
+num_frames = 1
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32
+
+[player_options]
+with_renderer = { optional = false, quality = "high" }
