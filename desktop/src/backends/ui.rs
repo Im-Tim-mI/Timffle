@@ -11,8 +11,8 @@ use rfd::{
     AsyncFileDialog, FileHandle, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel,
 };
 use ruffle_core::backend::ui::{
-    DialogResultFuture, FileDialogResult, FileDialogSelection, FileFilter, FontDefinition,
-    FullscreenError, LanguageIdentifier, MouseCursor, MultiDialogResultFuture,
+    CustomCursor, DialogResultFuture, FileDialogResult, FileDialogSelection, FileFilter,
+    FontDefinition, FullscreenError, LanguageIdentifier, MouseCursor, MultiDialogResultFuture,
     MultiFileDialogResult, UiBackend,
 };
 use ruffle_core::font::{FontAtlases, FontFileData, FontQuery};
@@ -234,6 +234,42 @@ impl UiBackend for DesktopUiBackend {
 
     fn set_mouse_cursor(&mut self, cursor: MouseCursor) {
         self.preferred_cursor = cursor;
+    }
+
+    // Timffle: `Mouse.registerCursor()` cursors become winit custom cursors; they are
+    // created on the event loop (`RuffleEvent::SetCustomCursor`) and applied by the GUI
+    // controller after egui's own cursor handling. winit animates custom cursors on the
+    // web only, so the desktop shows the first frame.
+    fn supports_native_cursor(&self) -> bool {
+        true
+    }
+
+    fn set_custom_cursor(&mut self, cursor: Option<CustomCursor>) {
+        let source = match cursor {
+            Some(cursor) => {
+                let Some(frame) = cursor.frames.first() else {
+                    return;
+                };
+                let clamp = |v: u32, max: u32| v.min(max.saturating_sub(1)) as u16;
+                match winit::window::CustomCursor::from_rgba(
+                    frame.rgba.clone(),
+                    frame.width as u16,
+                    frame.height as u16,
+                    clamp(cursor.hot_spot.0, frame.width),
+                    clamp(cursor.hot_spot.1, frame.height),
+                ) {
+                    Ok(source) => Some(source),
+                    Err(e) => {
+                        tracing::warn!("Custom cursor not created: {e}");
+                        return;
+                    }
+                }
+            }
+            None => None,
+        };
+        let _ = self
+            .event_loop
+            .send_event(RuffleEvent::SetCustomCursor(source));
     }
 
     fn clipboard_content(&mut self) -> String {

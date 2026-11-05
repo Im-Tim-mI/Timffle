@@ -111,6 +111,21 @@ pub trait UiBackend: Any {
     /// Changes the mouse cursor image.
     fn set_mouse_cursor(&mut self, cursor: MouseCursor);
 
+    /// Timffle: whether this host can show a bitmap cursor registered through
+    /// `flash.ui.Mouse.registerCursor()` (`Mouse.supportsNativeCursor`). A host that
+    /// cannot (the test backend) still keeps the registry and `Mouse.cursor` name, like
+    /// Flash Player on a configuration without native cursors.
+    fn supports_native_cursor(&self) -> bool {
+        false
+    }
+
+    /// Timffle: shows `cursor` (a cursor registered through `Mouse.registerCursor()` and
+    /// selected with `Mouse.cursor = name`) instead of the built-in cursor, or `None` to
+    /// return to the built-in cursor last given to [`UiBackend::set_mouse_cursor`].
+    fn set_custom_cursor(&mut self, cursor: Option<CustomCursor>) {
+        let _ = cursor;
+    }
+
     /// Get the clipboard content
     fn clipboard_content(&mut self) -> String;
 
@@ -196,6 +211,33 @@ pub trait UiBackend: Any {
 
     /// Mark that any previously open dialog has been closed
     fn close_file_dialog(&mut self);
+}
+
+/// Timffle: one frame of a bitmap cursor (`flash.ui.MouseCursorData.data`), straight
+/// (not premultiplied) RGBA, row-major, at most 32x32 pixels.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RgbaFrame {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+}
+
+/// Timffle: a bitmap cursor registered through `flash.ui.Mouse.registerCursor()`.
+/// Communicated from the core to the UI backend via `UiBackend::set_custom_cursor`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CustomCursor {
+    /// The frames, at least one; more than one with a `frame_rate` above 0 animates.
+    pub frames: Vec<RgbaFrame>,
+    /// The pixel under which clicks are registered (`MouseCursorData.hotSpot`).
+    pub hot_spot: (u32, u32),
+    /// Frames per second of the animation (`MouseCursorData.frameRate`); 0 or less, or
+    /// a single frame, shows the first frame only.
+    pub frame_rate: f64,
+}
+
+impl CustomCursor {
+    /// The largest cursor Flash Player accepts, per side, in pixels.
+    pub const MAX_SIZE: u32 = 32;
 }
 
 /// A mouse cursor icon displayed by the Flash Player.

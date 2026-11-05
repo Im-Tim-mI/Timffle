@@ -12,7 +12,7 @@ use crate::backend::navigator::ErrorResponse;
 use crate::backend::navigator::FetchReason;
 use crate::backend::navigator::OwnedFuture;
 use crate::backend::navigator::SuccessResponse;
-use crate::backend::ui::FontDefinition;
+use crate::backend::ui::{CustomCursor, FontDefinition};
 use crate::backend::{
     audio::{AudioBackend, AudioManager},
     locale::LocaleBackend,
@@ -60,7 +60,7 @@ use crate::timer::Timers;
 use crate::vminterface::Instantiator;
 use async_channel::Sender;
 use enumset::EnumSet;
-use fnv::FnvHashSet;
+use fnv::FnvHashMap;
 use gc_arena::lock::GcRefLock;
 use gc_arena::{Collect, DynamicRootSet, Mutation, Rootable};
 use ruffle_common::duration::FloatDuration;
@@ -111,11 +111,18 @@ impl StaticCallstack {
     }
 }
 
+/// Timffle: the bitmap of a cursor registered via `flash.ui.Mouse.registerCursor()`,
+/// shared between the registry and the backend it is shown on.
+#[derive(Clone, Collect)]
+#[collect(require_static)]
+pub struct RegisteredCursor(pub Rc<CustomCursor>);
+
 #[derive(Collect)]
 #[collect(no_drop)]
 pub struct MouseData<'gc> {
-    /// A set of custom cursors registered via `flash.ui.Mouse.registerCursor()`.
-    pub custom_cursors: FnvHashSet<AvmString<'gc>>,
+    /// The custom cursors registered via `flash.ui.Mouse.registerCursor()`, by name.
+    /// Timffle: with their bitmaps, not only their names.
+    pub custom_cursors: FnvHashMap<AvmString<'gc>, RegisteredCursor>,
 
     /// When setting `flash.ui.Mouse.cursor`, if the value exists
     /// in `custom_cursors`, then it will be stored here for the
@@ -3223,7 +3230,7 @@ impl PlayerBuilder {
             library: Library::empty(),
             load_manager: LoadManager::new(),
             mouse_data: MouseData {
-                custom_cursors: FnvHashSet::default(),
+                custom_cursors: FnvHashMap::default(),
                 current_custom_cursor: None,
                 hovered: None,
                 pressed: None,

@@ -48,4 +48,9 @@ pub enum RuffleEvent {
 
     /// Export Ruffle Bundle from currently playing content and open save dialog.
     ExportBundle,
+
+    /// Timffle: the movie selected a `Mouse.registerCursor()` cursor (`Some`, to be
+    /// created on the event loop and shown on the window) or returned to the built-in
+    /// cursor (`None`).
+    SetCustomCursor(Option<winit::window::CustomCursorSource>),
 }

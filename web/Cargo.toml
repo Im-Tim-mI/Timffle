@@ -52,6 +52,8 @@ chrono = { workspace = true, features = ["wasmbind", "clock"] }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 base64 = "0.23.1"
+# Timffle: PNG encoding of `Mouse.registerCursor()` frames for CSS `cursor: url()`.
+image = { workspace = true, features = ["png"] }
 async-channel = { workspace = true }
 futures-util = { version = "0.3.30", features = ["sink"] }
 gloo-net =  { version = "0.7.0", default-features = false, features = ["websocket"] }

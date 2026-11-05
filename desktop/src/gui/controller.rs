@@ -48,11 +48,37 @@ pub struct GuiController {
     /// If this is set, we should not render the main menu.
     no_gui: bool,
     theme_controller: ThemeController,
+    /// Timffle: the `Mouse.registerCursor()` cursor the movie shows instead of the
+    /// built-in one, applied after egui's cursor handling (see `render`).
+    custom_cursor: Option<winit::window::CustomCursor>,
+    /// Timffle: egui's cursor icon of the last frame, to notice when egui-winit set
+    /// the window cursor and the custom cursor must be applied again.
+    last_cursor_icon: Option<egui::CursorIcon>,
     #[cfg(feature = "tracy_images")]
     tracy_frame_captures: crate::tracy::FrameCapturesHolder,
 }
 
 impl GuiController {
+    /// Timffle: shows `cursor` (a `Mouse.registerCursor()` cursor) on the window instead
+    /// of the built-in cursor, or the built-in cursor again with `None`.
+    pub fn set_custom_cursor(&mut self, cursor: Option<winit::window::CustomCursor>) {
+        match &cursor {
+            Some(custom) => self.window.set_cursor(custom.clone()),
+            None => {
+                // egui-winit believes its last icon is still shown; restore it, or the
+                // default when the movie owns the cursor.
+                let icon = match self.last_cursor_icon.unwrap_or_default() {
+                    egui::CursorIcon::PointingHand => winit::window::CursorIcon::Pointer,
+                    egui::CursorIcon::Text => winit::window::CursorIcon::Text,
+                    egui::CursorIcon::Grab => winit::window::CursorIcon::Grab,
+                    _ => winit::window::CursorIcon::Default,
+                };
+                self.window.set_cursor(icon);
+            }
+        }
+        self.custom_cursor = cursor;
+    }
+
     pub fn new(
         window: Arc<Window>,
         event_loop: EventLoopProxy<RuffleEvent>,
@@ -178,6 +204,8 @@ impl GuiController {
             size,
             no_gui,
             theme_controller,
+            custom_cursor: None,
+            last_cursor_icon: None,
             #[cfg(feature = "tracy_images")]
             tracy_frame_captures,
         })
@@ -386,16 +414,27 @@ impl GuiController {
             .repaint_delay;
 
         // If we're not in a UI, tell egui which cursor we prefer to use instead
-        if !self.egui_winit.egui_ctx().egui_wants_pointer_input()
-            && let Some(player) = player.as_deref()
-        {
+        let movie_owns_cursor = !self.egui_winit.egui_ctx().egui_wants_pointer_input();
+        if movie_owns_cursor && let Some(player) = player.as_deref() {
             full_output.platform_output.cursor_icon =
                 <dyn Any>::downcast_ref::<DesktopUiBackend>(player.ui())
                     .unwrap_or_else(|| panic!("UI Backend should be DesktopUiBackend"))
                     .cursor();
         }
+        // Timffle: egui-winit sets the window cursor only when its icon changes, so the
+        // custom cursor is applied once, and again whenever egui-winit overwrote it.
+        let cursor_icon = full_output.platform_output.cursor_icon;
+        let egui_set_cursor = self.last_cursor_icon != Some(cursor_icon);
+        self.last_cursor_icon = Some(cursor_icon);
         self.egui_winit
             .handle_platform_output(&self.window, full_output.platform_output);
+        if movie_owns_cursor
+            && egui_set_cursor
+            && cursor_icon != egui::CursorIcon::None
+            && let Some(custom) = &self.custom_cursor
+        {
+            self.window.set_cursor(custom.clone());
+        }
 
         let clipped_primitives = self
             .egui_winit

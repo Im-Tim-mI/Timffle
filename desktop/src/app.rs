@@ -670,6 +670,12 @@ impl ApplicationHandler<RuffleEvent> for App {
                 }
             }
 
+            // Timffle: a `Mouse.registerCursor()` cursor; winit creates it on the event loop.
+            (Some(main_window), RuffleEvent::SetCustomCursor(source)) => {
+                let cursor = source.map(|source| event_loop.create_custom_cursor(source));
+                main_window.gui.set_custom_cursor(cursor);
+            }
+
             (_, RuffleEvent::ExitRequested) => {
                 event_loop.exit();
             }

@@ -1,10 +1,12 @@
 mod canvas_font_renderer;
 
 use super::JavascriptPlayer;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use rfd::{AsyncFileDialog, FileHandle};
 use ruffle_core::backend::ui::{
-    DialogResultFuture, FileDialogResult, FileDialogSelection, FileFilter, MultiDialogResultFuture,
-    MultiFileDialogResult,
+    CustomCursor, DialogResultFuture, FileDialogResult, FileDialogSelection, FileFilter,
+    MultiDialogResultFuture, MultiFileDialogResult,
 };
 use ruffle_core::backend::ui::{
     FontDefinition, FullscreenError, LanguageIdentifier, MouseCursor, US_ENGLISH, UiBackend,
@@ -12,7 +14,10 @@ use ruffle_core::backend::ui::{
 use ruffle_core::font::{FontAtlases, FontQuery};
 use ruffle_web_common::JsResult;
 use std::borrow::Cow;
+use std::cell::Cell;
+use std::rc::Rc;
 use url::Url;
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{
     Blob, FocusOptions, HtmlCanvasElement, HtmlDocument, HtmlElement, HtmlTextAreaElement,
@@ -127,12 +132,100 @@ impl FileDialogSelection for WebFileSelection {
     }
 }
 
+/// Timffle: a cursor registered through `Mouse.registerCursor()`, as CSS `cursor` values
+/// (`url(data:image/png;base64,...) x y, auto`), one per frame, and the interval that
+/// cycles them when the cursor is animated.
+struct WebCustomCursor {
+    frames: Rc<Vec<String>>,
+    /// The `setInterval` handle and its callback, kept alive while it runs.
+    animation: Option<(i32, Closure<dyn FnMut()>)>,
+}
+
+impl WebCustomCursor {
+    fn new(cursor: &CustomCursor) -> Self {
+        let frames = cursor
+            .frames
+            .iter()
+            .filter_map(|frame| {
+                let image =
+                    image::RgbaImage::from_raw(frame.width, frame.height, frame.rgba.clone())?;
+                let mut png = std::io::Cursor::new(Vec::new());
+                image
+                    .write_to(&mut png, image::ImageFormat::Png)
+                    .inspect_err(|e| tracing::warn!("Custom cursor frame not encoded: {e}"))
+                    .ok()?;
+                Some(format!(
+                    "url(data:image/png;base64,{}) {} {}, auto",
+                    BASE64_STANDARD.encode(png.into_inner()),
+                    cursor.hot_spot.0,
+                    cursor.hot_spot.1
+                ))
+            })
+            .collect();
+        Self {
+            frames: Rc::new(frames),
+            animation: None,
+        }
+    }
+
+    /// Starts cycling the frames at `frame_rate` on the canvas, when there is more than
+    /// one frame and a positive rate (`MouseCursorData.frameRate`).
+    fn start(&mut self, canvas: &HtmlCanvasElement, frame_rate: f64) {
+        self.stop();
+        if self.frames.len() < 2 || !(frame_rate > 0.0) {
+            return;
+        }
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let frames = Rc::clone(&self.frames);
+        let canvas = canvas.clone();
+        let index = Cell::new(0usize);
+        let callback = Closure::new(move || {
+            let next = (index.get() + 1) % frames.len();
+            index.set(next);
+            canvas
+                .style()
+                .set_property("cursor", &frames[next])
+                .warn_on_error();
+        });
+        let interval_ms = (1000.0 / frame_rate).clamp(1.0, i32::MAX as f64) as i32;
+        match window.set_interval_with_callback_and_timeout_and_arguments_0(
+            callback.as_ref().unchecked_ref(),
+            interval_ms,
+        ) {
+            Ok(handle) => self.animation = Some((handle, callback)),
+            Err(e) => tracing::warn!("Custom cursor animation not started: {e:?}"),
+        }
+    }
+
+    fn stop(&mut self) {
+        if let Some((handle, _callback)) = self.animation.take()
+            && let Some(window) = web_sys::window()
+        {
+            window.clear_interval_with_handle(handle);
+        }
+    }
+
+    fn first_frame(&self) -> Option<&str> {
+        self.frames.first().map(String::as_str)
+    }
+}
+
+impl Drop for WebCustomCursor {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 /// An implementation of `UiBackend` utilizing `web_sys` bindings to input APIs.
 pub struct WebUiBackend {
     js_player: JavascriptPlayer,
     canvas: HtmlCanvasElement,
     cursor_visible: bool,
     cursor: MouseCursor,
+    /// Timffle: the `Mouse.registerCursor()` cursor shown instead of `cursor`, if any.
+    custom_cursor: Option<WebCustomCursor>,
     clipboard_content: String,
 
     /// Is a dialog currently open
@@ -154,6 +247,7 @@ impl WebUiBackend {
             canvas: canvas.clone(),
             cursor_visible: true,
             cursor: MouseCursor::Arrow,
+            custom_cursor: None,
             clipboard_content: "".into(),
             dialog_open: false,
             use_canvas_font_renderer,
@@ -162,15 +256,23 @@ impl WebUiBackend {
     }
 
     fn update_mouse_cursor(&self) {
-        let cursor = if self.cursor_visible {
+        let cursor = if !self.cursor_visible {
+            "none"
+        } else if let Some(custom) = self
+            .custom_cursor
+            .as_ref()
+            .and_then(WebCustomCursor::first_frame)
+        {
+            // Timffle: a registered bitmap cursor; the animation interval moves on
+            // from the first frame.
+            custom
+        } else {
             match self.cursor {
                 MouseCursor::Arrow => "auto",
                 MouseCursor::Hand => "pointer",
                 MouseCursor::IBeam => "text",
                 MouseCursor::Grab => "grab",
             }
-        } else {
-            "none"
         };
         self.canvas
             .style()
@@ -224,6 +326,21 @@ impl UiBackend for WebUiBackend {
     fn set_mouse_cursor(&mut self, cursor: MouseCursor) {
         self.cursor = cursor;
         self.update_mouse_cursor();
+    }
+
+    // Timffle: `Mouse.registerCursor()` cursors as CSS `cursor: url()` on the canvas.
+    fn supports_native_cursor(&self) -> bool {
+        true
+    }
+
+    fn set_custom_cursor(&mut self, cursor: Option<CustomCursor>) {
+        self.custom_cursor = cursor.as_ref().map(WebCustomCursor::new);
+        self.update_mouse_cursor();
+        if let (Some(custom), Some(cursor)) = (self.custom_cursor.as_mut(), cursor.as_ref())
+            && self.cursor_visible
+        {
+            custom.start(&self.canvas, cursor.frame_rate);
+        }
     }
 
     fn clipboard_content(&mut self) -> String {
