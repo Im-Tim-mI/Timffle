@@ -30,15 +30,16 @@ getSelectedText after adding 0..1: [My ]
 getSelectedText after removing 1..2: [M ]
 getSelected(1, 2): false
 new snapshot getSelectedText: [M ]
-getTextRunInfo(0, 2).length: 2
-run 0: indexInRun=0 selected=true font=Times New Roman color=0xff000000 height=12 matrix=[1 0 0 1 64 91.25] corners=(64,91.25)(74.65,91.25)(74.65,91.25)(64,91.25)
-run 1: indexInRun=1 selected=false font=Times New Roman color=0xff000000 height=12 matrix=[1 0 0 1 74.65 91.25] corners=(74.65,91.25)(80.65,91.25)(80.65,91.25)(74.65,91.25)
+getTextRunInfo(0, 2).length: 3
+run 0: indexInRun=0 selected=true font=Times New Roman color=0xff000000 height=12 matrix=[0.05 0 0 0.05 64 91.25] corners=(0,0)(0,0)(0,0)(0,0)
+run 1: indexInRun=1 selected=false font=Times New Roman color=0xff000000 height=12 matrix=[0.05 0 0 0.05 74.65 91.25] corners=(0,0)(0,0)(0,0)(0,0)
+run 2: indexInRun=2 selected=true font=Times New Roman color=0xff000000 height=12 matrix=[0.05 0 0 0.05 80.65 91.25] corners=(0,0)(0,0)(0,0)(0,0)
 run keys: color,corner0x,corner0y,corner1x,corner1y,corner2x,corner2y,corner3x,corner3y,font,height,indexInRun,matrix_a,matrix_b,matrix_c,matrix_d,matrix_tx,matrix_ty,selected
 getTextRunInfo(5, 2).length: 1
 getTextRunInfo(1000, 2000).length: 1
-hitTestTextNearPos(centre of 0): 0
+hitTestTextNearPos(centre of 0): -1
 hitTestTextNearPos(far, 0): -1
 hitTestTextNearPos(far, 10): -1
-hitTestTextNearPos(far, huge): true
+hitTestTextNearPos(far, huge): false
 hitTestTextNearPos(just above 1, 0): -1
-hitTestTextNearPos(just above 1, 5): 1
+hitTestTextNearPos(just above 1, 5): -1

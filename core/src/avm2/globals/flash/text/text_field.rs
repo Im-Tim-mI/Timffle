@@ -11,7 +11,7 @@ use crate::avm2::{ArrayObject, ArrayStorage, Error};
 use crate::display_object::{AutoSizeMode, EditText, TextSelection};
 use crate::font::FontType; // Timffle
 use crate::html::TextFormat;
-use crate::string::AvmString;
+use crate::string::{AvmString, WString};
 use ruffle_macros::istr;
 use swf::{Color, Point};
 
@@ -1536,7 +1536,8 @@ pub fn set_use_rich_text_clipboard<'gc>(
     Ok(Value::Undefined)
 }
 
-/// Timffle: `TextField.getRawText`: the text without any markup.
+/// Timffle: `TextField.getRawText`: the text without any markup; Flash Player 32 writes
+/// the paragraph breaks as "\n" (measured), not the "\r" of `text`.
 pub fn get_raw_text<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -1548,15 +1549,22 @@ pub fn get_raw_text<'gc>(
         .as_display_object()
         .and_then(|this| this.as_edit_text())
     {
-        return Ok(AvmString::new(activation.gc(), this.text()).into());
+        let text: WString = this
+            .text()
+            .iter()
+            .map(|c| if c == u16::from(b'\r') { u16::from(b'\n') } else { c })
+            .collect();
+        return Ok(AvmString::new(activation.gc(), text).into());
     }
 
     Ok(Value::Undefined)
 }
 
-/// Timffle: `TextField.getXMLText`: the Flash HTML of the characters
-/// `beginIndex..endIndex` (clamped to the text, like `replaceText`).
-pub fn get_xml_text<'gc>(
+/// Timffle: backs `TextField.getXMLText`: the `<flashrichtext>` document of
+/// `beginIndex..endIndex`. Like Flash Player 32 (measured), a negative begin counts
+/// from 0 and an end past the text stops at its end; a begin after the (clamped)
+/// end returns null, which the AS wrapper turns into `ArgumentError #2005`.
+pub fn native_get_xml_text<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
@@ -1567,18 +1575,24 @@ pub fn get_xml_text<'gc>(
         .as_display_object()
         .and_then(|this| this.as_edit_text())
     {
-        let from = usize::try_from(args.get_i32(0)).unwrap_or_default();
-        let to = usize::try_from(args.get_i32(1)).unwrap_or_default();
-        return Ok(AvmString::new(activation.gc(), this.html_text_range(from, to)).into());
+        let len = this.text_length() as i64;
+        let from = i64::from(args.get_i32(0)).max(0);
+        let to = i64::from(args.get_i32(1)).min(len);
+        if from > to {
+            return Ok(Value::Null);
+        }
+        let xml = this.rich_text_range(from as usize, to as usize);
+        return Ok(AvmString::new(activation.gc(), xml).into());
     }
 
     Ok(Value::Undefined)
 }
 
-/// Timffle: `TextField.insertXMLText`: replaces `beginIndex..endIndex` with
-/// HTML-formatted text. `pasting` only matters to Flash's own paste path (the
-/// rich clipboard goes through `EditText::text_control_input` here).
-pub fn insert_xml_text<'gc>(
+/// Timffle: backs `TextField.insertXMLText`: replaces `beginIndex..endIndex` (either
+/// order) with the runs of a `<flashrichtext>` document. Returns 0, 1 when the text
+/// is not such a document (`Error #2138`), 2 when an index is outside the text or a
+/// run's text is not in parentheses (`RangeError #2006`), as measured in Flash 32.
+pub fn native_insert_xml_text<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
@@ -1589,13 +1603,24 @@ pub fn insert_xml_text<'gc>(
         .as_display_object()
         .and_then(|this| this.as_edit_text())
     {
-        let from = usize::try_from(args.get_i32(0)).unwrap_or_default();
-        let to = usize::try_from(args.get_i32(1)).unwrap_or_default();
-        let rich_text = args.get_string(activation, 2);
-        this.insert_html_text(from, to, &rich_text, activation.context);
+        let Some(rich_text) = args.try_get_string(2) else {
+            return Ok(1.into());
+        };
+        let runs = match crate::html::parse_flash_rich_text(&rich_text) {
+            Ok(runs) => runs,
+            Err(crate::html::RichTextError::Parse) => return Ok(1.into()),
+            Err(crate::html::RichTextError::Range) => return Ok(2.into()),
+        };
+        let (a, b) = (args.get_i32(0), args.get_i32(1));
+        let (from, to) = (a.min(b), a.max(b));
+        let len = this.text_length();
+        if from < 0 || to as usize > len {
+            return Ok(2.into());
+        }
+        this.insert_rich_text(from as usize, to as usize, &runs, activation.context);
     }
 
-    Ok(Value::Undefined)
+    Ok(0.into())
 }
 
 /// Timffle: `TextField.isFontCompatible`
