@@ -49,6 +49,7 @@
 - **TextLine 的原點改成 roman 基線（真 Flash 32 量過）**：`getBaselinePosition` 改成真值之後，TLF 把行放在基線上，而 TextLine 還是從欄位左上角畫，`visual/definefont4` 的字整個低了一行；現在備援欄位往左上移動它的文字起點（2 px 邊距＋ascent）再畫，`getBounds`／atom 座標一起換算。真 Flash 在 Wine 下的畫面：墨跡列 31–71／84–117、欄 20–395，Ruffle 現在 31–69／84–117、20–394；上游由 Ruffle 畫的黃金圖是 33–73／87–120、22–396（低 2–3 px、右 2 px），所以這支改成 known failure（黃金圖不動，`output.ruffle.png` 是現在的畫面），等用 Flash 重錄。
 - **三支已知失敗測試現在與真 Flash 相同**：`avm2/matrix3d_recompose_edge_cases`、`from_shumway/…/matrix3d/TransformBasics`、`from_shumway/flash_net_classes` 的輸出已與 Flash 錄的 `output.txt` 逐行相同，取消 `known_failure` 並刪除 `output.ruffle.txt`。
 - **`from_shumway/flash_utils_Timer` 改跑 4 個 tick**：計時器在影格之前跑（26335）後，第一個影格在播放器時間 83 ms 才跑；`Timer` 本來就從 `start()` 起算（建立前的時間不算進去），200 ms 的計時器在 start 後 249 ms 的第 4 個 tick 觸發，與以前第 3 個 tick 的相對時間相同，Flash 的 `output.txt` 不變。
+- **`Matrix3D.appendRotation` 的 NaN／無限大 pivot**：照 Flash 把 pivot 當成完整的 `T(p)·R·T(-p)` 乘積，pivot 有 NaN 或無限大時整個矩陣變成 NaN（原本第 4 列留著 0,0,0,1）；有限 pivot 的結果不變。`avm2/matrix3d_append_rotation` 與 Flash 的 `output.txt` 相同，取消 `known_failure`。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 

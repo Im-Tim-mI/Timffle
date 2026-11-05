@@ -277,6 +277,10 @@ pub fn append_rotation<'gc>(
     let ccos = 1.0 - cos;
 
     // The rotation part, then the translation that keeps the pivot point in place: `pivot - R * pivot`.
+    // Timffle: Flash composes the pivot as the full product `T(pivot) * R * T(-pivot)`, so a
+    // NaN or infinite pivot coordinate also reaches the 3x3 part (`R + p * 0`) and the
+    // projective corner (`1 + 0 * -p`), and the appended matrix becomes all NaN (measured,
+    // `avm2/matrix3d_append_rotation`). For finite pivots these terms are exact no-ops.
     #[rustfmt::skip]
     let r = [
         cos + x2 * ccos,
@@ -290,15 +294,20 @@ pub fn append_rotation<'gc>(
         cos + z2 * ccos,
     ];
 
+    // `T(-pivot)`'s last column times R's last row (0, 0, 0, 1).
+    let corner = 0.0 * -tx + 0.0 * -ty + 0.0 * -tz + 1.0;
+    // `p * 0` is 0 for a finite coordinate (adding it is skipped so signed zeros stay) and NaN otherwise.
+    let nan_if = |v: f64, p: f64| if p.is_finite() { v } else { f64::NAN };
+
     #[rustfmt::skip]
     let m: RawData = [
-        r[0], r[1], r[2], 0.0,
-        r[3], r[4], r[5], 0.0,
-        r[6], r[7], r[8], 0.0,
-        tx - (r[0] * tx + r[3] * ty + r[6] * tz),
-        ty - (r[1] * tx + r[4] * ty + r[7] * tz),
-        tz - (r[2] * tx + r[5] * ty + r[8] * tz),
-        1.0,
+        nan_if(r[0], tx), nan_if(r[1], ty), nan_if(r[2], tz), 0.0,
+        nan_if(r[3], tx), nan_if(r[4], ty), nan_if(r[5], tz), 0.0,
+        nan_if(r[6], tx), nan_if(r[7], ty), nan_if(r[8], tz), 0.0,
+        tx * corner - (r[0] * tx + r[3] * ty + r[6] * tz),
+        ty * corner - (r[1] * tx + r[4] * ty + r[7] * tz),
+        tz * corner - (r[2] * tx + r[5] * ty + r[8] * tz),
+        corner,
     ].map(|f| f as f32);
 
     let result = Matrix3D { raw_data: m }.multiply(&this.matrix_ref());
