@@ -212,8 +212,16 @@ pub fn native_parse<'gc>(
     let input = args.get_string_non_null(activation, 0, "inputString")?;
     let input = input.to_utf8_lossy().into_owned();
     let settings = read_settings(activation, this)?;
-    match number_format::parse_currency(&input, &settings) {
-        Some((value, currency)) => {
+    let positive = this
+        .get_slot(slots::_POSITIVE_CURRENCY_FORMAT)
+        .coerce_to_u32(activation)? as usize;
+    let negative = this
+        .get_slot(slots::_NEGATIVE_CURRENCY_FORMAT)
+        .coerce_to_u32(activation)? as usize;
+    let positive = POSITIVE_FORMATS[positive.min(POSITIVE_FORMATS.len() - 1)];
+    let negative = NEGATIVE_FORMATS[negative.min(NEGATIVE_FORMATS.len() - 1)];
+    match number_format::parse_currency(&input, &settings, positive, negative) {
+        number_format::CurrencyParse::Found(value, currency) => {
             set_status(activation, this, NO_ERROR)?;
             let storage = ArrayStorage::from_args(&[
                 value.into(),
@@ -221,7 +229,13 @@ pub fn native_parse<'gc>(
             ]);
             Ok(ArrayObject::from_storage(activation.context, storage).into())
         }
-        None => {
+        // Timffle: Flash 32 reports an empty input as illegalArgumentError, other failures
+        // as parseError; both leave an empty (not null) currency string.
+        number_format::CurrencyParse::Empty => {
+            set_status(activation, this, ILLEGAL_ARGUMENT_ERROR)?;
+            Ok(Value::Null)
+        }
+        number_format::CurrencyParse::NoMatch => {
             set_status(activation, this, PARSE_ERROR)?;
             Ok(Value::Null)
         }

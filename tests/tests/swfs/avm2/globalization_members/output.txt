@@ -14,15 +14,15 @@ determinePreferredLocales: zh-TW,zh-CN,fr-FR,fr-CA,en,en-GB
 null name: 2004
 // StringTools
 en-US noError
-II Iİ SS ΣΣΣΒΫ́Ϊ́Σ | ii ıi̇ οδυσσευς noError
+II Iİ SS ΣΣΣΒΫ́Ϊ́Σ | ii ıi οδυσσευς noError
 tr-TR noError
 İI Iİ | iı ıi
 fr-FR usingFallbackWarning
 en-US usingDefaultWarning
 true
 // NumberFormatter
-en-US noError frac=0 sep=,. neg=1
-123,456,789 -1,234,567 4,294,967,295
+en-US noError frac=2 sep=,. neg=1
+123,456,789.12 -1,234,567.00 4,294,967,295.00
 123.400 0.120 2.500 0.001
 123.4 0.12 0
 .12 0
@@ -44,8 +44,8 @@ NaN 2147483647 2147483647 parseError
 NaN NaN -123
 de-DE 1.234.567,89 1234.5
 fr-FR 1%A0234%A0567%2C89
-zh-TW 1,234,568 noError
-ja ja-JP usingFallbackWarning -1,234,567
+zh-TW 1,234,567.89 noError
+ja ja-JP noError -1,234,567.00
 null locale: 2007
 // CurrencyFormatter
 en-US noError USD $ frac=2 pos=0 neg=0
@@ -65,12 +65,12 @@ $12,34,56,789.12
 $123456789.00
 parse($123,456.78): 123456.78 [$] noError
 parse((USD 123.45)): -123.45 [USD] noError
-parse(-1,234.5 USD): -1234.5 [USD] noError
+parse(-1,234.5 USD): NaN [] parseError
 parse(Dollar 123,567,89,0.254): 123567890.254 [Dollar] noError
 parse(123.45): 123.45 [] noError
-parse(12abc34): NaN [null] parseError
-parse($ -12.50): -12.5 [$] noError
-parse($(12.50)): NaN [null] parseError
+parse(12abc34): NaN [] parseError
+parse($ -12.50): NaN [] parseError
+parse($(12.50)): NaN [] parseError
 EUR € 1.234,50 € -1.234,50 € 1.234,50 EUR
 JPY ¥ frac=0 ¥1,235 -¥1,235
 TWD NT$ NT$1,234.50 -NT$1,234.50
@@ -82,10 +82,10 @@ long/long [EEEE, MMMM d, yyyy h:mm:ss a] Thursday, September 8, 2005 1:43:01 PM
 long/medium [EEEE, MMMM d, yyyy h:mm:ss a] Thursday, September 8, 2005 1:43:01 PM
 long/short [EEEE, MMMM d, yyyy h:mm a] Thursday, September 8, 2005 1:43 PM
 long/none [EEEE, MMMM d, yyyy] Thursday, September 8, 2005
-medium/long [MMM d, yyyy h:mm:ss a] Sep 8, 2005 1:43:01 PM
-medium/medium [MMM d, yyyy h:mm:ss a] Sep 8, 2005 1:43:01 PM
-medium/short [MMM d, yyyy h:mm a] Sep 8, 2005 1:43 PM
-medium/none [MMM d, yyyy] Sep 8, 2005
+medium/long [EEEE, MMMM d, yyyy h:mm:ss a] Thursday, September 8, 2005 1:43:01 PM
+medium/medium [EEEE, MMMM d, yyyy h:mm:ss a] Thursday, September 8, 2005 1:43:01 PM
+medium/short [EEEE, MMMM d, yyyy h:mm a] Thursday, September 8, 2005 1:43 PM
+medium/none [EEEE, MMMM d, yyyy] Thursday, September 8, 2005
 short/long [M/d/yyyy h:mm:ss a] 9/8/2005 1:43:01 PM
 short/medium [M/d/yyyy h:mm:ss a] 9/8/2005 1:43:01 PM
 short/short [M/d/yyyy h:mm a] 9/8/2005 1:43 PM
@@ -97,8 +97,8 @@ none/none []
 bogus style: 2008
 custom/custom noError Thursday, Sep. 8, 2005 at 1 o'clock PM
 43'01'
-AD Anno Domini 05 2005 9 09 Sep September Sep 8 08 Thu Thursday 3 03 Q3 37 37 2 251 251 2 PM 1 01 13 13 1 13 43 1 0 00 007 00700 GMT+00:00 GMT+00:00 GMT+00:00 +0000 GMT+00:00
-AD Anno Domini 05 2005 9 09 Sep September Sep 8 08 Thu Thursday 3 03 Q3 37 37 2 251 251 2 PM 7 07 19 19 7 19 28 1 0 00 007 00700 GMT+05:45 GMT+05:45 GMT+05:45 +0545 GMT+05:45
+AD Anno Domini 05 2005 9 09 Sep September September 8 08 Thu Thursday      2    PM 1 01 13 13 1 13 43 1         
+AD Anno Domini 05 2005 9 09 Sep September September 8 08 Thu Thursday      2    PM 7 07 19 19 7 19 28 1         
 patternSyntaxError G GGGG yy yyyy M MM MMM MMMM MMMMM d dd E EEEE Q QQ QQQ w ww W D DDD F a h hh H HH K k m s S SS SSS SSSSS z zzzz Z ZZZZ v
 January,February,March,April,May,June,July,August,September,October,November,December | Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec
 Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday | Sun,Mon,Tue,Wed,Thu,Fri,Sat first=0
@@ -125,7 +125,7 @@ coté vs côte: -1 false
 version10 vs version2: -1 false
 Ａｱ vs Aア: 1 false
 カナ vs かな: 1 false
-O'Brian vs OBrian: -1 false
+O'Brian vs OBrian: 1 false
 a b vs ab: -1 false
 // ignoreCase
 noError 0 0 -1

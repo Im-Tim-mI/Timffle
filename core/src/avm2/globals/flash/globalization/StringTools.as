@@ -38,15 +38,17 @@ package flash.globalization {
         }
 
         public function toLowerCase(s:String):String {
+            // Timffle: Flash 32 throws TypeError #2007 for a null string (measured).
             if (s == null) {
-                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+                throw new TypeError("Error #2007: Parameter s must be non-null.", 2007);
             }
             return this.nativeToLowerCase(s);
         }
 
         public function toUpperCase(s:String):String {
+            // Timffle: Flash 32 throws TypeError #2007 for a null string (measured).
             if (s == null) {
-                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+                throw new TypeError("Error #2007: Parameter s must be non-null.", 2007);
             }
             return this.nativeToUpperCase(s);
         }

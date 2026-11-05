@@ -93,7 +93,20 @@ pub fn to_lowercase(s: &str, language: &str) -> String {
             }
             out
         }
-        _ => s.to_lowercase(),
+        // Timffle: Flash 32 lowercases U+0130 to a plain `i` (no combining dot), measured
+        // for en-US, zh-TW, zh-CN, ja-JP, de-DE and lt-LT.
+        // (`str::to_lowercase` keeps the context rules such as the Greek final sigma.)
+        _ => s.replace('İ', "i").to_lowercase(),
+    }
+}
+
+/// Timffle: Flash 32 leaves the Latin and Armenian presentation ligatures (U+FB00–FB06,
+/// U+FB13–FB17) alone when uppercasing (`ﬁ` stays `ﬁ`, measured), although `ß` becomes `SS`.
+fn upper_full(c: char) -> Vec<char> {
+    if matches!(c, '\u{fb00}'..='\u{fb06}' | '\u{fb13}'..='\u{fb17}') {
+        vec![c]
+    } else {
+        c.to_uppercase().collect()
     }
 }
 
@@ -105,7 +118,7 @@ pub fn to_uppercase(s: &str, language: &str) -> String {
             .flat_map(|c| match c {
                 'i' => vec!['İ'],
                 'ı' => vec!['I'],
-                other => other.to_uppercase().collect(),
+                other => upper_full(other),
             })
             .collect(),
         "lt" => {
@@ -116,11 +129,11 @@ pub fn to_uppercase(s: &str, language: &str) -> String {
                 if matches!(c, 'i' | 'j' | 'į') && chars.peek() == Some(&'\u{307}') {
                     chars.next();
                 }
-                out.extend(c.to_uppercase());
+                out.extend(upper_full(c));
             }
             out
         }
-        _ => s.to_uppercase(),
+        _ => s.chars().flat_map(upper_full).collect(),
     }
 }
 

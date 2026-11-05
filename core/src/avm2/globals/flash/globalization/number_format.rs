@@ -344,75 +344,151 @@ pub fn parse_whole_number(input: &str, settings: &NumberSettings) -> Option<f64>
     }
 }
 
-/// Splits a currency string into `(negative, currency string, value)` the way
-/// `CurrencyFormatter.parse()` does: spaces are ignored, the number is read
-/// with the decimal and grouping separators, the sign is a leading or trailing
-/// `negativeSymbol` or a pair of parentheses, and the remaining text on one
-/// side of the number is the currency string.
-pub fn parse_currency(input: &str, settings: &NumberSettings) -> Option<(f64, String)> {
-    let chars: Vec<char> = input.chars().filter(|c| !is_space_separator(*c)).collect();
-    let first_digit = chars.iter().position(|c| digit_value(*c).is_some())?;
-    let plain = NumberSettings {
-        negative_number_format: 1,
-        negative_symbol: String::new(),
-        ..clone_settings(settings)
-    };
-    let (value, end) = match_digits(&chars, first_digit, &plain)?;
-    let mut prefix: Vec<char> = chars[..first_digit].to_vec();
-    let mut suffix: Vec<char> = chars[end..].to_vec();
-    let mut negative = false;
-
-    if prefix.first() == Some(&'(') && suffix.last() == Some(&')') {
-        negative = true;
-        prefix.remove(0);
-        suffix.pop();
-    }
-    let minus: Vec<char> = settings.negative_symbol.chars().collect();
-    if !minus.is_empty() {
-        let strip = |v: &mut Vec<char>| -> bool {
-            if v.len() >= minus.len() && v[..minus.len()] == minus[..] {
-                v.drain(..minus.len());
-                true
-            } else if v.len() >= minus.len() && v[v.len() - minus.len()..] == minus[..] {
-                v.truncate(v.len() - minus.len());
-                true
-            } else {
-                false
-            }
-        };
-        if strip(&mut prefix) || strip(&mut suffix) {
-            if negative {
-                return None;
-            }
-            negative = true;
-        }
-    }
-    if !prefix.is_empty() && !suffix.is_empty() {
-        return None;
-    }
-    let currency: String = if prefix.is_empty() {
-        suffix.iter().collect()
-    } else {
-        prefix.iter().collect()
-    };
-    // "12abc34": text with further digits is not a currency string.
-    if currency.contains(['(', ')']) || currency.chars().any(|c| digit_value(c).is_some()) {
-        return None;
-    }
-    Some((if negative { -value } else { value }, currency))
+/// What `CurrencyFormatter.parse()` found.
+pub enum CurrencyParse {
+    /// The value and the currency string.
+    Found(f64, String),
+    /// The input has nothing but whitespace (`illegalArgumentError`).
+    Empty,
+    /// No layout matched (`parseError`).
+    NoMatch,
 }
 
-fn clone_settings(s: &NumberSettings) -> NumberSettings {
-    NumberSettings {
-        decimal_separator: s.decimal_separator.clone(),
-        grouping_separator: s.grouping_separator.clone(),
-        digits_type: s.digits_type,
-        fractional_digits: s.fractional_digits,
-        grouping_pattern: s.grouping_pattern.clone(),
-        leading_zero: s.leading_zero,
-        trailing_zeros: s.trailing_zeros,
-        use_grouping: s.use_grouping,
-        negative_symbol: s.negative_symbol.clone(),
-        negative_number_format: s.negative_number_format,
+/// Matches the text on one side of the number against that side of a
+/// currency layout (`¤` currency text, `-` the negative symbol, `(`/`)`
+/// literals, ` ` an optional space). `before` is true for the text in front
+/// of the number. Returns the currency text the `¤` covered.
+fn match_currency_side(
+    text: &[char],
+    pattern: &str,
+    before: bool,
+    minus: &[char],
+) -> Option<String> {
+    let pattern: Vec<char> = pattern.chars().filter(|c| *c != ' ').collect();
+    let mut text = text;
+    let cur_at = pattern.iter().position(|c| *c == '¤');
+    let (outer, inner): (&[char], &[char]) = match cur_at {
+        Some(i) => (&pattern[..i], &pattern[i + 1..]),
+        None => (&pattern[..], &[]),
+    };
+    let lit = |c: char| -> Vec<char> { if c == '-' { minus.to_vec() } else { vec![c] } };
+    // Literals on the outer side of the currency text (string edge).
+    let (edge, near): (&[char], &[char]) = if before { (outer, inner) } else { (inner, outer) };
+    let take_front = |t: &mut &[char], c: char| -> bool {
+        let l = lit(c);
+        if t.len() >= l.len() && t[..l.len()] == l[..] {
+            *t = &t[l.len()..];
+            true
+        } else {
+            false
+        }
+    };
+    let take_back = |t: &mut &[char], c: char| -> bool {
+        let l = lit(c);
+        if t.len() >= l.len() && t[t.len() - l.len()..] == l[..] {
+            *t = &t[..t.len() - l.len()];
+            true
+        } else {
+            false
+        }
+    };
+    if before {
+        for c in edge {
+            if !take_front(&mut text, *c) {
+                return None;
+            }
+        }
+        for c in near.iter().rev() {
+            if !take_back(&mut text, *c) {
+                return None;
+            }
+        }
+    } else {
+        for c in near {
+            if !take_front(&mut text, *c) {
+                return None;
+            }
+        }
+        for c in edge.iter().rev() {
+            if !take_back(&mut text, *c) {
+                return None;
+            }
+        }
     }
+    if cur_at.is_none() {
+        return if text.iter().all(|c| is_space_separator(*c)) && text.len() <= 1 {
+            Some(String::new())
+        } else {
+            None
+        };
+    }
+    // One space next to the number belongs to the layout (Flash 32: "$  5" -> "$ ", "5  €" -> " €").
+    let mut cur: Vec<char> = text.to_vec();
+    if before {
+        if cur.last().is_some_and(|c| is_space_separator(*c)) {
+            cur.pop();
+        }
+    } else if cur.first().is_some_and(|c| is_space_separator(*c)) {
+        cur.remove(0);
+    }
+    let contains_minus = !minus.is_empty() && cur.windows(minus.len()).any(|w| w == minus);
+    if contains_minus || cur.iter().any(|c| matches!(c, '(' | ')') || digit_value(*c).is_some()) {
+        return None;
+    }
+    Some(cur.into_iter().collect())
+}
+
+/// `CurrencyFormatter.parse()`, measured in Flash Player 32: the input is trimmed, the
+/// number (grouping separators anywhere in the integer part, an optional decimal part)
+/// splits it into the text before and after, and that text has to fit the positive or
+/// the negative currency layout exactly — the currency text on the layout's side, the
+/// sign as the layout writes it (`-` = `negativeSymbol`, or parentheses). The currency
+/// string is whatever text stands where the layout's `¤` is.
+pub fn parse_currency(
+    input: &str,
+    settings: &NumberSettings,
+    positive_layout: &str,
+    negative_layout: &str,
+) -> CurrencyParse {
+    let trimmed = input.trim_matches(is_space_separator);
+    if trimmed.is_empty() {
+        return CurrencyParse::Empty;
+    }
+    let chars: Vec<char> = trimmed.chars().collect();
+    let decimal: Vec<char> = settings.decimal_separator.chars().collect();
+    let starts_number = |i: usize| -> bool {
+        digit_value(chars[i]).is_some()
+            || (!decimal.is_empty()
+                && chars.len() > i + decimal.len()
+                && chars[i..i + decimal.len()] == decimal[..]
+                && digit_value(chars[i + decimal.len()]).is_some())
+    };
+    let Some(start) = (0..chars.len()).find(|i| starts_number(*i)) else {
+        return CurrencyParse::NoMatch;
+    };
+    let Some((value, mut end)) = match_digits(&chars, start, settings) else {
+        return CurrencyParse::NoMatch;
+    };
+    // "$5." — a decimal separator with no digits after it still belongs to the number.
+    if !decimal.is_empty()
+        && chars.len() >= end + decimal.len()
+        && chars[end..end + decimal.len()] == decimal[..]
+    {
+        end += decimal.len();
+    }
+    let prefix = &chars[..start];
+    let suffix = &chars[end..];
+    let minus: Vec<char> = settings.negative_symbol.chars().collect();
+    for (layout, negative) in [(positive_layout, false), (negative_layout, true)] {
+        let Some((before, after)) = layout.split_once('n') else {
+            continue;
+        };
+        let lead = match_currency_side(prefix, before, true, &minus);
+        let trail = match_currency_side(suffix, after, false, &minus);
+        if let (Some(lead), Some(trail)) = (lead, trail) {
+            let currency = if before.contains('¤') { lead } else { trail };
+            return CurrencyParse::Found(if negative { -value } else { value }, currency);
+        }
+    }
+    CurrencyParse::NoMatch
 }
