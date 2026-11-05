@@ -373,7 +373,11 @@ fn match_currency_side(
     };
     let lit = |c: char| -> Vec<char> { if c == '-' { minus.to_vec() } else { vec![c] } };
     // Literals on the outer side of the currency text (string edge).
-    let (edge, near): (&[char], &[char]) = if before { (outer, inner) } else { (inner, outer) };
+    let (edge, near): (&[char], &[char]) = if before {
+        (outer, inner)
+    } else {
+        (inner, outer)
+    };
     let take_front = |t: &mut &[char], c: char| -> bool {
         let l = lit(c);
         if t.len() >= l.len() && t[..l.len()] == l[..] {
@@ -432,7 +436,11 @@ fn match_currency_side(
         cur.remove(0);
     }
     let contains_minus = !minus.is_empty() && cur.windows(minus.len()).any(|w| w == minus);
-    if contains_minus || cur.iter().any(|c| matches!(c, '(' | ')') || digit_value(*c).is_some()) {
+    if contains_minus
+        || cur
+            .iter()
+            .any(|c| matches!(c, '(' | ')') || digit_value(*c).is_some())
+    {
         return None;
     }
     Some(cur.into_iter().collect())

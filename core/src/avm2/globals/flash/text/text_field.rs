@@ -1552,7 +1552,13 @@ pub fn get_raw_text<'gc>(
         let text: WString = this
             .text()
             .iter()
-            .map(|c| if c == u16::from(b'\r') { u16::from(b'\n') } else { c })
+            .map(|c| {
+                if c == u16::from(b'\r') {
+                    u16::from(b'\n')
+                } else {
+                    c
+                }
+            })
             .collect();
         return Ok(AvmString::new(activation.gc(), text).into());
     }

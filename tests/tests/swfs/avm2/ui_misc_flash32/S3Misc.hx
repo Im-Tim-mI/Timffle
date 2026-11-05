@@ -21,6 +21,10 @@ class S3Misc {
 		}
 	}
 
+	static function esc(s:String):String {
+		return s == null ? "null" : s.split("\r").join("\\r").split("\n").join("\\n");
+	}
+
 	static function qn(o:Dynamic):String {
 		return o == null ? "null" : untyped __global__["flash.utils.getQualifiedClassName"](o);
 	}
@@ -120,7 +124,7 @@ class S3Misc {
 			});
 		});
 		step("Configuration", function() {
-			Out.line("deviceConfiguration=[" + Configuration.deviceConfiguration + "] testAutomationConfiguration=[" + Configuration.testAutomationConfiguration + "]");
+			Out.line("deviceConfiguration=[" + Configuration.deviceConfiguration + "] testAutomationConfiguration=[" + esc(Configuration.testAutomationConfiguration) + "]");
 			Configuration.deviceConfiguration = "abc";
 			Out.line("deviceConfiguration after set=[" + Configuration.deviceConfiguration + "]");
 			step("deviceConfiguration null", function() {

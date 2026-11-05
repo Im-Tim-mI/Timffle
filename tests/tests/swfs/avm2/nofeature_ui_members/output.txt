@@ -10,6 +10,7 @@ generateActions(null) no error
 deviceConfiguration [null]
 deviceConfiguration set null
 testAutomationConfiguration [Status = 3
+
 ]
 capture defaults -1 raster null null
 capture set screen shot

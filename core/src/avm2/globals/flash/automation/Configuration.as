@@ -2,7 +2,7 @@ package flash.automation {
     // Timffle: `flash.automation` only acts in the automation-enabled Flash Player. The
     // normal Flash Player 32 (measured) has no device configuration -- `deviceConfiguration`
     // is null and setting it has no effect -- and reports its automation status as the
-    // text "Status = 3\n".
+    // text "Status = 3\r\n".
     [API("667")]
     public class Configuration {
         public static function get deviceConfiguration():String {
@@ -13,7 +13,7 @@ package flash.automation {
         }
 
         public static function get testAutomationConfiguration():String {
-            return "Status = 3\n";
+            return "Status = 3\r\n";
         }
     }
 }

@@ -493,7 +493,11 @@ fn collate(options: CollatorOptions, tailoring: Tailoring, s1: &str, s2: &str) -
     }
     if !options.contains(CollatorOptions::IGNORE_DIACRITICS) {
         let marks = |e: &Element| -> Vec<u32> {
-            e.secondary.iter().copied().filter(|m| *m != LIGATURE).collect()
+            e.secondary
+                .iter()
+                .copied()
+                .filter(|m| *m != LIGATURE)
+                .collect()
         };
         let secondary = e1.iter().map(marks).cmp(e2.iter().map(marks));
         if secondary != Ordering::Equal {

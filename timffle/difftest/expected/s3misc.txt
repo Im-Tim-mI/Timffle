@@ -34,8 +34,7 @@ generateActions vector THREW TypeError #1034
 mouse bogus type=bogus
 keyboard bogus type=bogus code=65
 type after set zzz=zzz
-deviceConfiguration=[null] testAutomationConfiguration=[Status = 3
-]
+deviceConfiguration=[null] testAutomationConfiguration=[Status = 3\r\n]
 deviceConfiguration after set=[null]
 deviceConfiguration after null=[null]
 capturePTS=-1 captureSource=raster clipRect=null fileNameBase=null

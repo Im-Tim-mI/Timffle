@@ -135,7 +135,9 @@ fn parse_attributes(mut s: &str) -> Option<(Vec<(String, String)>, bool, &str)> 
 pub fn parse_flash_rich_text(xml: &WStr) -> Result<Vec<RichTextRun>, RichTextError> {
     let xml = xml.to_utf8_lossy();
     let s = xml.trim();
-    let s = s.strip_prefix("<flashrichtext").ok_or(RichTextError::Parse)?;
+    let s = s
+        .strip_prefix("<flashrichtext")
+        .ok_or(RichTextError::Parse)?;
     let (_, self_closing, mut s) = parse_attributes(s).ok_or(RichTextError::Parse)?;
     if self_closing {
         return if s.trim().is_empty() {
@@ -164,10 +166,7 @@ pub fn parse_flash_rich_text(xml: &WStr) -> Result<Vec<RichTextRun>, RichTextErr
         let close = rest.find("</textformat>").ok_or(RichTextError::Parse)?;
         let content = unescape(&rest[..close]);
         s = &rest[close + "</textformat>".len()..];
-        match content
-            .strip_prefix('(')
-            .and_then(|c| c.strip_suffix(')'))
-        {
+        match content.strip_prefix('(').and_then(|c| c.strip_suffix(')')) {
             Some(text) => runs.push(RichTextRun {
                 text: WString::from_utf8(&text.replace("\r\n", "\r").replace('\n', "\r")),
                 attributes,
