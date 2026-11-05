@@ -19,8 +19,8 @@ import flash.utils.getQualifiedClassName;
 // (sync / async start, progress, cancel, complete event, error cases), Sprite.startTouchDrag /
 // stopTouchDrag on a machine without a touch screen and TransformGestureEvent.GESTURE_DIRECTIONAL_TAP.
 // Every expected value comes from the standalone Flash Player 32.0.0.465
-// (timffle/difftest/src/D58Misc.hx with drive_drag.py, D59ShaderQueue.hx), except
-// GESTURE_DIRECTIONAL_TAP (AIR-only constant, undefined in the Flash Player projector).
+// (timffle/difftest/src/D58Misc.hx with drive_drag.py, D59ShaderQueue.hx); GESTURE_DIRECTIONAL_TAP
+// is the AIR-only constant, undefined in the Flash Player projector.
 public class Test extends Sprite {
     private var frame:int = 0;
     private var mcA:MovieClip;

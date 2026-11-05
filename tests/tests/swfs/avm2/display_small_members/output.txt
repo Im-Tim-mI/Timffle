@@ -1,4 +1,4 @@
-GESTURE_DIRECTIONAL_TAP=gestureDirectionalTap GESTURE_PAN=gesturePan
+GESTURE_DIRECTIONAL_TAP=undefined GESTURE_PAN=gesturePan
 needsSoftKeyboard default=false
 needsSoftKeyboard after set=true
 focus before=null requestSoftKeyboard()=false focus after=flash.display::Sprite same=true
