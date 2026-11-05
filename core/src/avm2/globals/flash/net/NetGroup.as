@@ -3,9 +3,10 @@ package flash.net {
 
     // Timffle: RTMFP peer-to-peer groups. This player has no RTMFP client, so a
     // NetConnection is never connected with protocol "rtmfp" and the constructor
-    // always ends in the ArgumentError the reference gives for a NetConnection that
-    // is not (RTMFP-)connected (#2126, the code Flash Player uses for every
-    // "NetConnection object must be connected" check). The remaining members are
+    // always throws, with the codes Flash Player 32 uses (measured,
+    // tests/tests/swfs/avm2/netstream_local_events): `ArgumentError #2126` for a
+    // NetConnection that is not connected (also after `NetConnection.Connect.Failed`)
+    // and `#2129` for a connected one that is not RTMFP. The remaining members are
     // declared with the values of a group that is not connected: no neighbours, no
     // coverage, nothing routed; they are unreachable without an instance.
     [API("667")]
@@ -20,8 +21,13 @@ package flash.net {
             if (groupspec == null) {
                 throw new TypeError("Error #2007: Parameter groupspec must be non-null.", 2007);
             }
-            if (!connection.connected || connection.protocol != "rtmfp") {
-                throw new ArgumentError("Error #2126: NetConnection object must be connected.", 2126);
+            if (!connection.connected) {
+                Error.throwError(ArgumentError, 2126);
+            }
+            // Flash Player 32 answers a connected NetConnection that is not RTMFP
+            // (`connect(null)`) with #2129, whatever the groupspec.
+            if (connection.protocol != "rtmfp") {
+                Error.throwError(ArgumentError, 2129, connection.uri);
             }
             if (groupspec.indexOf("G:") != 0) {
                 throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
@@ -33,7 +39,7 @@ package flash.net {
         }
 
         public function get info():NetGroupInfo {
-            return new NetGroupInfo();
+            return new NetGroupInfo(0, 0, 0, 0, 0, 0, 0, 0);
         }
 
         public function get localCoverageFrom():String {

@@ -235,8 +235,12 @@ package {
                 trace("generated: frames reached the decoder: " + (ns2.decodedFrames + ns2.info.droppedFrames) + ", bytesLoaded == bytesTotal: " + (ns2.bytesLoaded == ns2.bytesTotal) + ", audioCodec " + ns2.audioCodec + ", videoCodec " + ns2.videoCodec);
                 var options:NetStreamPlayOptions = new NetStreamPlayOptions();
                 options.transition = NetStreamPlayTransitions.STOP;
-                ns2.play2(options);
-                trace("play2(stop): time " + ns2.time);
+                try {
+                    ns2.play2(options);
+                    trace("play2(stop) without streamName did not throw");
+                } catch (e:Error) {
+                    trace("play2(stop) without streamName: " + getQualifiedClassName(e) + " #" + e.errorID);
+                }
             }
         }
 
