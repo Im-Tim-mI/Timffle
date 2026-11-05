@@ -1,3 +1,9 @@
+# Timffle: the children loaded in frame 0 arrive after frame 1, as in Flash Player 32,
+# but Ruffle runs timers before a frame with the time the frame ends at, so the 50 ms
+# `setTimeout` that creates the grandchildren fires before they arrive and their clips
+# are replaced by the loaded movie (output.ruffle.txt). Flash Player runs timers during
+# the frame, after `enterFrame`.
+known_failure = true
 num_frames = 10
 
 [[compilers]]

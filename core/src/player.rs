@@ -17,7 +17,7 @@ use crate::backend::{
     audio::{AudioBackend, AudioManager},
     locale::LocaleBackend,
     log::LogBackend,
-    navigator::{NavigatorBackend, Request},
+    navigator::{NavigationMethod, NavigatorBackend, Request},
     storage::StorageBackend,
     ui::{MouseCursor, UiBackend},
 };
@@ -63,6 +63,7 @@ use enumset::EnumSet;
 use fnv::FnvHashMap;
 use gc_arena::lock::GcRefLock;
 use gc_arena::{Collect, DynamicRootSet, Mutation, Rootable};
+use indexmap::IndexMap;
 use ruffle_common::duration::FloatDuration;
 use ruffle_macros::istr;
 use ruffle_render::backend::{RenderBackend, ViewportDimensions, null::NullRenderer};
@@ -349,7 +350,7 @@ pub struct Player {
 
     renderer: Box<dyn RenderBackend>,
     audio: Box<dyn AudioBackend>,
-    navigator: Box<dyn NavigatorBackend>,
+    navigator: GatedNavigator,
     storage: Box<dyn StorageBackend>,
     log: Box<dyn LogBackend>,
     ui: Box<dyn UiBackend>,
@@ -418,6 +419,10 @@ pub struct Player {
     /// contexts to other parts of the player. It can be used to ensure the
     /// player lives across `await` calls in async code.
     self_reference: Weak<Mutex<Self>>,
+
+    /// Timffle: holds back the results of downloads until the frame Flash Player
+    /// delivers them in (see `DeliveryGate`).
+    delivery_gate: Arc<Mutex<DeliveryGate>>,
 
     /// The current frame of the main timeline, if available.
     /// The first frame is frame 1.
@@ -2147,6 +2152,8 @@ impl Player {
             return;
         }
 
+        self.delivery_gate.lock().unwrap().in_frame = true;
+        RUNNING_FRAME.set(true);
         self.update(|context| {
             // TODO: Is this order correct?
             run_all_phases_avm2(context);
@@ -2161,7 +2168,9 @@ impl Player {
             }
         });
 
+        RUNNING_FRAME.set(false);
         self.needs_render = true;
+        DeliveryGate::frame_ran(&self.delivery_gate);
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2246,11 +2255,11 @@ impl Player {
     }
 
     pub fn navigator(&self) -> &dyn NavigatorBackend {
-        &*self.navigator
+        &*self.navigator.inner
     }
 
     pub fn navigator_mut(&mut self) -> &mut dyn NavigatorBackend {
-        &mut *self.navigator
+        &mut *self.navigator.inner
     }
 
     /// Timffle: how many pictures `render` has drawn.
@@ -2439,7 +2448,7 @@ impl Player {
                 rng: &mut this.rng,
                 renderer: this.renderer.deref_mut(),
                 audio: this.audio.deref_mut(),
-                navigator: this.navigator.deref_mut(),
+                navigator: &mut this.navigator,
                 ui: this.ui.deref_mut(),
                 action_queue,
                 gc_context,
@@ -2803,10 +2812,41 @@ impl Player {
         });
     }
 
+    /// Timffle: for a load that reports something before its response arrives
+    /// (`MovieLoader`'s start step): a future to await first, when the request may
+    /// not be answered yet (see `DeliveryGate`). Call it from the request's future.
+    pub fn delivery_hold(&self) -> Option<impl std::future::Future<Output = ()> + use<>> {
+        DeliveryGate::hold(&self.delivery_gate)
+    }
+
     pub fn fetch(
+        &self,
+        request: Request,
+        fetch_reason: FetchReason,
+    ) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
+        self.fetch_with_hold(
+            request,
+            fetch_reason,
+            DeliveryGate::hold(&self.delivery_gate),
+        )
+    }
+
+    /// Timffle: `fetch` for a progressive `NetStream.play()`, whose data is not
+    /// held back (see `DeliveryGate`): in Flash Player 32 a stream played in the
+    /// root movie's constructor reports `NetStream.Play.Start` right after frame 0.
+    pub fn fetch_stream(
+        &self,
+        request: Request,
+        fetch_reason: FetchReason,
+    ) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
+        self.fetch_with_hold(request, fetch_reason, None)
+    }
+
+    fn fetch_with_hold(
         &self,
         mut request: Request,
         fetch_reason: FetchReason,
+        hold: Option<DeliveryWait>,
     ) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
         match self.compatibility_rules.block_or_rewrite_swf_url(
             request.url().into(),
@@ -2819,9 +2859,12 @@ impl Player {
         }
 
         let self_reference = self.self_reference.clone();
-        let fetch = self.navigator.fetch(request);
+        let fetch = self.navigator.inner.fetch(request);
         Box::pin(async move {
             let response = fetch.await;
+            if let Some(hold) = hold {
+                hold.await;
+            }
 
             let Ok(mut response) = response else {
                 return response;
@@ -2852,6 +2895,175 @@ impl Player {
 impl Drop for Player {
     fn drop(&mut self) {
         self.flush_shared_objects();
+    }
+}
+
+/// Timffle: when Flash Player 32 delivers the result of a download (`open`,
+/// `progress`, `complete`, `ioError`, AVM1 `onData`/`onLoadStart`…): never in the
+/// network step right after the frame that is running when the request is made,
+/// but after the `exitFrame` of
+/// * that same frame, for a request made during a frame (constructor, frame script,
+///   `enterFrame`/`exitFrame` listeners, timers);
+/// * the next frame, for a request made between frames (in the handler of another
+///   download's `complete`, a socket's data…);
+/// * frame 2, for a request made during the root movie's first frame.
+///
+/// Measured from a file and over HTTP (HTTP answers arrive later, never earlier)
+/// with `Loader.load`, `URLLoader`, `URLStream`, `Sound.load`, a `URLLoader` and a
+/// `Loader` started from a `URLLoader`'s `complete`, and AVM1 `LoadVars`, `XML`,
+/// `MovieClipLoader` and `loadMovie`; `loadBytes` has no download and is not held.
+/// The request's future records the frame count it may be answered at when it is
+/// spawned (`GatedNavigator::spawn_future`, `DELIVERY_TARGET`); the download itself
+/// starts at once, only its result waits. Ruffle answered as soon as the response
+/// was there (in the test harness: in the network step right after the request).
+#[derive(Default)]
+struct DeliveryGate {
+    frames_run: u32,
+    in_frame: bool,
+    wakers: Vec<std::task::Waker>,
+}
+
+/// Timffle: whether a player on this thread is running a frame (`Player::run_frame`)
+/// rather than handling an event between frames.
+pub(crate) fn is_running_frame() -> bool {
+    RUNNING_FRAME.get()
+}
+
+thread_local! {
+    static RUNNING_FRAME: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+
+    /// Timffle: the `DeliveryGate::frames_run` value the future being polled may be
+    /// answered at (set by `DeliveryScope`).
+    static DELIVERY_TARGET: std::cell::Cell<Option<u32>> = const { std::cell::Cell::new(None) };
+}
+
+impl DeliveryGate {
+    /// The frame count a request made now may be answered at; `None` before the
+    /// movie runs (the root movie's own download).
+    fn target(&self) -> Option<u32> {
+        if self.in_frame {
+            Some((self.frames_run + 1).max(2))
+        } else if self.frames_run == 0 {
+            None
+        } else {
+            Some(self.frames_run + 1)
+        }
+    }
+
+    fn hold(gate: &Arc<Mutex<Self>>) -> Option<DeliveryWait> {
+        let target = DELIVERY_TARGET.get()?;
+        (gate.lock().unwrap().frames_run < target).then(|| DeliveryWait(gate.clone(), target))
+    }
+
+    fn frame_ran(gate: &Arc<Mutex<Self>>) {
+        let mut gate = gate.lock().unwrap();
+        gate.in_frame = false;
+        gate.frames_run = gate.frames_run.saturating_add(1);
+        for waker in std::mem::take(&mut gate.wakers) {
+            waker.wake();
+        }
+    }
+}
+
+/// Timffle: resolves once `DeliveryGate::frames_run` reaches the target.
+pub struct DeliveryWait(Arc<Mutex<DeliveryGate>>, u32);
+
+impl std::future::Future for DeliveryWait {
+    type Output = ();
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<()> {
+        let mut gate = self.0.lock().unwrap();
+        if gate.frames_run >= self.1 {
+            std::task::Poll::Ready(())
+        } else {
+            gate.wakers.push(cx.waker().clone());
+            std::task::Poll::Pending
+        }
+    }
+}
+
+/// Timffle: polls a spawned future with `DELIVERY_TARGET` set to the target taken
+/// when it was spawned.
+struct DeliveryScope {
+    target: Option<u32>,
+    inner: OwnedFuture<(), crate::loader::Error>,
+}
+
+impl std::future::Future for DeliveryScope {
+    type Output = Result<(), crate::loader::Error>;
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let previous = DELIVERY_TARGET.replace(self.target);
+        let result = self.inner.as_mut().poll(cx);
+        DELIVERY_TARGET.set(previous);
+        result
+    }
+}
+
+/// Timffle: the player's navigator; spawned futures remember when they were
+/// spawned (see `DeliveryGate`), everything else goes to the backend.
+struct GatedNavigator {
+    inner: Box<dyn NavigatorBackend>,
+    gate: Arc<Mutex<DeliveryGate>>,
+}
+
+impl NavigatorBackend for GatedNavigator {
+    fn navigate_to_url(
+        &self,
+        url: &str,
+        target: &str,
+        vars_method: Option<(NavigationMethod, IndexMap<String, String>)>,
+    ) {
+        self.inner.navigate_to_url(url, target, vars_method)
+    }
+
+    fn navigate_to_url_normalized(
+        &self,
+        url: &str,
+        target: &str,
+        vars_method: Option<(NavigationMethod, IndexMap<String, String>)>,
+    ) {
+        self.inner
+            .navigate_to_url_normalized(url, target, vars_method)
+    }
+
+    fn fetch(&self, request: Request) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
+        self.inner.fetch(request)
+    }
+
+    fn resolve_url(&self, url: &str) -> Result<url::Url, url::ParseError> {
+        self.inner.resolve_url(url)
+    }
+
+    fn spawn_future(&mut self, future: OwnedFuture<(), crate::loader::Error>) {
+        let target = self.gate.lock().unwrap().target();
+        self.inner.spawn_future(Box::pin(DeliveryScope {
+            target,
+            inner: future,
+        }))
+    }
+
+    fn pre_process_url(&self, url: url::Url) -> url::Url {
+        self.inner.pre_process_url(url)
+    }
+
+    fn connect_socket(
+        &mut self,
+        host: String,
+        port: u16,
+        timeout: Duration,
+        handle: crate::socket::SocketHandle,
+        receiver: async_channel::Receiver<Vec<u8>>,
+        sender: Sender<crate::socket::SocketAction>,
+    ) {
+        self.inner
+            .connect_socket(host, port, timeout, handle, receiver, sender)
     }
 }
 
@@ -3273,6 +3485,7 @@ impl PlayerBuilder {
         let navigator = self
             .navigator
             .unwrap_or_else(|| Box::new(navigator::NullNavigatorBackend::new()));
+        let delivery_gate: Arc<Mutex<DeliveryGate>> = Default::default();
         let renderer = self.renderer.unwrap_or_else(|| {
             Box::new(NullRenderer::new(ViewportDimensions {
                 width: self.viewport_width,
@@ -3304,7 +3517,10 @@ impl PlayerBuilder {
                 // Backends
                 audio,
                 log,
-                navigator,
+                navigator: GatedNavigator {
+                    inner: navigator,
+                    gate: delivery_gate.clone(),
+                },
                 renderer,
                 storage,
                 ui,
@@ -3354,6 +3570,7 @@ impl PlayerBuilder {
                 needs_render: true,
                 full_gc_requested: false,
                 self_reference: self_ref.clone(),
+                delivery_gate,
                 load_behavior: self.load_behavior,
                 spoofed_url: self.spoofed_url.clone(),
                 compatibility_rules: self.compatibility_rules.clone(),

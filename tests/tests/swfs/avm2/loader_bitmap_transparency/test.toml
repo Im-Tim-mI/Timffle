@@ -1,4 +1,4 @@
-num_ticks = 2
+num_ticks = 4
 
 [[compilers]]
 type = "Asc"
