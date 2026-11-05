@@ -314,6 +314,7 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | changed | `core/src/external.rs` |
 | changed | `core/src/font/font_renderer.rs` |
 | changed | `core/src/frame_lifecycle.rs` |
+| added by Timffle | `core/src/html/rich_text.rs` |
 | changed | `core/src/html/test.rs` |
 | changed | `core/src/html/text_format.rs` |
 | changed | `core/src/input.rs` |
