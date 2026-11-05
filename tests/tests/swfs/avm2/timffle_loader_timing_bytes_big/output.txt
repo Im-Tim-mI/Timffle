@@ -1,0 +1,27 @@
+event progress(all bytes) in frame D+0 content=null numChildren=0 loaded=all
+after load content=null numChildren=0 loaded=all
+frameConstructed D+0 content=null numChildren=0 loaded=all
+exitFrame D+0 content=null numChildren=0 loaded=all
+enterFrame D+1 content=null numChildren=0 loaded=all
+  child constructor parent=null stage=null pad=300000 (frame D+1)
+  child added target=self parent=null stage=null (frame D+1)
+  child added target=self parent=set stage=set (frame D+1)
+  child addedToStage parent=set stage=set (frame D+1)
+frameConstructed D+1 content=set numChildren=1 loaded=all
+  child frameConstructed #1 parent=set stage=set (frame D+1)
+  child frameScript1 #1 parent=set stage=set (frame D+1)
+exitFrame D+1 content=set numChildren=1 loaded=all
+  child exitFrame #1 parent=set stage=set (frame D+1)
+event init in frame D+1 content=set numChildren=1 loaded=all
+event complete in frame D+1 content=set numChildren=1 loaded=all
+enterFrame D+2 content=set numChildren=1 loaded=all
+  child enterFrame #1 parent=set stage=set (frame D+2)
+frameConstructed D+2 content=set numChildren=1 loaded=all
+  child frameConstructed #2 parent=set stage=set (frame D+2)
+exitFrame D+2 content=set numChildren=1 loaded=all
+  child exitFrame #2 parent=set stage=set (frame D+2)
+enterFrame D+3 content=set numChildren=1 loaded=all
+  child enterFrame #2 parent=set stage=set (frame D+3)
+frameConstructed D+3 content=set numChildren=1 loaded=all
+exitFrame D+3 content=set numChildren=1 loaded=all
+progress events: >=2

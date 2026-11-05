@@ -16,7 +16,6 @@ use crate::avm2::{
     Activation as Avm2Activation, Avm2, BitmapDataObject, Domain as Avm2Domain,
     Object as Avm2Object, Value as Avm2Value,
 };
-use crate::avm2_stub_method_context;
 use crate::backend::navigator::{
     ErrorResponse, FetchReason, OwnedFuture, Request, SuccessResponse,
 };
@@ -31,6 +30,7 @@ use crate::display_object::{
     TInteractiveObject,
 };
 use crate::events::ClipEvent;
+use crate::frame_lifecycle::FramePhase;
 use crate::limits::ExecutionLimit;
 use crate::player::{Player, PostFrameCallback};
 use crate::streams::{NetStream, NetStreamHandle};
@@ -499,11 +499,7 @@ impl<'gc> LoadManager<'gc> {
     /// Process tags on all loaders in the Parsing phase.
     ///
     /// Returns true if *all* loaders finished preloading.
-    pub fn preload_tick(
-        context: &mut UpdateContext<'gc>,
-        limit: &mut ExecutionLimit,
-        construct_parsed: bool,
-    ) -> bool {
+    pub fn preload_tick(context: &mut UpdateContext<'gc>, limit: &mut ExecutionLimit) -> bool {
         let mut did_finish = true;
         let handles: Vec<_> = context.load_manager.0.iter().map(|(h, _)| h).collect();
 
@@ -513,54 +509,67 @@ impl<'gc> LoadManager<'gc> {
                 _ => None,
             };
 
-            match status {
-                Some(LoaderStatus::Parsing) => {
-                    match MovieLoader::preload_tick(handle, context, limit, 0, false, true) {
-                        Ok(f) => did_finish = did_finish && f,
-                        // Cancelled by a `progress` listener (`Loader.close()`, or another `load()`).
-                        Err(Error::Cancelled) => {}
-                        Err(e) => {
-                            tracing::error!("Error encountered while preloading movie: {}", e)
-                        }
+            // Timffle: a movie that finished parsing (`LoaderStatus::Parsed`) waits for
+            // `construct_parsed`, which the AVM2 frame loop calls after the `enterFrame`
+            // broadcast.
+            if let Some(LoaderStatus::Parsing) = status {
+                match MovieLoader::preload_tick(handle, context, limit, 0, false) {
+                    Ok(f) => did_finish = did_finish && f,
+                    // Cancelled by a `progress` listener (`Loader.close()`, or another `load()`).
+                    Err(Error::Cancelled) => {}
+                    Err(e) => {
+                        tracing::error!("Error encountered while preloading movie: {}", e)
                     }
                 }
-                // Timffle: a movie that finished parsing between frames (or `loadBytes`
-                // content) is constructed now, at the start of the frame: Flash Player
-                // constructs loaded content in the next frame after its bytes arrived, runs
-                // its first frame and fires `init`/`complete` at the end of that same frame,
-                // so nothing the constructor started (a URLLoader, a timer, a socket reply)
-                // can complete before the Loader's `complete`. Ruffle constructed the
-                // content in the download callback, between frames; 摩爾莊園's TimesArkPanel
-                // then saw its XML (from the browser cache) before `init(data)` had given it
-                // the year, and showed an empty bookshelf drawer.
-                Some(LoaderStatus::Parsed) if construct_parsed => {
-                    let (target_clip, http_status, redirected) =
-                        match context.load_manager.get_loader(handle) {
-                            Some(MovieLoader {
-                                target_clip,
-                                http_status,
-                                redirected,
-                                ..
-                            }) => (*target_clip, *http_status, *redirected),
-                            None => continue,
-                        };
-                    match MovieLoader::movie_loader_complete(
-                        handle,
-                        context,
-                        Some(target_clip),
-                        http_status,
-                        redirected,
-                    ) {
-                        Ok(()) => {}
-                        Err(Error::Cancelled) => {}
-                        Err(e) => tracing::error!("Error finishing loading of movie: {}", e),
-                    }
-                }
-                _ => {}
             }
         }
 
         did_finish
+    }
+
+    /// Timffle: constructs the content of every loader whose movie finished parsing
+    /// (`LoaderStatus::Parsed`), so the frame-1 constructor, `added`/`addedToStage`,
+    /// the content's frame-1 script and `init`/`httpStatus`/`complete` all land in the
+    /// frame that is starting. The AVM2 frame loop calls this right after the
+    /// `enterFrame` broadcast and before the construct phase, which is where Flash
+    /// Player constructs loaded content: an `enterFrame` listener still sees
+    /// `content == null` in the frame the content appears, `frameConstructed` sees it,
+    /// the content's frame-1 script runs with the frame scripts of that frame, and
+    /// `init`/`httpStatus`/`complete` follow `exitFrame` (real Flash 32:
+    /// `timffle/difftest/expected/lt*.txt`, the same SWFs as the
+    /// `tests/tests/swfs/avm2/timffle_loader_timing_*` tests; also `loader_events_2` and
+    /// `from_shumway/as3-loader/events/loader-events`). `load()` and `loadBytes()` behave
+    /// alike; a download that spans frames constructs in the frame after its last byte.
+    /// Ruffle constructed the content in the download callback, between frames, and
+    /// (26344) in the preload step before `enterFrame`.
+    pub fn construct_parsed(context: &mut UpdateContext<'gc>) {
+        let handles: Vec<_> = context.load_manager.0.iter().map(|(h, _)| h).collect();
+        for handle in handles {
+            let (target_clip, http_status, redirected) =
+                match context.load_manager.get_loader(handle) {
+                    Some(MovieLoader {
+                        loader_status: LoaderStatus::Parsed,
+                        target_clip,
+                        http_status,
+                        redirected,
+                        ..
+                    }) => (*target_clip, *http_status, *redirected),
+                    _ => continue,
+                };
+            match MovieLoader::movie_loader_complete(
+                handle,
+                context,
+                Some(target_clip),
+                http_status,
+                redirected,
+            ) {
+                Ok(()) => {}
+                // Cancelled by the content's constructor or an `added` listener
+                // (`Loader.close()`, or another `load()`).
+                Err(Error::Cancelled) => {}
+                Err(e) => tracing::error!("Error finishing loading of movie: {}", e),
+            }
+        }
     }
 
     pub fn run_exit_frame(context: &mut UpdateContext<'gc>) {
@@ -619,8 +628,9 @@ pub enum LoaderStatus {
     Pending,
     /// The movie is currently being parsed (e.g. mc.preload)
     Parsing,
-    /// Timffle: the movie is parsed; its content is constructed when the next
-    /// frame starts (`LoadManager::preload_tick`), as Flash Player does.
+    /// Timffle: the movie is parsed; its content is constructed in the next frame,
+    /// after the `enterFrame` broadcast (`LoadManager::construct_parsed`), as Flash
+    /// Player does.
     Parsed,
     /// The movie loaded successfully.
     Succeeded,
@@ -740,7 +750,6 @@ impl<'gc> MovieLoader<'gc> {
         limit: &mut ExecutionLimit,
         status: u16,
         redirected: bool,
-        complete_now: bool,
     ) -> Result<bool, Error> {
         let (mc, is_avm2) = match context.load_manager.get_loader(handle) {
             Some(Self {
@@ -789,7 +798,7 @@ impl<'gc> MovieLoader<'gc> {
         if did_finish {
             // AVM1 `loadMovie`/`MovieClipLoader` keep Ruffle's timing (content constructed
             // as soon as it is parsed): its tests pin that order and the fix is for AVM2.
-            if complete_now || !is_avm2 {
+            if !is_avm2 {
                 MovieLoader::movie_loader_complete(
                     handle,
                     context,
@@ -798,8 +807,8 @@ impl<'gc> MovieLoader<'gc> {
                     redirected,
                 )?;
             } else {
-                // Timffle: parsed between frames; the content is constructed when the
-                // next frame starts (see `LoadManager::preload_tick`).
+                // Timffle: parsed between frames; the content is constructed in the next
+                // frame after `enterFrame` (see `LoadManager::construct_parsed`).
                 match context.load_manager.get_loader_mut(handle) {
                     Some(loader) => {
                         loader.loader_status = LoaderStatus::Parsed;
@@ -2266,8 +2275,8 @@ impl<'gc> MovieLoader<'gc> {
                             mc.compressed_loaded_bytes() as usize,
                             mc.compressed_total_bytes() as usize,
                         )?;
-                        // Timffle: constructed when the next frame starts, like a
-                        // downloaded movie (see `LoadManager::preload_tick`); Ruffle used
+                        // Timffle: constructed in the next frame after `enterFrame`, like a
+                        // downloaded movie (see `LoadManager::construct_parsed`); Ruffle used
                         // a post-frame callback, which left a tick boundary between the
                         // constructor and `init`/`complete`.
                         if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
@@ -2286,7 +2295,6 @@ impl<'gc> MovieLoader<'gc> {
                         &mut ExecutionLimit::with_max_ops_and_time(10000, Duration::from_millis(1)),
                         status,
                         redirected,
-                        false,
                     )?;
                 };
 
@@ -2552,7 +2560,12 @@ impl<'gc> MovieLoader<'gc> {
             // and consequently are observed to have their currentFrame lag one
             // frame behind objects placed by the timeline (even if they were
             // both placed in the same frame to begin with).
-            mc.base().set_skip_next_enter_frame(true);
+            // Timffle: content constructed by `LoadManager::construct_parsed` is already
+            // past this frame's enter phase, so the next enterFrame is its first one and
+            // moves it to frame 2 (`loader_loadbytes_events`, real Flash).
+            if *uc.frame_phase != FramePhase::Construct {
+                mc.base().set_skip_next_enter_frame(true);
+            }
 
             let movie = movie.unwrap();
             let flashvars = movie.parameters();
@@ -2595,16 +2608,9 @@ impl<'gc> MovieLoader<'gc> {
                 .is_some_and(|m| m.avm2_constructor_failed());
 
             if !constructor_errored {
-                // This isn't completely correct - the 'large_preload' test observes
-                // the child being set after an 'enterFrame' call. However, our
-                // current logic should hopefully be good enough.
-                avm2_stub_method_context!(
-                    uc,
-                    "flash.display.Loader",
-                    "load",
-                    "addChild at the correct time"
-                );
-
+                // Timffle: this runs after the `enterFrame` broadcast of the frame
+                // following the download (`LoadManager::construct_parsed`), so `content`
+                // and the Loader's child appear exactly when they do in Flash Player.
                 loader_info.set_expose_content();
 
                 // Note that we do *not* use the 'addChild' method here:

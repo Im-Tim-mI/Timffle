@@ -23,7 +23,7 @@
 
 **想法：** 把一個小的 ActionScript 3 測試程式（用 Haxe 編成 SWF）分別在真 Flash Player 32 和在 Ruffle 裡執行，兩邊都把「觀察到的行為」一行一行回報給本機的測試伺服器，再逐行比對。真 Flash 的輸出存成**黃金答案**（`difftest/expected/<測試>.txt`）；之後只要 Ruffle 的輸出與黃金答案相同，就代表行為與 Flash 一致。以真實播放器的輸出當標準，比對規格書或猜測可靠得多——本專案的 3D、`Matrix3D`、命中測試規則都是這樣量出來的（見 [`FLASH-NOTES.md`](FLASH-NOTES.md)）。
 
-目前收錄 30 個黃金答案：`t*`（LocalConnection、URLStream 基本行為）、`r*`（回歸：循環參照、`client` 為原始型別、`URLStream` 狀態與 API、AMF3 循環、`Loader`／`URLLoader` 取消與事件時序）、`d13`～`d40`（3D、`Matrix3D`、`Utils3D`、`BitmapData.draw`）。需要遊戲檔案才能跑的測試**不在** repo 內。
+目前收錄 36 個黃金答案：`lt*`（`Loader` 內容的建構時機：哪一個影格、哪一個階段建構、何時發 `init`／`complete`；SWF 由 `src/loadtime/build.sh` 產生，需要 Java（asc.jar）），`t*`（LocalConnection、URLStream 基本行為）、`r*`（回歸：循環參照、`client` 為原始型別、`URLStream` 狀態與 API、AMF3 循環、`Loader`／`URLLoader` 取消與事件時序）、`d13`～`d40`（3D、`Matrix3D`、`Utils3D`、`BitmapData.draw`）。需要遊戲檔案才能跑的測試**不在** repo 內。
 
 ### 環境變數
 

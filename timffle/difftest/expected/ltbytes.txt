@@ -1,0 +1,33 @@
+# test=ltbytes
+before load content=null numChildren=0 loaded=none
+~ progress 0/1764 in frame 0
+event progress(first) in frame 0 content=null numChildren=0 loaded=0
+~ progress 1764/1764 in frame 0
+event progress(all bytes) in frame 0 content=null numChildren=0 loaded=all
+after load content=null numChildren=0 loaded=all
+frameConstructed 0 content=null numChildren=0 loaded=all
+exitFrame 0 content=null numChildren=0 loaded=all
+enterFrame 1 content=null numChildren=0 loaded=all
+  child constructor parent=null stage=null pad=0 (frame 1)
+  child added target=self parent=null stage=null (frame 1)
+  child added target=self parent=set stage=set (frame 1)
+  child addedToStage parent=set stage=set (frame 1)
+frameConstructed 1 content=set numChildren=1 loaded=all
+  child frameConstructed #1 parent=set stage=set (frame 1)
+  child frameScript1 #1 parent=set stage=set (frame 1)
+exitFrame 1 content=set numChildren=1 loaded=all
+  child exitFrame #1 parent=set stage=set (frame 1)
+event init in frame 1 content=set numChildren=1 loaded=all
+event complete in frame 1 content=set numChildren=1 loaded=all
+enterFrame 2 content=set numChildren=1 loaded=all
+  child enterFrame #1 parent=set stage=set (frame 2)
+frameConstructed 2 content=set numChildren=1 loaded=all
+  child frameConstructed #2 parent=set stage=set (frame 2)
+exitFrame 2 content=set numChildren=1 loaded=all
+  child exitFrame #2 parent=set stage=set (frame 2)
+enterFrame 3 content=set numChildren=1 loaded=all
+  child enterFrame #2 parent=set stage=set (frame 3)
+frameConstructed 3 content=set numChildren=1 loaded=all
+exitFrame 3 content=set numChildren=1 loaded=all
+progress events: >=2
+# done

@@ -2091,15 +2091,6 @@ impl Player {
     /// simulate a particular load condition or stress chunked loading may use
     /// this in lieu of an unlimited execution limit.
     pub fn preload(&mut self, limit: &mut ExecutionLimit) -> bool {
-        self.preload_inner(limit, false)
-    }
-
-    /// Timffle: `construct_parsed` lets movies whose download finished between
-    /// frames (`LoaderStatus::Parsed`) construct their content; only the frame
-    /// loop (`run_frame`) passes `true`, so loaded content appears at the start
-    /// of a frame, as in Flash Player, and never from a between-frames preload
-    /// call (the test runner's, for one).
-    fn preload_inner(&mut self, limit: &mut ExecutionLimit, construct_parsed: bool) -> bool {
         self.mutate_with_update_context(|context| {
             let mut did_finish = true;
 
@@ -2126,7 +2117,7 @@ impl Player {
             }
 
             if did_finish {
-                did_finish = LoadManager::preload_tick(context, limit, construct_parsed);
+                did_finish = LoadManager::preload_tick(context, limit);
             }
 
             Self::run_actions(context);
@@ -2150,7 +2141,7 @@ impl Player {
             ),
             LoadBehavior::Blocking => (ExecutionLimit::none(), false),
         };
-        let preload_finished = self.preload_inner(&mut execution_limit, true);
+        let preload_finished = self.preload(&mut execution_limit);
 
         if !preload_finished && !may_execute_while_streaming {
             return;
