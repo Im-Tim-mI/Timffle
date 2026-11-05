@@ -734,7 +734,7 @@
     "static unregisterCursor()"
    ],
    "status": "partial",
-   "note": "supportsCursor done; registerCursor/unregisterCursor/supportsNativeCursor need a UiBackend custom-cursor method (web CSS cursor url, winit CustomCursor) — not done"
+   "note": "supportsCursor done; registerCursor/unregisterCursor/supportsNativeCursor need a UiBackend custom-cursor method (web CSS cursor url, winit CustomCursor) — not done | batch leftovers: registerCursor/unregisterCursor/supportsNativeCursor not started (time box); design in pending/leftovers.md (UiBackend set_custom_cursor + supports_native_cursor, web CSS cursor url(), desktop winit CustomCursor)."
   },
   {
    "class": "flash.ui.MouseCursorData",
@@ -774,7 +774,7 @@
     "writeObject()"
    ],
    "status": "partial",
-   "note": "atomics + shareable done; writeObject repeated-object stub remains for AMF0 (flash-lso amf0 writer writes no references)"
+   "note": "atomics + shareable done; writeObject repeated-object stub remains for AMF0 (flash-lso amf0 writer writes no references) | merger: the AMF0 object-reference commit (c803d3d2 on the agent branch) made shared_object_self_ref_avm1 and localconnection_cyclic_args fail (they pass without it) and was dropped; writeObject AMF0 references stay stubbed — redo with the vendored decoder reference-table fix."
   },
   {
    "class": "flash.xml.XMLDocument",
@@ -1814,7 +1814,8 @@
     "loadAuthorizedFeaturesFromData()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch leftovers: authorizedFeatures null, loadAuthorizedFeatures/loadAuthorizedFeaturesFromData dispatch ErrorEvent.ERROR asynchronously (no authorization server), null data #2007. Test authorized_features_loader_members. Event type unverified against Flash (reference page 404)."
   },
   {
    "class": "flash.system.MessageChannel",

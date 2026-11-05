@@ -293,6 +293,12 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 - **FontDescription.isFontCompatible**：`library.get_embedded_font_by_name(name, EmbeddedCFF, bold, italic)` 有無；`isDeviceFontCompatible`：`get_or_load_device_font` 有無（後端解析不到時仍會退到內建預設字型，所以多半為 true，如同 Flash 在有系統預設字型的機器）。fontName null → #2007，weight／posture 不合法 → #2008。
 - **ElementFormat.getFontMetrics**：emBox = (0, -size×ascent 比例, size, size)，ascent 比例取該格式字型（內嵌 CFF → 裝置字型）的 `FontMetrics` ascent/(ascent+descent)，找不到用 0.8；其餘比例為 OS/2 慣例：strikethrough -0.26 em／0.075 em、underline 0.15 em／0.075 em、sub/superscript 0.15／-0.35 em、scale 0.65，lineGap 0。
 
+### 第 N 組：leftovers（AMF0 參照、AuthorizedFeaturesLoader）（合併時捨棄了 AMF0 物件參照的 commit：它讓 `shared_object_self_ref_avm1` 與 `localconnection_cyclic_args` 失敗；`ByteArray.writeObject` 仍是空殼）
+
+- **flash.utils.ByteArray.writeObject（AMF0 參照）**：`core/src/avm2/amf.rs` 的 `ObjectTable` 新增 `amf0_references`（物件 → u16 索引）。序列化走到 `Value::Object` 時，若編碼為 AMF0 且物件屬於 AMF0 的複合物件（`is_amf0_complex`：陣列，或非 Function / DisplayObject / Vector / Date / XML / ByteArray / Dictionary 的物件），第一次出現時在寫出子內容**之前**登記索引（父先於子，與 Flash 相同），之後再遇到（重複或循環）即回傳 `AmfValue::Reference(index)`；Date、XML 等每次都以完整值寫出，與 Flash 相同。AMF3 路徑不變（flash-lso 的 AMF3 編碼器本來就會把重複 ObjectId 轉成參照），所以 `get_or_create_value` 的 stub 整個移除。反序列化：`AmfValue::Reference(n)` 以 `ObjectId(AMF0_REFERENCE_ID_BASE + n)` 在 object_map 查回同一物件。vendored `flash-lso/src/amf0/read.rs`：參照表只收 Object / TypedObject / ECMAArray / StrictArray，在讀子內容前佔位（`claim_reference_id`）、讀完填入（`store_reference`），並以 `ObjectId(1<<32 + index)` 標記以免和內嵌 AMF3 的 id 相撞；`types/reference.rs` 的 `Reference` 欄位改為 `pub`。
+- **flash.system.AuthorizedFeaturesLoader**（新檔 `core/src/avm2/globals/flash/system/AuthorizedFeaturesLoader.as`，純 AS）：繼承 EventDispatcher。這個播放器不連 Adobe 授權服務，等同 Flash Player 連不到伺服器：`loadAuthorizedFeatures()` 與 `loadAuthorizedFeaturesFromData(data)` 都以 `setTimeout(…, 0)` 非同步派發 `ErrorEvent.ERROR`（text「Error #2032: Stream Error.」，bubbles/cancelable 皆 false），`authorizedFeatures` 永遠 null（`AuthorizedFeatures` 本來就假設沒有 token）；`loadAuthorizedFeaturesFromData(null)` 丟 `TypeError #2007`。成員：`authorizedFeatures`、`loadAuthorizedFeatures()`、`loadAuthorizedFeaturesFromData()`。airsdk.dev 該頁回 404，簽章依 api-report 規格；事件型別依記憶中的 Adobe 參考（`error` / `complete`），見 (c)。
+- **flash.ui.Mouse.registerCursor / unregisterCursor / supportsNativeCursor**：本批次**未動**（時間盒 35 分鐘用罄），三個 stub 仍在；設計已確認可行：`UiBackend` 加 `supports_native_cursor()`（預設 false）與 `set_custom_cursor(Option<&CustomCursor>)`，`MouseData.custom_cursors` 由 HashSet 改成 name → 影格（RGBA）/hotSpot/frameRate 的 map，`Mouse.cursor = name` 時呼叫 backend，web 端以 `cursor: url(data:image/png;base64,…) x y, auto`（web crate 已有 base64，PNG 編碼可用 core 的 image crate）、desktop 以 winit `CustomCursor`（容器無 ALSA 無法編譯）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -371,5 +377,9 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 | 同一元素放進第二個 TextBlock／GroupElement | 不丟 ArgumentError（既有 Flash 錄製測試顯示 content 可重複），由後者接管擁有權。 |
 | ElementFormat.getFontMetrics | underline／strikethrough／sub/superscript 不是從字型 OS/2 表讀，而是慣例比例。 |
 | createTextLine 的行切割 | 仍是上游行為：一段文字排在一個 TextLine 裡（不照 width 切成多行）、`fitSomething` 忽略；代理的切割版本讓 Flash 導出的測試失敗，合併時還原，兩個方法仍是空殼。 |
+| 類別/成員 | 差異 |
+| `AuthorizedFeaturesLoader` 事件 | 失敗時派發 `ErrorEvent.ERROR`、text「Error #2032: Stream Error.」；Adobe 參考頁已下線（404），實際事件型別/文字未能對照真 Flash 確認。 |
+| AMF0 `SharedObject` 參照表範圍 | 一個 `flush()` 共用一張參照表（跨頂層屬性）；真 Flash 的 .sol 是否每個頂層屬性重置參照表未驗證。 |
+| `shared_object_self_ref_avm1` | 此 AVM1 測試在本批次後輸出 `Foo.self: undefined`（期望值是 Flash 讀回一份複本：`[object Object]` / `eq foo: false`）；由於期望輸出本身不是「同一實例」，疑為既有失敗，但未能在基底重跑確認——merger 請在 PRO_bata 跑一次 `cargo test -p tests --test tests -- shared_object_self_ref_avm1` 對照。 |
 
 > 這些差異都是已知的，**沒有被藏起來**——黃金答案不會為了讓測試通過而被改寫。其中一部分是用需要遊戲檔案的探針量到的，那些探針沒有放進 repo，所以上表是結論而不是可直接重現的測試。
