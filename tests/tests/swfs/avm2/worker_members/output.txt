@@ -1,0 +1,77 @@
+// Worker / WorkerDomain
+Worker.isSupported: false
+WorkerDomain.isSupported: false
+Worker.current: [object Worker]
+Worker.current same object: true
+isPrimordial: true
+state: running (true)
+WorkerDomain.current: [object WorkerDomain]
+WorkerDomain.current same object: true
+listWorkers: 1 true fixed=false
+createWorker(null): TypeError Error #2007: Parameter swf must be non-null. (2007)
+createWorker(bytes): null
+createWorker(bytes, true): null
+start(): Error Error #1511: Worker is already started. (1511)
+terminate(): Error Error #3732: Worker.terminate is only available for background workers. (3732)
+add/removeEventListener: no error
+// shared properties
+setSharedProperty(null, 1): TypeError Error #2007: Parameter key must be non-null. (2007)
+getSharedProperty(null): TypeError Error #2007: Parameter key must be non-null. (2007)
+missing: null
+n: 5
+s: text
+o copied: true a=1 b=1,2
+o same copy twice: true
+mutex by reference: true
+worker by reference: true
+o after null: null
+n after undefined: null
+// MessageChannel
+createMessageChannel(null): TypeError Error #2007: Parameter receiver must be non-null. (2007)
+channel: [object MessageChannel] / flash.system::MessageChannel
+state: open messageAvailable: false
+after send: messageAvailable=true
+receive: x=1
+send over queueLimit: flash.errors::ScriptTimeoutError Error #1502: A script has executed for longer than the default timeout period of 15 seconds. (1502)
+receive: two
+receive empty: null
+receive(false) empty: null
+receive(true) empty: flash.errors::ScriptTimeoutError Error #1502: A script has executed for longer than the default timeout period of 15 seconds. (1502)
+close with a queued message
+channelState: closing
+state: closing
+send after close: Error Error #3738: MessageChannel is closed. (3738)
+channelState: closed
+receive after close: late
+state: closed
+receive when closed: Error Error #3738: MessageChannel is closed. (3738)
+send when closed: Error Error #3738: MessageChannel is closed. (3738)
+close again: no event
+empty channelState: closing
+empty channelState: closed
+empty state: closed
+// Mutex
+Mutex.isSupported: true
+unlock without lock: Error Error #1514: unlock() with no preceding matching lock(). (1514)
+tryLock while owned: true
+unlock fourth time: Error Error #1514: unlock() with no preceding matching lock(). (1514)
+tryLock fresh: true
+// Condition
+Condition.isSupported: true
+new Condition(null): Error Error #1519: Condition cannot be initialized. (1519)
+condition.mutex: true
+notify() unowned: Error Error #1516: Condition cannot notify if associated mutex is not owned. (1516)
+notifyAll() unowned: Error Error #1517: Condition cannot notifyAll if associated mutex is not owned. (1517)
+wait() unowned: Error Error #1518: Condition cannot wait if associated mutex is not owned. (1518)
+notify() owned: no error
+notifyAll() owned: no error
+wait(-2): ArgumentError Error #1515: Invalid condition timeout value: -2. (1515)
+wait(): flash.errors::ScriptTimeoutError Error #1502: A script has executed for longer than the default timeout period of 15 seconds. (1502)
+wait(-1): flash.errors::ScriptTimeoutError Error #1502: A script has executed for longer than the default timeout period of 15 seconds. (1502)
+wait(15000): flash.errors::ScriptTimeoutError Error #1502: A script has executed for longer than the default timeout period of 15 seconds. (1502)
+wait(5): true took>=5ms: true
+wait(0): true
+unlock after wait (lock depth restored): Error Error #1514: unlock() with no preceding matching lock(). (1514)
+channelMessage: available=false state=closed
+channelMessage: available=false state=closed
+channelMessage: available=false state=closed
