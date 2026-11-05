@@ -36,7 +36,7 @@ def run(runner, test, timeout=45):
     os.makedirs(os.path.join(D, "logs", runner), exist_ok=True)
     if os.path.exists(res):
         os.remove(res)
-    url = "http://127.0.0.1:18765/t/%s/%s.swf" % (runner, test)
+    url = "http://127.0.0.1:%s/t/%s/%s.swf" % (os.environ.get("DIFFTEST_HTTP_PORT", "18765"), runner, test)
     if runner == "flash":
         env = wine_env()
         cmd = [wine_bin("wine"), FLASH_EXE, url]

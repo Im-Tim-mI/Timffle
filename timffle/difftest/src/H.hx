@@ -7,7 +7,9 @@ import flash.net.URLRequestMethod;
 
 /** Shared test helper: collects result lines and POSTs them to the harness server. */
 class H {
-	public static inline var BASE = "http://127.0.0.1:18765";
+	/** The harness server: taken from the SWF's own URL at init() (so a harness on
+	 * another port works); 18765 is the default port of server.py. */
+	public static var BASE = "http://127.0.0.1:18765";
 
 	static var lines:Array<String> = [];
 	static var test = "unknown";
@@ -17,8 +19,11 @@ class H {
 	public static function init(name:String, watchdogMs:Int = 25000) {
 		test = name;
 		var parts = Lib.current.loaderInfo.url.split("/t/");
-		if (parts.length > 1)
+		if (parts.length > 1) {
 			runner = parts[1].split("/")[0];
+			if (parts[0].indexOf("http") == 0)
+				BASE = parts[0];
+		}
 		log("# test=" + name);
 		haxe.Timer.delay(function() {
 			log("!! WATCHDOG TIMEOUT");
