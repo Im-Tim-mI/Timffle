@@ -499,7 +499,8 @@
    "stubbed": [
     "showRedrawRegions()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: profile()/showRedrawRegions() are release-player no-ops (debugger-only hooks). Test system_batch_members."
   },
   {
    "class": "flash.system.ApplicationInstaller",
@@ -511,7 +512,8 @@
     "static stringsDigest()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "partial",
+   "note": "system batch: class added as Flash without an authorized token (ctor #2012, isInstalled false, install() #2008/#2014); iconDigest/stringsDigest report #2014 because the digest algorithm is undocumented (no fake digest). Test system_batch_members."
   },
   {
    "class": "flash.system.ApplicationInstallerMode",
@@ -522,7 +524,8 @@
     "static SHORTCUTS_ONLY"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: 3 constants (install_only / install_with_shortcuts / shortcuts_only, from the api-report spec)."
   },
   {
    "class": "flash.system.Capabilities",
@@ -574,7 +577,8 @@
     "static enabled",
     "static setCompositionString()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: no IME on this player: getters enabled false / conversionMode UNKNOWN, setters and the 4 methods Error #2063. Test system_batch_members."
   },
   {
    "class": "flash.system.Security",
@@ -587,8 +591,8 @@
     "static loadPolicyFile()",
     "static showSettings()"
    ],
-   "status": "partial",
-   "note": "2026-11-04 batch 1: allowDomain/allowInsecureDomain implemented (per-SWF AllowedDomains on SwfMovieData, #2052 on non-strings; used by LoaderInfo trust properties). Left: exactSettings, disableAVM1Loading (missing), loadPolicyFile, showSettings (stubs)."
+   "status": "done",
+   "note": "2026-11-04 batch 1: allowDomain/allowInsecureDomain implemented (per-SWF AllowedDomains on SwfMovieData, #2052 on non-strings; used by LoaderInfo trust properties). Left: exactSettings, disableAVM1Loading (missing), loadPolicyFile, showSettings (stubs). | system batch: exactSettings (superdomain rule for getLocal, #2054 after use), disableAVM1Loading (loader.rs: securityError #2111 on AVM1 SWFs), loadPolicyFile (record + one http(s) fetch, no enforcement), showSettings (no panel: no effect). Test system_batch_members."
   },
   {
    "class": "flash.system.SecurityDomain",
@@ -597,7 +601,8 @@
     "domainID"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "partial",
+   "note": "system batch: domainID = calling SWF's origin (file:// for local); real Flash string not measured."
   },
   {
    "class": "flash.system.System",
@@ -629,7 +634,8 @@
     "update()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: no DRM module / self-updater: update() validates (#2007/#2008) then async status DRM.UpdateFailedNotSupported/error; cancel() drops it. Test system_batch_members."
   },
   {
    "class": "flash.text.Font",
@@ -1166,7 +1172,8 @@
     "wait()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: mutex/notify/notifyAll/wait with #1515-#1519; wait(timeout) really pauses; wait() without timeout ScriptTimeoutError #1502. Test worker_members."
   },
   {
    "class": "flash.concurrent.Mutex",
@@ -1177,7 +1184,8 @@
     "unlock()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: real single-worker mutex (isSupported true, lock count, tryLock, unlock #1514). Test worker_members."
   },
   {
    "class": "flash.events.GeolocationEvent",
@@ -1778,7 +1786,7 @@
    ],
    "stubbed": [],
    "status": "partial",
-   "note": "batch 10: class added (ctor #2012 like Flash; enableAVLoader/enableDiskCache/enableHLSPlayback false: no authorization server). createApplicationInstaller/enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback need the ApplicationInstaller/AVURLLoader/AVURLStream/MediaPlayer classes (group 5). | batch media: enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback false (MediaPlayer param typed Object: no public playerglobal defines MediaPlayer). createApplicationInstaller still needs ApplicationInstaller (group 5)."
+   "note": "batch 10: class added (ctor #2012 like Flash; enableAVLoader/enableDiskCache/enableHLSPlayback false: no authorization server). createApplicationInstaller/enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback need the ApplicationInstaller/AVURLLoader/AVURLStream/MediaPlayer classes (group 5). | batch media: enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback false (MediaPlayer param typed Object: no public playerglobal defines MediaPlayer). createApplicationInstaller still needs ApplicationInstaller (group 5). | system batch: createApplicationInstaller() added (null: never authorized). enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback still need the AVURLLoader/AVURLStream/MediaPlayer classes."
   },
   {
    "class": "flash.system.AuthorizedFeaturesLoader",
@@ -1806,7 +1814,8 @@
     "send()",
     "state"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: real queue/state/events for a primordial-to-primordial channel; closed #3738; blocking waits throw ScriptTimeoutError #1502 at once. Test worker_members."
   },
   {
    "class": "flash.system.Worker",
@@ -1825,7 +1834,8 @@
     "start()",
     "static current"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: primordial worker only (isSupported false): current/isPrimordial/state, shared properties stored (AMF3 copies, 5 shared types by reference), start() #1511, terminate() #3732, add/removeEventListener. Test worker_members."
   },
   {
    "class": "flash.system.WorkerDomain",
@@ -1837,7 +1847,8 @@
     "createWorker()",
     "static current"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "system batch: createWorker() null (unsupported, documented), listWorkers() = [primordial]. Test worker_members."
   },
   {
    "class": "flash.ui.GameInputControl",
