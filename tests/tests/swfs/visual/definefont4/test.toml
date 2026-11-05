@@ -1,7 +1,19 @@
 num_frames = 5
 
+# Timffle: known failure since TextLine's origin became its roman baseline. The
+# golden was rendered by Ruffle when TextBlock.createTextLine put the whole
+# paragraph into one TextLine drawn from the field's top-left corner (2 px
+# gutter) and getBaselinePosition was a stub returning 0. Flash Player 32 (Wine,
+# 2026-11-05) puts the two TLF lines at y 47.95 / 102.4 with ascent 45.95,
+# getBaselinePosition(ASCENT) = -ascent, and draws the text 2 px left of and
+# 2-3 px above the golden (ink rows 31-71 / 84-117, columns 20-395; golden
+# 33-73 / 87-120, 22-396). output.ruffle.png is Ruffle's current picture,
+# which has those rows and columns (31-69 / 84-117, 20-394). The golden is
+# kept unchanged until it is re-recorded from Flash.
+
 [image_comparisons.output]
 tolerance = 1
+known_failure = true
 
 [player_options]
 with_renderer = { optional = false, quality = "low" }

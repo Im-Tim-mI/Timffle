@@ -358,7 +358,12 @@ fn atom_bounds<'gc>(
 ) -> Option<swf::Rectangle<swf::Twips>> {
     let mut result: Option<swf::Rectangle<swf::Twips>> = None;
     for i in start..end {
-        if let Some(b) = line.fallback().char_bounds(line.logical_to_visual(i)) {
+        // Timffle: in the line's coordinates, whose origin is the baseline.
+        if let Some(b) = line
+            .fallback()
+            .char_bounds(line.logical_to_visual(i))
+            .map(|b| line.fallback_to_local_matrix() * b)
+        {
             result = Some(match result {
                 Some(r) => r.union(&b),
                 None => b,

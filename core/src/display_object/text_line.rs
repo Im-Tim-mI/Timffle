@@ -20,6 +20,7 @@ use gc_arena::barrier::unlock;
 use gc_arena::lock::{Lock, RefLock};
 use gc_arena::{Collect, Gc, Mutation};
 use ruffle_common::utils::HasPrefixField;
+use ruffle_render::transform::Transform;
 use std::cell::Cell;
 use swf::Twips;
 
@@ -219,6 +220,13 @@ impl<'gc> TextLine<'gc> {
         self.0.fallback
     }
 
+    /// Timffle: maps the fallback field's local coordinates to this line's, whose origin
+    /// is the start of the line's roman baseline (see `render_self`).
+    pub fn fallback_to_local_matrix(self) -> Matrix {
+        let (x, y) = self.0.fallback.first_baseline_origin();
+        Matrix::translate(-x, -y)
+    }
+
     pub fn validity(self) -> TextLineValidity<'gc> {
         self.0.validity.get()
     }
@@ -337,12 +345,24 @@ impl<'gc> TDisplayObject<'gc> for TextLine<'gc> {
 
     fn replace_with(self, _context: &mut UpdateContext<'gc>, _id: CharacterId) {}
 
+    // Timffle: a TextLine's origin is the start of its roman baseline, as in Flash Player
+    // (text above the line has negative y, `getBaselinePosition(TextBaseline.ROMAN)` is 0,
+    // `getAtomBounds(0)` starts at x = 0, y = -ascent), so the fallback field is drawn moved
+    // by its text origin. Ruffle drew the field's top left corner (2 px gutter) at the
+    // origin, which put TLF text, which places `line.y` on the baseline, one ascent too
+    // low. Measured in Flash Player 32 on visual/definefont4: line origins y 47.95 / 102.4,
+    // glyphs end on the origin's row, the text starts one pixel right of `line.x`.
     fn render_self(self, context: &mut RenderContext<'_, 'gc>) {
+        context.transform_stack.push(&Transform {
+            matrix: self.fallback_to_local_matrix(),
+            ..Default::default()
+        });
         self.0.fallback.render_self(context);
+        context.transform_stack.pop();
     }
 
     fn self_bounds(self, mode: BoundsMode) -> Rectangle<Twips> {
-        self.0.fallback.self_bounds(mode)
+        self.fallback_to_local_matrix() * self.0.fallback.self_bounds(mode)
     }
 
     fn hit_test_shape(

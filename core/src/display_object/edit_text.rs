@@ -2612,6 +2612,23 @@ impl<'gc> EditText<'gc> {
         Some(index - start_index)
     }
 
+    /// Timffle: where the first line's text starts in this field's local coordinates:
+    /// the left edge of the text area and the first line's baseline (no scrolling
+    /// applied). A `TextLine` puts its origin there.
+    pub fn first_baseline_origin(self) -> (Twips, Twips) {
+        let bounds = self.0.bounds.get();
+        let layout = self.0.layout.borrow();
+        let baseline = layout
+            .lines()
+            .first()
+            .map(|line| line.offset_y() + line.ascent())
+            .unwrap_or_default();
+        (
+            bounds.x_min + Self::GUTTER,
+            bounds.y_min + Self::GUTTER + baseline,
+        )
+    }
+
     pub fn char_bounds(self, position: usize) -> Option<Rectangle<Twips>> {
         let layout = self.0.layout.borrow();
 
