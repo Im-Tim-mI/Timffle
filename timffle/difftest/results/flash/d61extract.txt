@@ -1,0 +1,20 @@
+# test=d61extract
+first nonzero float index=204 (sample 102) of 3000
+extract(4,2000) -> 4 0.3282,0.3282,0.3401,0.3401,0.2378,0.2378,0.0551,0.0551 position=32 length=32
+extract(4,2000) LE -> 4 0.3282,0.3282,0.3401,0.3401,0.2378,0.2378,0.0551,0.0551
+same bytes read BE -> 0,0,0,0,0,0,0,0
+at 2000=0.3282,0.3282,0.3401,0.3401 | next=0.2378,0.2378,0.0551,0.0551 | next=-0.118,-0.118,-0.1871,-0.1871 | explicit 2002=0.2378,0.2378,0.0551,0.0551 | explicit 2004=-0.118,-0.118,-0.1871,-0.1871
+after explicit 2004, extract(2,-1)=-0.1067,-0.1067,0.0924,0.0924 ; explicit 2006=-0.1067,-0.1067,0.0924,0.0924
+start 2.9=0,0,0,0 start 2=0,0,0,0
+after reading the tail, sequential extract -> 0
+into pos 4 -> 3 length=28 position=28
+prefix kept=abcd floats=0.3282,0.3282,0.3401,0.3401,0.2378,0.2378
+pcm 5000 extract(4,0) -> 4 0,0,0,0,0,0,0,0
+pcm 5000 extract(4,2000) -> 4 0.5,-0.25,0.5,-0.25,0.5,-0.25,0.5,-0.25
+pcm 5000 whole -> 5000 floats=10000 nonzero=9939 first nonzero index=23 length=113.37868480725623 bytesTotal=20000
+pcm short mono 3000 extract(3,0) -> 3 0,0,0,0,0,0
+pcm short mono 3000 extract(2,1500) -> 2 -0.25,-0.25,-0.25,-0.25
+pcm 22050 extract(6,1000) -> 6 0.75,1,0.75,1,0.25,1,0.25,1,0.75,1,0.75,1 length=136.05442176870747
+pcm clipping extract(2,1000) -> 2 1,-1,1,-1
+pcm precision -> 0.123443603515625 0.33331298828125 (x32768: 4045 10922)
+# done
