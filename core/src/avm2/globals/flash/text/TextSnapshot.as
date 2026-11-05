@@ -1,50 +1,26 @@
 package flash.text {
-    import __ruffle__.stub_method;
-    import __ruffle__.stub_getter;
-
-    [Ruffle(Abstract)]
+    // Timffle: real implementation over the static texts of one container
+    // (see core/src/avm2/globals/flash/text/text_snapshot.rs). A snapshot made
+    // with `new TextSnapshot()` has no text; `DisplayObjectContainer.textSnapshot`
+    // fills one in natively.
+    [Ruffle(InstanceAllocator)]
     public class TextSnapshot {
-        public function get charCount():int {
-            stub_getter("flash.text.TextSnapshot", "charCount");
-            return 0;
-        }
+        public native function get charCount():int;
 
-        public function findText(beginIndex:int, textToFind:String, caseSensitive:Boolean):int {
-            stub_method("flash.text.TextSnapshot", "findText");
-            return -1;
-        }
+        public native function findText(beginIndex:int, textToFind:String, caseSensitive:Boolean):int;
 
-        public function getSelected(beginIndex:int, endIndex:int):Boolean {
-            stub_method("flash.text.TextSnapshot", "getSelected");
-            return false;
-        }
+        public native function getSelected(beginIndex:int, endIndex:int):Boolean;
 
-        public function getSelectedText(includeLineEndings:Boolean = false):String {
-            stub_method("flash.text.TextSnapshot", "getSelectedText");
-            return "";
-        }
+        public native function getSelectedText(includeLineEndings:Boolean = false):String;
 
-        public function getText(beginIndex:int, endIndex:int, includeLineEndings:Boolean = false):String {
-            stub_method("flash.text.TextSnapshot", "getText");
-            return "";
-        }
+        public native function getText(beginIndex:int, endIndex:int, includeLineEndings:Boolean = false):String;
 
-        public function getTextRunInfo(beginIndex:int, endIndex:int):Array {
-            stub_method("flash.text.TextSnapshot", "getTextRunInfo");
-            return [];
-        }
+        public native function getTextRunInfo(beginIndex:int, endIndex:int):Array;
 
-        public function hitTestTextNearPos(x:Number, y:Number, maxDistance:Number = 0):Number {
-            stub_method("flash.text.TextSnapshot", "hitTestTextNearPos");
-            return -1;
-        }
+        public native function hitTestTextNearPos(x:Number, y:Number, maxDistance:Number = 0):Number;
 
-        public function setSelectColor(hexColor:uint = 0xFFFF00):void {
-            stub_method("flash.text.TextSnapshot", "setSelectColor");
-        }
+        public native function setSelectColor(hexColor:uint = 0xFFFF00):void;
 
-        public function setSelected(beginIndex:int, endIndex:int, select:Boolean):void {
-            stub_method("flash.text.TextSnapshot", "setSelected");
-        }
+        public native function setSelected(beginIndex:int, endIndex:int, select:Boolean):void;
     }
 }

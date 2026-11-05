@@ -233,6 +233,28 @@ pub fn remove_child<'gc>(
 }
 
 /// Implements `DisplayObjectContainer.numChildren`
+/// Timffle: implements the native half of `DisplayObjectContainer.textSnapshot`:
+/// points a fresh `TextSnapshot` at this container's static-text children.
+pub fn fill_text_snapshot<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(container) = this
+        .as_display_object()
+        .and_then(|this| this.as_container())
+        && let Some(snapshot) = args
+            .try_get_object(0)
+            .and_then(|snapshot| snapshot.as_text_snapshot_object())
+    {
+        snapshot.set_target(activation, container);
+    }
+
+    Ok(Value::Undefined)
+}
+
 pub fn get_num_children<'gc>(
     _activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,

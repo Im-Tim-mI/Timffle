@@ -71,6 +71,7 @@ mod stage_object;
 mod stylesheet_object;
 mod tab_stop_object;
 mod text_block_object;
+mod text_snapshot_object; // Timffle: flash.text.TextSnapshot
 mod textformat_object;
 mod texture_object;
 mod vector_object;
@@ -176,8 +177,12 @@ pub use crate::avm2::object::stylesheet_object::{
 pub use crate::avm2::object::tab_stop_object::{
     TabStopObject, TabStopObjectWeak, tab_stop_allocator,
 };
+// Timffle: flash.text.TextSnapshot
 pub use crate::avm2::object::text_block_object::{
     TextBlockObject, TextBlockObjectWeak, text_block_allocator,
+};
+pub use crate::avm2::object::text_snapshot_object::{
+    TextSnapshotObject, TextSnapshotObjectWeak, text_snapshot_allocator,
 };
 pub use crate::avm2::object::textformat_object::{
     TextFormatObject, TextFormatObjectWeak, textformat_allocator,
@@ -245,6 +250,7 @@ use crate::font::Font;
         FontDescriptionObject(FontDescriptionObject<'gc>),
         TabStopObject(TabStopObject<'gc>),
         TextBlockObject(TextBlockObject<'gc>),
+        TextSnapshotObject(TextSnapshotObject<'gc>), // Timffle
         FontObject(FontObject<'gc>),
         LocalConnectionObject(LocalConnectionObject<'gc>),
         SharedObjectObject(SharedObjectObject<'gc>),
@@ -794,6 +800,7 @@ impl<'gc> Object<'gc> {
         pub fn as_font_description_object for FontDescriptionObject;
         pub fn as_tab_stop_object for TabStopObject;
         pub fn as_text_block_object for TextBlockObject;
+        pub fn as_text_snapshot_object for TextSnapshotObject; // Timffle
         pub fn as_font_object for FontObject;
         pub fn as_regexp_object for RegExpObject;
         pub fn as_sound_object for SoundObject;
@@ -1022,6 +1029,7 @@ define_weak_enum! {
         FontDescriptionObject(FontDescriptionObjectWeak<'gc>),
         TabStopObject(TabStopObjectWeak<'gc>),
         TextBlockObject(TextBlockObjectWeak<'gc>),
+        TextSnapshotObject(TextSnapshotObjectWeak<'gc>), // Timffle
         FontObject(FontObjectWeak<'gc>),
         LocalConnectionObject(LocalConnectionObjectWeak<'gc>),
         SharedObjectObject(SharedObjectObjectWeak<'gc>),

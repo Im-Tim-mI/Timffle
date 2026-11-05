@@ -1,6 +1,4 @@
 package flash.display {
-    import __ruffle__.stub_getter;
-
     import flash.accessibility.AccessibilityProperties;
     import flash.geom.ColorTransform;
     import flash.geom.Matrix;
@@ -41,9 +39,14 @@ package flash.display {
         public native function getObjectsUnderPoint(point:Point):Array;
         public native function areInaccessibleObjectsUnderPoint(point:Point):Boolean;
 
+        // Timffle: a real snapshot of the static texts among this container's
+        // children (filled in natively, see display_object_container.rs).
         public function get textSnapshot():TextSnapshot {
-            stub_getter("flash.display.DisplayObjectContainer", "textSnapshot")
-            return new TextSnapshot();
+            var snapshot:TextSnapshot = new TextSnapshot();
+            this.fillTextSnapshot(snapshot);
+            return snapshot;
         }
+
+        private native function fillTextSnapshot(snapshot:TextSnapshot):void;
     }
 }

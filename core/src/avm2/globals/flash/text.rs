@@ -6,3 +6,4 @@ pub mod static_text;
 pub mod style_sheet;
 pub mod text_field;
 pub mod text_format;
+pub mod text_snapshot; // Timffle
