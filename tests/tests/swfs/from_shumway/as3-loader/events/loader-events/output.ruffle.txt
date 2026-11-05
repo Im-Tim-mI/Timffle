@@ -12,11 +12,11 @@ child 1 loader: progress 8700
 child 2 loader: open 0
 child 2 loader: progress 0
 child 2 loader: progress 8700
+enterFrame 2
 construct instance3, parent: null
 added instance3
 construct instance5, parent: null
 added instance5
-enterFrame 2
 run frame 2 in root1
 run frame 1 in instance3
 run frame 1 in instance5

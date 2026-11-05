@@ -93,6 +93,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_body(b"not found", "text/plain", 404)
             with open(path, "rb") as f:
                 body = f.read()
+            chunks = int(q.get("chunks", ["1"])[0])
+            if chunks > 1:  # &chunks=<n>&cdelay=<s>: the body in n pieces, cdelay seconds apart (a download that spans frames)
+                cdelay = float(q.get("cdelay", ["0.25"])[0])
+                size = (len(body) + chunks - 1) // chunks
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-shockwave-flash")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    for i in range(chunks):
+                        self.wfile.write(body[i * size:(i + 1) * size])
+                        self.wfile.flush()
+                        time.sleep(min(cdelay, 5.0))
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
             return self.send_delayed(body, "application/x-shockwave-flash", float(q.get("delay", ["0"])[0]))
         if p == "/data/text":  # /data/text?v=<text>&delay=<s>: the text itself, after the delay
             return self.send_delayed(q.get("v", [""])[0].encode(), "text/plain", float(q.get("delay", ["0"])[0]))
