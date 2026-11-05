@@ -1,6 +1,4 @@
 package flash.display3D {
-    import __ruffle__.stub_method;
-
     import flash.utils.ByteArray;
 
     [API("674")]
@@ -9,8 +7,7 @@ package flash.display3D {
         public native function uploadFromByteArray(data:ByteArray, byteArrayOffset:int, startVertex:int, numVertices:int):void
         public native function uploadFromVector(data:Vector.<Number>, startVertex:int, numVertices:int):void
 
-        public function dispose():void {
-            stub_method("flash.display3D.VertexBuffer3D", "dispose");
-        }
+        // Timffle: releases the GPU resource; later use throws Error #3694.
+        public native function dispose():void;
     }
 }

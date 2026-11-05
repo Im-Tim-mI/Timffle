@@ -1217,6 +1217,30 @@ impl Context3D for WgpuContext3D {
         }
     }
 
+    // Timffle: Flash reports e.g. "OpenGL Vendor=NVIDIA Corporation Version=4.6.0 Renderer=...
+    // GLSL=..." or "Direct3D11 (Direct Mode) Vendor=... Renderer=...". We follow the same
+    // "API Vendor=... Version=... Renderer=..." shape using the wgpu adapter's data.
+    fn driver_info(&self) -> String {
+        let info = self.descriptors.adapter.get_info();
+        let api = match info.backend {
+            wgpu::Backend::Vulkan => "Vulkan",
+            wgpu::Backend::Metal => "Metal",
+            wgpu::Backend::Dx12 => "Direct3D12",
+            wgpu::Backend::Gl => "OpenGL",
+            wgpu::Backend::BrowserWebGpu => "WebGPU",
+            wgpu::Backend::Noop => "Software",
+        };
+        let mode = if matches!(info.device_type, wgpu::DeviceType::Cpu) {
+            "Software"
+        } else {
+            "Direct Mode"
+        };
+        format!(
+            "{api} ({mode}) Vendor={} Version={} Renderer={}",
+            info.driver, info.driver_info, info.name
+        )
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn present(&mut self) {
         std::mem::swap(

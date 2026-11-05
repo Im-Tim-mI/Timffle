@@ -1257,6 +1257,8 @@ pub fn make_error_2187<'gc>(
 }
 
 make_error_fn!(make_error_3669, 3669, error);
+// Timffle: Stage3D objects used after dispose()
+make_error_fn!(make_error_3694, 3694, error);
 make_error_fn!(make_error_3670, 3670, argument_error);
 make_error_fn!(make_error_3671, 3671, argument_error);
 

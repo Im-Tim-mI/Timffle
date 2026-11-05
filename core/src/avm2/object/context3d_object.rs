@@ -48,12 +48,71 @@ impl<'gc> Context3DObject<'gc> {
                 base: ScriptObjectData::new(class),
                 render_context: Cell::new(Some(context3d)),
                 stage3d,
+                disposed: Cell::new(false),
+                back_buffer_size: Cell::new((0, 0)),
+                max_back_buffer: Cell::new((16384, 16384)),
+                gpu_memory: Cell::new(0),
             },
         ))
     }
 
     pub fn stage3d(self) -> Stage3DObject<'gc> {
         self.0.stage3d
+    }
+
+    // Timffle: dispose() semantics (Flash Error #3694 on later use) and the
+    // backBuffer*/maxBackBuffer*/totalGPUMemory/driverInfo bookkeeping.
+    pub fn is_disposed(self) -> bool {
+        self.0.disposed.get()
+    }
+
+    pub fn check_disposed(self, activation: &mut Activation<'_, 'gc>) -> Result<(), Error<'gc>> {
+        if self.0.disposed.get() {
+            Err(crate::avm2::error::make_error_3694(activation))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Releases the renderer-side Context3D (all its wgpu buffers, textures and
+    /// pipelines go with it) and marks the object as disposed.
+    pub fn dispose(self) {
+        self.0.disposed.set(true);
+        self.0.gpu_memory.set(0);
+        drop(self.0.render_context.take());
+    }
+
+    pub fn back_buffer_size(self) -> (u32, u32) {
+        self.0.back_buffer_size.get()
+    }
+
+    pub fn max_back_buffer(self) -> (u32, u32) {
+        self.0.max_back_buffer.get()
+    }
+
+    pub fn set_max_back_buffer(self, size: (u32, u32)) {
+        self.0.max_back_buffer.set(size);
+    }
+
+    pub fn total_gpu_memory(self) -> u64 {
+        self.0.gpu_memory.get()
+    }
+
+    pub fn add_gpu_memory(self, bytes: u64) {
+        self.0.gpu_memory.set(self.0.gpu_memory.get() + bytes);
+    }
+
+    pub fn sub_gpu_memory(self, bytes: u64) {
+        self.0
+            .gpu_memory
+            .set(self.0.gpu_memory.get().saturating_sub(bytes));
+    }
+
+    pub fn driver_info(self) -> String {
+        if self.0.disposed.get() {
+            return "Disposed".to_string();
+        }
+        self.with_context_3d(|ctx| ctx.driver_info())
     }
 
     pub fn with_context_3d<R>(self, f: impl FnOnce(&mut dyn Context3D) -> R) -> R {
@@ -84,6 +143,8 @@ impl<'gc> Context3DObject<'gc> {
                 wants_best_resolution_on_browser_zoom,
             })
         });
+        // Timffle: backBufferWidth/backBufferHeight reflect the last successful call.
+        self.0.back_buffer_size.set((width, height));
     }
 
     pub fn create_index_buffer(
@@ -94,10 +155,14 @@ impl<'gc> Context3DObject<'gc> {
         let index_buffer = self
             .with_context_3d(|ctx| ctx.create_index_buffer(BufferUsage::StaticDraw, num_indices));
 
+        // Timffle: 16-bit indices, counted towards totalGPUMemory.
+        let gpu_size = num_indices as u64 * 2;
+        self.add_gpu_memory(gpu_size);
         Value::Object(IndexBuffer3DObject::from_handle(
             activation,
             self,
             index_buffer,
+            gpu_size,
         ))
     }
 
@@ -123,8 +188,11 @@ impl<'gc> Context3DObject<'gc> {
             )
         })?;
 
+        // Timffle: counted towards totalGPUMemory (full mip chain when streaming is requested).
+        let gpu_size = texture_gpu_size(width, height, format, streaming_levels, 1);
+        self.add_gpu_memory(gpu_size);
         Ok(Value::Object(TextureObject::from_handle(
-            activation, self, texture, format, class,
+            activation, self, texture, format, class, gpu_size,
         )))
     }
 
@@ -139,11 +207,15 @@ impl<'gc> Context3DObject<'gc> {
             ctx.create_vertex_buffer(usage, num_vertices, data_32_per_vertex)
         });
 
+        // Timffle: counted towards totalGPUMemory.
+        let gpu_size = num_vertices as u64 * data_32_per_vertex as u64 * 4;
+        self.add_gpu_memory(gpu_size);
         Value::Object(VertexBuffer3DObject::from_handle(
             activation,
             self,
             handle,
             data_32_per_vertex,
+            gpu_size,
         ))
     }
 
@@ -300,6 +372,10 @@ impl<'gc> Context3DObject<'gc> {
 
     // Renders our finalized frame to the screen, as part of the Ruffle rendering process.
     pub fn render(self, context: &mut RenderContext<'_, 'gc>) {
+        // Timffle: a disposed context has no renderer-side state any more.
+        if self.0.disposed.get() {
+            return;
+        }
         self.with_context_3d(|context3d| {
             if context3d.should_render() {
                 let handle = context3d.bitmap_handle();
@@ -437,8 +513,11 @@ impl<'gc> Context3DObject<'gc> {
 
         let class = activation.avm2().classes().cubetexture;
 
+        // Timffle: six faces, counted towards totalGPUMemory.
+        let gpu_size = texture_gpu_size(size, size, format, streaming_levels, 6);
+        self.add_gpu_memory(gpu_size);
         Ok(Value::Object(TextureObject::from_handle(
-            activation, self, texture, format, class,
+            activation, self, texture, format, class, gpu_size,
         )))
     }
 
@@ -509,6 +588,41 @@ pub struct Context3DData<'gc> {
     render_context: Cell<Option<Box<dyn Context3D>>>,
 
     stage3d: Stage3DObject<'gc>,
+
+    // Timffle: see `Context3DObject::dispose`.
+    disposed: Cell<bool>,
+    back_buffer_size: Cell<(u32, u32)>,
+    max_back_buffer: Cell<(u32, u32)>,
+    gpu_memory: Cell<u64>,
+}
+
+// Timffle: bytes a texture of this size/format occupies on the GPU. Flash's
+// totalGPUMemory counts index buffers, vertex buffers, textures and programs.
+fn texture_gpu_size(
+    width: u32,
+    height: u32,
+    format: Context3DTextureFormat,
+    streaming_levels: u32,
+    layers: u64,
+) -> u64 {
+    let (num, den) = match format {
+        Context3DTextureFormat::Bgra => (4, 1),
+        Context3DTextureFormat::BgraPacked | Context3DTextureFormat::BgrPacked => (2, 1),
+        Context3DTextureFormat::Compressed => (1, 2),
+        Context3DTextureFormat::CompressedAlpha => (1, 1),
+        Context3DTextureFormat::RgbaHalfFloat => (8, 1),
+    };
+    let mut total = 0u64;
+    let (mut w, mut h) = (width.max(1) as u64, height.max(1) as u64);
+    loop {
+        total += (w * h * num).div_ceil(den);
+        if streaming_levels == 0 || (w == 1 && h == 1) {
+            break;
+        }
+        w = (w / 2).max(1);
+        h = (h / 2).max(1);
+    }
+    total * layers
 }
 
 impl<'gc> TObject<'gc> for Context3DObject<'gc> {

@@ -1,5 +1,6 @@
 //! Object representation for IndexBuffer3D objects
 
+use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{Object, TObject};
@@ -23,6 +24,7 @@ impl<'gc> IndexBuffer3DObject<'gc> {
         activation: &mut Activation<'_, 'gc>,
         context3d: Context3DObject<'gc>,
         handle: Box<dyn IndexBuffer>,
+        gpu_size: u64,
     ) -> Object<'gc> {
         let class = activation.avm2().classes().indexbuffer3d;
 
@@ -31,8 +33,9 @@ impl<'gc> IndexBuffer3DObject<'gc> {
             IndexBuffer3DObjectData {
                 base: ScriptObjectData::new(class),
                 context3d,
-                handle: RefCell::new(handle),
+                handle: RefCell::new(Some(handle)),
                 count: Cell::new(0),
+                gpu_size,
             },
         ))
         .into()
@@ -47,7 +50,28 @@ impl<'gc> IndexBuffer3DObject<'gc> {
     }
 
     pub fn handle(&self) -> RefMut<'_, dyn IndexBuffer> {
-        RefMut::map(self.0.handle.borrow_mut(), |h| h.as_mut())
+        RefMut::map(self.0.handle.borrow_mut(), |h| {
+            h.as_mut().expect("IndexBuffer3D was disposed").as_mut()
+        })
+    }
+
+    // Timffle: dispose() drops the GPU buffer; later calls throw Error #3694.
+    pub fn is_disposed(self) -> bool {
+        self.0.handle.borrow().is_none()
+    }
+
+    pub fn check_disposed(self, activation: &mut Activation<'_, 'gc>) -> Result<(), Error<'gc>> {
+        if self.is_disposed() {
+            Err(crate::avm2::error::make_error_3694(activation))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn dispose(self) {
+        if self.0.handle.take().is_some() {
+            self.0.context3d.sub_gpu_memory(self.0.gpu_size);
+        }
     }
 
     pub fn context3d(self) -> Context3DObject<'gc> {
@@ -62,9 +86,12 @@ pub struct IndexBuffer3DObjectData<'gc> {
     /// Base script object
     base: ScriptObjectData<'gc>,
 
-    handle: RefCell<Box<dyn IndexBuffer>>,
+    handle: RefCell<Option<Box<dyn IndexBuffer>>>,
 
     count: Cell<usize>,
+
+    // Timffle: bytes counted in Context3D.totalGPUMemory.
+    gpu_size: u64,
 
     context3d: Context3DObject<'gc>,
 }

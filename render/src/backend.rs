@@ -319,6 +319,10 @@ pub trait Context3D: Any {
     fn process_command(&mut self, command: Context3DCommand<'_>);
 
     fn present(&mut self);
+
+    // Timffle: the string Flash exposes as Context3D.driverInfo, composed from the
+    // graphics adapter actually in use.
+    fn driver_info(&self) -> String;
 }
 
 #[derive(Copy, Clone, Debug)]

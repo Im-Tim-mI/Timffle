@@ -76,6 +76,8 @@ pub fn upload_compressed_texture_from_byte_array_internal<'gc>(
     let this = this.as_object().unwrap();
 
     let texture = this.as_texture().unwrap();
+    texture.check_disposed(activation)?; // Timffle
+    texture.context3d().check_disposed(activation)?;
     let data = args.get_object(activation, 0, "data")?;
     let byte_array_offset = args.get_u32(1) as usize;
 
@@ -105,6 +107,8 @@ pub fn upload_from_byte_array<'gc>(
     let this = this.as_object().unwrap();
 
     let texture = this.as_texture().unwrap();
+    texture.check_disposed(activation)?; // Timffle
+    texture.context3d().check_disposed(activation)?;
     let data = args.get_object(activation, 0, "data")?;
     let byte_array_offset = args.get_u32(1);
     let mip_level = args.get_u32(2);
@@ -121,6 +125,8 @@ pub fn upload_from_bitmap_data<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(texture) = this.as_texture() {
+        texture.check_disposed(activation)?; // Timffle
+        texture.context3d().check_disposed(activation)?;
         let source_obj = args.get_object(activation, 0, "source")?;
 
         if let Some(source) = source_obj.as_bitmap_data() {

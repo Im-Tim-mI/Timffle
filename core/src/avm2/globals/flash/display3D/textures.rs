@@ -9,3 +9,4 @@ mod atf_jpegxr;
 pub mod cube_texture;
 pub mod rectangle_texture;
 pub mod texture;
+pub mod texture_base;
