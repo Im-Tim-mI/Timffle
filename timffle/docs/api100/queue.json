@@ -1052,7 +1052,8 @@
     "setRenderToTexture()",
     "setSamplerStateAt()"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "stage3d batch: totalGPUMemory, backBufferWidth/Height, maxBackBufferWidth/Height, driverInfo, createVideoTexture (null, supportsVideoTexture false), dispose (#3694 + wgpu release + recreate), setSamplerStateAt anisotropic real. Left: configureBackBuffer wantsBestResolution*, createTexture BgrPacked/Compressed, drawToBitmapData (needs wgpu readback), setRenderToTexture antiAlias/colorOutputIndex markers, setSamplerStateAt mipfilter (textures have 1 mip level)."
   },
   {
    "class": "flash.display3D.IndexBuffer3D",
@@ -1061,7 +1062,8 @@
    "stubbed": [
     "dispose()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "dispose real (buffer dropped, #3694 afterwards)."
   },
   {
    "class": "flash.display3D.Program3D",
@@ -1070,7 +1072,8 @@
    "stubbed": [
     "dispose()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "dispose real (shader module dropped, #3694 afterwards)."
   },
   {
    "class": "flash.display3D.VertexBuffer3D",
@@ -1079,7 +1082,8 @@
    "stubbed": [
     "dispose()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "dispose real (buffer dropped, #3694 afterwards)."
   },
   {
    "class": "flash.display3D.textures.CubeTexture",
@@ -1090,7 +1094,8 @@
     "uploadFromBitmapData()",
     "uploadFromByteArray()"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "async upload real (textureReady). Left: 'untested' markers on uploadFromByteArray/uploadCompressedTextureFromByteArray, miplevel != 0, unsupported ATF formats."
   },
   {
    "class": "flash.display3D.textures.Texture",
@@ -1101,7 +1106,8 @@
     "uploadFromBitmapData()",
     "uploadFromByteArray()"
    ],
-   "status": "todo"
+   "status": "todo",
+   "note": "miplevel != 0 uploads need mip-chain textures in wgpu; ATF formats beyond BGRA/DXT5 need decoders."
   },
   {
    "class": "flash.display3D.textures.TextureBase",
@@ -1110,7 +1116,8 @@
    "stubbed": [
     "dispose()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "dispose real (texture dropped, #3694 afterwards)."
   },
   {
    "class": "flash.display3D.textures.VideoTexture",
@@ -1122,7 +1129,8 @@
     "videoWidth"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "attachCamera/attachNetStream/videoWidth/videoHeight; instances never obtainable (createVideoTexture returns null, supportsVideoTexture false)."
   },
   {
    "class": "flash.automation.ActionGenerator",

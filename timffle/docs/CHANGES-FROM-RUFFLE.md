@@ -266,6 +266,20 @@ Ruffle 上游只有 `Collator` 的骨架（大小寫折疊後比較碼位），�
 - **`flash.concurrent.Mutex`**（`Mutex.as`）：給唯一一個 worker 用的真 mutex。mutex 需要一個 worker 來擁有，primordial worker 就是，所以 `isSupported` true（Flash 在 `new Mutex()` 做得出來的地方都回 true；上游原本的建構子 `#1520` 是「沒有 Mutex」的模型，這批改成有）：`lock()` 取得（或加深）擁有權，要同樣次數的 `unlock()` 才完全釋放；`tryLock()` 永遠成功（沒有別的 worker 能持有或等待）；沒有對應 `lock()` 的 `unlock()` 丟 `Error #1514: unlock() with no preceding matching lock().`（執行期錯誤清單裡「目前 worker 不擁有 mutex」的那一條）。
 - **`flash.concurrent.Condition`**（`Condition.as`）：`isSupported` 跟著 `Mutex.isSupported`（文件如此）；`mutex` 唯讀；擁有權檢查用 Flash 的錯誤碼——不擁有 mutex 時 `notify()` `#1516`、`notifyAll()` `#1517`、`wait()` `#1518`，`timeout` 小於 0 又不是 -1 `ArgumentError #1515`，mutex null `Error #1519: Condition cannot be initialized.`。`notify()`／`notifyAll()` 沒有人可以叫醒。`wait(timeout)` 真的暫停 timeout 毫秒（期間釋放 mutex、結束後以原本的深度拿回）再回 true（逾時：沒有別的 worker 能 notify）；`wait()` 沒有 timeout、或 timeout ≥ 15000，等於永遠等，Flash 在腳本上限到時丟 `ScriptTimeoutError #1502`，這裡立刻丟。
 
+### 第 4 組：Stage3D（flash.display3D）
+
+- **Context3D**
+  - `dispose(recreate:Boolean = true)`：`Context3DObject::dispose()` 把 `render_context` 丟掉（wgpu 的 `WgpuContext3D` 連同所有緩衝、貼圖、pipeline 一起釋放），設 `disposed`，`Stage3D` 狀態清成 None；`recreate` 為 true 時重新設成 `Requested{profile}`，由既有的幀末流程重建並派送 `context3DCreate`（Flash 文件：若不想要，先移除監聽或傳 false）。所有 native 方法開頭 `check_disposed()` → `Error #3694`。再次 `dispose()` 不做事。
+  - `backBufferWidth`／`backBufferHeight`：`configureBackBuffer()` 成功後記下的大小；未設定前 0。
+  - `maxBackBufferWidth`／`maxBackBufferHeight`：預設 16384；setter 夾到 `[max(32, 最後成功設定的寬/高), 16384]`；`configureBackBuffer()` 超過時丟 #3780／#3781（SWF < 30 丟 #3669，與既有 32…16384 檢查一致）。
+  - `totalGPUMemory`：索引緩衝 = `numIndices × 2`；頂點緩衝 = `numVertices × data32PerVertex × 4`；貼圖 = 寬 × 高 × 每像素位元組（BGRA 4、BGRA_PACKED／BGR_PACKED 2、COMPRESSED ½、COMPRESSED_ALPHA 1、RGBA_HALF_FLOAT 8；`streamingLevels > 0` 算整條 mip 鏈；CubeTexture × 6）；程式 = 上傳的 AGAL 位元組數（編譯後大小無法得知）。`dispose()` 減回，context 本身 `dispose()` 歸 0。只算 Flash 文件列的四類，不含後緩衝。
+  - `driverInfo`：新增 `Context3D::driver_info()` trait 方法（`render/src/backend.rs`），wgpu 實作用 `adapter.get_info()`：API 名（Vulkan／Metal／Direct3D12／OpenGL／WebGPU）、`DeviceType::Cpu` 時標 `Software` 否則 `Direct Mode`、`Vendor=driver`、`Version=driver_info`、`Renderer=name`。
+  - `createVideoTexture()`：先做 #3694 檢查，再回 `null`（文件：「returns null if the system doesn't support this feature」）。
+  - `setSamplerStateAt`：anisotropic 的空殼標記移除（wgpu `current_pipeline.rs` 早已把 `Anisotropic2x…16x` 變成 `anisotropy_clamp`）；`mipfilter != "mipnone"` 仍是空殼（wgpu 端所有貼圖 `mip_level_count = 1`，需要 mip 鏈與 `miplevel` 上傳才能做）。
+- **IndexBuffer3D / VertexBuffer3D / Program3D / TextureBase**：`dispose()` 改成 native；物件的 handle 改成 `RefCell<Option<…>>`，`dispose()` 取走（Box／Rc 釋放 → wgpu 資源釋放；被 pipeline 綁定中的貼圖在解除綁定後釋放），並從 `totalGPUMemory` 扣除；`uploadFrom*`、`upload()`、`setVertexBufferAt`、`setProgram`、`drawTriangles`、`setTextureAt`、`setRenderToTexture` 對已 dispose 的物件丟 #3694。`new TextureBase()` 沒有 GPU 貼圖，`dispose()` 不做事。
+- **VideoTexture**：補 `attachCamera`／`attachNetStream`／`videoWidth`／`videoHeight`。沒有硬體影片轉貼圖 → `supportsVideoTexture` false、`createVideoTexture()` null，類別仍是 abstract（`new` 丟 #2012），所以永遠拿不到實例；成員以「未附加來源」行為實作（記錄來源、null 解除、寬高 0）。
+- **CubeTexture.uploadCompressedTextureFromByteArray(async)**：AS 端和 `Texture` 相同；native 改名 `…Internal`。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -331,5 +345,10 @@ Ruffle 上游只有 `Collator` 的骨架（大小寫折疊後比較碼位），�
 | `SystemUpdater.update()` 第二次呼叫 | 更新進行中再呼叫 `update()`：Timffle 忽略；真 Flash 的反應文件沒寫。`SYSTEM` 類型也以 `DRM.UpdateFailedNotSupported` 結束（文件只列 DRM.* 的 status code）。 |
 | `Condition(null)`／`Worker.start()` 的錯誤碼 | 以執行期錯誤清單推定：`new Condition(null)` `#1519`、primordial worker 的 `start()` `#1511`（而不是 `#1521`）；沒有真 Flash 證實。 |
 | `Security.disableAVM1Loading` 的 `#2110` | 真 Flash 只讓能碰 stage 的 AS3 SWF 設定；Timffle 接受所有 AVM2 呼叫端。 |
+| 項目 | 說明 |
+| `Context3D.driverInfo` 字串 | 格式仿 Flash 的 `OpenGL Vendor=… Version=… Renderer=…`，但內容來自 wgpu 轉接器；`dispose()` 後回 `"Disposed"` 是依 OpenFL／常見實作，沒有用真 Flash 驗證。 |
+| `maxBackBufferWidth/Height` 超出範圍 | 文件只說「不能大於系統上限、不能小於 32／最後設定值」，沒說丟什麼錯；這裡夾值不丟錯。 |
+| `totalGPUMemory` 的程式大小 | 用 AGAL 位元組數代替驅動程式實際配置量。 |
+| Stage3D 測試 | 本容器沒有 Vulkan ICD／EGL，wgpu 找不到轉接器：`stage3d_members` 只涵蓋不需要 context 的部分（`supportsVideoTexture`、`new VideoTexture()` #2012、`TextureBase.dispose()`、`stage3Ds`）；`dispose()`→#3694、`totalGPUMemory`、`backBuffer*`、`maxBackBuffer*` 的程式碼只經 `cargo check` 與人工閱讀，未在此機器執行。合併後請在有 GPU 的機器跑 `cargo test -p tests --test tests -- stage3d`。 |
 
 > 這些差異都是已知的，**沒有被藏起來**——黃金答案不會為了讓測試通過而被改寫。其中一部分是用需要遊戲檔案的探針量到的，那些探針沒有放進 repo，所以上表是結論而不是可直接重現的測試。
