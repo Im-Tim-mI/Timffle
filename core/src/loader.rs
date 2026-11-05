@@ -219,12 +219,15 @@ impl From<crate::avm1::Error<'_>> for Error {
 /// Holds all in-progress loads for the player.
 #[derive(Collect)]
 #[collect(no_drop)]
-pub struct LoadManager<'gc>(SlotMap<LoaderHandle, MovieLoader<'gc>>);
+/// Timffle: the second field numbers the loaders in the order they were added
+/// (`MovieLoader::seq`); the third counts the AVM2 frames started
+/// (`MovieLoader::parsed_in_frame`).
+pub struct LoadManager<'gc>(SlotMap<LoaderHandle, MovieLoader<'gc>>, u64, u64);
 
 impl<'gc> LoadManager<'gc> {
     /// Construct a new `LoadManager`.
     pub fn new() -> Self {
-        Self(SlotMap::with_key())
+        Self(SlotMap::with_key(), 0, 0)
     }
 
     /// Add a new loader to the `LoadManager`.
@@ -237,10 +240,52 @@ impl<'gc> LoadManager<'gc> {
     /// Movie loaders are removed automatically after the loader status is set
     /// accordingly.
     pub fn add_loader(&mut self, loader: MovieLoader<'gc>) -> LoaderHandle {
+        self.1 += 1;
+        let seq = self.1;
         let handle = self.0.insert(loader);
         let loader = self.get_loader_mut(handle).unwrap();
         loader.self_handle = Some(handle);
+        loader.seq = seq;
         handle
+    }
+
+    /// Timffle: called when an AVM2 frame starts, before `enterFrame`.
+    pub fn begin_frame(&mut self) {
+        self.2 += 1;
+    }
+
+    /// Timffle: records that a loader's movie finished parsing; its content is
+    /// constructed by `construct_parsed` in the next frame that starts afterwards. A
+    /// `loadBytes()` called from an `enterFrame` listener is parsed before this
+    /// frame's `construct_parsed`, yet Flash Player 32 constructs it only in the next
+    /// frame (`avm2/timffle_request_delivery_later`).
+    fn mark_parsed(&mut self, handle: LoaderHandle, status: u16, redirected: bool) -> bool {
+        let frame = self.2;
+        match self.get_loader_mut(handle) {
+            Some(loader) => {
+                loader.loader_status = LoaderStatus::Parsed;
+                loader.http_status = status;
+                loader.redirected = redirected;
+                loader.parsed_in_frame = frame;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Timffle: the handles of all loaders, the most recently started first. Flash
+    /// Player 32 constructs the loaded content of several loaders that are ready in
+    /// the same frame, and sends their `init`/`httpStatus`/`complete`, in this order
+    /// (the last `load()`/`loadBytes()` call first; `open`/`progress` still follow
+    /// the call order). Measured with two to four Loaders, `load()` and `loadBytes()`
+    /// mixed, and a Loader reused for a second `load()`
+    /// (`avm2/timffle_loader_same_frame_order`, `_reload`,
+    /// `from_shumway/as3-loader/events/loader-events`); six Loaders mixing both cases
+    /// came in an order no simple rule explains. Ruffle went by slot order.
+    fn handles_latest_first(&self) -> Vec<LoaderHandle> {
+        let mut handles: Vec<_> = self.0.iter().map(|(h, l)| (l.seq, h)).collect();
+        handles.sort_unstable_by_key(|&(seq, _)| std::cmp::Reverse(seq));
+        handles.into_iter().map(|(_, h)| h).collect()
     }
 
     /// Remove a completed loader.
@@ -366,6 +411,8 @@ impl<'gc> LoadManager<'gc> {
             http_status: 0,
             redirected: false,
             movie: None,
+            seq: 0,
+            parsed_in_frame: 0,
         };
         let handle = self.add_loader(loader);
         let loader = self.get_loader_mut(handle).unwrap();
@@ -460,6 +507,8 @@ impl<'gc> LoadManager<'gc> {
             http_status: 0,
             redirected: false,
             movie: None,
+            seq: 0,
+            parsed_in_frame: 0,
         };
         let handle = context.load_manager.add_loader(loader);
         MovieLoader::movie_loader_bytes(handle, context, loader_url, bytes)
@@ -543,7 +592,8 @@ impl<'gc> LoadManager<'gc> {
     /// Ruffle constructed the content in the download callback, between frames, and
     /// (26344) in the preload step before `enterFrame`.
     pub fn construct_parsed(context: &mut UpdateContext<'gc>) {
-        let handles: Vec<_> = context.load_manager.0.iter().map(|(h, _)| h).collect();
+        let frame = context.load_manager.2;
+        let handles = context.load_manager.handles_latest_first();
         for handle in handles {
             let (target_clip, http_status, redirected) =
                 match context.load_manager.get_loader(handle) {
@@ -552,8 +602,9 @@ impl<'gc> LoadManager<'gc> {
                         target_clip,
                         http_status,
                         redirected,
+                        parsed_in_frame,
                         ..
-                    }) => (*target_clip, *http_status, *redirected),
+                    }) if *parsed_in_frame < frame => (*target_clip, *http_status, *redirected),
                     _ => continue,
                 };
             match MovieLoader::movie_loader_complete(
@@ -582,7 +633,7 @@ impl<'gc> LoadManager<'gc> {
         {
             movie.try_fire_loaderinfo_events(context);
         }
-        let handles: Vec<_> = context.load_manager.0.iter().map(|(h, _)| h).collect();
+        let handles = context.load_manager.handles_latest_first();
         for handle in handles {
             if let Some(MovieLoader { target_clip, .. }) = context.load_manager.get_loader(handle)
                 && let Some(movie) = target_clip.as_movie_clip()
@@ -716,6 +767,16 @@ pub struct MovieLoader<'gc> {
     /// completed and we expect the Player to periodically tick preload
     /// until loading completes.
     movie: Option<SwfMovie<'gc>>,
+
+    /// Timffle: the order in which loaders were started, set by
+    /// `LoadManager::add_loader` (see `LoadManager::handles_latest_first`).
+    #[collect(require_static)]
+    seq: u64,
+
+    /// Timffle: the value of the frame counter of `LoadManager` when the movie
+    /// finished parsing (see `LoadManager::mark_parsed`).
+    #[collect(require_static)]
+    parsed_in_frame: u64,
 }
 
 impl<'gc> MovieLoader<'gc> {
@@ -798,7 +859,11 @@ impl<'gc> MovieLoader<'gc> {
         if did_finish {
             // AVM1 `loadMovie`/`MovieClipLoader` keep Ruffle's timing (content constructed
             // as soon as it is parsed): its tests pin that order and the fix is for AVM2.
-            if !is_avm2 {
+            // Timffle: an AVM1 movie downloaded by an AVM2 `Loader` is also added, with
+            // `init`/`httpStatus`/`complete`, as soon as it arrives (its first frame
+            // script runs in the next frame), not one frame later like AVM2 content
+            // (Flash Player 32: `mixed_avm/avm2_loads_avm1_events`).
+            if !is_avm2 || !mc.movie().is_action_script_3() {
                 MovieLoader::movie_loader_complete(
                     handle,
                     context,
@@ -809,13 +874,8 @@ impl<'gc> MovieLoader<'gc> {
             } else {
                 // Timffle: parsed between frames; the content is constructed in the next
                 // frame after `enterFrame` (see `LoadManager::construct_parsed`).
-                match context.load_manager.get_loader_mut(handle) {
-                    Some(loader) => {
-                        loader.loader_status = LoaderStatus::Parsed;
-                        loader.http_status = status;
-                        loader.redirected = redirected;
-                    }
-                    None => return Err(Error::Cancelled),
+                if !context.load_manager.mark_parsed(handle, status, redirected) {
+                    return Err(Error::Cancelled);
                 }
             }
         }
@@ -842,7 +902,13 @@ impl<'gc> MovieLoader<'gc> {
             let request_url = request.url().to_string();
             let resolved_url = player.lock().unwrap().navigator().resolve_url(&request_url);
 
+            let delivery_hold = player.lock().unwrap().delivery_hold();
             let fetch = player.lock().unwrap().fetch(request, FetchReason::LoadSwf);
+            // Timffle: the start step (`open`, `onLoadStart`) waits like the response
+            // does (see `Player::delivery_hold`).
+            if let Some(hold) = delivery_hold {
+                hold.await;
+            }
 
             let mut replacing_root_movie = false;
             player.lock().unwrap().update(|uc| -> Result<(), Error> {
@@ -1946,7 +2012,10 @@ pub fn load_netstream<'gc>(
     let stream = NetStreamHandle::stash(uc, stream);
 
     Box::pin(async move {
-        let fetch = player.lock().unwrap().fetch(request, FetchReason::Other);
+        let fetch = player
+            .lock()
+            .unwrap()
+            .fetch_stream(request, FetchReason::Other);
         match fetch.await {
             Ok(mut response) => {
                 let expected_length = response.expected_length();
@@ -2279,11 +2348,7 @@ impl<'gc> MovieLoader<'gc> {
                         // downloaded movie (see `LoadManager::construct_parsed`); Ruffle used
                         // a post-frame callback, which left a tick boundary between the
                         // constructor and `init`/`complete`.
-                        if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
-                            loader.loader_status = LoaderStatus::Parsed;
-                            loader.http_status = 0;
-                            loader.redirected = false;
-                        }
+                        uc.load_manager.mark_parsed(handle, 0, false);
                     }
                 }
 
@@ -2674,8 +2739,15 @@ impl<'gc> MovieLoader<'gc> {
                 loader_info
                     .set_loader_stream(LoaderStream::Swf(current_movie, dobj.unwrap()), uc.gc());
 
+                // Timffle: a downloaded AVM1 movie gets `init`/`httpStatus`/`complete`
+                // right after `added`, before its first frame script runs (Flash Player
+                // 32: `mixed_avm/avm2_loads_avm1_events`), like an image.
+                let avm1_download = vm_data.load_bytes_info().is_none()
+                    && dobj
+                        .and_then(|d| d.as_movie_clip())
+                        .is_some_and(|mc| !mc.movie().is_action_script_3());
                 if let Some(dobj) = dobj
-                    && dobj.as_movie_clip().is_none()
+                    && (dobj.as_movie_clip().is_none() || avm1_download)
                 {
                     loader_info.fire_init_and_complete_events(uc, status, redirected);
                 }

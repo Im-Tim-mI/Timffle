@@ -60,8 +60,16 @@ package {
             trace("audioReliable: " + ns.audioReliable);
             trace("videoReliable: " + ns.videoReliable);
             trace("dataReliable: " + ns.dataReliable);
-            trace("audioSampleAccess: " + ns.audioSampleAccess);
-            trace("videoSampleAccess: " + ns.videoSampleAccess);
+            try {
+                trace("audioSampleAccess: " + ns.audioSampleAccess);
+            } catch (e:Error) {
+                trace("audioSampleAccess threw " + getQualifiedClassName(e) + " #" + e.errorID);
+            }
+            try {
+                trace("videoSampleAccess: " + ns.videoSampleAccess);
+            } catch (e:Error) {
+                trace("videoSampleAccess threw " + getQualifiedClassName(e) + " #" + e.errorID);
+            }
             trace("videoStreamSettings: " + ns.videoStreamSettings);
             trace("multicastAvailabilitySendToAll: " + ns.multicastAvailabilitySendToAll);
             trace("multicastAvailabilityUpdatePeriod: " + ns.multicastAvailabilityUpdatePeriod);
@@ -106,10 +114,18 @@ package {
             trace("videoReliable (set false): " + ns.videoReliable);
             ns.dataReliable = false;
             trace("dataReliable (set false): " + ns.dataReliable);
-            ns.audioSampleAccess = true;
-            trace("audioSampleAccess: " + ns.audioSampleAccess);
-            ns.videoSampleAccess = true;
-            trace("videoSampleAccess: " + ns.videoSampleAccess);
+            try {
+                ns.audioSampleAccess = true;
+                trace("audioSampleAccess = true returned");
+            } catch (e:Error) {
+                trace("audioSampleAccess = true threw " + getQualifiedClassName(e) + " #" + e.errorID);
+            }
+            try {
+                ns.videoSampleAccess = true;
+                trace("videoSampleAccess = true returned");
+            } catch (e:Error) {
+                trace("videoSampleAccess = true threw " + getQualifiedClassName(e) + " #" + e.errorID);
+            }
             var vss:VideoStreamSettings = new VideoStreamSettings();
             ns.videoStreamSettings = vss;
             trace("videoStreamSettings same: " + (ns.videoStreamSettings == vss));

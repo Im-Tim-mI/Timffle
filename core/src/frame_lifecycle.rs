@@ -77,6 +77,7 @@ pub fn run_all_phases_avm2(context: &mut UpdateContext<'_>) {
         return;
     }
 
+    context.load_manager.begin_frame();
     *context.frame_phase = FramePhase::Enter;
     OrphanManager::each_orphan_obj(context, |orphan, context| {
         orphan.enter_frame(context);

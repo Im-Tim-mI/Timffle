@@ -1,3 +1,7 @@
-# NOTE: In FP, the "hello from avm1!" log appears after "Load complete",
-# but this is likely due to Ruffle's incorrect chunked loading behaviors.
-num_ticks = 3
+# Timffle: output.txt now follows Flash Player 32 (debugger, recorded 2026-11-05; the
+# last line needs the mouse input and was kept): `complete` comes before the AVM1
+# movie's DoInitAction and first frame. Ruffle runs the DoInitAction when the movie is
+# loaded, before `complete` (output.ruffle.txt); its first frame already runs after
+# `complete`, as in Flash.
+num_ticks = 4
+known_failure = true

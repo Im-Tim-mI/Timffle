@@ -289,8 +289,10 @@ pub struct NetStreamData<'gc> {
     /// Stream source.
     source: Lock<Gc<'gc, NetStreamSource>>,
 
-    /// The number of seconds of video data that should be buffered. This is
-    /// currently unsupported and changing it has no effect.
+    /// The number of seconds of data to buffer before playback starts.
+    ///
+    /// Timffle: 0 until it is set or the stream plays (Flash Player 32), see
+    /// `set_buffer_time`.
     buffer_time: Cell<f64>,
 
     /// The last decoded bitmap.
@@ -406,7 +408,7 @@ impl<'gc> NetStream<'gc> {
             gc_context,
             NetStreamData {
                 source: Lock::new(Gc::new(gc_context, Default::default())),
-                buffer_time: Cell::new(0.1),
+                buffer_time: Cell::new(0.0),
                 last_decoded_bitmap: RefCell::new(None),
                 decoded_frame_serial: Cell::new(0),
                 metadata_size: Cell::new(None),
@@ -528,7 +530,18 @@ impl<'gc> NetStream<'gc> {
         self.0.buffer_time.get()
     }
 
+    /// Timffle: as Flash Player 32 does on a `connect(null)` stream: a fresh stream
+    /// reads 0, any value below 0.1 s (negative ones too) becomes 0.1, NaN and
+    /// infinities become 4294967.295 (the largest millisecond count), and `play()`
+    /// turns a 0 into 0.1. Ruffle started every stream at 0.1 and stored what it was
+    /// given.
     pub fn set_buffer_time(self, buffer_time: f64) {
+        const MAX: f64 = u32::MAX as f64 / 1000.0;
+        let buffer_time = if !buffer_time.is_finite() {
+            MAX
+        } else {
+            buffer_time.clamp(0.1, MAX)
+        };
         self.0.buffer_time.set(buffer_time);
     }
 
@@ -701,6 +714,10 @@ impl<'gc> NetStream<'gc> {
     /// the given resource. Otherwise, the stream will play whatever data is
     /// available in the buffer.
     pub fn play(self, context: &mut UpdateContext<'gc>, name: Option<AvmString<'gc>>) {
+        // Timffle: an unset buffer time becomes 0.1 s when the stream plays.
+        if self.0.buffer_time.get() < 0.1 {
+            self.0.buffer_time.set(0.1);
+        }
         if let Some(name) = name {
             let request = if let Ok(stream_url) = Url::parse(context.root_swf.url())
                 .and_then(|url| url.join(name.to_string().as_str()))

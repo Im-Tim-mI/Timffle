@@ -1,0 +1,15 @@
+go f0
+  snd onLoad true (f=0)
+go done
+enterFrame 1
+  lv onData (f=1)
+  xml onData (f=1)
+  mcl start (f=1)
+  mcl complete (f=1)
+    b child frame
+    b child frame
+enterFrame 2
+  mcl init (f=2)
+enterFrame 3
+enterFrame 4
+enterFrame 5

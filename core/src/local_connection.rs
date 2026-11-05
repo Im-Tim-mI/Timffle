@@ -78,6 +78,12 @@ pub struct QueuedMessage<'gc> {
 pub enum QueuedMessageKind<'gc> {
     Failure,
     Message {
+        /// Timffle: false for a message sent between frames to a name nobody
+        /// listened to yet (see `LocalConnections::send`); such a message waits
+        /// for a receiver until the end of the second frame after it was sent.
+        listened_at_send: bool,
+        #[collect(require_static)]
+        retries_left: u8,
         #[collect(require_static)]
         connection_name: WString,
         method_name: AvmString<'gc>,
@@ -97,6 +103,8 @@ impl<'gc> QueuedMessageKind<'gc> {
                 source.send_status(istr!(context, "error"), context);
             }
             QueuedMessageKind::Message {
+                listened_at_send,
+                retries_left,
                 connection_name,
                 method_name,
                 arguments,
@@ -112,8 +120,25 @@ impl<'gc> QueuedMessageKind<'gc> {
                         source.send_status(istr!(context, "error"), context);
                         return;
                     }
-                    source.send_status(istr!(context, "status"), context);
+                    let level = if listened_at_send {
+                        istr!(context, "status")
+                    } else {
+                        istr!(context, "error")
+                    };
+                    source.send_status(level, context);
                     receiver.run_method(context, method_name, arguments);
+                } else if retries_left > 0 {
+                    context.local_connections.messages.push(QueuedMessage {
+                        source,
+                        kind: QueuedMessageKind::Message {
+                            listened_at_send,
+                            retries_left: retries_left - 1,
+                            connection_name,
+                            method_name,
+                            arguments,
+                            sender_url,
+                        },
+                    });
                 } else {
                     source.send_status(istr!(context, "error"), context);
                 }
@@ -196,11 +221,23 @@ impl<'gc> LocalConnections<'gc> {
         // Even if one becomes available between send and update, it won't be used
         // Similarly, if one becomes unavailable between send and update, it'll error
         // If something *else* takes its place between send and update, it'll use that instead
+        //
+        // Timffle: except for a message sent between frames (from a download's
+        // `complete`, a timer...) to a name nobody listens to yet: it waits for a
+        // receiver until the end of the second frame (a frame script runs after the
+        // delivery step of its frame) and is then delivered with the `error` status
+        // of check 1. Flash Player 32 delivers it to AVM1 content that an AVM2
+        // `Loader` added in `complete` and that connects in its first frame
+        // (`mixed_avm/avm2_loads_avm1_v9`/`_v10`); a send and a `connect()` inside one
+        // frame keep check 1 (`avm2/localconnection`, also Flash).
 
         let connection_name = Self::qualified_name(domain, &connection_name);
 
-        let kind = if self.find_listener(&connection_name).is_some() {
+        let listening = self.find_listener(&connection_name).is_some();
+        let kind = if listening || !crate::player::is_running_frame() {
             QueuedMessageKind::Message {
+                listened_at_send: listening,
+                retries_left: if listening { 0 } else { 1 },
                 connection_name,
                 method_name,
                 arguments,

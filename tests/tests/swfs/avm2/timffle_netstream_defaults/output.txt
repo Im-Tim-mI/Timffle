@@ -1,0 +1,26 @@
+set 0 -> 0.1
+set 0.01 -> 0.1
+set 0.05 -> 0.1
+set 0.0999 -> 0.1
+set 0.1 -> 0.1
+set 0.11 -> 0.11
+set 0.5 -> 0.5
+set 2 -> 2
+set -1 -> 0.1
+set -0.05 -> 0.1
+set NaN -> 4294967.295
+set Infinity -> 4294967.295
+fresh 0
+after play 0.1
+after close 0.1
+after play(null) 0.1
+0.5 then 0 -> 0.1
+multicast: false,0,0,0,0,0
+multicast after set: false,0,0,0,0,0
+stream nonces: [] []
+connection nonces: [0000000000000000000000000000000000000000000000000000000000000000] [0000000000000000000000000000000000000000000000000000000000000000]
+audioSampleAccess get threw 2154 Error #2154: The NetStream Object is invalid.  This may be due to a failed NetConnection. true
+videoSampleAccess set threw 2154
+playing: audioSampleAccess set threw 2154
+autoGain false
+autoGain after set true false

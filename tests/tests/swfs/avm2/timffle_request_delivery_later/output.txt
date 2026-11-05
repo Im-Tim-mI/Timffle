@@ -1,0 +1,89 @@
+ctor url=file at=2 k=loader,urlloader,urlstream,sound,bytes,chain
+frameConstructed 0
+exitFrame 0
+  [root] init (f=0)
+  [root] progress 5516/5516 (f=0)
+  [root] complete (f=0)
+enterFrame 1
+frameConstructed 1
+exitFrame 1
+enterFrame 2
+go from enterFrame f=2
+  [loader] started (f=2)
+  [urlloader] started (f=2)
+  [urlstream] started (f=2)
+  [sound] started (f=2)
+  [bytes4(instance3)] progress 0/633 (f=2)
+  [bytes4(instance3)] progress 633/633 (f=2)
+  [bytes] started (f=2)
+  [chain] started (f=2)
+frameConstructed 2
+exitFrame 2
+  [loader0(instance1)] open (f=2)
+  [loader0(instance1)] progress 0/633 (f=2)
+  [loader0(instance1)] progress 633/633 (f=2)
+  [urlloader] open (f=2)
+  [urlloader] progress 6/6 (f=2)
+  [urlloader] httpStatus (f=2)
+  [urlloader] complete (f=2)
+  [urlstream] open (f=2)
+  [urlstream] progress 6/6 (f=2)
+  [urlstream] httpStatus (f=2)
+  [urlstream] complete (f=2)
+  [sound] open (f=2)
+  [sound] progress 0/4180 (f=2)
+  [sound] progress 4180/4180 (f=2)
+  [sound] complete (f=2)
+  [c1] open (f=2)
+  [c1] progress 6/6 (f=2)
+  [c1] httpStatus (f=2)
+  [c1] complete (f=2)
+  [c1] started c2 and cl from complete (f=2)
+enterFrame 3
+    A ctor instance4
+    A ctor instance2
+frameConstructed 3
+exitFrame 3
+  [bytes4(instance3)] init (f=3)
+  [bytes4(instance3)] complete (f=3)
+  [loader0(instance1)] init (f=3)
+  [loader0(instance1)] httpStatus (f=3)
+  [loader0(instance1)] complete (f=3)
+  [c2] open (f=3)
+  [c2] progress 6/6 (f=3)
+  [c2] httpStatus (f=3)
+  [c2] complete (f=3)
+  [cl] open (f=3)
+  [cl] progress 0/633 (f=3)
+  [cl] progress 633/633 (f=3)
+enterFrame 4
+    A ctor instance6
+frameConstructed 4
+exitFrame 4
+  [cl] init (f=4)
+  [cl] httpStatus (f=4)
+  [cl] complete (f=4)
+enterFrame 5
+frameConstructed 5
+exitFrame 5
+enterFrame 6
+frameConstructed 6
+exitFrame 6
+enterFrame 7
+frameConstructed 7
+exitFrame 7
+enterFrame 8
+frameConstructed 8
+exitFrame 8
+enterFrame 9
+frameConstructed 9
+exitFrame 9
+enterFrame 10
+frameConstructed 10
+exitFrame 10
+enterFrame 11
+frameConstructed 11
+exitFrame 11
+enterFrame 12
+frameConstructed 12
+exitFrame 12

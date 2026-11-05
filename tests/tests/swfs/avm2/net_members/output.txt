@@ -79,24 +79,12 @@ fileList fresh=null
 list.browse([1]) THREW ArgumentError #2097
 list.browse returned true
 list2.browse returned true
-// source request loaded: Hello, World!
-useRedirectedURL domain url=http://127.0.0.1:18765/x/y.txt?q=1
-useRedirectedURL whole+pattern url=http://127.0.0.1:18765/x/y.txt?q=1
 nc rtmp netStatus NetConnection.Connect.Failed level=error connected=false uri=rtmp://localhost:1935/app
 nc rtmps netStatus NetConnection.Connect.Failed level=error connected=false uri=rtmps://localhost/app
 nc rtmfp netStatus NetConnection.Connect.Failed level=error connected=false uri=rtmfp:
 download event select name=debug-success.txt size=13
-download event open name=debug-success.txt size=13
-download event progress 13/13 name=debug-success.txt size=13
-download event complete name=debug-success.txt size=13
 download-dns event select name=debug-success.txt size=13
-Error opening URL 'down.txt?debug-error-dns'
-download-dns event ioError #2032 name=debug-success.txt size=13
 download-status event select name=debug-success.txt size=13
-Error opening URL 'down.txt?debug-error-statuscode'
-download-status event open name=debug-success.txt size=13
-download-status event httpStatus status=0 name=debug-success.txt size=13
-download-status event ioError #2032 name=debug-success.txt size=13
 download-dialog-cancel event cancel name THREW #2037
 upload event select name=test.txt size=13
 upload returned
@@ -105,6 +93,22 @@ upload-cancelled event select name=test.txt size=13
 upload then cancel returned
 list select len=3 test1.txt:13,test2.txt:13,test3.txt:13
 list2 cancel fileList=
+socket connect bytesPending=0
+socket after write bytesPending=7
+socket after flush bytesPending=0
+bytesPending closed THREW flash.errors::IOError #2002
+// source request loaded: Hello, World!
+useRedirectedURL domain url=http://127.0.0.1:18765/x/y.txt?q=1
+useRedirectedURL whole+pattern url=http://127.0.0.1:18765/x/y.txt?q=1
+download event open name=debug-success.txt size=13
+download event progress 13/13 name=debug-success.txt size=13
+download event complete name=debug-success.txt size=13
+Error opening URL 'down.txt?debug-error-dns'
+download-dns event ioError #2032 name=debug-success.txt size=13
+Error opening URL 'down.txt?debug-error-statuscode'
+download-status event open name=debug-success.txt size=13
+download-status event httpStatus status=0 name=debug-success.txt size=13
+download-status event ioError #2032 name=debug-success.txt size=13
 upload event open name=test.txt size=13
 upload event progress 13/13 name=test.txt size=13
 upload event complete name=test.txt size=13
@@ -113,10 +117,6 @@ upload-status event open name=test.txt size=13
 Error opening URL 'upload.php?debug-error-statuscode'
 upload-status event httpStatus status=0 name=test.txt size=13
 upload-status event ioError #2038 name=test.txt size=13
-socket connect bytesPending=0
-socket after write bytesPending=7
-socket after flush bytesPending=0
-bytesPending closed THREW flash.errors::IOError #2002
 // frame 4
 nc[0] connected=false uri=null
 nc[1] connected=false uri=rtmp://localhost:1935/app

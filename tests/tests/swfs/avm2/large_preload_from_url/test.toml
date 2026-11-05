@@ -1,4 +1,1 @@
-num_ticks = 4
-# Timffle: Flash delivers a download started during the first frame only after frame 1;
-# Ruffle after frame 0, so Ruffle lacks one enterFrame/exitFrame pair before `open`.
-known_failure = true
+num_ticks = 5

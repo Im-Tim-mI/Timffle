@@ -30,21 +30,10 @@ package flash.net {
         private var _checkPolicyFile:Boolean = false;
         private var _useHardwareDecoder:Boolean = true;
         private var _useJitterBuffer:Boolean = false;
-        private var _audioSampleAccess:Boolean = false;
-        private var _videoSampleAccess:Boolean = false;
         private var _videoStreamSettings:VideoStreamSettings = null;
         private var _receiveAudio:Boolean = true;
         private var _receiveVideo:Boolean = true;
         private var _receiveVideoFPS:Number = -1;
-        // RTMFP multicast settings with Flash Player's defaults (the values the
-        // RTMFP group implementations mirror: 8 s window, 4 push neighbours,
-        // 2.5 s fetch period, 2 s relay margin, 0.1 s availability period).
-        private var _multicastAvailabilitySendToAll:Boolean = false;
-        private var _multicastAvailabilityUpdatePeriod:Number = 0.1;
-        private var _multicastFetchPeriod:Number = 2.5;
-        private var _multicastPushNeighborLimit:Number = 4;
-        private var _multicastRelayMarginDuration:Number = 2;
-        private var _multicastWindowDuration:Number = 8;
 
         public function NetStream(connection:NetConnection, peer:String = CONNECT_TO_FMS) {
             // Timffle: Flash Player requires a connected NetConnection (ArgumentError #2126;
@@ -245,12 +234,20 @@ package flash.net {
         public function set audioReliable(isReliable:Boolean):void {
         }
 
+        // Timffle: Flash Player 32 throws #2154 from the getter and the setter of
+        // `audioSampleAccess`/`videoSampleAccess` on a stream of a `connect(null)`
+        // NetConnection, before and while it plays.
+        private static function invalidStream():void {
+            throw new ArgumentError("Error #2154: The NetStream Object is invalid.  This may be due to a failed NetConnection.", 2154);
+        }
+
         public function get audioSampleAccess():Boolean {
-            return this._audioSampleAccess;
+            invalidStream();
+            return false;
         }
 
         public function set audioSampleAccess(isAccessible:Boolean):void {
-            this._audioSampleAccess = isAccessible;
+            invalidStream();
         }
 
         public native function get backBufferLength():Number;
@@ -301,13 +298,15 @@ package flash.net {
         }
 
         // Timffle: the peer identifiers of a non-RTMFP stream are those of its
-        // NetConnection (empty id, all-zero nonces on a local connection).
+        // NetConnection (empty id on a local connection).
         public function get farID():String {
             return this._connection.farID;
         }
 
+        // Timffle: Flash Player 32 answers an empty string for the nonces of a stream
+        // (its NetConnection reports 64 zeros).
         public function get farNonce():String {
-            return this._connection.farNonce;
+            return "";
         }
 
         public native function get inBufferSeek():Boolean;
@@ -337,28 +336,27 @@ package flash.net {
             this._maxPauseBufferTime = time > 0 ? time : 0;
         }
 
+        // Timffle: Flash Player 32 reads the multicast settings of a stream that is not
+        // an RTMFP group stream back as 0 (false); setting them has no effect.
         public function get multicastAvailabilitySendToAll():Boolean {
-            return this._multicastAvailabilitySendToAll;
+            return false;
         }
 
         public function set multicastAvailabilitySendToAll(toAll:Boolean):void {
-            this._multicastAvailabilitySendToAll = toAll;
         }
 
         public function get multicastAvailabilityUpdatePeriod():Number {
-            return this._multicastAvailabilityUpdatePeriod;
+            return 0;
         }
 
         public function set multicastAvailabilityUpdatePeriod(period:Number):void {
-            this._multicastAvailabilityUpdatePeriod = period;
         }
 
         public function get multicastFetchPeriod():Number {
-            return this._multicastFetchPeriod;
+            return 0;
         }
 
         public function set multicastFetchPeriod(period:Number):void {
-            this._multicastFetchPeriod = period;
         }
 
         // Timffle: Flash Player 32 answers null for a stream that is not multicast,
@@ -368,31 +366,28 @@ package flash.net {
         }
 
         public function get multicastPushNeighborLimit():Number {
-            return this._multicastPushNeighborLimit;
+            return 0;
         }
 
         public function set multicastPushNeighborLimit(limit:Number):void {
-            this._multicastPushNeighborLimit = limit;
         }
 
         public function get multicastRelayMarginDuration():Number {
-            return this._multicastRelayMarginDuration;
+            return 0;
         }
 
         public function set multicastRelayMarginDuration(dur:Number):void {
-            this._multicastRelayMarginDuration = dur;
         }
 
         public function get multicastWindowDuration():Number {
-            return this._multicastWindowDuration;
+            return 0;
         }
 
         public function set multicastWindowDuration(dur:Number):void {
-            this._multicastWindowDuration = dur;
         }
 
         public function get nearNonce():String {
-            return this._connection.nearNonce;
+            return "";
         }
 
         // Timffle: the NetConnection's encoding (the reference: inherited from it).
@@ -440,11 +435,12 @@ package flash.net {
         }
 
         public function get videoSampleAccess():Boolean {
-            return this._videoSampleAccess;
+            invalidStream();
+            return false;
         }
 
         public function set videoSampleAccess(isReadable:Boolean):void {
-            this._videoSampleAccess = isReadable;
+            invalidStream();
         }
 
         // Timffle: the settings of a published video track; kept for `publish()`.

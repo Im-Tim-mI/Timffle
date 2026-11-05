@@ -54,8 +54,8 @@ update(null): Error Error #2202: Only one SystemUpdater action is allowed at a t
 // Security.disableAVM1Loading
 disableAVM1Loading: true
 load(avm1.swf) started
+updater status: DRM.UpdateFailedNotSupported / error
 securityError: Error #2111: Security.disableAVM1Loading is true so the current load of the ActionScript 1.0/2.0 SWF file has been blocked. (2111)
 content after block: null
 disableAVM1Loading: false
-updater status: DRM.UpdateFailedNotSupported / error
 complete: content is flash.display::AVM1Movie
