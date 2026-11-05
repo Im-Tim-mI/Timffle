@@ -200,3 +200,270 @@ pub fn get_time<'gc>(
 
     Ok(Value::Undefined)
 }
+
+// Timffle: natives backing the `NetStream` members implemented on this
+// player's FLV playback (see `crate::streams::NetStream`).
+
+fn with_netstream<'gc, T>(
+    this: Value<'gc>,
+    f: impl FnOnce(crate::streams::NetStream<'gc>) -> T,
+) -> Option<T> {
+    this.as_object().and_then(|o| o.as_netstream()).map(f)
+}
+
+pub fn get_audio_codec<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.audio_codec())
+        .unwrap_or(0)
+        .into())
+}
+
+pub fn get_video_codec<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.video_codec())
+        .unwrap_or(0)
+        .into())
+}
+
+pub fn get_decoded_frames<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.decoded_frames())
+        .unwrap_or(0)
+        .into())
+}
+
+pub fn get_current_fps<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.current_fps())
+        .unwrap_or(0.0)
+        .into())
+}
+
+pub fn get_buffer_length<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.buffer_length())
+        .unwrap_or(0.0)
+        .into())
+}
+
+pub fn get_buffer_time<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.buffer_time())
+        .unwrap_or(0.1)
+        .into())
+}
+
+pub fn set_buffer_time<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let time = args.get_f64(0);
+    // A NaN or negative value is stored as 0: the buffer time stays >= 0.
+    let time = if time.is_nan() { 0.0 } else { time.max(0.0) };
+    with_netstream(this, |ns| ns.set_buffer_time(time));
+    Ok(Value::Undefined)
+}
+
+pub fn get_back_buffer_length<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.back_buffer_length())
+        .unwrap_or(0.0)
+        .into())
+}
+
+pub fn get_back_buffer_time<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.back_buffer_time())
+        .unwrap_or(30.0)
+        .into())
+}
+
+pub fn set_back_buffer_time<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let time = args.get_f64(0);
+    let time = if time.is_nan() { 0.0 } else { time.max(0.0) };
+    with_netstream(this, |ns| ns.set_back_buffer_time(time));
+    Ok(Value::Undefined)
+}
+
+pub fn get_in_buffer_seek<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(with_netstream(this, |ns| ns.in_buffer_seek())
+        .unwrap_or(false)
+        .into())
+}
+
+pub fn set_in_buffer_seek<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let value = args.get_bool(0);
+    with_netstream(this, |ns| ns.set_in_buffer_seek(value));
+    Ok(Value::Undefined)
+}
+
+pub fn get_sound_transform<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let transform = with_netstream(this, |ns| ns.sound_transform()).unwrap_or_default();
+    Ok(transform.into_avm2_object(activation)?.into())
+}
+
+pub fn set_sound_transform<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let as3_st = args.get_object(activation, 0, "soundTransform")?;
+    let transform = crate::display_object::SoundTransform::from_avm2_object(as3_st);
+    if let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) {
+        ns.set_sound_transform(activation.context, transform);
+    }
+    Ok(Value::Undefined)
+}
+
+pub fn close<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    if let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) {
+        ns.close(activation.context);
+    }
+    Ok(Value::Undefined)
+}
+
+pub fn dispose<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    if let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) {
+        ns.dispose(activation.context);
+    }
+    Ok(Value::Undefined)
+}
+
+/// `step(frames)`: true when the frame was shown (the AS side then sends
+/// `NetStream.Step.Notify`).
+pub fn step_internal<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let frames = args.get_i32(0);
+    if let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) {
+        return Ok(ns.step(activation.context, frames).into());
+    }
+    Ok(false.into())
+}
+
+pub fn append_bytes_internal<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let bytes = args.get_object(activation, 0, "bytes")?;
+    let data: Vec<u8> = bytes
+        .as_bytearray()
+        .map(|b| b.bytes().to_vec())
+        .unwrap_or_default();
+    if let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) {
+        return Ok(ns.append_bytes(activation.context, &data).into());
+    }
+    Ok(false.into())
+}
+
+pub fn append_bytes_action_internal<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let action = args.get_string_non_null(activation, 0, "action")?;
+    let action = action.to_string();
+    if let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) {
+        return Ok(ns.append_bytes_action(activation.context, &action).into());
+    }
+    Ok(false.into())
+}
+
+/// The numbers and objects behind `NetStream.info`, in the order
+/// `NetStreamInfo.ruffleInit` expects them (see NetStreamInfo.as).
+pub fn info_values<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    use crate::avm2::ArrayStorage;
+    use crate::avm2::object::ArrayObject;
+
+    let Some(ns) = this.as_object().and_then(|o| o.as_netstream()) else {
+        return Ok(Value::Null);
+    };
+    let stats = ns.buffer_stats();
+    let (current_bps, max_bps, playback_bps) = ns.rates();
+    let total = (stats.audio_bytes + stats.video_bytes + stats.data_bytes).max(1) as f64;
+    // Per-kind rates: the download rate split like the bytes seen so far.
+    let share = |bytes: usize| current_bps * bytes as f64 / total;
+    let time = ns.time();
+    let ahead = |end: Option<i32>| end.map_or(0.0, |e| ((e as f64 - time) / 1000.0).max(0.0));
+    let mc = activation.gc();
+    let values: Vec<Value<'gc>> = vec![
+        current_bps.into(),
+        (ns.bytes_loaded() as f64).into(),
+        max_bps.into(),
+        share(stats.audio_bytes).into(),
+        (stats.audio_bytes as f64).into(),
+        share(stats.video_bytes).into(),
+        (stats.video_bytes as f64).into(),
+        share(stats.data_bytes).into(),
+        (stats.data_bytes as f64).into(),
+        playback_bps.into(),
+        (ns.dropped_frames() as f64).into(),
+        ahead(stats.audio_end).into(),
+        ahead(stats.video_end).into(),
+        ahead(stats.data_end).into(),
+        (stats.audio_ahead_bytes as f64).into(),
+        (stats.video_ahead_bytes as f64).into(),
+        (stats.data_ahead_bytes as f64).into(),
+        ns.metadata().map_or(Value::Null, Value::from),
+        ns.xmp_data().map_or(Value::Null, Value::from),
+        ns.url()
+            .map_or(Value::Null, |u| AvmString::new_utf8(mc, u).into()),
+    ];
+    Ok(ArrayObject::from_storage(activation.context, ArrayStorage::from_args(&values)).into())
+}

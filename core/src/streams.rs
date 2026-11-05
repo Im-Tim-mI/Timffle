@@ -14,7 +14,7 @@ use crate::backend::audio::{
 };
 use crate::backend::navigator::Request;
 use crate::context::UpdateContext;
-use crate::display_object::{MovieClip, TDisplayObject};
+use crate::display_object::{MovieClip, SoundTransform, TDisplayObject};
 use crate::loader::Error;
 use crate::string::AvmString;
 use flv_rs::{
@@ -186,7 +186,7 @@ impl NetStreamHandle {
 pub enum NetStreamType {
     /// The stream is an FLV.
     Flv {
-        #[expect(dead_code)] // set but never read
+        // Timffle: kept across `appendBytesAction(RESET_SEEK)`.
         header: FlvHeader,
 
         /// The currently playing video track's stream instance.
@@ -245,6 +245,42 @@ pub struct NetStreamSource {
 
     /// The currently playing sound stream
     sound_instance: Cell<Option<SoundInstanceHandle>>,
+
+    /// Timffle: true while playback waits for `bufferTime` seconds of data;
+    /// `NetStream.Buffer.Full` is sent when the wait ends.
+    buffering: Cell<bool>,
+
+    /// Timffle: the FLV codec ids of the stream (`NetStream.audioCodec` /
+    /// `videoCodec`), 0 until a tag of that kind was seen.
+    audio_codec: Cell<u32>,
+    video_codec: Cell<u32>,
+
+    /// Timffle: frames decoded so far (`NetStream.decodedFrames`) and frames
+    /// whose decoding failed (`NetStreamInfo.droppedFrames`).
+    decoded_frames: Cell<u32>,
+    dropped_frames: Cell<u32>,
+
+    /// Timffle: `NetStream.currentFPS`: frames decoded since the window
+    /// started (stream time in ms, count) and the last computed rate.
+    fps_window: Cell<(f64, u32)>,
+    current_fps: Cell<f64>,
+
+    /// Timffle: Data Generation Mode (`play(null)` followed by `appendBytes`).
+    data_generation: Cell<bool>,
+
+    /// Timffle: after `appendBytesAction(RESET_SEEK)` the stream time restarts
+    /// at the timestamp of the first tag appended.
+    resync_time: Cell<bool>,
+
+    /// Timffle: `NetStreamInfo` rates: bytes loaded at the last sample, ms
+    /// elapsed since it, bytes processed since it, current/max download B/s
+    /// and playback B/s.
+    rate_bytes_last: Cell<usize>,
+    rate_elapsed: Cell<f64>,
+    rate_processed: Cell<usize>,
+    current_bps: Cell<f64>,
+    max_bps: Cell<f64>,
+    playback_bps: Cell<f64>,
 }
 
 #[derive(Clone, Debug, Collect)]
@@ -285,6 +321,39 @@ pub struct NetStreamData<'gc> {
 
     /// True if the stream should play when ticked.
     playing: Cell<bool>,
+
+    /// Timffle: `NetStream.soundTransform`, applied to the stream's sound.
+    sound_transform: Cell<SoundTransform>,
+
+    /// Timffle: `NetStream.inBufferSeek` and `backBufferTime` (seconds).
+    in_buffer_seek: Cell<bool>,
+    back_buffer_time: Cell<f64>,
+
+    /// Timffle: the last `onMetaData` / `onXMPData` objects handed to the
+    /// AVM2 client (`NetStreamInfo.metaData` / `xmpData`).
+    metadata: Lock<Option<Avm2Object<'gc>>>,
+    xmp_data: Lock<Option<Avm2Object<'gc>>>,
+}
+
+/// Timffle: what a scan of the FLV tags in the buffer found, for
+/// `bufferLength`, `backBufferLength` and `NetStreamInfo`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BufferStats {
+    /// Payload bytes of every audio / video / script tag in the buffer.
+    pub audio_bytes: usize,
+    pub video_bytes: usize,
+    pub data_bytes: usize,
+    /// Payload bytes of the tags not yet played.
+    pub audio_ahead_bytes: usize,
+    pub video_ahead_bytes: usize,
+    pub data_ahead_bytes: usize,
+    /// The last timestamp (ms) per kind among the tags not yet played.
+    pub audio_end: Option<i32>,
+    pub video_end: Option<i32>,
+    pub data_end: Option<i32>,
+    /// The first and last tag timestamps (ms) in the buffer.
+    pub start_ts: Option<i32>,
+    pub end_ts: Option<i32>,
 }
 
 impl Default for NetStreamSource {
@@ -299,6 +368,21 @@ impl Default for NetStreamSource {
             queued_seek_time: Cell::new(None),
             audio_stream: RefCell::new(None),
             sound_instance: Cell::new(None),
+            buffering: Cell::new(true),
+            audio_codec: Cell::new(0),
+            video_codec: Cell::new(0),
+            decoded_frames: Cell::new(0),
+            dropped_frames: Cell::new(0),
+            fps_window: Cell::new((0.0, 0)),
+            current_fps: Cell::new(0.0),
+            data_generation: Cell::new(false),
+            resync_time: Cell::new(false),
+            rate_bytes_last: Cell::new(0),
+            rate_elapsed: Cell::new(0.0),
+            rate_processed: Cell::new(0),
+            current_bps: Cell::new(0.0),
+            max_bps: Cell::new(0.0),
+            playback_bps: Cell::new(0.0),
         }
     }
 }
@@ -331,6 +415,11 @@ impl<'gc> NetStream<'gc> {
                 url: RefCell::new(None),
                 attached_to: Lock::new(None),
                 playing: Cell::new(false),
+                sound_transform: Cell::new(SoundTransform::default()),
+                in_buffer_seek: Cell::new(false),
+                back_buffer_time: Cell::new(30.0),
+                metadata: Lock::new(None),
+                xmp_data: Lock::new(None),
             },
         ))
     }
@@ -406,11 +495,9 @@ impl<'gc> NetStream<'gc> {
 
         StreamManager::activate(context, self);
 
-        // NOTE: The onMetaData event triggers before this event in Flash due to its streaming behavior.
-        self.trigger_status_event(
-            context,
-            [("code", "NetStream.Buffer.Full"), ("level", "status")],
-        );
+        // Timffle: `NetStream.Buffer.Full` is sent by `tick` once `bufferTime`
+        // seconds are buffered (or the download is complete), like Flash; it
+        // used to be sent here for every chunk.
     }
 
     /// Indicate that the buffer has finished loading and that no further data
@@ -482,10 +569,23 @@ impl<'gc> NetStream<'gc> {
     /// This function should be run during stream ticks and *not* called by AVM
     /// code to service seek requests.
     pub fn execute_seek(self, context: &mut UpdateContext<'gc>, offset: f64) {
-        self.trigger_status_event(
-            context,
-            [("code", "NetStream.Seek.Notify"), ("level", "status")],
-        );
+        // Timffle: with `inBufferSeek` Flash marks a seek served from the
+        // buffer with `info.description = "client-inBufferSeek"`.
+        if self.0.in_buffer_seek.get() {
+            self.trigger_status_event(
+                context,
+                [
+                    ("description", "client-inBufferSeek"),
+                    ("level", "status"),
+                    ("code", "NetStream.Seek.Notify"),
+                ],
+            );
+        } else {
+            self.trigger_status_event(
+                context,
+                [("code", "NetStream.Seek.Notify"), ("level", "status")],
+            );
+        }
 
         let source = self.source();
 
@@ -616,6 +716,14 @@ impl<'gc> NetStream<'gc> {
             let future = crate::loader::load_netstream(context, self, request);
 
             context.navigator.spawn_future(future);
+        } else {
+            // Timffle: `play(null)` enters Data Generation Mode: the buffer is
+            // fed by `appendBytes` and `bytesTotal` follows `bytesLoaded`.
+            let source = self.source();
+            source.data_generation.set(true);
+            source
+                .expected_length
+                .set(Some(source.buffer.borrow().len()));
         }
 
         self.0.playing.set(true);
@@ -632,6 +740,10 @@ impl<'gc> NetStream<'gc> {
         // NOTE: We do not deactivate the stream here as there may be other
         // work to be done at tick time.
         self.0.playing.set(false);
+        // Timffle: nothing is displayed per second while paused.
+        let source = self.source();
+        source.current_fps.set(0.0);
+        source.fps_window.set((source.stream_time.get(), 0));
 
         if notify {
             self.trigger_status_event(
@@ -708,6 +820,8 @@ impl<'gc> NetStream<'gc> {
             | FlvAudioDataType::AacRaw(data) => slice.to_subslice(data),
         };
         let source = self.source();
+        // Timffle: `NetStream.audioCodec` is the FLV sound format id.
+        source.audio_codec.set(audio_data.format as u32);
         let audio_stream = &mut *source.audio_stream.borrow_mut();
         let (substream, sound_stream_info) = match audio_stream {
             Some(audio_stream) => audio_stream,
@@ -847,6 +961,9 @@ impl<'gc> NetStream<'gc> {
                     .start_substream(substream.clone(), sound_stream_head)?
             };
             source.sound_instance.set(Some(sound_instance));
+            // Timffle: `NetStream.soundTransform` applies to every sound the
+            // stream starts.
+            self.apply_sound_transform(context, sound_instance);
         }
 
         Ok(())
@@ -945,6 +1062,8 @@ impl<'gc> NetStream<'gc> {
             _ => unreachable!(),
         };
         let codec = VideoCodec::from_u8(video_data.codec_id as u8);
+        // Timffle: `NetStream.videoCodec` is the FLV codec id.
+        source.video_codec.set(video_data.codec_id as u32);
         let buffer = slice.data();
 
         match (video_handle, codec, video_data.data) {
@@ -1037,6 +1156,8 @@ impl<'gc> NetStream<'gc> {
                         }
                     }
                     Err(e) => {
+                        // Timffle: counted as `NetStreamInfo.droppedFrames`.
+                        source.dropped_frames.set(source.dropped_frames.get() + 1);
                         tracing::error!("Decoding video frame {} failed: {}", frame_id, e);
                     }
                 }
@@ -1082,6 +1203,8 @@ impl<'gc> NetStream<'gc> {
                         }
                     }
                     Err(e) => {
+                        // Timffle: counted as `NetStreamInfo.droppedFrames`.
+                        source.dropped_frames.set(source.dropped_frames.get() + 1);
                         tracing::error!("Decoding video frame {} failed: {}", frame_id, e);
                     }
                 }
@@ -1153,7 +1276,9 @@ impl<'gc> NetStream<'gc> {
                 // Timffle: `Video.videoWidth`/`videoHeight` already know the
                 // size inside the `onMetaData` callback (Flash does).
                 if let (Some(width), Some(height)) = (width, height) {
-                    self.0.metadata_size.set(Some((width as u16, height as u16)));
+                    self.0
+                        .metadata_size
+                        .set(Some((width as u16, height as u16)));
                 }
             }
             let avm_object = self.0.avm_object.get();
@@ -1216,6 +1341,42 @@ impl<'gc> NetStream<'gc> {
         // Ensure the container stream type is known before continuing.
         if source.stream_type.borrow().is_none() && !self.sniff_stream_type(context) {
             return;
+        }
+
+        // Timffle: `NetStreamInfo` download / playback rates, sampled once a
+        // second of player time.
+        self.sample_rates(dt.as_millis());
+
+        // Timffle: wait for `bufferTime` seconds of data (or the end of the
+        // download) before playing; `NetStream.Buffer.Full` marks the start.
+        if source.buffering.get() {
+            let complete = source.expected_length.get().is_none();
+            if !complete && self.buffer_length() < self.buffer_time() {
+                return;
+            }
+            source.buffering.set(false);
+            self.trigger_status_event(
+                context,
+                [("code", "NetStream.Buffer.Full"), ("level", "status")],
+            );
+            if !Gc::ptr_eq(source, self.source()) || !self.0.playing.get() {
+                return;
+            }
+        }
+
+        // Timffle: after `appendBytesAction(RESET_SEEK)` time restarts at the
+        // first tag's timestamp.
+        if source.resync_time.get() {
+            let slice = source.buffer.borrow().to_full_slice();
+            let buffer = slice.data();
+            let mut reader = FlvReader::from_parts(&buffer, source.offset.get());
+            match FlvTag::parse(&mut reader) {
+                Ok(tag) => {
+                    source.stream_time.set(tag.timestamp as f64);
+                    source.resync_time.set(false);
+                }
+                Err(_) => return,
+            }
         }
 
         self.cleanup_sound_stream(context);
@@ -1291,6 +1452,10 @@ impl<'gc> NetStream<'gc> {
                         .stream_position()
                         .expect("FLV reader stream position")
                         as usize;
+                    // Timffle: bytes played, for `playbackBytesPerSecond`.
+                    source.rate_processed.set(
+                        source.rate_processed.get() + offset.saturating_sub(source.offset.get()),
+                    );
                     source.offset.set(offset);
                     source
                         .preload_offset
@@ -1303,6 +1468,15 @@ impl<'gc> NetStream<'gc> {
         if let Err(e) = self.commit_sound_stream(context) {
             //TODO: Fire an error event at AS.
             tracing::error!("Error committing sound stream: {}", e);
+        }
+
+        // Timffle: `currentFPS` = frames decoded over the last second of stream time.
+        let (window_start, frames) = source.fps_window.get();
+        if max_time - window_start >= 1000.0 {
+            source
+                .current_fps
+                .set(frames as f64 * 1000.0 / (max_time - window_start));
+            source.fps_window.set((max_time, 0));
         }
 
         if buffer_underrun {
@@ -1329,6 +1503,10 @@ impl<'gc> NetStream<'gc> {
 
                 if is_end_of_video {
                     self.pause(context, false);
+                } else {
+                    // Timffle: wait for `bufferTime` seconds again before
+                    // resuming; Flash sends `Buffer.Full` once more then.
+                    source.buffering.set(true);
                 }
             }
         }
@@ -1337,6 +1515,421 @@ impl<'gc> NetStream<'gc> {
             //TODO: Fire an error event at AS.
             self.pause(context, false);
         }
+    }
+
+    // Timffle: the members below back the `flash.net.NetStream` API.
+
+    /// Timffle: seconds of data buffered ahead of the playhead
+    /// (`NetStream.bufferLength`).
+    pub fn buffer_length(self) -> f64 {
+        let source = self.source();
+        let stats = self.buffer_stats();
+        match stats.end_ts {
+            Some(end) => ((end as f64 - source.stream_time.get()) / 1000.0).max(0.0),
+            None => 0.0,
+        }
+    }
+
+    /// Timffle: seconds of already played data kept for `inBufferSeek`
+    /// (`NetStream.backBufferLength`): 0 unless `inBufferSeek` is set, else
+    /// the data behind the playhead, at most `backBufferTime`.
+    pub fn back_buffer_length(self) -> f64 {
+        if !self.0.in_buffer_seek.get() {
+            return 0.0;
+        }
+        let source = self.source();
+        let stats = self.buffer_stats();
+        match stats.start_ts {
+            Some(start) => ((source.stream_time.get() - start as f64) / 1000.0)
+                .max(0.0)
+                .min(self.0.back_buffer_time.get().max(0.0)),
+            None => 0.0,
+        }
+    }
+
+    pub fn in_buffer_seek(self) -> bool {
+        self.0.in_buffer_seek.get()
+    }
+
+    pub fn set_in_buffer_seek(self, value: bool) {
+        self.0.in_buffer_seek.set(value);
+    }
+
+    pub fn back_buffer_time(self) -> f64 {
+        self.0.back_buffer_time.get()
+    }
+
+    pub fn set_back_buffer_time(self, value: f64) {
+        self.0.back_buffer_time.set(value);
+    }
+
+    pub fn audio_codec(self) -> u32 {
+        self.source().audio_codec.get()
+    }
+
+    pub fn video_codec(self) -> u32 {
+        self.source().video_codec.get()
+    }
+
+    pub fn decoded_frames(self) -> u32 {
+        self.source().decoded_frames.get()
+    }
+
+    pub fn dropped_frames(self) -> u32 {
+        self.source().dropped_frames.get()
+    }
+
+    pub fn current_fps(self) -> f64 {
+        self.source().current_fps.get()
+    }
+
+    pub fn url(self) -> Option<String> {
+        self.0.url.borrow().clone()
+    }
+
+    pub fn metadata(self) -> Option<Avm2Object<'gc>> {
+        self.0.metadata.get()
+    }
+
+    pub fn xmp_data(self) -> Option<Avm2Object<'gc>> {
+        self.0.xmp_data.get()
+    }
+
+    /// Timffle: (current download B/s, max download B/s, playback B/s).
+    pub fn rates(self) -> (f64, f64, f64) {
+        let source = self.source();
+        (
+            source.current_bps.get(),
+            source.max_bps.get(),
+            source.playback_bps.get(),
+        )
+    }
+
+    /// Timffle: see [`Self::rates`]; called once per tick with the elapsed ms.
+    fn sample_rates(self, dt_ms: f64) {
+        let source = self.source();
+        let elapsed = source.rate_elapsed.get() + dt_ms;
+        if elapsed < 1000.0 {
+            source.rate_elapsed.set(elapsed);
+            return;
+        }
+        let loaded = source.buffer.borrow().len();
+        let seconds = elapsed / 1000.0;
+        let current = loaded.saturating_sub(source.rate_bytes_last.get()) as f64 / seconds;
+        source.current_bps.set(current);
+        source.max_bps.set(source.max_bps.get().max(current));
+        source
+            .playback_bps
+            .set(source.rate_processed.get() as f64 / seconds);
+        source.rate_bytes_last.set(loaded);
+        source.rate_processed.set(0);
+        source.rate_elapsed.set(0.0);
+    }
+
+    /// Timffle: scan the FLV tags in the buffer (see [`BufferStats`]).
+    pub fn buffer_stats(self) -> BufferStats {
+        let source = self.source();
+        let mut stats = BufferStats::default();
+        if !matches!(
+            &*source.stream_type.borrow(),
+            Some(NetStreamType::Flv { .. })
+        ) {
+            return stats;
+        }
+        let slice = source.buffer.borrow().to_full_slice();
+        let buffer = slice.data();
+        // The FLV header's DataOffset field says where the first tag starts.
+        let data_offset = buffer
+            .get(5..9)
+            .map(|b| u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as usize)
+            .filter(|&o| o >= 9)
+            .unwrap_or(9);
+        let play_offset = source.offset.get();
+        let mut reader = FlvReader::from_parts(&buffer, data_offset);
+        loop {
+            let position = reader.stream_position().unwrap_or(0) as usize;
+            let Ok(tag) = FlvTag::parse(&mut reader) else {
+                break;
+            };
+            let ahead = position >= play_offset;
+            let end = reader.stream_position().unwrap_or(0) as usize;
+            // 4 bytes previous tag size + 11 bytes tag header.
+            let payload = end.saturating_sub(position).saturating_sub(15);
+            if stats.start_ts.is_none() {
+                stats.start_ts = Some(tag.timestamp);
+            }
+            stats.end_ts = Some(stats.end_ts.map_or(tag.timestamp, |t| t.max(tag.timestamp)));
+            let (total, ahead_bytes, ahead_end) = match tag.data {
+                FlvTagData::Audio(_) => (
+                    &mut stats.audio_bytes,
+                    &mut stats.audio_ahead_bytes,
+                    &mut stats.audio_end,
+                ),
+                FlvTagData::Video(_) => (
+                    &mut stats.video_bytes,
+                    &mut stats.video_ahead_bytes,
+                    &mut stats.video_end,
+                ),
+                FlvTagData::Script(_) => (
+                    &mut stats.data_bytes,
+                    &mut stats.data_ahead_bytes,
+                    &mut stats.data_end,
+                ),
+                FlvTagData::Invalid(_) => continue,
+            };
+            *total += payload;
+            if ahead {
+                *ahead_bytes += payload;
+                *ahead_end = Some(ahead_end.map_or(tag.timestamp, |t| t.max(tag.timestamp)));
+            }
+        }
+        stats
+    }
+
+    pub fn sound_transform(self) -> SoundTransform {
+        self.0.sound_transform.get()
+    }
+
+    /// Timffle: `NetStream.soundTransform` setter: stored and applied to the
+    /// sound currently playing.
+    pub fn set_sound_transform(self, context: &mut UpdateContext<'gc>, transform: SoundTransform) {
+        self.0.sound_transform.set(transform);
+        if let Some(instance) = self.source().sound_instance.get() {
+            self.apply_sound_transform(context, instance);
+        }
+    }
+
+    fn apply_sound_transform(
+        self,
+        context: &mut UpdateContext<'gc>,
+        instance: SoundInstanceHandle,
+    ) {
+        let transform = self.0.sound_transform.get();
+        if self.0.attached_to.get().is_some() {
+            // Sounds routed through a MovieClip (AVM1 `attachAudio`) mix with
+            // the clip's own transform in the audio manager.
+            context
+                .audio_manager
+                .set_local_sound_transform(instance, transform);
+        } else {
+            context
+                .audio
+                .set_sound_transform(instance, transform.into());
+        }
+    }
+
+    /// Timffle: `NetStream.close()`: stop playing, drop the buffer and the
+    /// sound, time back to 0. The last frame stays on screen (Flash's
+    /// `close()` does not blank the `Video`; `dispose()` does).
+    pub fn close(self, context: &mut UpdateContext<'gc>) {
+        self.pause(context, false);
+        self.reset_buffer(context);
+        self.0.url.replace(None);
+        StreamManager::deactivate(context, self);
+    }
+
+    /// Timffle: `NetStream.dispose()`: `close()` plus the displayed frame is
+    /// dropped.
+    pub fn dispose(self, context: &mut UpdateContext<'gc>) {
+        self.close(context);
+        self.0.last_decoded_bitmap.replace(None);
+        self.0
+            .decoded_frame_serial
+            .set(self.0.decoded_frame_serial.get().wrapping_add(1));
+        self.0.metadata_size.set(None);
+        if let Some(mc) = self.0.attached_to.get() {
+            mc.invalidate_cached_bitmap();
+        }
+        *context.needs_render = true;
+    }
+
+    pub fn is_data_generation(self) -> bool {
+        self.source().data_generation.get()
+    }
+
+    /// Timffle: `NetStream.appendBytes()` in Data Generation Mode: the bytes
+    /// join the buffer as if downloaded; false outside that mode.
+    pub fn append_bytes(self, context: &mut UpdateContext<'gc>, data: &[u8]) -> bool {
+        let source = self.source();
+        if !source.data_generation.get() {
+            return false;
+        }
+        let mut owned = data.to_vec();
+        source.buffer.borrow_mut().append(&mut owned);
+        if source.expected_length.get().is_some() {
+            source
+                .expected_length
+                .set(Some(source.buffer.borrow().len()));
+        }
+        StreamManager::activate(context, self);
+        true
+    }
+
+    /// Timffle: `NetStream.appendBytesAction()`. `RESET_BEGIN` empties the
+    /// buffer and expects a new file (header) next; `RESET_SEEK` empties it
+    /// and expects tags from a seekable position, time continuing from the
+    /// first tag's timestamp; `END_SEQUENCE` marks the end of the data so the
+    /// stream can finish with `NetStream.Play.Stop`.
+    pub fn append_bytes_action(self, context: &mut UpdateContext<'gc>, action: &str) -> bool {
+        let source = self.source();
+        if !source.data_generation.get() {
+            return false;
+        }
+        match action {
+            "resetBegin" => {
+                self.reset_buffer(context);
+                let source = self.source();
+                source.data_generation.set(true);
+                source.expected_length.set(Some(0));
+            }
+            "resetSeek" => {
+                let stream_type = source.stream_type.borrow().clone();
+                let stream_time = source.stream_time.get();
+                self.reset_buffer(context);
+                let source = self.source();
+                source.data_generation.set(true);
+                source.expected_length.set(Some(0));
+                source.stream_time.set(stream_time);
+                if let Some(NetStreamType::Flv {
+                    header,
+                    video_stream,
+                    frame_id,
+                }) = stream_type
+                {
+                    source.stream_type.replace(Some(NetStreamType::Flv {
+                        header,
+                        video_stream,
+                        frame_id,
+                    }));
+                    source.resync_time.set(true);
+                }
+            }
+            "endSequence" => {
+                source.expected_length.set(None);
+                StreamManager::activate(context, self);
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    /// Timffle: `NetStream.step(frames)`: move `frames` video frames forward
+    /// (positive) or back (negative) inside the buffer and show that frame.
+    /// Needs `inBufferSeek`; returns false when the target frame is not in the
+    /// buffer (Flash then does nothing, no `NetStream.Step.Notify`).
+    pub fn step(self, context: &mut UpdateContext<'gc>, frames: i32) -> bool {
+        if !self.0.in_buffer_seek.get() || frames == 0 {
+            return false;
+        }
+        let source = self.source();
+        if !matches!(
+            &*source.stream_type.borrow(),
+            Some(NetStreamType::Flv { .. })
+        ) {
+            return false;
+        }
+        self.pause(context, false);
+        let slice = source.buffer.borrow().to_full_slice();
+        let buffer = slice.data();
+
+        // Find the target video tag.
+        let mut reader = FlvReader::from_parts(&buffer, source.offset.get());
+        let mut remaining = frames.unsigned_abs();
+        let target_pos;
+        if frames > 0 {
+            loop {
+                let pos = reader.stream_position().unwrap_or(0);
+                let Ok(tag) = FlvTag::parse(&mut reader) else {
+                    return false;
+                };
+                if matches!(tag.data, FlvTagData::Video(_)) {
+                    remaining -= 1;
+                    if remaining == 0 {
+                        target_pos = pos;
+                        break;
+                    }
+                }
+            }
+        } else {
+            loop {
+                if FlvTag::skip_back(&mut reader).is_err() {
+                    return false;
+                }
+                let pos = reader.stream_position().unwrap_or(0);
+                let Ok(tag) = FlvTag::parse(&mut reader) else {
+                    return false;
+                };
+                reader.seek(SeekFrom::Start(pos)).ok();
+                if matches!(tag.data, FlvTagData::Video(_)) {
+                    remaining -= 1;
+                    if remaining == 0 {
+                        target_pos = pos;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Decoding starts at the keyframe at or before the target when going
+        // back; going forward the decoder continues from where it is.
+        let mut decode_from = source.offset.get() as u64;
+        if frames < 0 {
+            let mut reader = FlvReader::from_parts(&buffer, target_pos as usize);
+            loop {
+                let pos = reader.stream_position().unwrap_or(0);
+                match FlvTag::parse(&mut reader) {
+                    Ok(FlvTag {
+                        data:
+                            FlvTagData::Video(FlvVideoData {
+                                frame_type: FlvFrameType::Keyframe,
+                                ..
+                            }),
+                        ..
+                    }) => {
+                        decode_from = pos;
+                        break;
+                    }
+                    Ok(_) => {}
+                    Err(_) => return false,
+                }
+                reader.seek(SeekFrom::Start(pos)).ok();
+                if FlvTag::skip_back(&mut reader).is_err() {
+                    decode_from = pos;
+                    break;
+                }
+            }
+        }
+
+        let mut reader = FlvReader::from_parts(&buffer, decode_from as usize);
+        let mut target_time = source.stream_time.get();
+        loop {
+            let pos = reader.stream_position().unwrap_or(0);
+            let Ok(tag) = FlvTag::parse(&mut reader) else {
+                break;
+            };
+            let end = reader.stream_position().unwrap_or(0) as usize;
+            let tag_needs_preloading = end >= source.preload_offset.get();
+            match tag.data {
+                FlvTagData::Video(video_data) => {
+                    self.flv_video_tag(context, &slice, video_data, tag_needs_preloading);
+                }
+                FlvTagData::Script(script_data) if tag_needs_preloading => {
+                    self.flv_script_tag(context, script_data, true);
+                }
+                _ => {}
+            }
+            if pos == target_pos {
+                target_time = tag.timestamp as f64;
+                source.offset.set(end);
+                source
+                    .preload_offset
+                    .set(max(end, source.preload_offset.get()));
+                break;
+            }
+        }
+        source.stream_time.set(target_time);
+        source.fps_window.set((target_time, 0));
+        true
     }
 
     pub fn last_decoded_bitmap(self) -> Option<BitmapInfo> {
@@ -1358,6 +1951,13 @@ impl<'gc> NetStream<'gc> {
         self.0
             .decoded_frame_serial
             .set(self.0.decoded_frame_serial.get().wrapping_add(1));
+        // Timffle: `decodedFrames` and the `currentFPS` window.
+        let source = self.source();
+        source
+            .decoded_frames
+            .set(source.decoded_frames.get().wrapping_add(1));
+        let (start, n) = source.fps_window.get();
+        source.fps_window.set((start, n + 1));
     }
 
     /// Trigger a status event on the stream.
@@ -1450,6 +2050,15 @@ impl<'gc> NetStream<'gc> {
                     .expect("Client should be initialized if script data is being accessed");
 
                 let data_object = variable_data.to_avm2_value(activation.context);
+                // Timffle: remembered for `NetStreamInfo.metaData` / `xmpData`.
+                if let Some(obj) = data_object.as_object() {
+                    let mc = activation.gc();
+                    if variable_name == b"onMetaData" {
+                        unlock!(Gc::write(mc, self.0), NetStreamData, metadata).set(Some(obj));
+                    } else if variable_name == b"onXMPData" {
+                        unlock!(Gc::write(mc, self.0), NetStreamData, xmp_data).set(Some(obj));
+                    }
+                }
                 let args = &[data_object];
 
                 Avm2Value::from(client_object).call_public_property(
