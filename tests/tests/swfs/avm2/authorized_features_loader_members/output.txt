@@ -1,0 +1,8 @@
+authorizedFeatures: null
+loadAuthorizedFeatures returned synchronously, authorizedFeatures: null
+loadAuthorizedFeaturesFromData(null): TypeError: Error #2007: Parameter data must be non-null.
+loadAuthorizedFeaturesFromData returned synchronously
+error: error Error #2032: Stream Error. bubbles=false cancelable=false
+authorizedFeatures after: null
+error: error Error #2032: Stream Error. bubbles=false cancelable=false
+authorizedFeatures after: null
