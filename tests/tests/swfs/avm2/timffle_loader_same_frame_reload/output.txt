@@ -1,0 +1,62 @@
+ctor url=file at=2 k=pair
+frameConstructed 0
+exitFrame 0
+  [root] init (f=0)
+  [root] progress 5470/5470 (f=0)
+  [root] complete (f=0)
+enterFrame 1
+frameConstructed 1
+exitFrame 1
+enterFrame 2
+go from enterFrame f=2
+pair names instance1 instance2 sprite instance3
+after p2.load: instance5
+after p1.load: instance7
+after p1.load again: instance9
+  [pair] started (f=2)
+frameConstructed 2
+exitFrame 2
+  [p2(instance2)] open (f=2)
+  [p2(instance2)] progress 0/633 (f=2)
+  [p2(instance2)] progress 633/633 (f=2)
+  [p1(instance1)] open (f=2)
+  [p1(instance1)] progress 0/633 (f=2)
+  [p1(instance1)] progress 633/633 (f=2)
+enterFrame 3
+    A ctor instance8
+    A ctor instance4
+frameConstructed 3
+exitFrame 3
+  [p1(instance1)] init (f=3)
+  [p1(instance1)] httpStatus (f=3)
+  [p1(instance1)] complete (f=3)
+  [p2(instance2)] init (f=3)
+  [p2(instance2)] httpStatus (f=3)
+  [p2(instance2)] complete (f=3)
+enterFrame 4
+frameConstructed 4
+exitFrame 4
+enterFrame 5
+frameConstructed 5
+exitFrame 5
+enterFrame 6
+frameConstructed 6
+exitFrame 6
+enterFrame 7
+frameConstructed 7
+exitFrame 7
+enterFrame 8
+frameConstructed 8
+exitFrame 8
+enterFrame 9
+frameConstructed 9
+exitFrame 9
+enterFrame 10
+frameConstructed 10
+exitFrame 10
+enterFrame 11
+frameConstructed 11
+exitFrame 11
+enterFrame 12
+frameConstructed 12
+exitFrame 12

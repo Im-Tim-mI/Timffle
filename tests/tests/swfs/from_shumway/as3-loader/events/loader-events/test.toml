@@ -1,5 +1,1 @@
 num_ticks = 4
-# Timffle: the frames now match Flash Player 32; the order of the two Loaders that
-# arrive in the same frame, the content names and the root LoaderInfo's `progress`
-# still differ (output.ruffle.txt).
-known_failure = true

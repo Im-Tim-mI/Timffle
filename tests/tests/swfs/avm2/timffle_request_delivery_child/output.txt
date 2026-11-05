@@ -1,0 +1,68 @@
+ctor url=file at=2 k=child
+frameConstructed 0
+exitFrame 0
+  [root] init (f=0)
+  [root] progress 5470/5470 (f=0)
+  [root] complete (f=0)
+enterFrame 1
+frameConstructed 1
+exitFrame 1
+enterFrame 2
+go from enterFrame f=2
+  [child] started (f=2)
+frameConstructed 2
+exitFrame 2
+  [child0(instance1)] open (f=2)
+  [child0(instance1)] progress 0/1576 (f=2)
+  [child0(instance1)] progress 1576/1576 (f=2)
+enterFrame 3
+    C ctor
+frameConstructed 3
+exitFrame 3
+  [child0(instance1)] init (f=3)
+  [child0(instance1)] httpStatus (f=3)
+  [child0(instance1)] complete (f=3)
+    [C-url ctor] open (cf=0)
+    [C-url ctor] complete (cf=0)
+    [C-ldr ctor] open (cf=0)
+enterFrame 4
+    C enterFrame 1
+    A ctor instance4
+frameConstructed 4
+exitFrame 4
+    [C-ldr ctor] init (cf=1)
+    [C-ldr ctor] complete (cf=1)
+    [C-url f1] open (cf=1)
+    [C-url f1] complete (cf=1)
+enterFrame 5
+    C enterFrame 2
+frameConstructed 5
+exitFrame 5
+enterFrame 6
+    C enterFrame 3
+frameConstructed 6
+exitFrame 6
+enterFrame 7
+    C enterFrame 4
+frameConstructed 7
+exitFrame 7
+enterFrame 8
+    C enterFrame 5
+frameConstructed 8
+exitFrame 8
+enterFrame 9
+    C enterFrame 6
+frameConstructed 9
+exitFrame 9
+enterFrame 10
+    C enterFrame 7
+frameConstructed 10
+exitFrame 10
+enterFrame 11
+    C enterFrame 8
+frameConstructed 11
+exitFrame 11
+enterFrame 12
+    C enterFrame 9
+frameConstructed 12
+exitFrame 12

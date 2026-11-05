@@ -19,6 +19,7 @@ use crate::avm2::{Error, Object};
 use crate::backend::navigator::{NavigationMethod, Request};
 use crate::display_object::LoaderDisplay;
 use crate::display_object::MovieClip;
+use crate::display_object::TDisplayObject;
 use crate::loader::LoadManager;
 use crate::loader::MovieLoaderVMData;
 use crate::tag_utils::{SwfMovie, SwfMovieData};
@@ -110,6 +111,11 @@ pub fn load<'gc>(
         ),
         activation.gc(),
     );
+
+    // Timffle: Flash Player 32 gives the content its `instanceN` name when `load()`
+    // or `loadBytes()` is called (the Loader created just before is `instance(N-1)`),
+    // not when the content is constructed.
+    content.set_default_instance_name(activation.context);
 
     let request = request_from_url_request(activation, url_request)?;
 
@@ -271,6 +277,8 @@ pub fn load_bytes<'gc>(
         ),
         activation.gc(),
     );
+    // Timffle: named when `loadBytes()` is called, as in `load()`.
+    content.set_default_instance_name(activation.context);
 
     let default_domain = activation
         .caller_domain()

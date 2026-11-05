@@ -272,19 +272,28 @@ impl<'gc> LoaderInfoObject<'gc> {
         if !self.0.complete_event_fired.get() {
             // NOTE: We have to check load progress here because this function
             // is called unconditionally at the end of every frame.
-            let (should_complete, from_bytes) = match self.0.loaded_stream.get() {
+            let (should_complete, from_bytes, total) = match self.0.loaded_stream.get() {
                 LoaderStream::Swf(movie, root) => (
                     root.as_movie_clip()
                         .map(|mc| mc.loaded_bytes() as i32 >= mc.total_bytes())
                         .unwrap_or(true),
                     movie.is_from_bytes(),
+                    movie.compressed_len(),
                 ),
-                _ => (false, false),
+                _ => (false, false, 0),
             };
 
             if should_complete {
                 let mut activation = Activation::from_nothing(context);
-                if !from_bytes {
+                if self.0.loader.is_none() {
+                    // Timffle: the root movie's LoaderInfo (no Loader) gets a final
+                    // `progress` (all bytes) between `init` and `complete` and no
+                    // `httpStatus`, from a file and over HTTP alike (Flash Player 32
+                    // standalone; `from_shumway/as3-loader/events/loader-events`).
+                    let progress_evt =
+                        EventObject::progress_event(&mut activation, "progress", total, total);
+                    Avm2::dispatch_event(context, progress_evt, self.into());
+                } else if !from_bytes {
                     let http_status_evt =
                         EventObject::http_status_event(&mut activation, status, redirected);
 
