@@ -756,6 +756,15 @@ impl<'gc> EditText<'gc> {
         self.contains_flag(EditTextFlag::WORD_WRAP)
     }
 
+    /// Timffle: draw the text without the field's clipping box. A TextLine (drawn
+    /// through its fallback field) does not clip its glyphs in Flash Player 32: on
+    /// visual/definefont4 the first line's "g" reaches row 71 (descender -202/1000 em
+    /// below the baseline at y 62.95), while the fallback field, only as tall as its
+    /// text and drawn moved up by its 2 px gutter, cut it off at row 69.
+    pub fn set_unclipped(self, unclipped: bool) {
+        self.set_flag(EditTextFlag::UNCLIPPED, unclipped);
+    }
+
     pub fn set_word_wrap(self, is_word_wrap: bool, context: &mut UpdateContext<'gc>) {
         self.set_flag(EditTextFlag::WORD_WRAP, is_word_wrap);
         self.relayout(context);
@@ -2947,16 +2956,19 @@ impl<'gc> TDisplayObject<'gc> for EditText<'gc> {
             }
         }
 
-        context.commands.push_mask();
-
+        // Timffle: see `set_unclipped`.
+        let clipped = !self.0.flags.get().contains(EditTextFlag::UNCLIPPED);
         let mask_bounds = self.0.bounds.get().grow_x(-Self::GUTTER);
         let mask = Matrix::create_box_from_rectangle(&mask_bounds);
 
-        context.commands.draw_rect(
-            Color::WHITE,
-            context.transform_stack.transform().matrix * mask,
-        );
-        context.commands.activate_mask();
+        if clipped {
+            context.commands.push_mask();
+            context.commands.draw_rect(
+                Color::WHITE,
+                context.transform_stack.transform().matrix * mask,
+            );
+            context.commands.activate_mask();
+        }
 
         context.transform_stack.push(&Transform {
             matrix: self.layout_to_local_matrix(),
@@ -2974,12 +2986,14 @@ impl<'gc> TDisplayObject<'gc> for EditText<'gc> {
 
         context.transform_stack.pop();
 
-        context.commands.deactivate_mask();
-        context.commands.draw_rect(
-            Color::WHITE,
-            context.transform_stack.transform().matrix * mask,
-        );
-        context.commands.pop_mask();
+        if clipped {
+            context.commands.deactivate_mask();
+            context.commands.draw_rect(
+                Color::WHITE,
+                context.transform_stack.transform().matrix * mask,
+            );
+            context.commands.pop_mask();
+        }
 
         if let Some(draw_caret_command) = render_state.draw_caret_command {
             context.commands.commands.push(draw_caret_command);
@@ -3401,6 +3415,8 @@ bitflags::bitflags! {
         const ALWAYS_SHOW_SELECTION = 1 << 14;
         /// Timffle: `TextField.useRichTextClipboard`.
         const USE_RICH_TEXT_CLIPBOARD = 1 << 15;
+        /// Timffle: draw the text without the clipping box (a TextLine's fallback field).
+        const UNCLIPPED = 1 << 2;
 
         // The following bits need to match `swf::EditTextFlag`.
         const READ_ONLY = 1 << 3;
