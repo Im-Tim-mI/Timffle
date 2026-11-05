@@ -7,7 +7,7 @@ use crate::avm1::{Object, ObjectHandle, Value};
 use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::globals::flash::utils::byte_array::strip_bom;
 use crate::avm2::object::{
-    ByteArrayObject, EventObject as Avm2EventObject, FileReferenceObject,
+    ByteArrayObject, EventObject as Avm2EventObject, FileReference, FileReferenceObject,
     FileReferenceObjectHandle, LoaderInfoObject, LoaderStream, ScriptObject as Avm2ScriptObject,
     ScriptObjectHandle as Avm2ScriptObjectHandle, SoundLoadingState, SoundObject,
     SoundObjectHandle, TObject as _,
@@ -2877,6 +2877,263 @@ pub fn select_file_dialog_avm2<'gc>(
                 tracing::warn!("Error on file dialog: {:?}", err);
             }
         }
+
+        Ok(())
+    })
+}
+
+/// Timffle: `FileReferenceList.browse()`: the multi-file dialog from an AVM2 scope. On a
+/// selection, `fileList` is filled with one `FileReference` per file and `select` is
+/// dispatched; otherwise `cancel`.
+pub fn select_multi_file_dialog_avm2<'gc>(
+    uc: &UpdateContext<'gc>,
+    target_object: Avm2Object<'gc>,
+    dialog: MultiDialogResultFuture,
+) -> OwnedFuture<(), Error> {
+    use crate::avm2::globals::slots::flash_net_file_reference_list as list_slots;
+
+    let handle = Avm2ScriptObjectHandle::stash(
+        uc,
+        target_object
+            .as_script_object()
+            .expect("FileReferenceList is a plain script object"),
+    );
+
+    run_file_dialog(uc, dialog, move |uc, dialog_result| {
+        let target_object = Avm2Object::from(handle.fetch(uc));
+        let mut activation = Avm2Activation::from_nothing(uc);
+
+        match dialog_result {
+            Ok(MultiFileDialogResult::Selection(selections)) => {
+                let file_reference_class = activation.avm2().classes().filereference;
+                let mut files = Vec::with_capacity(selections.len());
+                for selection in selections {
+                    let file = match file_reference_class.construct(&mut activation, &[]) {
+                        Ok(file) => file,
+                        Err(err) => {
+                            tracing::warn!("Could not create a FileReference: {:?}", err);
+                            return Ok(());
+                        }
+                    };
+                    let file = file
+                        .as_object()
+                        .and_then(|o| o.as_file_reference())
+                        .expect("FileReference constructor made a FileReference");
+                    file.init_from_file_selection(selection);
+                    files.push(Some(file.into()));
+                }
+                let file_list = crate::avm2::ArrayObject::from_storage(
+                    activation.context,
+                    crate::avm2::ArrayStorage::from_storage(files),
+                );
+                if let Err(err) = target_object.set_slot(
+                    list_slots::_FILE_LIST,
+                    file_list.into(),
+                    &mut activation,
+                ) {
+                    tracing::warn!("Could not set fileList: {:?}", err);
+                    return Ok(());
+                }
+
+                let select_event =
+                    Avm2EventObject::bare_default_event(activation.context, "select");
+                Avm2::dispatch_event(activation.context, select_event, target_object);
+            }
+            Ok(MultiFileDialogResult::Canceled) => {
+                let cancel_event =
+                    Avm2EventObject::bare_default_event(activation.context, "cancel");
+                Avm2::dispatch_event(activation.context, cancel_event, target_object);
+            }
+            Err(err) => {
+                tracing::warn!("Error on file dialog: {:?}", err);
+            }
+        }
+
+        Ok(())
+    })
+}
+
+/// Timffle: `FileReference.download()` from an AVM2 scope: the save dialog (`select` with the
+/// chosen name, or `cancel`), then the request (`open`, `progress`, `complete` with the file
+/// written, or `httpStatus`/`ioError`). Nothing after the dialog is reported once
+/// `FileReference.cancel()` changed the object's generation.
+pub fn download_file_dialog_avm2<'gc>(
+    uc: &UpdateContext<'gc>,
+    target_object: FileReferenceObject<'gc>,
+    dialog: DialogResultFuture,
+    request: Request,
+    generation: u32,
+) -> OwnedFuture<(), Error> {
+    let player = uc.player_handle();
+    let handle = FileReferenceObjectHandle::stash(uc, target_object);
+    let url = request.url().to_string();
+
+    Box::pin(async move {
+        let dialog_result = dialog.await;
+
+        // Dialog is done, allow opening new dialogs
+        player.lock().unwrap().ui_mut().close_file_dialog();
+
+        let selected = player.lock().unwrap().update(|uc| {
+            let target = handle.fetch(uc);
+            if target.generation() != generation {
+                return false;
+            }
+            match dialog_result {
+                Ok(FileDialogResult::Selection(selection)) => {
+                    // `name` is known from the select event on, the rest after `complete`.
+                    target.init_from_file_selection(selection);
+                    let select_event = Avm2EventObject::bare_default_event(uc, "select");
+                    Avm2::dispatch_event(uc, select_event, target.into());
+                    true
+                }
+                Ok(FileDialogResult::Canceled) => {
+                    let cancel_event = Avm2EventObject::bare_default_event(uc, "cancel");
+                    Avm2::dispatch_event(uc, cancel_event, target.into());
+                    false
+                }
+                Err(err) => {
+                    tracing::warn!("Download dialog had an error {:?}", err);
+                    false
+                }
+            }
+        });
+        if !selected {
+            return Ok(());
+        }
+
+        // Doing this in two steps to prevent holding the player lock during fetch
+        let future = player.lock().unwrap().fetch(request, FetchReason::Other);
+        let download_res = wait_for_full_response(future).await;
+
+        player.lock().unwrap().update(|uc| {
+            let target = handle.fetch(uc);
+            if target.generation() != generation {
+                return;
+            }
+            let mut activation = Avm2Activation::from_nothing(uc);
+
+            match download_res {
+                Ok((body, _, _, _)) => {
+                    let open_event =
+                        Avm2EventObject::bare_default_event(activation.context, "open");
+                    Avm2::dispatch_event(activation.context, open_event, target.into());
+
+                    // The file now exists on disk: the properties describe it from here on.
+                    if let FileReference::FileDialogSelection(mut selection) =
+                        target.take_file_reference()
+                    {
+                        selection.write_and_refresh(&body);
+                        target.init_from_file_selection(selection);
+                    }
+
+                    let progress_event = Avm2EventObject::progress_event(
+                        &mut activation,
+                        "progress",
+                        body.len(),
+                        body.len(),
+                    );
+                    Avm2::dispatch_event(activation.context, progress_event, target.into());
+
+                    let complete_event =
+                        Avm2EventObject::bare_default_event(activation.context, "complete");
+                    Avm2::dispatch_event(activation.context, complete_event, target.into());
+                }
+                Err(err) => {
+                    activation
+                        .context
+                        .avm_trace(&format!("Error opening URL '{url}'"));
+                    if let Error::HttpNotOk(_, status, redirected, _) = err.error {
+                        let open_event =
+                            Avm2EventObject::bare_default_event(activation.context, "open");
+                        Avm2::dispatch_event(activation.context, open_event, target.into());
+                        let status_event =
+                            Avm2EventObject::http_status_event(&mut activation, status, redirected);
+                        Avm2::dispatch_event(activation.context, status_event, target.into());
+                    }
+                    let io_error_event =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2032", 2032);
+                    Avm2::dispatch_event(activation.context, io_error_event, target.into());
+                }
+            }
+        });
+
+        Ok(())
+    })
+}
+
+/// Timffle: `FileReference.upload()` from an AVM2 scope: POSTs `request` (already a
+/// multipart body) and reports `open`, `progress`, `complete`, `uploadCompleteData` (the
+/// server's answer), or `httpStatus`/`ioError`. Stops reporting once `cancel()` changed the
+/// object's generation.
+pub fn upload_file_avm2<'gc>(
+    uc: &UpdateContext<'gc>,
+    target_object: FileReferenceObject<'gc>,
+    request: Request,
+    total_size_bytes: usize,
+    generation: u32,
+) -> OwnedFuture<(), Error> {
+    let player = uc.player_handle();
+    let handle = FileReferenceObjectHandle::stash(uc, target_object);
+    let url = request.url().to_string();
+
+    Box::pin(async move {
+        // Doing this in two steps to prevent holding the player lock during fetch
+        let future = player.lock().unwrap().fetch(request, FetchReason::Other);
+        let result = wait_for_full_response(future).await;
+
+        player.lock().unwrap().update(|uc| {
+            let target = handle.fetch(uc);
+            if target.generation() != generation {
+                return;
+            }
+            let mut activation = Avm2Activation::from_nothing(uc);
+
+            let open_event = Avm2EventObject::bare_default_event(activation.context, "open");
+            Avm2::dispatch_event(activation.context, open_event, target.into());
+
+            match result {
+                Ok((body, _, _, _)) => {
+                    let progress_event = Avm2EventObject::progress_event(
+                        &mut activation,
+                        "progress",
+                        total_size_bytes,
+                        total_size_bytes,
+                    );
+                    Avm2::dispatch_event(activation.context, progress_event, target.into());
+
+                    let complete_event =
+                        Avm2EventObject::bare_default_event(activation.context, "complete");
+                    Avm2::dispatch_event(activation.context, complete_event, target.into());
+
+                    let data_event_class = activation.avm2().classes().dataevent;
+                    let event_type = AvmString::new_utf8(activation.gc(), "uploadCompleteData");
+                    let data = AvmString::new_utf8(
+                        activation.gc(),
+                        String::from_utf8_lossy(&body).as_ref(),
+                    );
+                    let data_event = Avm2EventObject::from_class_and_args(
+                        &mut activation,
+                        data_event_class,
+                        &[event_type.into(), false.into(), false.into(), data.into()],
+                    );
+                    Avm2::dispatch_event(activation.context, data_event, target.into());
+                }
+                Err(err) => {
+                    activation
+                        .context
+                        .avm_trace(&format!("Error opening URL '{url}'"));
+                    if let Error::HttpNotOk(_, status, redirected, _) = err.error {
+                        let status_event =
+                            Avm2EventObject::http_status_event(&mut activation, status, redirected);
+                        Avm2::dispatch_event(activation.context, status_event, target.into());
+                    }
+                    let io_error_event =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2038", 2038);
+                    Avm2::dispatch_event(activation.context, io_error_event, target.into());
+                }
+            }
+        });
 
         Ok(())
     })

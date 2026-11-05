@@ -188,6 +188,88 @@ impl<'gc> NetConnections<'gc> {
         // No open event here
     }
 
+    /// Timffle: `connect()` with a command this player cannot serve (`rtmp://`, `rtmfp:`,
+    /// unknown schemes). There is no RTMP/RTMFP client here, so the connection behaves like
+    /// Flash Player when the server cannot be reached (measured on Flash Player 32 against a
+    /// closed port): RTMP-family URLs get `NetConnection.Connect.Failed` (level `error`)
+    /// asynchronously and keep their `uri`; an unknown scheme or a bare word is stored and
+    /// never reports anything. `close()` reports `Connect.Closed` like any connection.
+    pub fn connect_unreachable<O: Into<NetConnectionObject<'gc>>>(
+        context: &mut UpdateContext<'gc>,
+        target: O,
+        uri: String,
+    ) {
+        let target = target.into();
+        let scheme = uri.split(':').next().unwrap_or("").to_ascii_lowercase();
+        let report_failure = matches!(
+            scheme.as_str(),
+            "rtmp" | "rtmps" | "rtmpt" | "rtmpts" | "rtmpe" | "rtmpte" | "rtmfp"
+        );
+        let connection = NetConnection {
+            object: target,
+            protocol: NetConnectionProtocol::Unreachable { uri, failed: false },
+        };
+        let handle = context.net_connections.connections.insert(connection);
+
+        if let Some(existing_handle) = target.set_handle(Some(handle)) {
+            NetConnections::close(context, existing_handle, false);
+        }
+
+        if report_failure {
+            let player = context.player_handle();
+            context.navigator.spawn_future(Box::pin(async move {
+                player
+                    .lock()
+                    .unwrap()
+                    .update(|uc| NetConnections::report_unreachable(uc, handle));
+                Ok(())
+            }));
+        }
+    }
+
+    /// Timffle: the deferred `NetConnection.Connect.Failed` of [`Self::connect_unreachable`];
+    /// nothing happens if the connection was closed or replaced in the meantime.
+    fn report_unreachable(context: &mut UpdateContext<'gc>, handle: NetConnectionHandle) {
+        let Some(connection) = context.net_connections.connections.get_mut(handle) else {
+            return;
+        };
+        let NetConnectionProtocol::Unreachable { failed, .. } = &mut connection.protocol else {
+            return;
+        };
+        if *failed {
+            return;
+        }
+        *failed = true;
+
+        match connection.object {
+            NetConnectionObject::Avm2(object) => {
+                let mut activation = Avm2Activation::from_nothing(context);
+                let event = Avm2EventObject::net_status_event(
+                    &mut activation,
+                    [("code", "NetConnection.Connect.Failed"), ("level", "error")],
+                );
+                Avm2::dispatch_event(activation.context, event, object.into());
+            }
+            NetConnectionObject::Avm1(object) => {
+                if let Err(e) = Avm1NetConnectionObject::on_status_event(
+                    context,
+                    object,
+                    "NetConnection.Connect.Failed",
+                ) {
+                    tracing::error!("Unhandled error sending connection callback: {e}");
+                }
+            }
+        }
+    }
+
+    /// Timffle: true for a connection made by [`Self::connect_unreachable`] (`call()` on it is
+    /// #2126 like on any unconnected NetConnection).
+    pub fn is_unreachable(&self, handle: NetConnectionHandle) -> bool {
+        self.connections
+            .get(handle)
+            .is_some_and(|c| matches!(c.protocol, NetConnectionProtocol::Unreachable { .. }))
+    }
+
     pub fn close(context: &mut UpdateContext<'gc>, handle: NetConnectionHandle, is_explicit: bool) {
         let Some(connection) = context.net_connections.connections.remove(handle) else {
             return;
@@ -351,6 +433,7 @@ impl NetConnection<'_> {
         match self.protocol {
             NetConnectionProtocol::Local => true,
             NetConnectionProtocol::FlashRemoting(_) => false,
+            NetConnectionProtocol::Unreachable { .. } => false,
         }
     }
 
@@ -358,6 +441,7 @@ impl NetConnection<'_> {
         match self.protocol {
             NetConnectionProtocol::Local => Some("none"),
             NetConnectionProtocol::FlashRemoting(_) => None,
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -365,6 +449,7 @@ impl NetConnection<'_> {
         match self.protocol {
             NetConnectionProtocol::Local => Some(""),
             NetConnectionProtocol::FlashRemoting(_) => None,
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -374,6 +459,7 @@ impl NetConnection<'_> {
                 Some("0000000000000000000000000000000000000000000000000000000000000000")
             }
             NetConnectionProtocol::FlashRemoting(_) => None,
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -381,6 +467,7 @@ impl NetConnection<'_> {
         match self.protocol {
             NetConnectionProtocol::Local => Some(""),
             NetConnectionProtocol::FlashRemoting(_) => None,
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -390,6 +477,7 @@ impl NetConnection<'_> {
                 Some("0000000000000000000000000000000000000000000000000000000000000000")
             }
             NetConnectionProtocol::FlashRemoting(_) => None,
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -397,6 +485,8 @@ impl NetConnection<'_> {
         match self.protocol {
             NetConnectionProtocol::Local => Some("rtmp"),
             NetConnectionProtocol::FlashRemoting(_) => None,
+            // Timffle: Flash throws #2126 here while not connected.
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -404,6 +494,8 @@ impl NetConnection<'_> {
         match &self.protocol {
             NetConnectionProtocol::Local => Some("null".to_string()), // Yes, it's a string "null", not a real null.
             NetConnectionProtocol::FlashRemoting(remoting) => Some(remoting.url.to_string()),
+            // Timffle: Flash keeps the command as `uri`, also after `Connect.Failed`.
+            NetConnectionProtocol::Unreachable { uri, .. } => Some(uri.clone()),
         }
     }
 
@@ -411,6 +503,7 @@ impl NetConnection<'_> {
         match &self.protocol {
             NetConnectionProtocol::Local => Some(false),
             NetConnectionProtocol::FlashRemoting(_) => None,
+            NetConnectionProtocol::Unreachable { .. } => None,
         }
     }
 
@@ -425,6 +518,7 @@ impl NetConnection<'_> {
             NetConnectionProtocol::FlashRemoting(remoting) => {
                 remoting.send(command, responder_handle, message)
             }
+            NetConnectionProtocol::Unreachable { .. } => {}
         }
     }
 
@@ -441,6 +535,7 @@ impl NetConnection<'_> {
                     navigator.spawn_future(remoting.flush_queue(self_handle, player.clone()));
                 }
             }
+            NetConnectionProtocol::Unreachable { .. } => {}
         }
     }
 
@@ -450,6 +545,7 @@ impl NetConnection<'_> {
             NetConnectionProtocol::FlashRemoting(remoting) => {
                 remoting.set_header(header);
             }
+            NetConnectionProtocol::Unreachable { .. } => {}
         }
     }
 }
@@ -461,6 +557,11 @@ pub enum NetConnectionProtocol {
 
     /// Flash Remoting protocol, caused by connecting to a `http://` address.
     FlashRemoting(FlashRemoting),
+
+    /// Timffle: a command this player cannot serve (RTMP/RTMFP family or an unknown scheme);
+    /// see [`NetConnections::connect_unreachable`]. `failed` is set once
+    /// `NetConnection.Connect.Failed` has been reported.
+    Unreachable { uri: String, failed: bool },
 }
 
 #[derive(Debug)]

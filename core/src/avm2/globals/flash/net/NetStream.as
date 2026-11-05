@@ -17,7 +17,12 @@ package flash.net {
         public static const CONNECT_TO_FMS:String = "connectToFMS";
         public static const DIRECT_CONNECTIONS:String = "directConnections";
 
-        public function NetStream(connection:NetConnection, peer:String = CONNECT_TO_FMS) {}
+        public function NetStream(connection:NetConnection, peer:String = CONNECT_TO_FMS) {
+            // Timffle: NetMonitor bookkeeping (`listStreams()`, `netStreamCreate`).
+            this.registerWithMonitors();
+        }
+
+        private native function registerWithMonitors():void;
 
         public function appendBytes(bytes:ByteArray) {
             stub_method("flash.net.NetStream", "appendBytes");

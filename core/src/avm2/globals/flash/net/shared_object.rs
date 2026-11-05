@@ -21,14 +21,17 @@ fn new_lso<'gc>(
     amf_version: AMFVersion,
 ) -> Result<Lso, Error<'gc>> {
     let mut elements = Vec::new();
+    let mut object_table = crate::avm2::amf::ObjectTable::default();
     crate::avm2::amf::recursive_serialize(
         activation,
         data,
         &mut elements,
         None,
         amf_version,
-        &mut Default::default(),
+        &mut object_table,
     )?;
+    // Timffle: a thrown `ObjectEncoding.dynamicPropertyWriter` aborts the flush.
+    object_table.take_error()?;
     Ok(Lso::new(
         elements,
         name.split('/')

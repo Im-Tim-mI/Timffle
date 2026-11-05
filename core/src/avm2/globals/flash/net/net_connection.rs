@@ -1,14 +1,11 @@
-use crate::avm2::amf::serialize_value;
-use crate::avm2::error::make_error_2126;
+use crate::avm2::amf::{ObjectTable, serialize_value};
+use crate::avm2::error::{Error2004Type, make_error_2004, make_error_2126};
 use crate::avm2::function::FunctionArgs;
 pub use crate::avm2::object::net_connection_allocator;
 use crate::avm2::parameters::ParametersExt;
+use crate::avm2::{Activation, Error, Value};
 use crate::net_connection::NetConnections;
 use crate::string::AvmString;
-use crate::{
-    avm2::{Activation, Error, Value},
-    avm2_stub_method,
-};
 use flash_lso::packet::Header;
 use flash_lso::types::AMFVersion;
 use flash_lso::types::ObjectId;
@@ -30,6 +27,11 @@ pub fn connect<'gc>(
     let url = args.try_get_string(0);
 
     if let Some(url) = url {
+        // Timffle: Flash Player 32 rejects an empty command with ArgumentError #2004.
+        if url.is_empty() {
+            return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        }
+
         let url_lower = url.to_ascii_lowercase();
 
         if url_lower.starts_with(WStr::from_units(b"http://"))
@@ -42,12 +44,9 @@ pub fn connect<'gc>(
                 url.to_string(),
             );
         } else {
-            avm2_stub_method!(
-                activation,
-                "flash.net.NetConnection",
-                "connect",
-                "with non-null, non-http command"
-            );
+            // Timffle: RTMP/RTMFP and unknown schemes: no client here, so the connection
+            // behaves like Flash Player when the server cannot be reached.
+            NetConnections::connect_unreachable(activation.context, connection, url.to_string());
         }
     } else {
         NetConnections::connect_to_local(activation.context, connection);
@@ -280,13 +279,18 @@ pub fn call<'gc>(
     let responder = args.try_get_object(1).and_then(|o| o.as_responder());
     let mut arguments = Vec::new();
 
-    let mut object_table = crate::avm2::amf::ObjectTable::default();
+    let mut object_table = ObjectTable::default();
     for arg in args.get_slice_from(2..) {
         let value = serialize_value(activation, arg, AMFVersion::AMF0, &mut object_table);
         arguments.push(Rc::new(value));
     }
+    // Timffle: an `ObjectEncoding.dynamicPropertyWriter` that threw.
+    object_table.take_error()?;
 
-    if let Some(handle) = connection.handle() {
+    if let Some(handle) = connection.handle()
+        // Timffle: a connection that never got through counts as not connected (#2126).
+        && !activation.context.net_connections.is_unreachable(handle)
+    {
         if let Some(responder) = responder {
             NetConnections::send_avm2(
                 activation.context,
@@ -333,12 +337,14 @@ pub fn add_header<'gc>(
     let name = args.get_string(activation, 0);
     let must_understand = args.get_bool(1);
     // FIXME - do we re-use the same object reference table for all headers?
+    let mut object_table = ObjectTable::default();
     let value = serialize_value(
         activation,
         args.get_value(2),
         AMFVersion::AMF0,
-        &mut Default::default(),
+        &mut object_table,
     );
+    object_table.take_error()?;
 
     if let Some(handle) = connection.handle() {
         activation.context.net_connections.set_header(

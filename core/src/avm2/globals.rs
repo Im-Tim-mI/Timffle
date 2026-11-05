@@ -110,6 +110,14 @@ pub struct SystemClasses<'gc> {
     pub ioerrorevent: ClassObject<'gc>,
     /// Timffle: `flash.events.ShaderEvent`, dispatched by background `ShaderJob`s.
     pub shaderevent: ClassObject<'gc>,
+    /// Timffle: `flash.events.NetMonitorEvent`, dispatched to `NetMonitor`s.
+    pub netmonitorevent: ClassObject<'gc>,
+    /// Timffle: `flash.events.DataEvent` (`FileReference.upload` response).
+    pub dataevent: ClassObject<'gc>,
+    /// Timffle: `flash.net.NetStream`, the element type of `NetMonitor.listStreams()`.
+    pub netstream: ClassObject<'gc>,
+    /// Timffle: `flash.net.DynamicPropertyOutput`, handed to `dynamicPropertyWriter`.
+    pub dynamicpropertyoutput: ClassObject<'gc>,
     pub securityerrorevent: ClassObject<'gc>,
     pub transform: ClassObject<'gc>,
     pub colortransform: ClassObject<'gc>,
@@ -295,6 +303,10 @@ impl<'gc> SystemClasses<'gc> {
             errorevent: object,
             ioerrorevent: object,
             shaderevent: object,
+            netmonitorevent: object,
+            dataevent: object,
+            netstream: object,
+            dynamicpropertyoutput: object,
             securityerrorevent: object,
             transform: object,
             colortransform: object,
@@ -744,6 +756,10 @@ pub fn init_native_system_classes(activation: &mut Activation<'_, '_>) {
             ("flash.events", "SecurityErrorEvent", securityerrorevent),
             ("flash.events", "IOErrorEvent", ioerrorevent),
             ("flash.events", "ShaderEvent", shaderevent),
+            ("flash.events", "NetMonitorEvent", netmonitorevent),
+            ("flash.events", "DataEvent", dataevent),
+            ("flash.net", "NetStream", netstream),
+            ("flash.net", "DynamicPropertyOutput", dynamicpropertyoutput),
             ("flash.events", "MouseEvent", mouseevent),
             ("flash.events", "FullScreenEvent", fullscreenevent),
             ("flash.events", "UncaughtErrorEvents", uncaughterrorevents),

@@ -232,6 +232,9 @@ pub fn request_from_url_request<'gc>(
     let mut request = Request::request(method, url.to_string(), body);
     request.set_headers(string_headers);
 
+    // Timffle: remember that a loader used this request (`URLRequest.useRedirectedURL`).
+    url_request.set_slot(url_request_slots::_LOADED, true.into(), activation)?;
+
     Ok(request)
 }
 

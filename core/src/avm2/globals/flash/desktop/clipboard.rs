@@ -257,7 +257,10 @@ fn clone_value<'gc>(
     activation: &mut Activation<'_, 'gc>,
     value: Value<'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    let amf = serialize_value(activation, value, AMFVersion::AMF3, &mut Default::default());
+    let mut object_table = crate::avm2::amf::ObjectTable::default();
+    let amf = serialize_value(activation, value, AMFVersion::AMF3, &mut object_table);
+    // Timffle: a thrown `ObjectEncoding.dynamicPropertyWriter` aborts the copy.
+    object_table.take_error()?;
     deserialize_value(activation, &amf)
 }
 

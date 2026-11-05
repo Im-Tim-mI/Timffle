@@ -839,12 +839,11 @@ pub fn write_object<'gc>(
             ObjectEncoding::Amf3 => AMFVersion::AMF3,
         };
 
-        let amf = crate::avm2::amf::serialize_value(
-            activation,
-            obj,
-            amf_version,
-            &mut Default::default(),
-        );
+        // Timffle: a thrown `ObjectEncoding.dynamicPropertyWriter` aborts the write.
+        let mut object_table = crate::avm2::amf::ObjectTable::default();
+        let amf =
+            crate::avm2::amf::serialize_value(activation, obj, amf_version, &mut object_table);
+        object_table.take_error()?;
 
         let element = Element::new("", Rc::new(amf));
         let mut lso = flash_lso::types::Lso::new(vec![element], "", amf_version);

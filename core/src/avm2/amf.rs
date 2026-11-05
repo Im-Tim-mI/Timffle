@@ -8,7 +8,7 @@ use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::class::Class;
 use crate::avm2::object::{ByteArrayObject, ClassObject, ScriptObject, TObject, VectorObject};
 use crate::avm2::vector::VectorStorage;
-use crate::avm2::{Activation, Error, Object, Value};
+use crate::avm2::{Activation, Error, FunctionArgs, Object, Value};
 use crate::avm2_stub_method;
 use crate::string::AvmString;
 use enumset::EnumSet;
@@ -27,9 +27,21 @@ pub struct ObjectTable<'gc> {
     /// recursing forever.
     in_progress: FnvHashMap<Object<'gc>, ObjectId>,
     next_id: i64,
+    /// Timffle: the first error thrown by an `ObjectEncoding.dynamicPropertyWriter` while
+    /// serializing; the serializer cannot return it itself, so the caller checks
+    /// [`ObjectTable::take_error`] afterwards.
+    error: Option<Error<'gc>>,
 }
 
 impl<'gc> ObjectTable<'gc> {
+    /// Timffle: fails with the error a `dynamicPropertyWriter` threw during serialization.
+    pub fn take_error(&mut self) -> Result<(), Error<'gc>> {
+        match self.error.take() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+
     /// Marks `obj` as being serialized and returns the id its value should carry,
     /// or `Err(reference)` if `obj` is already being serialized (a cycle).
     fn begin(&mut self, obj: Object<'gc>) -> Result<ObjectId, AmfValue> {
@@ -201,15 +213,49 @@ fn serialize_object<'gc>(
 
         let mut object_body = Vec::new();
         let mut static_properties = Vec::new();
-        recursive_serialize(
-            activation,
-            o,
-            &mut object_body,
-            Some(&mut static_properties),
-            amf_version,
-            object_table,
-        )
-        .unwrap();
+        // Timffle: `ObjectEncoding.dynamicPropertyWriter` decides the dynamic properties of a
+        // dynamic object (Flash Player 32: plain Objects and dynamic class instances, not
+        // Arrays or sealed classes; the sealed properties are still written natively).
+        let writer = if class.is_sealed() {
+            None
+        } else {
+            activation.avm2().dynamic_property_writer
+        };
+        if let Some(writer) = writer {
+            let result = serialize_sealed_properties(
+                activation,
+                o,
+                &mut object_body,
+                &mut static_properties,
+                amf_version,
+                object_table,
+            )
+            .and_then(|()| {
+                write_dynamic_properties(
+                    activation,
+                    writer,
+                    o,
+                    &mut object_body,
+                    amf_version,
+                    object_table,
+                )
+            });
+            if let Err(error) = result
+                && object_table.error.is_none()
+            {
+                object_table.error = Some(error);
+            }
+        } else {
+            recursive_serialize(
+                activation,
+                o,
+                &mut object_body,
+                Some(&mut static_properties),
+                amf_version,
+                object_table,
+            )
+            .unwrap();
+        }
         AmfValue::Object(
             id,
             object_body,
@@ -225,6 +271,66 @@ fn serialize_object<'gc>(
             },
         )
     }
+}
+
+/// Timffle: runs `ObjectEncoding.dynamicPropertyWriter.writeDynamicProperties(obj, output)` and
+/// appends what it wrote through the `DynamicPropertyOutput` (in the writer's order, duplicates
+/// kept, function values written as `undefined`, like Flash Player 32).
+fn write_dynamic_properties<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    writer: Object<'gc>,
+    obj: Object<'gc>,
+    elements: &mut Vec<Element>,
+    amf_version: AMFVersion,
+    object_table: &mut ObjectTable<'gc>,
+) -> Result<(), Error<'gc>> {
+    use crate::avm2::globals::slots::flash_net_dynamic_property_output as output_slots;
+
+    if object_table.error.is_some() {
+        // An earlier writer call threw; the caller gets that error, stop calling out.
+        return Ok(());
+    }
+
+    let output_class = activation.avm2().classes().dynamicpropertyoutput;
+    let output = output_class
+        .construct(activation, &[])?
+        .as_object()
+        .expect("DynamicPropertyOutput is an object");
+
+    let method_name = AvmString::new_utf8(activation.gc(), "writeDynamicProperties");
+    let result = Value::from(writer).call_public_property(
+        method_name,
+        FunctionArgs::from_slice(&[obj.into(), output.into()]),
+        activation,
+    );
+    // Writes after the callback are ignored.
+    output.set_slot(output_slots::_OPEN, false.into(), activation)?;
+    result?;
+
+    let entries = output
+        .get_slot(output_slots::_ENTRIES)
+        .as_object()
+        .expect("DynamicPropertyOutput._entries is an Array");
+    let pairs: Vec<(Value<'gc>, Value<'gc>)> = {
+        let storage = entries.as_array_storage().unwrap();
+        (0..storage.length() / 2)
+            .map(|i| {
+                (
+                    storage.get(i * 2).unwrap_or(Value::Undefined),
+                    storage.get(i * 2 + 1).unwrap_or(Value::Undefined),
+                )
+            })
+            .collect()
+    };
+    for (name, value) in pairs {
+        let name = name
+            .coerce_to_string(activation)?
+            .to_utf8_lossy()
+            .to_string();
+        let elem = get_or_create_element(activation, name, value, object_table, amf_version);
+        elements.push(elem);
+    }
+    Ok(())
 }
 
 /// The number of bytes `values` take when written one after another as AMF3,
@@ -259,6 +365,43 @@ fn class_to_alias<'gc>(activation: &mut Activation<'_, 'gc>, class: Class<'gc>) 
     }
 }
 
+/// Timffle: the sealed (vtable) properties of `obj`, the first part of [`recursive_serialize`].
+fn serialize_sealed_properties<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    obj: Object<'gc>,
+    elements: &mut Vec<Element>,
+    static_properties: &mut Vec<String>,
+    amf_version: AMFVersion,
+    object_table: &mut ObjectTable<'gc>,
+) -> Result<(), Error<'gc>> {
+    let vtable = obj.vtable();
+    // TODO: respect versioning
+    // Flash appears to use vtable iteration order, but we sort ours
+    // to make our test output consistent.
+    let mut props = vtable.public_properties().collect::<Vec<_>>();
+    props.sort_by_key(|(name, _)| *name);
+
+    for (name, prop) in props {
+        if let Property::Method { .. } = prop {
+            continue;
+        }
+        if let Property::Virtual { get, set } = prop
+            && !(get.is_some() && set.is_some())
+        {
+            continue;
+        }
+
+        let value = Value::from(obj).get_public_property(name, activation)?;
+        let name = name.to_utf8_lossy().to_string();
+        let elem =
+            get_or_create_element(activation, name.clone(), value, object_table, amf_version);
+
+        elements.push(elem);
+        static_properties.push(name);
+    }
+    Ok(())
+}
+
 /// Serialize an Object and any children to a AMF object
 pub fn recursive_serialize<'gc>(
     activation: &mut Activation<'_, 'gc>,
@@ -269,31 +412,14 @@ pub fn recursive_serialize<'gc>(
     object_table: &mut ObjectTable<'gc>,
 ) -> Result<(), Error<'gc>> {
     if let Some(static_properties) = static_properties {
-        let vtable = obj.vtable();
-        // TODO: respect versioning
-        // Flash appears to use vtable iteration order, but we sort ours
-        // to make our test output consistent.
-        let mut props = vtable.public_properties().collect::<Vec<_>>();
-        props.sort_by_key(|(name, _)| *name);
-
-        for (name, prop) in props {
-            if let Property::Method { .. } = prop {
-                continue;
-            }
-            if let Property::Virtual { get, set } = prop
-                && !(get.is_some() && set.is_some())
-            {
-                continue;
-            }
-
-            let value = Value::from(obj).get_public_property(name, activation)?;
-            let name = name.to_utf8_lossy().to_string();
-            let elem =
-                get_or_create_element(activation, name.clone(), value, object_table, amf_version);
-
-            elements.push(elem);
-            static_properties.push(name);
-        }
+        serialize_sealed_properties(
+            activation,
+            obj,
+            elements,
+            static_properties,
+            amf_version,
+            object_table,
+        )?;
     }
 
     // FIXME: Flash only seems to use this enumeration for dynamic classes.

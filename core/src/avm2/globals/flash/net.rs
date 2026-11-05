@@ -1,17 +1,21 @@
 //! `flash.net` namespace
 
-use crate::avm2::error::{Error1014Type, make_error_1014, make_error_2007};
+use crate::avm2::error::{Error1014Type, make_error_1014, make_error_2007, make_error_2148};
 use crate::avm2::function::FunctionArgs;
+use crate::avm2::globals::flash::display::loader::request_from_url_request;
 use crate::avm2::globals::slots::flash_net_url_request as url_request_slots;
 use crate::avm2::object::TObject;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::{Activation, Error, Object, Value};
 use crate::backend::navigator::NavigationMethod;
 use indexmap::IndexMap;
+use ruffle_common::sandbox::SandboxType;
 
 pub mod file_reference;
+pub mod file_reference_list;
 pub mod local_connection;
 pub mod net_connection;
+pub mod net_monitor;
 pub mod net_stream;
 pub mod object_encoding;
 pub mod responder;
@@ -21,7 +25,7 @@ pub mod url_loader;
 pub mod url_stream;
 pub mod xml_socket;
 
-fn object_to_index_map<'gc>(
+pub(crate) fn object_to_index_map<'gc>(
     activation: &mut Activation<'_, 'gc>,
     obj: &Object<'gc>,
 ) -> Result<IndexMap<String, String>, Error<'gc>> {
@@ -103,6 +107,47 @@ pub fn navigate_to_url<'gc>(
             Ok(Value::Undefined)
         }
     }
+}
+
+/// Timffle: implements `flash.net.sendToURL`: the request is sent like a `URLLoader` load
+/// (GET data in the query, POST data as the body) and the response is thrown away. Measured on
+/// Flash Player 32: a null request or url is #2007, a `file:` URL is SecurityError #2148, an
+/// unknown scheme sends nothing, and HTTP failures (404, refused host) are silent.
+pub fn send_to_url<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let request = args.get_object(activation, 0, "request")?;
+    let request = request_from_url_request(activation, request)?;
+
+    let Ok(resolved) = activation.context.navigator.resolve_url(request.url()) else {
+        return Ok(Value::Undefined);
+    };
+    match resolved.scheme() {
+        "http" | "https" => {}
+        "file" => {
+            // Only a network SWF is barred from local resources.
+            let movie = activation.caller_movie_or_root();
+            if movie.sandbox_type() == SandboxType::Remote {
+                let swf_url = movie.url().to_string();
+                return Err(make_error_2148(activation, &swf_url, request.url()));
+            }
+        }
+        _ => return Ok(Value::Undefined),
+    }
+
+    let fetch = activation.context.navigator.fetch(request);
+    activation
+        .context
+        .navigator
+        .spawn_future(Box::pin(async move {
+            // Nobody is told about the outcome, not even the player log.
+            let _ = fetch.await;
+            Ok(())
+        }));
+
+    Ok(Value::Undefined)
 }
 
 pub fn register_class_alias<'gc>(

@@ -114,12 +114,14 @@ pub fn send<'gc>(
         .unwrap_or_else(|| activation.context.root_swf.url().to_string());
     let domain = LocalConnections::get_domain(&sender_url);
     let qualified_name = LocalConnections::qualified_name(&domain, &connection_name);
-    let mut size_table = Default::default();
+    let mut size_table = crate::avm2::amf::ObjectTable::default();
     let mut amf3_arguments = Vec::with_capacity(args.len() - 2);
     for arg in args.get_slice_from(2..) {
         let value = serialize_value(activation, arg, AMFVersion::AMF3, &mut size_table);
         amf3_arguments.push(Rc::new(value));
     }
+    // Timffle: a thrown `ObjectEncoding.dynamicPropertyWriter` aborts the send.
+    size_table.take_error()?;
     let mut limit = MAX_MESSAGE_SIZE;
     if activation
         .context
@@ -140,11 +142,12 @@ pub fn send<'gc>(
     let mut amf_arguments = Vec::with_capacity(args.len() - 2);
     // One table for all arguments, so shared and cyclic references survive
     // across arguments too.
-    let mut object_table = Default::default();
+    let mut object_table = crate::avm2::amf::ObjectTable::default();
     for arg in args.get_slice_from(2..) {
         let value = serialize_value(activation, arg, AMFVersion::AMF0, &mut object_table);
         amf_arguments.push(value);
     }
+    object_table.take_error()?;
 
     if let Some(local_connection) = this.as_local_connection_object() {
         activation.context.local_connections.send(

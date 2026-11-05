@@ -99,12 +99,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_body(pattern(int(q.get("size", ["1000"])[0]), 13, 5))
         if p == "/data/404":
             return self.send_body(b"missing", "text/plain", 404)
+        if p == "/data/redirect":  # /data/redirect?to=<path or URL>[&code=302]: HTTP redirect
+            self.send_response(int(q.get("code", ["302"])[0]))
+            self.send_header("Location", q.get("to", ["/data/text?v=redirected"])[0])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         return self.send_body(b"not found", "text/plain", 404)
 
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
         body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        if u.path == "/upload":  # echo back what an upload sent (headers + body) for inspection
+            log("upload.log", "UPLOAD %s %r %r" % (self.headers.get("Content-Type"), self.headers.get("Content-Length"), body[:2000]))
+            return self.send_body(b"upload-ok", "text/plain")
         if u.path == "/report":
             runner = os.path.basename(q.get("runner", ["unknown"])[0])
             test = os.path.basename(q.get("test", ["unknown"])[0])
