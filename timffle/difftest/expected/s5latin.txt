@@ -1,0 +1,42 @@
+# test=s5latin
+// Mouse.registerCursor
+supportsCursor=true supportsNativeCursor=true cursor=auto
+registered c16
+registered c32
+33x33 THREW ArgumentError #2004
+64x8 THREW ArgumentError #2004
+name null THREW TypeError #2007
+cursor null THREW TypeError #2007
+registered null data
+data empty THREW ArgumentError #2008
+disposed THREW ArgumentError #2015
+registered arrow
+registered auto
+hotSpot null THREW TypeError #2007
+hotSpot negative THREW ArgumentError #2008
+registered hotSpot outside
+registered mixed sizes
+frameRate default=0
+frameRate after -5=0
+registered negative frameRate
+cursor after c16=c16
+set cursor c33 THREW ArgumentError #2008
+set cursor unknown THREW ArgumentError #2008
+unregister unknown ok cursor=c16
+unregister current ok cursor=auto
+// TextBlock line breaking
+spaces first line at n=1..8: 1,3,3,3,6,6,6,8
+comma first line at n=1..8: 1,2,3,4,6,6,6,8
+period first line at n=1..8: 1,2,3,4,6,6,6,8
+hyphen first line at n=1..8: 1,2,3,3,3,6,6,8
+slash first line at n=1..8: 1,2,3,3,6,6,6,8
+zwsp first line at n=1..8: 1,3,3,3,6,6,6,8
+nbsp first line at n=1..8: 1,3,3,4,6,6,6,8
+open paren first line at n=1..10: 1,3,3,3,3,3,8,8,8,10
+question first line at n=1..9: 1,2,4,4,4,4,7,7,9
+tab first line at n=1..8: 1,3,3,3,6,6,6,8
+digits first line at n=1..11: 1,2,3,4,5,6,7,9,9,9,11
+url first line at n=1..9: 1,2,2,2,2,6,6,6,9
+tiny width fitSomething=false -> lines=[] result=insufficientWidth
+tiny width fitSomething=true -> lines=[1,1,2,1,1,1] result=complete
+# done

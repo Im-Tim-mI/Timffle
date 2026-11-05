@@ -469,15 +469,15 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | 類別/成員 | 差異 |
 | `AuthorizedFeaturesLoader` 事件 | 失敗時派發 `ErrorEvent.ERROR`、text「Error #2032: Stream Error.」；Adobe 參考頁已下線（404），實際事件型別/文字未能對照真 Flash 確認。 |
 | AMF0 `SharedObject` 參照表範圍 | 一個 `flush()` 共用一張參照表（跨頂層屬性）；真 Flash 的 .sol 是否每個頂層屬性重置參照表未驗證。 |
-| `TextBlock.createTextLine` 的斷行機會 | 斷行機會沿用 EditText 的換行規則（空白／tab；U+200B 不是斷點，Flash 的 UAX #14 會在 ZWSP、連字號後、CJK 字之間等處斷行）；`emergency` 的判定是「斷在非空白之後」。`lineOffset` 仍當第一行縮排（前一批的做法），Flash 的 `lineOffset` 只影響 tab 原點。`insufficientWidth` 的判定是第一個字素的右緣超過 `width`，Flash 以第一個 atom 的 advance 判定（含字距時可能差一點）。 |
-| `TextBlock.bidiLevel` | 層級解析與 run 反轉照 UAX #9（`unicode-bidi`），但沒有阿拉伯文連寫字形、鏡像括號（`TextLineMirrorRegion` 以外的 glyph mirroring）與 RTL 段落的行原點對齊（Flash 在 `bidiLevel = 1` 時行從右邊的 `width` 起算、`textWidth` 以右為基準）；`getAtomBidiLevel` 的預期值取自 UAX #9，未用真 Flash 錄製。 |
+| `TextBlock.createTextLine` 的斷行機會 | 已照 Flash 32 改（`text_block.rs` 的 `break_allowed`，UAX #14 的子集）：在不換行的版面量每個字的右緣，取放得下的字數（行尾空白、tab、ZWSP、不換行空白都懸在 `width` 外），斷在其中最後一個斷行機會；沒有就從字中斷（emergency）。量到並一致的 18 種句子：空白／tab／ZWSP 之後、連字號與 `/`、`?`、`!` 之後可斷；逗點、句點、`=`、數字內、不換行空白、`(` 之後、`)` 之前不斷；CJK 字之間可斷，`，`、`。`、`」`、小假名 `ゃ`、長音 `ー` 之前與 `「` 之後不斷。拉丁字的部分在測試 `cursor_textblock_flash32` 裡；CJK 的部分需要 CJK 字型（測試只帶 Noto Sans），只在 `timffle/difftest/expected/s5cursorlines.txt` 與本機加字型時比對過。`lineOffset` 仍當第一行縮排；連字號、引號等其他 UAX #14 類別沒有量過。 |
+| `TextBlock.bidiLevel` | `getAtomBidiLevel` 量到的 9 個句子（拉丁／希伯來文／混合、RTL 裡的數字、括號）層級都一致；已照 Flash 改成只看奇偶（`bidiLevel` 2、200 的拉丁字是 0），負值 `ArgumentError #2004`。仍沒有做：阿拉伯文連寫字形、鏡像括號（`TextLineMirrorRegion` 以外的 glyph mirroring）、RTL 段落的行原點對齊；量測機（Wine）沒有希伯來字型，畫面上的左右順序沒有量到。 |
 | 項目 | 狀況 |
 | `DisplayObject.scale9Grid` 的矩形精度 | 沿用上游整數像素四捨五入；真 Flash 可能保留 twips（0.05 px）精度，未驗證。 |
 | `scale9Grid` 中央區縮到負寬度時 | 這裡收縮到 0（四角相接）；真 Flash 的行為未驗證。 |
 | `scale9Grid` 容器含 timeline 遮罩（clip depth） | 不切，整體照常縮放。 |
 | `Texture.uploadFromBitmapData` miplevel 超出層數 | 丟 #3669；真 Flash 的錯誤碼未驗證。 |
 | 9 格縮放／mip 鏈的像素結果 | 此容器沒有 GPU，`scale9grid_render`、`stage3d_leftovers` 與 33 支 stage3d 測試未執行。 |
-| `Mouse.registerCursor` 的錯誤碼 | Adobe 參考沒有 Throws：null 參數 `TypeError #2007` 有黃金輸出證實；`data` 為 null／空、影格大於 32×32、名稱是內建名稱時 Timffle 丟 `ArgumentError #2004`，已 dispose 的影格丟 `ArgumentError #2015`——真 Flash 丟哪個碼（或是否默默接受再不顯示）未驗證。`hotSpot` 為 null 視為 (0,0)、負值夾成 0，未驗證。 |
+| `Mouse.registerCursor` 的錯誤碼 | 已照 Flash 32 改：`data` 為空向量、`hotSpot` 負值 `ArgumentError #2008`；影格大於 32×32 `#2004`、已 dispose `#2015`、null 名稱／cursor `TypeError #2007`（原本就對）；`data` 為 null、內建名稱（`arrow`、`auto`…）、`hotSpot` 在影格外、各影格大小不同都接受；`MouseCursorData.hotSpot = null` `TypeError #2007`、`frameRate` 負值讀回 0。推定：`data` 為 null 時 Timffle 不登記（Flash 接受，之後設成這個名稱的結果沒有量）。仍不同：Flash 32 的 `supportsNativeCursor` 是 true，Timffle 由主機決定（測試環境 false）。 |
 | 自訂游標的顯示 | 桌面版只顯示第一張影格（winit 0.30 桌面無動畫游標）且未編譯驗證；網頁版的輪播用 `setInterval`，`frameRate` 很高時瀏覽器會節流；游標離開 canvas 時瀏覽器自然回到系統游標（Flash 也是「只在 stage 內顯示」）。 |
 | AMF0 參照編號 | AVM2（`ByteArray`／`LocalConnection`／`NetConnection`／AMF0 `SharedObject`）依規格只給複合物件編號；AVM1 `.sol` 依真 Flash 黃金檔每個值編號。AVM1 寫、AVM2 讀（或反過來）同一個含參照的 AMF0 `.sol` 時，兩套編號對不上；真 Flash 在這種跨 VM 情形的行為未驗證。AVM1 `LocalConnection`／`NetConnection` 的值樹在記憶體中沒有解碼器，AVM1 → AVM2 的參照仍是 undefined（之前就是）。 |
 | `Graphics.readGraphicsData` | 結構依 STATUS 第 8 批整理的 Flash 32 事實重建（原始結果檔沒有進 git）。未經 Flash 驗證的推論：三角形群組與空填色的回報、lineTo 未 moveTo 時以目前筆位置當起點（`M(0,0)`）、填色路徑不含隱含封閉段、`GraphicsStroke` 的 pixelHinting／scaleMode／caps／joints／miterLimit 一律回 `false/normal/none/round/3`（照 STATUS 的字面）、drawPath+endFill 後多出的一段封閉筆畫（Ruffle 第 8 批的渲染就是這樣）、著色器填色的回報、`recurse` 時子物件的筆畫粗細不乘比例。座標：Ruffle 把像素截斷成 twips（`Twips::from_pixels`），Flash 四捨五入，圓的控制點等非整數座標可差 0.05 px。`beginGradientFill(matrix=null)`：Flash 回報 a=d=1/8.192（0.12207），Ruffle 存的是單位矩陣所以回 1（Ruffle 以單位矩陣渲染 null 矩陣漸層，是否與 Flash 的 200 px 漸層框一致未驗證）。實心色的預乘來回公式只符合 7 個樣本中的 5 個。 |

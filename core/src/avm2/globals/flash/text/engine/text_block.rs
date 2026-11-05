@@ -658,32 +658,78 @@ pub fn do_create_text_line<'gc>(
     let body_len = paragraph.len() - line_break_len(paragraph);
     let paragraph_bidi = resolve_bidi(paragraph, block.bidi_level());
 
+    // Timffle: measure the paragraph on one unwrapped line, then break it the way
+    // Flash Player 32 does (measured, timffle/difftest/src/S5CursorLines.hx): the
+    // line takes as many characters as fit (trailing spaces hang past `width`), ends
+    // at the last break opportunity among them (`break_allowed`, a UAX #14 subset),
+    // or, when there is none, in the middle of the word (an emergency break).
+    fallback.set_width(activation.context, 1.0e6);
     fallback.set_text(&paragraph_bidi.visual, activation.context);
     apply_format(activation, fallback, format.clone(), line_index);
 
     let first_atom = first_atom_len(paragraph);
-    let (mut line_len, insufficient_width) = {
+    let (mut line_len, insufficient_width, emergency_break) = {
         let layout = fallback.layout();
-        // The layout's first line ends where the next one starts (so the
-        // break opportunity's spaces belong to this line); map that visual
-        // end back to a logical length (identity for left-to-right text).
-        let end = layout.lines().first().map(|l| l.end()).unwrap_or(body_len);
-        let end = paragraph_bidi
+        let chars: Vec<char> = (0..body_len)
+            .map(|i| {
+                paragraph
+                    .get(i)
+                    .and_then(|u| char::from_u32(u32::from(u)))
+                    .unwrap_or('\u{fffd}')
+            })
+            .collect();
+        let bounds: Vec<Option<_>> = (0..body_len)
+            .map(|i| layout.char_bounds(paragraph_bidi.to_visual[i]))
+            .collect();
+        let start_x = bounds
+            .iter()
+            .flatten()
+            .map(|b| b.x_min)
+            .min()
+            .unwrap_or_default();
+        let limit = Twips::from_pixels(width);
+        // `right[k]`: the right edge of the first k characters, hanging spaces excluded.
+        // Left-to-right text reads it off the layout (tabs included); with bidi runs
+        // the logical prefix is the sum of the characters' advances.
+        let identity = paragraph_bidi
             .to_visual
             .iter()
-            .position(|&v| v >= end)
-            .unwrap_or(paragraph.len());
-        let line_len = if end < body_len { end } else { paragraph.len() };
-
-        // Nothing fits when even the first atom sticks out of `width`.
-        let first_atom_right = (0..first_atom)
-            .filter_map(|i| layout.char_bounds(paragraph_bidi.to_visual[i]))
-            .map(|b| b.x_max)
-            .max();
-        let insufficient = first_atom > 0
-            && first_atom <= body_len
-            && first_atom_right.is_some_and(|x| x > Twips::from_pixels(width));
-        (line_len, insufficient)
+            .enumerate()
+            .all(|(i, v)| i == *v);
+        let mut right = vec![start_x; body_len + 1];
+        let mut sum = start_x;
+        let mut visible = start_x;
+        for k in 0..body_len {
+            if let Some(b) = bounds[k] {
+                sum = if identity {
+                    b.x_max
+                } else {
+                    sum + (b.x_max - b.x_min)
+                };
+            }
+            if !is_hanging_space(chars[k]) {
+                visible = sum;
+            }
+            right[k + 1] = visible;
+        }
+        let fit = (0..=body_len)
+            .rev()
+            .find(|&k| right[k] <= limit)
+            .unwrap_or(0);
+        if fit >= body_len {
+            (paragraph.len(), false, false)
+        } else {
+            let opportunity = (1..=fit)
+                .rev()
+                .find(|&k| break_allowed(chars[k - 1], chars[k]));
+            let (len, emergency) = match opportunity {
+                Some(k) => (k, false),
+                None => (fit, true),
+            };
+            let insufficient =
+                first_atom > 0 && first_atom <= body_len && right[first_atom.min(body_len)] > limit;
+            (len, insufficient, emergency)
+        }
     };
 
     if insufficient_width && !fit_something {
@@ -695,9 +741,25 @@ pub fn do_create_text_line<'gc>(
         // `fitSomething`: at least one atom goes on the line.
         line_len = line_len.max(first_atom).min(paragraph.len());
     }
+    // Spaces after the break hang on this line.
+    while line_len < body_len
+        && paragraph
+            .get(line_len)
+            .and_then(|u| char::from_u32(u32::from(u)))
+            .is_some_and(is_hanging_space)
+    {
+        line_len += 1;
+    }
+    if line_len >= body_len {
+        line_len = paragraph.len();
+    }
+    fallback.set_width(activation.context, width);
 
     let subtext = &paragraph[..line_len];
     let line_bidi = if line_len == paragraph.len() {
+        // Lay out again at the real width (the measuring pass was unwrapped).
+        fallback.set_text(&paragraph_bidi.visual, activation.context);
+        apply_format(activation, fallback, format, line_index);
         paragraph_bidi
     } else {
         // Re-lay out just this line's text.
@@ -708,10 +770,7 @@ pub fn do_create_text_line<'gc>(
     };
 
     // An emergency break is one inside a word: no break opportunity fit.
-    let emergency = line_len < paragraph.len()
-        && !subtext
-            .get(line_len - 1)
-            .is_some_and(|ch| matches!(ch, 0x20 | 0x09 | 0x200B));
+    let emergency = line_len < paragraph.len() && (emergency_break || insufficient_width);
 
     text_line.set_bidi(
         LineBidi {
@@ -768,6 +827,54 @@ pub fn do_create_text_line<'gc>(
     Ok(text_line_instance.into())
 }
 
+// Timffle: characters that hang past the line end instead of taking width
+// (Flash Player 32 lets a no-break space hang too, measured).
+fn is_hanging_space(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\u{200b}' | '\u{a0}' | '\u{3000}')
+}
+
+// Timffle: ideographic and kana characters (UAX #14 ID and the CJK forms Flash
+// breaks around), which allow a break on both sides.
+fn is_ideographic(c: char) -> bool {
+    matches!(c as u32,
+        0x2E80..=0x2FFF | 0x3001..=0x303F | 0x3040..=0x30FF | 0x3100..=0x31FF
+        | 0x3200..=0x9FFF | 0xAC00..=0xD7AF | 0xF900..=0xFAFF | 0xFE30..=0xFE4F
+        | 0xFF00..=0xFFEF | 0x20000..=0x3FFFF)
+}
+
+// Timffle: whether a line may break between `a` and `b`. A subset of UAX #14
+// that reproduces every case measured in Flash Player 32 (spaces, ZWSP, tab,
+// hyphen, slash, `?`/`!`, punctuation inside words and numbers, no-break space,
+// brackets, CJK ideographs and kana with their closing punctuation, small kana
+// and the prolonged sound mark).
+fn break_allowed(a: char, b: char) -> bool {
+    const NO_BREAK_BEFORE: &str = ")]}\u{bb},.:;!?-/'\"\u{2019}\u{201d}\u{2026}\u{2025}%\u{b0}\
+        \u{3001}\u{3002}\u{ff0c}\u{ff0e}\u{ff1a}\u{ff1b}\u{ff01}\u{ff1f}\u{30fb}\u{30fc}\
+        \u{300d}\u{300f}\u{3011}\u{3015}\u{3009}\u{300b}\u{ff09}\u{ff3d}\u{ff5d}\u{301c}\
+        \u{3041}\u{3043}\u{3045}\u{3047}\u{3049}\u{3063}\u{3083}\u{3085}\u{3087}\u{308e}\
+        \u{30a1}\u{30a3}\u{30a5}\u{30a7}\u{30a9}\u{30c3}\u{30e3}\u{30e5}\u{30e7}\u{30ee}\
+        \u{30f5}\u{30f6}\u{309d}\u{309e}\u{30fd}\u{30fe}\u{3005}";
+    const NO_BREAK_AFTER: &str = "([{\u{ab}'\"\u{2018}\u{201c}\u{bf}\u{a1}\
+        \u{300c}\u{300e}\u{3010}\u{3014}\u{3008}\u{300a}\u{ff08}\u{ff3b}\u{ff5b}";
+    const GLUE: &str = "\u{a0}\u{2060}\u{feff}\u{202f}\u{2007}";
+    if is_hanging_space(b) && b != '\u{3000}' {
+        return false;
+    }
+    if GLUE.contains(a) || GLUE.contains(b) {
+        return false;
+    }
+    if matches!(a, ' ' | '\t' | '\u{200b}' | '\u{3000}') {
+        return true;
+    }
+    if NO_BREAK_BEFORE.contains(b) || NO_BREAK_AFTER.contains(a) {
+        return false;
+    }
+    if matches!(a, '-' | '/' | '!' | '?' | '\u{2010}' | '\u{2013}') {
+        return !b.is_ascii_digit();
+    }
+    is_ideographic(a) || is_ideographic(b)
+}
+
 // Timffle: the number of trailing explicit line-break characters of a
 // paragraph as `next_line_break` delimits it (0, 1, or 2 for CR LF).
 fn line_break_len(paragraph: &WStr) -> usize {
@@ -817,7 +924,10 @@ struct ResolvedBidi {
 fn resolve_bidi(text: &WStr, bidi_level: i32) -> ResolvedBidi {
     use unicode_bidi::{BidiInfo, Level};
 
-    let level_number = bidi_level.clamp(0, i32::from(u8::MAX)) as u8;
+    // Timffle: Flash Player 32 only looks at the parity: an even `bidiLevel` is a
+    // left-to-right paragraph at level 0 and an odd one right-to-left at level 1
+    // (measured: `bidiLevel = 2` or 200 gives Latin text level 0).
+    let level_number = (bidi_level.max(0) & 1) as u8;
     let identity = |levels: Vec<u8>| ResolvedBidi {
         visual: text.into(),
         to_visual: (0..text.len()).collect(),

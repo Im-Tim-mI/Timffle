@@ -6,7 +6,8 @@ package flash.ui {
     // `Mouse.registerCursor()` reads when the cursor is registered: the frames (`data`, each
     // at most 32x32 pixels -- the size limit is checked at registration, not here, as the
     // reference documents no error for the setters), the animation `frameRate` and the
-    // `hotSpot` (default (0,0)). Nothing is validated or copied on assignment, like Flash.
+    // `hotSpot` (default (0,0)). Nothing is copied on assignment. Flash Player 32 (measured):
+    // a null `hotSpot` is TypeError #2007 and a negative `frameRate` reads back as 0.
     [API("667")]
     public final class MouseCursorData {
         private var _data:Vector.<BitmapData>;
@@ -29,7 +30,7 @@ package flash.ui {
         }
 
         public function set frameRate(value:Number):void {
-            this._frameRate = value;
+            this._frameRate = value < 0 ? 0 : value;
         }
 
         public function get hotSpot():Point {
@@ -37,6 +38,9 @@ package flash.ui {
         }
 
         public function set hotSpot(value:Point):void {
+            if (value == null) {
+                throw new TypeError("Error #2007: Parameter hotSpot must be non-null.", 2007);
+            }
             this._hotSpot = value;
         }
     }
