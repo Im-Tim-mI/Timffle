@@ -103,7 +103,7 @@ package {
             trace("makeUnique again differs: " + (gs2.groupspecWithoutAuthorizations() != unique));
 
             trace("// NetGroupInfo");
-            trace(new NetGroupInfo());
+            trace(new NetGroupInfo(0, 0, 0, 0, 0, 0, 0, 0));
 
             trace("// NetGroup");
             var nc:NetConnection = new NetConnection();
