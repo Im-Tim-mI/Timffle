@@ -54,6 +54,9 @@ pub struct GuiController {
     /// Timffle: egui's cursor icon of the last frame, to notice when egui-winit set
     /// the window cursor and the custom cursor must be applied again.
     last_cursor_icon: Option<egui::CursorIcon>,
+    /// Timffle: whether the pointer was over the window in the last frame (egui-winit
+    /// sets its own cursor again when the pointer enters the window).
+    pointer_was_in_window: bool,
     #[cfg(feature = "tracy_images")]
     tracy_frame_captures: crate::tracy::FrameCapturesHolder,
 }
@@ -205,6 +208,7 @@ impl GuiController {
             no_gui,
             theme_controller,
             custom_cursor: None,
+            pointer_was_in_window: false,
             last_cursor_icon: None,
             #[cfg(feature = "tracy_images")]
             tracy_frame_captures,
@@ -423,8 +427,17 @@ impl GuiController {
         }
         // Timffle: egui-winit sets the window cursor only when its icon changes, so the
         // custom cursor is applied once, and again whenever egui-winit overwrote it.
+        // egui-winit also drops its cursor cache while the pointer is outside the window
+        // and sets its icon again when the pointer comes back, so a pointer that enters
+        // the window needs the custom cursor again too.
         let cursor_icon = full_output.platform_output.cursor_icon;
-        let egui_set_cursor = self.last_cursor_icon != Some(cursor_icon);
+        let pointer_in_window = self
+            .egui_winit
+            .egui_ctx()
+            .input(|input| input.pointer.has_pointer());
+        let pointer_entered = pointer_in_window && !self.pointer_was_in_window;
+        self.pointer_was_in_window = pointer_in_window;
+        let egui_set_cursor = self.last_cursor_icon != Some(cursor_icon) || pointer_entered;
         self.last_cursor_icon = Some(cursor_icon);
         self.egui_winit
             .handle_platform_output(&self.window, full_output.platform_output);
