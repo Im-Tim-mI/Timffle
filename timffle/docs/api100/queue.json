@@ -1062,7 +1062,7 @@
     "setSamplerStateAt()"
    ],
    "status": "partial",
-   "note": "stage3d batch: totalGPUMemory, backBufferWidth/Height, maxBackBufferWidth/Height, driverInfo, createVideoTexture (null, supportsVideoTexture false), dispose (#3694 + wgpu release + recreate), setSamplerStateAt anisotropic real. Left: configureBackBuffer wantsBestResolution*, createTexture BgrPacked/Compressed, drawToBitmapData (needs wgpu readback), setRenderToTexture antiAlias/colorOutputIndex markers, setSamplerStateAt mipfilter (textures have 1 mip level). | render2: setSamplerStateAt mipfilter real (mip chains), setRenderToTexture antiAlias marker removed (wgpu MSAA resolve already real), createTexture streamingLevels accepted. Left: createTexture BgrPacked/Compressed (RGBA8 storage, no 565/DXT1), setRenderToTexture colorOutputIndex>0 (MRT), configureBackBuffer wantsBestResolution* (needs DPR-scaled back buffer + 1/scale draw), drawToBitmapData (front-buffer readback via render_offscreen)."
+   "note": "stage3d batch: totalGPUMemory, backBufferWidth/Height, maxBackBufferWidth/Height, driverInfo, createVideoTexture (null, supportsVideoTexture false), dispose (#3694 + wgpu release + recreate), setSamplerStateAt anisotropic real. Left: configureBackBuffer wantsBestResolution*, createTexture BgrPacked/Compressed, drawToBitmapData (needs wgpu readback), setRenderToTexture antiAlias/colorOutputIndex markers, setSamplerStateAt mipfilter (textures have 1 mip level). | render2: setSamplerStateAt mipfilter real (mip chains), setRenderToTexture antiAlias marker removed (wgpu MSAA resolve already real), createTexture streamingLevels accepted. Left: createTexture BgrPacked/Compressed (RGBA8 storage, no 565/DXT1), setRenderToTexture colorOutputIndex>0 (MRT), configureBackBuffer wantsBestResolution* (needs DPR-scaled back buffer + 1/scale draw), drawToBitmapData (front-buffer readback via render_offscreen). | s3dtex: createTexture BgrPacked/BgraPacked (quantised RGBA8), Compressed/CompressedAlpha (BC1/BC3 native when TEXTURE_COMPRESSION_BC, ETC2 when TEXTURE_COMPRESSION_ETC2, else RGBA8 + CPU codecs); check_texture_stub removed. Left: configureBackBuffer wantsBestResolution*, drawToBitmapData, setRenderToTexture colorOutputIndex>0."
   },
   {
    "class": "flash.display3D.IndexBuffer3D",
@@ -1103,8 +1103,8 @@
     "uploadFromBitmapData()",
     "uploadFromByteArray()"
    ],
-   "status": "partial",
-   "note": "async upload real (textureReady). Left: 'untested' markers on uploadFromByteArray/uploadCompressedTextureFromByteArray, miplevel != 0, unsupported ATF formats. | render2: untested markers removed, per-side mip uploads real (#3669 beyond the chain). Left: uploadCompressedTextureFromByteArray for non-BGRA formats."
+   "status": "done",
+   "note": "async upload real (textureReady). Left: 'untested' markers on uploadFromByteArray/uploadCompressedTextureFromByteArray, miplevel != 0, unsupported ATF formats. | render2: untested markers removed, per-side mip uploads real (#3669 beyond the chain). Left: uploadCompressedTextureFromByteArray for non-BGRA formats. | s3dtex: same paths as Texture for all six faces."
   },
   {
    "class": "flash.display3D.textures.Texture",
@@ -1115,8 +1115,8 @@
     "uploadFromBitmapData()",
     "uploadFromByteArray()"
    ],
-   "status": "partial",
-   "note": "miplevel != 0 uploads need mip-chain textures in wgpu; ATF formats beyond BGRA/DXT5 need decoders. | render2: uploadFromBitmapData/uploadFromByteArray at any miplevel (#3669 beyond the chain), ATF uploads fill all levels. Left: uploadFromByteArray for non-BGRA formats, uploadCompressedTextureFromByteArray for unsupported ATF formats (raw DXT1/ETC/PVRTC: no decoder crate)."
+   "status": "done",
+   "note": "miplevel != 0 uploads need mip-chain textures in wgpu; ATF formats beyond BGRA/DXT5 need decoders. | render2: uploadFromBitmapData/uploadFromByteArray at any miplevel (#3669 beyond the chain), ATF uploads fill all levels. Left: uploadFromByteArray for non-BGRA formats, uploadCompressedTextureFromByteArray for unsupported ATF formats (raw DXT1/ETC/PVRTC: no decoder crate). | s3dtex: uploadFromBitmapData/uploadFromByteArray for every format (packed quantised, compressed runtime-DXT or #3675 on ETC2 storage, half float), RangeError #3669 short data, #3674 miplevel; uploadCompressedTextureFromByteArray parses ATF 0/1/2/3/4/5 fully, GPU-native DXT/ETC2 upload or CPU decode (DXT1/DXT5/ETC1/ETC2/PVRTC in render/src/compressed.rs), #3677/#3679/#3675 per Adobe; COMPRESSED_LOSSY (0xc/0xd) -> #3677 (layout unknown)."
   },
   {
    "class": "flash.display3D.textures.TextureBase",
