@@ -58,3 +58,4 @@ done
 for t in D21Matrix3DEdge:d21matrix3dedge D35Prec:d35prec D37Arith:d37arith D39DrawMatrix:d39drawmatrix; do
   ./build.sh "${t%%:*}" "${t##*:}"
 done
+./build.sh D63Stage3D d63stage3d -swf-version 33
