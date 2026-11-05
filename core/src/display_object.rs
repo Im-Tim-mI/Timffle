@@ -69,7 +69,7 @@ pub use stage::{
     FullScreenSourceRect, Stage, StageAlign, StageDisplayState, StageScaleMode, WindowMode,
 };
 pub use text::{Text, TextSnapshot};
-pub use text_line::TextLine;
+pub use text_line::{LineBidi, TextLine};
 pub use video::Video;
 
 use self::loader_display::LoaderDisplayWeak;

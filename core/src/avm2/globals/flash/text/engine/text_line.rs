@@ -239,8 +239,9 @@ pub fn get_text_height<'gc>(
 }
 
 // Timffle: atom queries. An atom is a grapheme cluster (UAX #29) of the
-// line's text, or a single U+FDEF graphic placeholder; bounds come from the
-// laid-out glyph positions of the line.
+// line's logical text, or a single U+FDEF graphic placeholder; bounds come
+// from the laid-out glyph positions of the line, mapped from logical to
+// visual (bidi-reordered) positions.
 fn line_atoms(text: &str) -> Vec<(usize, usize)> {
     use unicode_segmentation::UnicodeSegmentation;
     let mut atoms = Vec::new();
@@ -267,7 +268,7 @@ fn atom_at<'gc>(
     line: crate::display_object::TextLine<'gc>,
     index: i32,
 ) -> Result<(usize, usize), Error<'gc>> {
-    let text = line.fallback().text().to_string();
+    let text = line.logical_text().to_string();
     let atoms = line_atoms(&text);
     usize::try_from(index)
         .ok()
@@ -286,7 +287,7 @@ pub fn get_atom_count<'gc>(
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let line = this_line(this);
-    let text = line.fallback().text().to_string();
+    let text = line.logical_text().to_string();
     Ok(Value::from_usize_lossy(line_atoms(&text).len()))
 }
 
@@ -305,7 +306,7 @@ pub fn get_atom_index_at_char_index<'gc>(
         return Ok((-1).into());
     }
     let local = char_index - begin;
-    let text = line.fallback().text().to_string();
+    let text = line.logical_text().to_string();
     let found = line_atoms(&text)
         .iter()
         .position(|&(s, e)| s <= local && local < e);
@@ -340,7 +341,7 @@ pub fn get_atom_word_boundary_on_left<'gc>(
     use unicode_segmentation::UnicodeSegmentation;
     let line = this_line(this);
     let (start, _) = atom_at(activation, line, args.get_i32(0))?;
-    let text = line.fallback().text().to_string();
+    let text = line.logical_text().to_string();
     let mut unit = 0;
     for (_, word) in text.split_word_bound_indices() {
         if unit == start {
@@ -357,7 +358,7 @@ fn atom_bounds<'gc>(
 ) -> Option<swf::Rectangle<swf::Twips>> {
     let mut result: Option<swf::Rectangle<swf::Twips>> = None;
     for i in start..end {
-        if let Some(b) = line.fallback().char_bounds(i) {
+        if let Some(b) = line.fallback().char_bounds(line.logical_to_visual(i)) {
             result = Some(match result {
                 Some(r) => r.union(&b),
                 None => b,
@@ -409,7 +410,7 @@ pub fn get_atom_index_at_point<'gc>(
     let Some(local) = line.global_to_local(stage) else {
         return Ok((-1).into());
     };
-    let text = line.fallback().text().to_string();
+    let text = line.logical_text().to_string();
     for (i, atom) in line_atoms(&text).into_iter().enumerate() {
         if let Some(b) = atom_bounds(line, atom)
             && b.x_min <= local.x
@@ -421,4 +422,16 @@ pub fn get_atom_index_at_point<'gc>(
         }
     }
     Ok((-1).into())
+}
+
+// Timffle: `TextLine.getAtomBidiLevel` — the resolved UAX #9 embedding level
+// of the atom's first character (see `TextBlock.bidiLevel`).
+pub fn get_atom_bidi_level<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let line = this_line(this);
+    let (start, _) = atom_at(activation, line, args.get_i32(0))?;
+    Ok(i32::from(line.bidi_level_at(start)).into())
 }

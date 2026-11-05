@@ -4813,6 +4813,7 @@ dependencies = [
  "tracing",
  "tracy-client",
  "ttf-parser",
+ "unicode-bidi",
  "unicode-normalization",
  "unicode-segmentation",
  "url",

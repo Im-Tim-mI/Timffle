@@ -983,7 +983,14 @@ impl<'gc> EditText<'gc> {
         let autosize = self.0.autosize.get();
         let is_word_wrap = self.0.flags.get().contains(EditTextFlag::WORD_WRAP);
         let movie = self.0.shared.swf;
-        let padding = Self::GUTTER * 2;
+        // Timffle: an FTE TextLine has no gutter: the whole specified width is
+        // available to the text, so `createTextLine(width)` breaks exactly at
+        // `width`.
+        let padding = if self.is_fte() {
+            Twips::ZERO
+        } else {
+            Self::GUTTER * 2
+        };
 
         let mut text_spans = self.0.text_spans.borrow_mut();
         if self.0.flags.get().contains(EditTextFlag::PASSWORD) {

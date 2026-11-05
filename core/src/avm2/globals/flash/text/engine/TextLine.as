@@ -100,13 +100,10 @@ package flash.text.engine {
 
         public native function getAtomIndexAtCharIndex(charIndex:int):int;
 
-        // Timffle: no bidirectional reordering is performed; every atom keeps
-        // the paragraph's embedding level (TextBlock.bidiLevel).
-        public function getAtomBidiLevel(index:int):int {
-            this.checkAtomIndex(index);
-            var block:TextBlock = this.textBlock;
-            return block ? block.bidiLevel : 0;
-        }
+        // Timffle: the resolved UAX #9 embedding level of the atom, from the
+        // bidirectional resolution of the line with TextBlock.bidiLevel as
+        // the paragraph level.
+        public native function getAtomBidiLevel(index:int):int;
 
         public native function getAtomBounds(index:int):Rectangle;
 

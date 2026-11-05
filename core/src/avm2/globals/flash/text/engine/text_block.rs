@@ -10,13 +10,13 @@ use crate::avm2::globals::flash::display::display_object::initialize_for_allocat
 use crate::avm2::object::{ContentElementObject, ElementData, VectorObject};
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
-use crate::avm2_stub_setter;
-use crate::display_object::{DisplayObject, EditText, TDisplayObject, TextLine};
+use crate::display_object::{DisplayObject, EditText, LineBidi, TDisplayObject, TextLine};
 use crate::fte::{
     TextBaselineValue, TextLineCreationResultValue, TextLineValidity, TextRotationValue,
 };
 use crate::html::{FormatSpans, TextFormat, TextSpan};
 use crate::string::{WStr, WString};
+use swf::Twips;
 
 pub use crate::avm2::object::text_block_allocator;
 
@@ -140,8 +140,14 @@ pub fn set_bidi_level<'gc>(
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
 
-    avm2_stub_setter!(activation, "flash.text.engine.TextBlock", "bidiLevel");
-
+    // Timffle: the paragraph embedding level (UAX #9) of every line created
+    // from now on; changing it invalidates all lines already broken, like
+    // changing `content` does.
+    if value != this.bidi_level() {
+        for line in this.lines() {
+            line.set_validity(TextLineValidity::Invalid, activation.gc());
+        }
+    }
     this.set_bidi_level(value);
 
     Ok(Value::Undefined)
@@ -549,10 +555,15 @@ pub fn do_create_text_line<'gc>(
         .and_then(|o| o.as_text_line());
 
     let width = args.get_f64(2);
-    // Timffle: `lineOffset` was previously ignored (`fitSomething` and
-    // splitting one paragraph into several lines still are: upstream lays the
-    // whole paragraph out in one TextLine, which the Flash-recorded tests pin).
+    // Timffle: `lineOffset` and `fitSomething` were previously ignored and the
+    // whole paragraph went into one TextLine. Now a TextLine holds at most one
+    // visual line: a paragraph wider than `width` is broken at the last break
+    // opportunity that fits (the fallback EditText's word-wrap layout finds
+    // it), the rest is left for the next `createTextLine` call, and
+    // `textLineCreationResult` reports success/emergency/insufficientWidth/
+    // complete as Flash does.
     let line_offset = args.get_f64(3);
+    let fit_something = args.get_bool(4);
 
     let content = block.content().expect("Guaranteed by AS checks");
 
@@ -606,6 +617,8 @@ pub fn do_create_text_line<'gc>(
         // `TextLine.recreateTextLine` is the caller: completely reset the
         // properties of the passed line and use it.
         line.reset_properties(activation.gc());
+        // Timffle: the reused line breaks at the new `width`.
+        line.fallback().set_width(activation.context, width);
         line
     } else {
         // `TextLine.createTextLine` is the caller: create a new `TextLine`.
@@ -614,10 +627,6 @@ pub fn do_create_text_line<'gc>(
 
     let text_line_instance = text_line.object2().expect("Already created the object2");
     let fallback = text_line.fallback();
-
-    let subtext = &text[previous_position..next_position];
-
-    fallback.set_text(subtext, activation.context);
 
     let mut format = spans
         .span(0)
@@ -642,7 +651,76 @@ pub fn do_create_text_line<'gc>(
         format.tab_stops = Some(positions);
     }
 
-    apply_format(activation, fallback, format, line_index);
+    // Timffle: lay the whole paragraph out word-wrapped at `width` and keep
+    // only its first visual line. The paragraph's explicit line-break
+    // characters belong to its last line.
+    let paragraph = &text[previous_position..next_position];
+    let body_len = paragraph.len() - line_break_len(paragraph);
+    let paragraph_bidi = resolve_bidi(paragraph, block.bidi_level());
+
+    fallback.set_text(&paragraph_bidi.visual, activation.context);
+    apply_format(activation, fallback, format.clone(), line_index);
+
+    let first_atom = first_atom_len(paragraph);
+    let (mut line_len, insufficient_width) = {
+        let layout = fallback.layout();
+        // The layout's first line ends where the next one starts (so the
+        // break opportunity's spaces belong to this line); map that visual
+        // end back to a logical length (identity for left-to-right text).
+        let end = layout.lines().first().map(|l| l.end()).unwrap_or(body_len);
+        let end = paragraph_bidi
+            .to_visual
+            .iter()
+            .position(|&v| v >= end)
+            .unwrap_or(paragraph.len());
+        let line_len = if end < body_len { end } else { paragraph.len() };
+
+        // Nothing fits when even the first atom sticks out of `width`.
+        let first_atom_right = (0..first_atom)
+            .filter_map(|i| layout.char_bounds(paragraph_bidi.to_visual[i]))
+            .map(|b| b.x_max)
+            .max();
+        let insufficient = first_atom > 0
+            && first_atom <= body_len
+            && first_atom_right.is_some_and(|x| x > Twips::from_pixels(width));
+        (line_len, insufficient)
+    };
+
+    if insufficient_width && !fit_something {
+        block.set_text_line_creation_result(Some(TextLineCreationResultValue::InsufficientWidth));
+        return Ok(Value::Null);
+    }
+
+    if insufficient_width {
+        // `fitSomething`: at least one atom goes on the line.
+        line_len = line_len.max(first_atom).min(paragraph.len());
+    }
+
+    let subtext = &paragraph[..line_len];
+    let line_bidi = if line_len == paragraph.len() {
+        paragraph_bidi
+    } else {
+        // Re-lay out just this line's text.
+        let bidi = resolve_bidi(subtext, block.bidi_level());
+        fallback.set_text(&bidi.visual, activation.context);
+        apply_format(activation, fallback, format, line_index);
+        bidi
+    };
+
+    // An emergency break is one inside a word: no break opportunity fit.
+    let emergency = line_len < paragraph.len()
+        && !subtext
+            .get(line_len - 1)
+            .is_some_and(|ch| matches!(ch, 0x20 | 0x09 | 0x200B));
+
+    text_line.set_bidi(
+        LineBidi {
+            logical: subtext.into(),
+            to_visual: line_bidi.to_visual,
+            levels: line_bidi.levels,
+        },
+        activation.gc(),
+    );
 
     // Timffle: `TextBlock.lineRotation` rotates the whole line display object.
     let rotation = match block.line_rotation() {
@@ -661,11 +739,13 @@ pub fn do_create_text_line<'gc>(
     // of the provided text, and set the width of the EditText to that.
     // Some games depend on this (e.g. Realm Grinder).
 
+    let line_end = previous_position + line_len;
+
     text_line.set_text_block(Some(block), activation.gc());
     text_line.set_specified_width(width);
-    text_line.set_raw_text_length(subtext.len() as u32);
+    text_line.set_raw_text_length(line_len as u32);
     text_line.set_begin_index(previous_position as u32);
-    text_line.set_end_index(next_position as u32);
+    text_line.set_end_index(line_end as u32);
     text_line.set_line_index(line_index);
 
     if let Some(previous_line) = previous_text_line {
@@ -679,9 +759,136 @@ pub fn do_create_text_line<'gc>(
     // TODO correctly set the `validity`, `nextLine`, and `prevLine` properties
     // of the lines coming after this line
 
-    block.set_text_line_creation_result(Some(TextLineCreationResultValue::Success));
+    block.set_text_line_creation_result(Some(if emergency {
+        TextLineCreationResultValue::Emergency
+    } else {
+        TextLineCreationResultValue::Success
+    }));
 
     Ok(text_line_instance.into())
+}
+
+// Timffle: the number of trailing explicit line-break characters of a
+// paragraph as `next_line_break` delimits it (0, 1, or 2 for CR LF).
+fn line_break_len(paragraph: &WStr) -> usize {
+    let len = paragraph.len();
+    if len >= 2 && paragraph.get(len - 2) == Some(0x0D) && paragraph.get(len - 1) == Some(0x0A) {
+        2
+    } else if len >= 1
+        && paragraph
+            .get(len - 1)
+            .is_some_and(|ch| matches!(ch, 0x0A | 0x0D | 0x2028 | 0x2029))
+    {
+        1
+    } else {
+        0
+    }
+}
+
+// Timffle: the length in UTF-16 units of the first atom (grapheme cluster)
+// of `text`.
+fn first_atom_len(text: &WStr) -> usize {
+    use unicode_segmentation::UnicodeSegmentation;
+    let string = text.to_string();
+    string
+        .graphemes(true)
+        .next()
+        .map(|g| g.encode_utf16().count())
+        .unwrap_or(0)
+        .min(text.len())
+}
+
+/// Timffle: the result of resolving a line's bidirectional order.
+struct ResolvedBidi {
+    /// The text reordered for display (right-to-left runs reversed).
+    visual: WString,
+    /// Logical UTF-16 unit index -> index into `visual`.
+    to_visual: Vec<usize>,
+    /// Resolved embedding level per logical UTF-16 unit.
+    levels: Vec<u8>,
+}
+
+// Timffle: UAX #9 resolution of `text` with `TextBlock.bidiLevel` as the
+// paragraph embedding level (0 = left-to-right, 1 = right-to-left; higher
+// values are explicit levels as UAX #9 allows). Runs are reordered for
+// display with the Unicode bidirectional algorithm (`unicode-bidi`); text in
+// which every run keeps its logical position (all left-to-right text at
+// level 0) maps onto itself.
+fn resolve_bidi(text: &WStr, bidi_level: i32) -> ResolvedBidi {
+    use unicode_bidi::{BidiInfo, Level};
+
+    let level_number = bidi_level.clamp(0, i32::from(u8::MAX)) as u8;
+    let identity = |levels: Vec<u8>| ResolvedBidi {
+        visual: text.into(),
+        to_visual: (0..text.len()).collect(),
+        levels,
+    };
+
+    // `unicode-bidi` works on UTF-8; text with lone surrogates cannot be
+    // mapped unit by unit, so it keeps its logical order.
+    let string = text.to_string();
+    if string.encode_utf16().count() != text.len() {
+        return identity(vec![level_number; text.len()]);
+    }
+    let level = Level::new(level_number).unwrap_or_else(|_| Level::ltr());
+    let info = BidiInfo::new(&string, Some(level));
+
+    // Byte index -> logical UTF-16 unit index.
+    let mut byte_to_unit = vec![0usize; string.len() + 1];
+    let mut unit = 0;
+    for (b, ch) in string.char_indices() {
+        for k in 0..ch.len_utf8() {
+            byte_to_unit[b + k] = unit;
+        }
+        unit += ch.len_utf16();
+    }
+    byte_to_unit[string.len()] = unit;
+
+    let mut levels = vec![level.number(); text.len()];
+    let mut to_visual = vec![0usize; text.len()];
+    let mut visual = WString::new();
+    let mut all_identity = true;
+
+    for para in &info.paragraphs {
+        let (run_levels, runs) = info.visual_runs(para, para.range.clone());
+        for run in runs {
+            let rtl = run_levels[run.start].is_rtl();
+            let chars: Vec<(usize, char)> = string[run.clone()]
+                .char_indices()
+                .map(|(i, c)| (run.start + i, c))
+                .collect();
+            let ordered: Box<dyn Iterator<Item = &(usize, char)>> = if rtl {
+                Box::new(chars.iter().rev())
+            } else {
+                Box::new(chars.iter())
+            };
+            for &(byte, ch) in ordered {
+                let logical = byte_to_unit[byte];
+                let lvl = run_levels[byte].number();
+                let visual_index = visual.len();
+                for k in 0..ch.len_utf16() {
+                    levels[logical + k] = lvl;
+                    to_visual[logical + k] = visual_index + k;
+                    if visual_index + k != logical + k {
+                        all_identity = false;
+                    }
+                }
+                visual.push_char(ch);
+            }
+        }
+    }
+
+    if visual.len() != text.len() || all_identity {
+        // Nothing moved (or the text could not be mapped unit by unit): keep
+        // the original units.
+        identity(levels)
+    } else {
+        ResolvedBidi {
+            visual,
+            to_visual,
+            levels,
+        }
+    }
 }
 
 fn create_text_line<'gc>(activation: &mut Activation<'_, 'gc>, width: f64) -> TextLine<'gc> {

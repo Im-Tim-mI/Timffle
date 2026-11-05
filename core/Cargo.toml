@@ -68,6 +68,8 @@ enum-map = { workspace = true }
 ttf-parser = "0.25"
 num-bigint = "0.4"
 unicode-segmentation = "1.13.3"
+# Timffle: bidirectional ordering for flash.text.engine.TextBlock.bidiLevel.
+unicode-bidi = "0.3.18"
 # Timffle: NFKD decomposition for the `flash.globalization.Collator` collation.
 unicode-normalization = "0.1.24"
 id3 = "1.17.0"

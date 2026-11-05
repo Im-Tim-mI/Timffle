@@ -12,11 +12,12 @@ use crate::display_object::{
 use crate::events::{ClipEvent, ClipEventResult};
 use crate::fte::TextLineValidity;
 use crate::prelude::*;
+use crate::string::WString;
 use crate::tag_utils::SwfMovie;
 use crate::vminterface::Instantiator;
 use core::fmt;
 use gc_arena::barrier::unlock;
-use gc_arena::lock::Lock;
+use gc_arena::lock::{Lock, RefLock};
 use gc_arena::{Collect, Gc, Mutation};
 use ruffle_common::utils::HasPrefixField;
 use std::cell::Cell;
@@ -58,6 +59,24 @@ pub struct TextLineData<'gc> {
 
     previous_line: Lock<Option<TextLine<'gc>>>,
     next_line: Lock<Option<TextLine<'gc>>>,
+
+    // Timffle: the line's text in logical order plus its bidirectional
+    // resolution (UAX #9). The fallback EditText holds the text in visual
+    // order; atom queries work on the logical text and map through
+    // `to_visual`.
+    #[collect(require_static)]
+    bidi: RefLock<LineBidi>,
+}
+
+/// Timffle: bidirectional resolution of one line (see `TextLineData::bidi`).
+#[derive(Default, Clone, Debug)]
+pub struct LineBidi {
+    /// The line's text in logical order.
+    pub logical: WString,
+    /// Logical UTF-16 unit index -> index into the visual (fallback) text.
+    pub to_visual: Vec<usize>,
+    /// Resolved embedding level of every logical UTF-16 unit.
+    pub levels: Vec<u8>,
 }
 
 impl<'gc> TextLine<'gc> {
@@ -83,8 +102,36 @@ impl<'gc> TextLine<'gc> {
                 line_index: Cell::new(0),
                 previous_line: Lock::new(None),
                 next_line: Lock::new(None),
+                bidi: RefLock::new(LineBidi::default()),
             },
         ))
+    }
+
+    // Timffle: the line's logical text (what `rawTextLength` and the atom
+    // indices refer to).
+    pub fn logical_text(self) -> WString {
+        self.0.bidi.borrow().logical.clone()
+    }
+
+    /// Maps a logical UTF-16 unit index of the line to the unit's index in
+    /// the fallback's (visual order) text.
+    pub fn logical_to_visual(self, index: usize) -> usize {
+        self.0
+            .bidi
+            .borrow()
+            .to_visual
+            .get(index)
+            .copied()
+            .unwrap_or(index)
+    }
+
+    /// The resolved bidirectional level of a logical UTF-16 unit.
+    pub fn bidi_level_at(self, index: usize) -> u8 {
+        self.0.bidi.borrow().levels.get(index).copied().unwrap_or(0)
+    }
+
+    pub fn set_bidi(self, bidi: LineBidi, mc: &Mutation<'gc>) {
+        *unlock!(Gc::write(mc, self.0), TextLineData, bidi).borrow_mut() = bidi;
     }
 
     pub fn reset_properties(self, mc: &Mutation<'gc>) {
@@ -107,6 +154,7 @@ impl<'gc> TextLine<'gc> {
 
         self.set_previous_line(None, mc);
         self.set_next_line(None, mc);
+        self.set_bidi(LineBidi::default(), mc);
     }
 
     /// Release this line from its siblings and the block it's in.
