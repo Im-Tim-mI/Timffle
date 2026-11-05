@@ -13,8 +13,10 @@ use ruffle_common::sandbox::SandboxType;
 
 pub mod file_reference;
 pub mod file_reference_list;
+pub mod group_specifier;
 pub mod local_connection;
 pub mod net_connection;
+pub mod net_group;
 pub mod net_monitor;
 pub mod net_stream;
 pub mod object_encoding;

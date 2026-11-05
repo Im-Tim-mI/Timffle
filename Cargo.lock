@@ -4804,6 +4804,7 @@ dependencies = [
  "scopeguard",
  "serde",
  "serde_json",
+ "sha2",
  "slotmap",
  "smallvec",
  "swf 0.3.0",
