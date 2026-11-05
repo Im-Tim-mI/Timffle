@@ -2,6 +2,16 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26344 — 2026-11-05（main）
+
+**修正：`Loader` 載入的內容在下一個影格開始時建構，`init`／`complete` 不會再被內容自己發出的請求搶先**（tim：摩爾報社的書櫃抽屜反覆進入兩次有高機率載不出文件）。`core/src/loader.rs`、`core/src/player.rs`。小幫手仍是 **1.4.1**，不必重裝。
+
+- **現象**：摩爾報社（地圖 45）書櫃的年份抽屜開啟 `TimesArkPanel.swf`；面板的建構子先用 `URLLoader` 去抓 `resource/xml/TimesArk.xml`，年份則由客戶端在 `Loader` 的 `complete` 監聽器裡呼叫 `init(data)` 才交給面板。第二次以後 XML 已在瀏覽器快取，Ruffle 讓它的 `complete` 跑在 `Loader` 的 `init`／`complete` 之前，面板拿到 `null` 年份，`initNews()` 丟 `TypeError #1009`，抽屜是空的（本機私服重現：第三次開抽屜必現，主控台 `Error #1009 … TimesArkPanel/initNews()`）。
+- **原因**：Ruffle 在下載回呼（兩個影格之間）就建構載入的內容並跑它的建構子，`init`／`complete` 卻要等下一個影格結束才發，中間隔了一個 tick：Socket／網路／計時器事件（26335 起在影格之前跑）與瀏覽器的 fetch 回呼都可以插隊。真 Flash（`loader_events_2`、`from_shumway/as3-loader/events/loader-events` 的黃金答案）是在位元組到齊後的**下一個影格**才建構內容、同一影格跑它的第一幀、影格結束就發 `init`／`httpStatus`／`complete`，中間沒有別的事件能插進來。
+- **做法**：下載（或 `loadBytes`）解析完成時只記成「已解析」（新的 `LoaderStatus::Parsed`，連同 HTTP 狀態與轉址旗標），內容改在下一個影格開始的預載步驟（`LoadManager::preload_tick`，只有影格迴圈 `run_frame` 會建構，測試框架的影格外預載呼叫不會）才建構；之後的流程不變（第一幀、影格結束發 `init`／`complete`）。`loadBytes` 原本用「影格結束後的回呼」建構，改走同一條路。**只套用在 AVM2 的 `Loader`**；AVM1 的 `loadMovie`／`MovieClipLoader` 維持原本時機（它的測試記錄的是舊時序）。
+- **測試**：新增 `tests/tests/swfs/avm2/loader_complete_before_child_requests`（子 SWF 的建構子發 `URLLoader` 請求；`Loader.load` 與 `loadBytes` 各一次；期望 `init`、`complete` 都在子 SWF 的資料到達之前——依 Flash 的規則推定，未用真 Flash 錄製）；修正前此測試失敗、修正後通過。`loader_try_click_root` 的輸入多等一個影格再點（內容現在在下一個影格才出現，`num_ticks` 2→3）；`from_shumway/as3-loader/events/loader-events`（known_failure）的 `output.ruffle.txt` 更新成兩個子內容一起在影格開始建構的順序（比之前更接近 Flash 的黃金答案）。`xml_appendchild_swf_v21`（`num_ticks` 1→2）與 `sandbox_type_remote`（2→4）同樣多給影格。`cargo test -- load` 135 支：134 通過，`avm2/loader_duplicate_class` 在未修改的 main 上就失敗（子網域查到父網域的類別，與本次無關）；整個 `avm2/` 1,200 支：1,193 通過，7 個失敗在未修改的 main 上也一樣（上述 1 個、4 個 known_failure，以及補影格前的那 2 個）。`cargo check` core 與 wasm32 `ruffle_web` 通過；clippy 只有既有的 3 個錯誤（`matrix3d_object.rs`×2、`avm2.rs`）。
+- **驗證**：本機私服（無頭 Chrome、`wgpu-webgl`）用 26343 重現：第三次開抽屜空白、主控台 `TimesArkPanel/initNews()` 的 `#1009`；26344 連開四個抽屜都有報紙，主控台沒有 `#1009`。
+
 ## 0.8.0.26343 — 2026-11-04（main，正式版）
 
 **繪圖後端改為 WebGPU 優先的第一個正式版。** 把 `webgpu` 與 `frame-interp` 兩個測試分支（0.8.0.26327～26342）併入主線 `main`，接續正式版 0.8.0.26326；**實驗性的補幀功能整個拿掉，「顯示幀數」保留**（tim：「現在版本我認為可以放入主線 main 了，但實驗性補幀功能拿掉，顯示幀率可以保留」）。小幫手仍是 **1.4.1**，不必重裝。

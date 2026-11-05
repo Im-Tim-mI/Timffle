@@ -1,0 +1,10 @@
+load child.swf
+child constructed
+loader init
+loader complete
+child data: hello
+loadBytes child.swf
+child constructed
+loader2 init
+loader2 complete
+child data: hello

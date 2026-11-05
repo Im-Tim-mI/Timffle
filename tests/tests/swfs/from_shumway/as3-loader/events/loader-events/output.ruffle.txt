@@ -9,11 +9,11 @@ root loader: complete 1293
 child 1 loader: open 0
 child 1 loader: progress 0
 child 1 loader: progress 8700
-construct instance3, parent: null
-added instance3
 child 2 loader: open 0
 child 2 loader: progress 0
 child 2 loader: progress 8700
+construct instance3, parent: null
+added instance3
 construct instance5, parent: null
 added instance5
 enterFrame 2
