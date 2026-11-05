@@ -928,6 +928,11 @@ impl<'gc> Stage<'gc> {
 
         for stage3d in &*stage3ds {
             stage3d.update_context3d_status(context);
+            // Timffle: configureBackBuffer(…, wantsBestResolutionOnBrowserZoom)
+            // follows the viewport scale factor.
+            if let Some(context3d) = stage3d.context3d() {
+                context3d.refresh_best_resolution(context);
+            }
         }
     }
 }

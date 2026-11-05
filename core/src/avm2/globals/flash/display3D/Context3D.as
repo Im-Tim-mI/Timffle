@@ -1,9 +1,8 @@
 package flash.display3D {
-    import __ruffle__.stub_method;
-
     import flash.display.BitmapData;
     import flash.events.EventDispatcher;
     import flash.geom.Matrix3D;
+    import flash.geom.Point;
     import flash.geom.Rectangle;
     import flash.utils.ByteArray;
     import flash.display3D.textures.CubeTexture;
@@ -189,9 +188,9 @@ package flash.display3D {
             actionOnDepthPassStencilFail:String = "keep"
         ):void;
 
-        public function drawToBitmapData(destination:BitmapData):void {
-            stub_method("flash.display3D.Context3D", "drawToBitmapData");
-        }
+        // Timffle: real back-buffer readback (GPU copy + the BitmapData sync
+        // path); srcRect/destPoint are the AIR 25 additions. See context_3d.rs.
+        public native function drawToBitmapData(destination:BitmapData, srcRect:Rectangle = null, destPoint:Point = null):void;
 
         public native function dispose(recreate:Boolean = true):void;
     }

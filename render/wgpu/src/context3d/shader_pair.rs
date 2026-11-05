@@ -67,9 +67,14 @@ impl ShaderPairAgal {
                             source: wgpu::ShaderSource::Naga(Cow::Owned(vertex_naga_module)),
                         });
 
-                let fragment_naga_module =
-                    naga_agal::agal_to_naga(&self.fragment_shader, &data.vertex_attributes)
-                        .unwrap();
+                // Timffle: one colour output per bound render target
+                // (multiple render targets, setRenderToTexture colorOutputIndex).
+                let fragment_naga_module = naga_agal::agal_to_naga_with_color_outputs(
+                    &self.fragment_shader,
+                    &data.vertex_attributes,
+                    data.color_outputs,
+                )
+                .unwrap();
                 let fragment_module =
                     descriptors
                         .device
@@ -157,4 +162,6 @@ pub enum ShaderTextureInfo {
 pub struct ShaderCompileData {
     pub vertex_attributes: [Option<VertexAttributeFormat>; MAX_VERTEX_ATTRIBUTES],
     pub texture_infos: [Option<ShaderTextureInfo>; 8],
+    // Timffle: number of colour targets the pipeline renders to (1..=4).
+    pub color_outputs: u32,
 }

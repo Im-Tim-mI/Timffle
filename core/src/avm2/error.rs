@@ -1286,9 +1286,17 @@ make_error_fn!(make_error_3674, 3674, argument_error);
 make_error_fn!(make_error_3677, 3677, argument_error);
 make_error_fn!(make_error_3669_range, 3669, range_error);
 
+// Timffle: Context3D.setRenderToTexture colorOutputIndex (multiple render targets):
+// bit depth of all render targets must match / index outside [0..3] / needs the
+// standard profile.
+make_error_fn!(make_error_3761, 3761, argument_error);
+make_error_fn!(make_error_3770, 3770, argument_error);
+make_error_fn!(make_error_3779, 3779, argument_error);
 make_error_fn!(make_error_3771, 3771, argument_error);
 make_error_fn!(make_error_3772, 3772, argument_error);
 make_error_fn!(make_error_3773, 3773, argument_error);
+// Timffle: Context3D.drawToBitmapData srcRect/destPoint outside the buffers.
+make_error_fn!(make_error_3802, 3802, error);
 
 #[inline(never)]
 #[cold]
@@ -1337,6 +1345,12 @@ pub fn make_agal_upload_error<'gc>(
             ),
             3646
         ),
+        // Timffle: `oc4` and above in a fragment program (multiple render
+        // targets allow `oc0`..`oc3`).
+        AgalError::ColorOutputOutOfRange {
+            token: _,
+            shader_type: _,
+        } => error(activation, error_message!(3760), 3760),
         AgalError::SamplerRegisterAsSource {
             operand,
             token,

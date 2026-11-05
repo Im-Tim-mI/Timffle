@@ -22,6 +22,7 @@ use crate::Texture;
 use crate::context3d::current_pipeline::{AGAL_FLOATS_PER_REGISTER, BoundTextureData, IntoWgpu};
 use crate::descriptors::Descriptors;
 use crate::utils::supported_sample_count;
+use naga_agal::MAX_COLOR_OUTPUTS;
 
 use std::num::NonZeroU64;
 use std::rc::Rc;
@@ -53,6 +54,17 @@ pub struct WgpuContext3D {
     current_texture_size: Option<Extent3d>,
     current_depth_texture_view: Option<wgpu::TextureView>,
     current_texture_resolve_view: Option<wgpu::TextureView>,
+    // Timffle: format and sample count of colour output 0, and the colour
+    // outputs 1..3 bound with `setRenderToTexture(…, colorOutputIndex)`
+    // (multiple render targets). A render pass attaches output 0 and the
+    // contiguous run of bound extra outputs; `setRenderToBackBuffer()`,
+    // `present()` and `configureBackBuffer()` unbind them.
+    current_texture_format: TextureFormat,
+    current_sample_count: u32,
+    extra_color_targets: [Option<ExtraColorTarget>; MAX_COLOR_OUTPUTS - 1],
+    // Timffle: whether colour output 0 is the back buffer (false while
+    // `setRenderToTexture` is in effect).
+    rendering_to_back_buffer: bool,
 
     back_buffer_sample_count: u32,
     back_buffer_size: Option<Extent3d>,
@@ -150,6 +162,10 @@ impl WgpuContext3D {
             current_texture_size: None,
             current_depth_texture_view: None,
             current_texture_resolve_view: None,
+            current_texture_format: TextureFormat::Rgba8Unorm,
+            current_sample_count: 1,
+            extra_color_targets: std::array::from_fn(|_| None),
+            rendering_to_back_buffer: true,
 
             back_buffer_sample_count: 1,
             back_buffer_size: None,
@@ -200,8 +216,128 @@ impl WgpuContext3D {
             .update_has_depth_texture(self.current_depth_texture_view.is_some());
         self.current_pipeline
             .update_sample_count(self.back_buffer_sample_count);
-        self.current_pipeline
-            .update_target_format(TextureFormat::Rgba8Unorm);
+        // Timffle: the back buffer is a single Rgba8 colour output.
+        self.current_texture_format = TextureFormat::Rgba8Unorm;
+        self.current_sample_count = self.back_buffer_sample_count;
+        self.extra_color_targets = std::array::from_fn(|_| None);
+        self.rendering_to_back_buffer = true;
+        self.sync_target_formats();
+    }
+
+    // Timffle: `clear()` is applied lazily by the next render pass; before
+    // the current target is read (`drawToBitmapData`) or shown (`present()`)
+    // a pending clear is applied with an empty render pass, as Flash clears
+    // immediately.
+    fn flush_pending_clear(&mut self) {
+        if self.clear_color.is_none() || self.current_texture_view.is_none() {
+            return;
+        }
+        let mut encoder =
+            self.descriptors
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: create_debug_label!("Clear command encoder").as_deref(),
+                });
+        let pass = self.make_render_pass(&mut encoder);
+        drop(pass);
+        self.descriptors.queue.submit([encoder.finish()]);
+    }
+
+    // Timffle: the extra colour outputs that take part in a render pass — the
+    // contiguous run bound from colorOutputIndex 1 upwards.
+    fn active_extra_color_targets(&self) -> &[Option<ExtraColorTarget>] {
+        let bound = self
+            .extra_color_targets
+            .iter()
+            .take_while(|target| target.is_some())
+            .count();
+        &self.extra_color_targets[..bound]
+    }
+
+    // Timffle: tells the pipeline which colour targets the next draw renders to.
+    fn sync_target_formats(&mut self) {
+        let mut formats = vec![self.current_texture_format];
+        formats.extend(
+            self.active_extra_color_targets()
+                .iter()
+                .flatten()
+                .map(|target| target.format),
+        );
+        self.current_pipeline.update_target_formats(formats);
+    }
+
+    // Timffle: binds `texture` as colour output `index` (1..3) of the
+    // current render target. Its size must match colour output 0 (the AVM
+    // side checks that and reports the Flash error); the sample count of
+    // output 0 applies to all outputs.
+    fn set_extra_color_target(
+        &mut self,
+        index: usize,
+        texture_wrapper: &TextureWrapper,
+        surface_selector: u32,
+    ) {
+        let Some(current_size) = self.current_texture_size else {
+            tracing::warn!(
+                "setRenderToTexture with colorOutputIndex {index} before a render target was set"
+            );
+            return;
+        };
+        let (width, height) = (
+            texture_wrapper.texture.width(),
+            texture_wrapper.texture.height(),
+        );
+        if width != current_size.width || height != current_size.height {
+            tracing::warn!(
+                "setRenderToTexture colorOutputIndex {index}: {width}x{height} does not match colour output 0 ({}x{})",
+                current_size.width,
+                current_size.height
+            );
+            return;
+        }
+
+        let view_desc = TextureViewDescriptor {
+            base_array_layer: surface_selector,
+            array_layer_count: Some(1),
+            mip_level_count: Some(1),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            ..Default::default()
+        };
+        let format = texture_wrapper.texture.format();
+        let sample_count = self.current_sample_count;
+        let (view, resolve_view) = if sample_count != 1 {
+            let msaa_texture = self
+                .descriptors
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: create_debug_label!("Render target texture MSAA").as_deref(),
+                    size: Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: texture_wrapper.texture.depth_or_array_layers(),
+                    },
+                    mip_level_count: 1,
+                    sample_count,
+                    dimension: texture_wrapper.texture.dimension(),
+                    format,
+                    view_formats: &[format],
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                });
+            (
+                msaa_texture.create_view(&view_desc),
+                Some(texture_wrapper.texture.create_view(&view_desc)),
+            )
+        } else {
+            (texture_wrapper.texture.create_view(&view_desc), None)
+        };
+
+        self.extra_color_targets[index - 1] = Some(ExtraColorTarget {
+            view,
+            resolve_view,
+            format,
+            width,
+            height,
+        });
+        self.sync_target_formats();
     }
 
     fn make_render_pass<'a>(
@@ -243,17 +379,32 @@ impl WgpuContext3D {
             None
         };
 
-        let mut pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Context3D render pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: self.current_texture_view.as_ref().unwrap(),
-                resolve_target: self.current_texture_resolve_view.as_ref(),
+        // Timffle: colour output 0 plus the bound extra outputs (multiple
+        // render targets); `clear()` clears all of them.
+        let mut color_attachments = vec![Some(wgpu::RenderPassColorAttachment {
+            view: self.current_texture_view.as_ref().unwrap(),
+            resolve_target: self.current_texture_resolve_view.as_ref(),
+            ops: wgpu::Operations {
+                load: color_load,
+                store: wgpu::StoreOp::Store,
+            },
+            depth_slice: None,
+        })];
+        for target in self.active_extra_color_targets().iter().flatten() {
+            color_attachments.push(Some(wgpu::RenderPassColorAttachment {
+                view: &target.view,
+                resolve_target: target.resolve_view.as_ref(),
                 ops: wgpu::Operations {
                     load: color_load,
                     store: wgpu::StoreOp::Store,
                 },
                 depth_slice: None,
-            })],
+            }));
+        }
+
+        let mut pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Context3D render pass"),
+            color_attachments: &color_attachments,
             depth_stencil_attachment,
             ..Default::default()
         });
@@ -327,6 +478,16 @@ pub struct TextureWrapper {
     compressed: Option<CompressedFormat>,
 }
 
+// Timffle: a colour output 1..3 of multiple render targets.
+pub struct ExtraColorTarget {
+    view: wgpu::TextureView,
+    // The user's texture when `view` is a multisampled intermediate.
+    resolve_view: Option<wgpu::TextureView>,
+    format: TextureFormat,
+    width: u32,
+    height: u32,
+}
+
 impl IndexBuffer for IndexBufferWrapper {}
 impl VertexBuffer for VertexBufferWrapper {}
 impl ruffle_render::backend::Texture for TextureWrapper {
@@ -363,6 +524,15 @@ impl Context3D for WgpuContext3D {
     }
     fn bitmap_handle(&self) -> BitmapHandle {
         self.front_buffer_raw_texture_handle.clone()
+    }
+    // Timffle: `drawToBitmapData` reads the back buffer, "not the front
+    // buffer shown on stage" (resolved already when multisampled).
+    fn back_buffer_bitmap_handle(&mut self) -> Option<BitmapHandle> {
+        self.back_buffer_size?;
+        if self.rendering_to_back_buffer {
+            self.flush_pending_clear();
+        }
+        Some(self.back_buffer_raw_texture_handle.clone())
     }
     fn should_render(&self) -> bool {
         // If this is None, we haven't called configureBackBuffer yet.
@@ -707,6 +877,12 @@ impl Context3D for WgpuContext3D {
                 self.current_pipeline
                     .update_has_depth_texture(depth_and_stencil);
                 self.current_pipeline.update_sample_count(sample_count);
+                // Timffle: a fresh back buffer is the only colour output.
+                self.current_texture_format = format;
+                self.current_sample_count = sample_count;
+                self.extra_color_targets = std::array::from_fn(|_| None);
+                self.rendering_to_back_buffer = true;
+                self.sync_target_formats();
             }
             Context3DCommand::UploadToIndexBuffer {
                 buffer,
@@ -777,7 +953,22 @@ impl Context3D for WgpuContext3D {
                 enable_depth_and_stencil,
                 anti_alias,
                 surface_selector,
+                color_output_index,
             } => {
+                // Timffle: colour outputs 1..3 share output 0's depth buffer,
+                // sample count and size; only the texture (and face) is theirs.
+                if color_output_index != 0 {
+                    let texture_wrapper =
+                        <dyn Any>::downcast_ref::<TextureWrapper>(texture.as_ref()).unwrap();
+                    self.current_pipeline.remove_texture(&texture);
+                    self.set_extra_color_target(
+                        (color_output_index as usize).min(MAX_COLOR_OUTPUTS - 1),
+                        texture_wrapper,
+                        surface_selector,
+                    );
+                    return;
+                }
+
                 let mut sample_count = anti_alias;
                 if sample_count == 0 {
                     sample_count = 1;
@@ -862,8 +1053,24 @@ impl Context3D for WgpuContext3D {
                     .update_has_depth_texture(enable_depth_and_stencil);
                 self.current_pipeline.remove_texture(&texture);
                 self.current_pipeline.update_sample_count(sample_count);
-                self.current_pipeline
-                    .update_target_format(texture_wrapper.texture.format());
+                // Timffle: a new colour output 0 keeps the extra outputs that
+                // still fit it (same size) and drops the others.
+                self.current_texture_format = texture_wrapper.texture.format();
+                self.rendering_to_back_buffer = false;
+                let same_sample_count = self.current_sample_count == sample_count;
+                self.current_sample_count = sample_count;
+                let (width, height) = (
+                    texture_wrapper.texture.width(),
+                    texture_wrapper.texture.height(),
+                );
+                for target in self.extra_color_targets.iter_mut() {
+                    if target.as_ref().is_some_and(|t| {
+                        !same_sample_count || t.width != width || t.height != height
+                    }) {
+                        *target = None;
+                    }
+                }
+                self.sync_target_formats();
             }
 
             Context3DCommand::SetRenderToBackBuffer => {
@@ -1280,6 +1487,10 @@ impl Context3D for WgpuContext3D {
 
     #[instrument(level = "debug", skip_all)]
     fn present(&mut self) {
+        // Timffle: a frame that only called clear() still shows the clear.
+        if self.rendering_to_back_buffer {
+            self.flush_pending_clear();
+        }
         std::mem::swap(
             &mut self.back_buffer_raw_texture_handle,
             &mut self.front_buffer_raw_texture_handle,

@@ -116,6 +116,21 @@ impl NagaBuilder<'_> {
         let dest_load = self.evaluate_expr(Expression::Load { pointer: self.dest });
         let mut components = vec![Some(dest_load)];
 
+        // Timffle: a fragment program returns one colour per render target
+        // (`oc1`..`oc3`); a target the program never wrote gets zero.
+        if let ShaderType::Fragment = self.shader_config.shader_type {
+            for slot in 1..self.shader_config.color_outputs as usize {
+                let component = match self.extra_dests[slot - 1] {
+                    Some(pointer) => self.evaluate_expr(Expression::Load { pointer }),
+                    None => self
+                        .func
+                        .expressions
+                        .append(Expression::ZeroValue(self.vec4f), Span::UNDEFINED),
+                };
+                components.push(Some(component));
+            }
+        }
+
         // If the vertex shader wrote to any varying registers, we need to
         // return them as well.
         if let ShaderType::Vertex = self.shader_config.shader_type {

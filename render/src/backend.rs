@@ -126,6 +126,23 @@ pub trait RenderBackend: Any {
         handle: Box<dyn SyncHandle>,
         with_rgba: RgbaBufRead,
     ) -> Result<(), Error>;
+
+    /// Timffle: `Context3D.drawToBitmapData` — copies the `source_region` of a
+    /// Stage3D buffer (`source`, a texture owned by a `Context3D`) into the
+    /// bitmap `destination` at `dest_point`, pixel for pixel (no scaling, no
+    /// blending; the colours are taken as premultiplied, as Flash does).
+    /// The caller has clipped the region to both textures. Returns the handle
+    /// that syncs the new GPU pixels back to the CPU, or `None` when the
+    /// backend cannot copy.
+    fn copy_stage3d_to_bitmap(
+        &mut self,
+        _source: BitmapHandle,
+        _source_region: PixelRegion,
+        _destination: BitmapHandle,
+        _dest_point: (u32, u32),
+    ) -> Option<Box<dyn SyncHandle>> {
+        None
+    }
 }
 
 pub enum PixelBenderTarget {
@@ -283,6 +300,10 @@ pub trait Context3D: Any {
     fn profile(&self) -> Context3DProfile;
     // The BitmapHandle for the texture we're rendering to
     fn bitmap_handle(&self) -> BitmapHandle;
+    // Timffle: the back buffer (the one drawTriangles() writes until the next
+    // present()), read by `Context3D.drawToBitmapData`; `None` before
+    // configureBackBuffer().
+    fn back_buffer_bitmap_handle(&mut self) -> Option<BitmapHandle>;
     // Whether or not we should actually render the texture
     // as part of stage rendering
     fn should_render(&self) -> bool;
@@ -582,6 +603,9 @@ pub enum Context3DCommand<'a> {
         enable_depth_and_stencil: bool,
         anti_alias: u32,
         surface_selector: u32,
+        // Timffle: colour output 0..3 (multiple render targets); the caller
+        // has checked the range, the profile and that the sizes match.
+        color_output_index: u32,
     },
     SetRenderToBackBuffer,
 

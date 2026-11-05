@@ -881,6 +881,96 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
         Some(self.make_queue_sync_handle(target, None, handle, bounds))
     }
 
+    // Timffle: `Context3D.drawToBitmapData` — a plain texture copy from the
+    // Stage3D back buffer into the bitmap's texture, read back through the
+    // same queue sync handle as `BitmapData.draw`.
+    fn copy_stage3d_to_bitmap(
+        &mut self,
+        source: BitmapHandle,
+        source_region: PixelRegion,
+        destination: BitmapHandle,
+        dest_point: (u32, u32),
+    ) -> Option<Box<dyn SyncHandle>> {
+        let source_texture = as_texture(&source);
+        let dest_texture = as_texture(&destination);
+        if source_texture.texture.format() != dest_texture.texture.format() {
+            tracing::error!(
+                "drawToBitmapData: cannot copy {:?} into {:?}",
+                source_texture.texture.format(),
+                dest_texture.texture.format()
+            );
+            return None;
+        }
+
+        let width = source_region
+            .width()
+            .min(
+                source_texture
+                    .texture
+                    .width()
+                    .saturating_sub(source_region.x_min),
+            )
+            .min(dest_texture.texture.width().saturating_sub(dest_point.0));
+        let height = source_region
+            .height()
+            .min(
+                source_texture
+                    .texture
+                    .height()
+                    .saturating_sub(source_region.y_min),
+            )
+            .min(dest_texture.texture.height().saturating_sub(dest_point.1));
+        if width == 0 || height == 0 {
+            return None;
+        }
+
+        self.active_frame.command_encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &source_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: source_region.x_min,
+                    y: source_region.y_min,
+                    z: 0,
+                },
+                aspect: Default::default(),
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &dest_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: dest_point.0,
+                    y: dest_point.1,
+                    z: 0,
+                },
+                aspect: Default::default(),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        let target = TextureTarget {
+            size: wgpu::Extent3d {
+                width: dest_texture.texture.width(),
+                height: dest_texture.texture.height(),
+                depth_or_array_layers: 1,
+            },
+            texture: dest_texture.texture.clone(),
+            format: dest_texture.texture.format(),
+            buffer: None,
+        };
+        self.active_frame.maybe_flush(&self.descriptors);
+        Some(self.make_queue_sync_handle(
+            target,
+            None,
+            destination,
+            PixelRegion::for_region(dest_point.0, dest_point.1, width, height),
+        ))
+    }
+
     fn is_filter_supported(&self, filter: &Filter) -> bool {
         matches!(
             filter,

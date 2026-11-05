@@ -15,8 +15,8 @@ use num_traits::FromPrimitive;
 
 use crate::varying::VaryingRegisters;
 use crate::{
-    AgalError, Error, MAX_TEXTURES, MAX_VERTEX_ATTRIBUTES, SHADER_ENTRY_POINT, ShaderType,
-    VertexAttributeFormat, types::*,
+    AgalError, Error, MAX_COLOR_OUTPUTS, MAX_TEXTURES, MAX_VERTEX_ATTRIBUTES, SHADER_ENTRY_POINT,
+    ShaderType, VertexAttributeFormat, types::*,
 };
 
 const VERTEX_PROGRAM_CONSTANTS: u64 = 128;
@@ -52,6 +52,10 @@ pub(crate) struct NagaBuilder<'a> {
     // This is needed because an AGAL shader can write to the output register
     // multiple times.
     pub(crate) dest: Handle<Expression>,
+
+    // Timffle: the temporaries behind the extra fragment colour outputs
+    // `oc1`..`oc3` (multiple render targets), created on first write.
+    pub(crate) extra_dests: [Option<Handle<Expression>>; MAX_COLOR_OUTPUTS - 1],
 
     pub(crate) shader_config: ShaderConfig<'a>,
 
@@ -246,6 +250,8 @@ pub struct ShaderConfig<'a> {
     pub shader_type: ShaderType,
     pub vertex_attributes: &'a [Option<VertexAttributeFormat>; 8],
     pub version: AgalVersion,
+    // Timffle: number of colour outputs a fragment program returns (1..=4).
+    pub color_outputs: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -258,6 +264,39 @@ pub struct ParsedBytecode {
     version: AgalVersion,
     shader_type: ShaderType,
     operations: Vec<(Opcode, DestField, SourceField, Source2)>,
+}
+
+impl ParsedBytecode {
+    // Timffle: how many colour outputs a fragment program writes (the highest
+    // `oc<n>` register plus one, at least 1); 1 for a vertex program.
+    pub fn color_outputs(&self) -> u32 {
+        if !matches!(self.shader_type, ShaderType::Fragment) {
+            return 1;
+        }
+        self.operations
+            .iter()
+            .filter(|(opcode, dest, _, _)| {
+                !is_control_flow(opcode) && dest.register_type == RegisterType::Output
+            })
+            .map(|(_, dest, _, _)| dest.reg_num as u32 + 1)
+            .max()
+            .unwrap_or(1)
+            .clamp(1, MAX_COLOR_OUTPUTS as u32)
+    }
+}
+
+// Timffle: control flow opcodes carry no dest/source fields.
+fn is_control_flow(opcode: &Opcode) -> bool {
+    matches!(
+        opcode,
+        Opcode::Kil
+            | Opcode::Ife
+            | Opcode::Ine
+            | Opcode::Ifg
+            | Opcode::Ifl
+            | Opcode::Els
+            | Opcode::Eif
+    )
 }
 
 impl<'a> NagaBuilder<'a> {
@@ -322,19 +361,20 @@ impl<'a> NagaBuilder<'a> {
 
             // Control flow opcodes don't use dest/source fields — their
             // token bytes are typically zeroed, so skip validation for them.
-            let has_dest = !matches!(
-                opcode,
-                Opcode::Kil
-                    | Opcode::Ife
-                    | Opcode::Ine
-                    | Opcode::Ifg
-                    | Opcode::Ifl
-                    | Opcode::Els
-                    | Opcode::Eif
-            );
+            let has_dest = !is_control_flow(&opcode);
 
             if has_dest {
                 match dest.register_type {
+                    // Timffle: fragment colour outputs are `oc`/`oc0`..`oc3`.
+                    RegisterType::Output
+                        if matches!(shader_type, ShaderType::Fragment)
+                            && dest.reg_num as usize >= MAX_COLOR_OUTPUTS =>
+                    {
+                        return Err(AgalError::ColorOutputOutOfRange {
+                            token: token_index,
+                            shader_type,
+                        });
+                    }
                     RegisterType::Output | RegisterType::Varying | RegisterType::Temporary => {}
                     RegisterType::Constant => {
                         return Err(AgalError::WriteConstantRegister {
@@ -471,11 +511,14 @@ impl<'a> NagaBuilder<'a> {
     pub fn build_module(
         parsed: &ParsedBytecode,
         vertex_attributes: &[Option<VertexAttributeFormat>; MAX_VERTEX_ATTRIBUTES],
+        color_outputs: u32,
     ) -> Result<Module> {
         let mut builder = NagaBuilder::new(ShaderConfig {
             shader_type: parsed.shader_type,
             vertex_attributes,
             version: parsed.version,
+            // Timffle
+            color_outputs: color_outputs.clamp(1, MAX_COLOR_OUTPUTS as u32),
         });
 
         for (opcode, dest, source1, source2) in &parsed.operations {
@@ -610,22 +653,26 @@ impl<'a> NagaBuilder<'a> {
                     span: 16,
                 },
             },
+            // Timffle: one member per colour output (`oc0`..`oc3`), so the
+            // struct matches the render pipeline's colour targets.
             ShaderType::Fragment => Type {
                 name: None,
                 inner: TypeInner::Struct {
-                    members: vec![StructMember {
-                        name: None,
-                        ty: vec4f,
-                        binding: Some(Binding::Location {
-                            location: 0,
-                            interpolation: None,
-                            sampling: None,
-                            blend_src: None,
-                            per_primitive: false,
-                        }),
-                        offset: 0,
-                    }],
-                    span: 16,
+                    members: (0..shader_config.color_outputs)
+                        .map(|location| StructMember {
+                            name: None,
+                            ty: vec4f,
+                            binding: Some(Binding::Location {
+                                location,
+                                interpolation: None,
+                                sampling: None,
+                                blend_src: None,
+                                per_primitive: false,
+                            }),
+                            offset: location * 16,
+                        })
+                        .collect(),
+                    span: 16 * shader_config.color_outputs,
                 },
             },
         };
@@ -717,6 +764,7 @@ impl<'a> NagaBuilder<'a> {
             module,
             func,
             dest,
+            extra_dests: [None; MAX_COLOR_OUTPUTS - 1],
             shader_config,
             vertex_input_expressions: vec![],
             varying_registers: Default::default(),
@@ -774,6 +822,33 @@ impl<'a> NagaBuilder<'a> {
             self.vertex_input_expressions[index] = Some(expr);
         }
         Ok(self.vertex_input_expressions[index].unwrap())
+    }
+
+    // Timffle: the pointer behind output register `n`: the main output for
+    // `op`/`oc`/`oc0`, a lazily created temporary for `oc1`..`oc3`. Only
+    // fragment programs have more than one output.
+    fn get_output_dest(&mut self, reg_num: u16) -> Handle<Expression> {
+        let index = reg_num as usize;
+        if index == 0 || !matches!(self.shader_config.shader_type, ShaderType::Fragment) {
+            return self.dest;
+        }
+        let slot = index - 1;
+        if self.extra_dests[slot].is_none() {
+            let local = self.func.local_variables.append(
+                LocalVariable {
+                    name: Some(format!("dest_temp{index}")),
+                    ty: self.vec4f,
+                    init: None,
+                },
+                Span::UNDEFINED,
+            );
+            let expr = self
+                .func
+                .expressions
+                .append(Expression::LocalVariable(local), Span::UNDEFINED);
+            self.extra_dests[slot] = Some(expr);
+        }
+        self.extra_dests[slot].unwrap()
     }
 
     fn get_temporary_register(&mut self, index: u16) -> Handle<Expression> {
@@ -1063,7 +1138,7 @@ impl<'a> NagaBuilder<'a> {
 
     fn emit_dest_store(&mut self, dest: &DestField, expr: Handle<Expression>) -> Result<()> {
         let base_expr = match dest.register_type {
-            RegisterType::Output => self.dest,
+            RegisterType::Output => self.get_output_dest(dest.reg_num), // Timffle: oc0..oc3
             RegisterType::Varying => self.get_varying_pointer(dest.reg_num),
             RegisterType::Temporary => self.get_temporary_register(dest.reg_num),
             _ => {

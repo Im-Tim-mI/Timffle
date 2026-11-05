@@ -114,7 +114,9 @@ pub struct CurrentPipeline {
 
     sample_count: u32,
 
-    target_format: TextureFormat,
+    // Timffle: the format of every colour target (slot 0 first); more than
+    // one entry while rendering to multiple render targets.
+    target_formats: Vec<TextureFormat>,
 
     dirty: Cell<bool>,
 
@@ -182,7 +184,7 @@ impl CurrentPipeline {
             alpha_component: wgpu::BlendComponent::REPLACE,
             sample_count: 1,
 
-            target_format: TextureFormat::Rgba8Unorm,
+            target_formats: vec![TextureFormat::Rgba8Unorm],
 
             sampler_configs: [SamplerConfig::default(); 8],
         }
@@ -270,10 +272,11 @@ impl CurrentPipeline {
         }
     }
 
-    pub fn update_target_format(&mut self, format: TextureFormat) {
-        if self.target_format != format {
+    // Timffle: all colour targets of the current render pass (slot 0 first).
+    pub fn update_target_formats(&mut self, formats: Vec<TextureFormat>) {
+        if self.target_formats != formats {
             self.dirty.set(true);
-            self.target_format = format;
+            self.target_formats = formats;
         }
     }
 
@@ -413,6 +416,7 @@ impl CurrentPipeline {
             ShaderCompileData {
                 vertex_attributes: agal_attributes,
                 texture_infos,
+                color_outputs: self.target_formats.len() as u32, // Timffle
             },
         );
 
@@ -531,6 +535,23 @@ impl CurrentPipeline {
             None
         };
 
+        // Timffle: one colour target per bound render target; blending and the
+        // colour mask apply to all of them, as in Flash.
+        let color_targets = self
+            .target_formats
+            .iter()
+            .map(|format| {
+                Some(ColorTargetState {
+                    format: *format,
+                    blend: Some(wgpu::BlendState {
+                        color: self.color_component,
+                        alpha: self.alpha_component,
+                    }),
+                    write_mask: self.color_mask,
+                })
+            })
+            .collect::<Vec<_>>();
+
         let wgpu_vertex_buffers = index_per_buffer
             .iter()
             .map(|data| {
@@ -569,14 +590,7 @@ impl CurrentPipeline {
                 fragment: Some(wgpu::FragmentState {
                     module: &compiled_shaders.fragment_module,
                     entry_point: Some(naga_agal::SHADER_ENTRY_POINT),
-                    targets: &[Some(ColorTargetState {
-                        format: self.target_format,
-                        blend: Some(wgpu::BlendState {
-                            color: self.color_component,
-                            alpha: self.alpha_component,
-                        }),
-                        write_mask: self.color_mask,
-                    })],
+                    targets: &color_targets, // Timffle
                     compilation_options: Default::default(),
                 }),
                 primitive: wgpu::PrimitiveState {

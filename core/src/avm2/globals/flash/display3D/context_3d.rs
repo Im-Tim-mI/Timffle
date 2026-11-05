@@ -3,16 +3,20 @@ use crate::avm2::Error;
 use crate::avm2::TObject as _;
 use crate::avm2::Value;
 use crate::avm2::error::{
-    make_error_2008, make_error_3669, make_error_3670, make_error_3671, make_error_3771,
-    make_error_3772, make_error_3773, make_error_3780, make_error_3781,
+    make_error_2008, make_error_3669, make_error_3670, make_error_3671, make_error_3761,
+    make_error_3770, make_error_3771, make_error_3772, make_error_3773, make_error_3779,
+    make_error_3780, make_error_3781, make_error_3802,
 };
 use crate::avm2::function::FunctionArgs;
+use crate::avm2::globals::slots::flash_geom_point as point_slots;
 use crate::avm2::globals::slots::flash_geom_rectangle as rectangle_slots;
 use crate::avm2::parameters::ParametersExt;
-use crate::avm2_stub_method;
+use crate::bitmap::operations;
 use ruffle_macros::istr;
 use ruffle_render::backend::BufferUsage;
 use ruffle_render::backend::Context3DProfile;
+use ruffle_render::backend::Context3DTextureFormat;
+use ruffle_render::bitmap::PixelRegion;
 use swf::{Rectangle, Twips};
 
 pub fn create_index_buffer<'gc>(
@@ -123,22 +127,15 @@ pub fn configure_back_buffer<'gc>(
         let wants_best_resolution = args.get_bool(4);
         let wants_best_resolution_on_browser_zoom = args.get_bool(5);
 
-        if wants_best_resolution {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "configureBackBuffer",
-                "wantsBestResolution"
-            );
-        }
-        if wants_best_resolution_on_browser_zoom {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "configureBackBuffer",
-                "wantsBestResolutionOnBrowserZoom"
-            );
-        }
+        // Timffle: wantsBestResolution / wantsBestResolutionOnBrowserZoom are
+        // real — the back buffer is allocated in device pixels (viewport scale
+        // factor, i.e. Stage.contentsScaleFactor) and presented into the
+        // logical width×height area; see `Context3DObject::configure_back_buffer`.
+        let scale_factor = activation
+            .context
+            .renderer
+            .viewport_dimensions()
+            .scale_factor;
 
         context.configure_back_buffer(
             width,
@@ -147,6 +144,93 @@ pub fn configure_back_buffer<'gc>(
             enable_depth_and_stencil,
             wants_best_resolution,
             wants_best_resolution_on_browser_zoom,
+            scale_factor,
+        );
+    }
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `Context3D.drawToBitmapData(destination, srcRect = null, destPoint = null)`.
+///
+/// "Draws the current render buffer to a bitmap" — the *back* buffer, "not the
+/// front buffer shown on stage", so the pixels drawn since the last `present()`
+/// (call it right before `present()` to capture a frame). `srcRect` (default: the
+/// whole back buffer) is copied to `destPoint` (default 0,0) of the bitmap; "the
+/// image is not scaled to fit the bitmap", what does not fit is clipped. A
+/// `srcRect` outside the back buffer or a `destPoint` outside the bitmap (or NaN)
+/// throws Error #3802 ("Offset outside stage coordinate bound."); a disposed
+/// context throws Error #3694 and a disposed bitmap Error #2015. The copy is a
+/// GPU texture copy that the BitmapData syncs back to the CPU on its next read,
+/// like `BitmapData.draw()`; the colours are taken as premultiplied ("The
+/// rendering context does not check the format").
+pub fn draw_to_bitmap_data<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let context = this.as_context_3d().unwrap();
+    context.check_disposed(activation)?;
+
+    let destination = args
+        .get_object(activation, 0, "destination")?
+        .as_bitmap_data()
+        .expect("destination is typed BitmapData");
+    destination.check_valid(activation)?;
+
+    let (buffer_width, buffer_height) = context.back_buffer_size();
+    let Some(source) = context.back_buffer_handle() else {
+        // Nothing has been rendered yet (no configureBackBuffer()).
+        return Ok(Value::Undefined);
+    };
+
+    let (src_x, src_y, src_w, src_h) = match args.try_get_object(1) {
+        Some(rect) => (
+            rect.get_slot(rectangle_slots::X).as_f64(),
+            rect.get_slot(rectangle_slots::Y).as_f64(),
+            rect.get_slot(rectangle_slots::WIDTH).as_f64(),
+            rect.get_slot(rectangle_slots::HEIGHT).as_f64(),
+        ),
+        None => (0.0, 0.0, buffer_width as f64, buffer_height as f64),
+    };
+    let (dest_x, dest_y) = match args.try_get_object(2) {
+        Some(point) => (
+            point.get_slot(point_slots::X).as_f64(),
+            point.get_slot(point_slots::Y).as_f64(),
+        ),
+        None => (0.0, 0.0),
+    };
+
+    let in_bounds = [src_x, src_y, src_w, src_h, dest_x, dest_y]
+        .iter()
+        .all(|v| v.is_finite())
+        && src_x >= 0.0
+        && src_y >= 0.0
+        && src_w >= 0.0
+        && src_h >= 0.0
+        && src_x + src_w <= buffer_width as f64
+        && src_y + src_h <= buffer_height as f64
+        && dest_x >= 0.0
+        && dest_y >= 0.0
+        && dest_x < destination.width() as f64
+        && dest_y < destination.height() as f64;
+    if !in_bounds {
+        return Err(make_error_3802(activation));
+    }
+    let region = PixelRegion::for_region(src_x as u32, src_y as u32, src_w as u32, src_h as u32);
+    if region.width() == 0 || region.height() == 0 {
+        return Ok(Value::Undefined);
+    }
+
+    if !operations::copy_stage3d(
+        activation.context,
+        destination,
+        source,
+        region,
+        (dest_x as u32, dest_y as u32),
+    ) {
+        tracing::warn!(
+            "Context3D.drawToBitmapData: the render backend could not copy the back buffer"
         );
     }
     Ok(Value::Undefined)
@@ -689,20 +773,49 @@ pub fn set_render_to_texture<'gc>(
     // Timffle: antiAlias is real — the wgpu backend renders into a multisampled
     // texture of the requested sample count and resolves it into the target.
 
+    // Timffle: colorOutputIndex 1..3 bind extra colour outputs (multiple
+    // render targets, written by the fragment program as `oc1`..`oc3`):
+    // "must be in the range [0..3]" (ArgumentError #3770), "must be 0 in
+    // constrained or baseline mode" ("requires a Context3D that is created
+    // with the standard profile or above", ArgumentError #3779), and every
+    // output must have the bit depth of output 0 ("The bit depth of all
+    // textures used for render to texture must be exactly the same",
+    // ArgumentError #3761) — the same error is used when the sizes differ,
+    // since a render pass needs equally sized attachments.
+    if color_output_index > 3 {
+        return Err(make_error_3770(activation));
+    }
+    let format = texture.original_format();
     if color_output_index != 0 {
-        avm2_stub_method!(
-            activation,
-            "flash.display3D.Context3D",
-            "setRenderToTexture",
-            "colorOutputIndex != 0"
-        );
+        let profile = context.with_context_3d(|context| context.profile());
+        if matches!(
+            profile,
+            Context3DProfile::Baseline
+                | Context3DProfile::BaselineConstrained
+                | Context3DProfile::BaselineExtended
+        ) {
+            return Err(make_error_3779(activation));
+        }
+        let (size_0, format_0) = match context.render_target_0() {
+            Some((target, format)) => ((target.width(), target.height()), format),
+            None => (context.back_buffer_size(), Context3DTextureFormat::Bgra),
+        };
+        let handle = texture.handle();
+        let bit_depth = |format: Context3DTextureFormat| {
+            matches!(format, Context3DTextureFormat::RgbaHalfFloat)
+        };
+        if (handle.width(), handle.height()) != size_0 || bit_depth(format) != bit_depth(format_0) {
+            return Err(make_error_3761(activation));
+        }
     }
 
     context.set_render_to_texture(
         texture.handle(),
+        format,
         enable_depth_and_stencil,
         anti_alias,
         surface_selector,
+        color_output_index,
     );
     Ok(Value::Undefined)
 }

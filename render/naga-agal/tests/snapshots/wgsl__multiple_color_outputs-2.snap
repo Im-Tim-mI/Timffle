@@ -1,0 +1,28 @@
+---
+source: render/naga-agal/tests/wgsl.rs
+expression: to_wgsl(&module)
+---
+struct FragmentOutput {
+    @location(0) member: vec4<f32>,
+    @location(1) member_1: vec4<f32>,
+    @location(2) member_2: vec4<f32>,
+    @location(3) member_3: vec4<f32>,
+}
+
+@group(0) @binding(1) 
+var<uniform> constant_registers: array<vec4<f32>, 28>;
+
+@fragment 
+fn main(@location(0) param: vec4<f32>, @location(1) param_1: vec4<f32>) -> FragmentOutput {
+    var dest_temp: vec4<f32>;
+    var dest_temp1_: vec4<f32>;
+    var dest_temp2_: vec4<f32>;
+
+    dest_temp = param;
+    dest_temp1_ = param_1;
+    dest_temp2_.x = param.xxxx.x;
+    let _e9: vec4<f32> = dest_temp;
+    let _e10: vec4<f32> = dest_temp1_;
+    let _e11: vec4<f32> = dest_temp2_;
+    return FragmentOutput(_e9, _e10, _e11, vec4<f32>());
+}

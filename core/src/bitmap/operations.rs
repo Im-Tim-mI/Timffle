@@ -11,7 +11,7 @@ use crate::context::{RenderContext, UpdateContext};
 use crate::display_object::{BoundsMode, RenderOptions, TDisplayObject};
 use gc_arena::Mutation;
 use ruffle_render::backend::RenderBackend;
-use ruffle_render::bitmap::{PixelRegion, PixelSnapping};
+use ruffle_render::bitmap::{BitmapHandle, PixelRegion, PixelSnapping};
 use ruffle_render::commands::{CommandHandler, CommandList, RenderBlendMode};
 use ruffle_render::filters::Filter;
 use ruffle_render::matrix::Matrix;
@@ -1609,6 +1609,51 @@ pub fn draw<'gc>(
             Ok(())
         }
         None => Err(BitmapDataDrawError::Unimplemented),
+    }
+}
+
+/// Timffle: `Context3D.drawToBitmapData` — copies `region` of a Stage3D back
+/// buffer (`source`) into `target` at `dest_point`, clipped to the bitmap, as a
+/// GPU copy; the pixels reach the CPU through the same sync handle path as
+/// `draw()`. Returns false when the render backend cannot copy.
+pub fn copy_stage3d<'gc>(
+    context: &mut UpdateContext<'gc>,
+    target: BitmapData<'gc>,
+    source: BitmapHandle,
+    mut region: PixelRegion,
+    dest_point: (u32, u32),
+) -> bool {
+    let width = region
+        .width()
+        .min(target.width().saturating_sub(dest_point.0));
+    let height = region
+        .height()
+        .min(target.height().saturating_sub(dest_point.1));
+    if width == 0 || height == 0 {
+        return true;
+    }
+    region.x_max = region.x_min + width;
+    region.y_max = region.y_min + height;
+    let mut dirty_region = PixelRegion::for_region(dest_point.0, dest_point.1, width, height);
+
+    // Upload pending CPU changes first, so the copy lands on current pixels.
+    let handle = target.bitmap_handle(context.gc(), context.renderer);
+
+    let (target, include_dirty_area) = target.overwrite_cpu_pixels_from_gpu(context.gc());
+    let mut write = target.borrow_mut(context.gc());
+    if let Some(old) = include_dirty_area {
+        dirty_region.union(old);
+    }
+
+    match context
+        .renderer
+        .copy_stage3d_to_bitmap(source, region, handle, dest_point)
+    {
+        Some(sync_handle) => {
+            write.set_gpu_dirty(context.gc(), sync_handle, dirty_region);
+            true
+        }
+        None => false,
     }
 }
 

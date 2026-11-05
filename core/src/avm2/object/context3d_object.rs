@@ -15,9 +15,10 @@ use ruffle_render::backend::{
     Context3DStencilAction, Context3DTextureFormat, Context3DTriangleFace,
     Context3DVertexBufferFormat, ProgramType, Texture,
 };
+use ruffle_render::bitmap::BitmapHandle;
 use ruffle_render::commands::CommandHandler;
 use ruffle_render::matrix::Matrix;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use swf::{Rectangle, Twips};
 
@@ -51,6 +52,9 @@ impl<'gc> Context3DObject<'gc> {
                 back_buffer_size: Cell::new((0, 0)),
                 max_back_buffer: Cell::new((16384, 16384)),
                 gpu_memory: Cell::new(0),
+                back_buffer_config: Cell::new(None),
+                back_buffer_scale: Cell::new((1.0, 1.0)),
+                render_target_0: RefCell::new(None),
             },
         ))
     }
@@ -123,6 +127,24 @@ impl<'gc> Context3DObject<'gc> {
             .expect("Context3D is missing or already in use"))
     }
 
+    /// Timffle: `configureBackBuffer()`. `scale_factor` is the viewport's
+    /// device pixel ratio (what `Stage.contentsScaleFactor` reports).
+    ///
+    /// * `wantsBestResolution`: "if the device supports HiDPI screens it will
+    ///   attempt to allocate a larger back buffer than indicated by the width
+    ///   and height" — the buffer is `width×scale` by `height×scale` device
+    ///   pixels and is presented into the same `width×height` logical area.
+    /// * `wantsBestResolutionOnBrowserZoom`: "the size of the back buffer
+    ///   should increase in proportion to the increase in the browser zoom
+    ///   factor" — the buffer grows (or shrinks) with the ratio between the
+    ///   current scale factor and the one in effect at this call, and is
+    ///   reconfigured when that ratio changes (`refresh_best_resolution`).
+    ///
+    /// The scaled size is capped at `maxBackBufferWidth`/`Height` ("the
+    /// maximum size of the back buffer ... can also be set by the user");
+    /// `backBufferWidth`/`backBufferHeight` report the buffer actually
+    /// allocated.
+    #[expect(clippy::too_many_arguments)]
     pub fn configure_back_buffer(
         self,
         width: u32,
@@ -131,19 +153,81 @@ impl<'gc> Context3DObject<'gc> {
         depth_and_stencil: bool,
         wants_best_resolution: bool,
         wants_best_resolution_on_browser_zoom: bool,
+        scale_factor: f64,
     ) {
+        let config = BackBufferConfig {
+            width,
+            height,
+            anti_alias,
+            depth_and_stencil,
+            wants_best_resolution,
+            wants_best_resolution_on_browser_zoom,
+            base_scale_factor: scale_factor,
+            applied_scale_factor: scale_factor,
+        };
+        self.0.back_buffer_config.set(Some(config));
+        self.apply_back_buffer_config(config);
+    }
+
+    fn apply_back_buffer_config(self, config: BackBufferConfig) {
+        let scale = config.effective_scale();
+        let (max_w, max_h) = self.max_back_buffer();
+        let scaled = |logical: u32, max: u32| -> u32 {
+            ((logical as f64 * scale).round() as u32)
+                .max(32)
+                .min(max)
+                .min(16384)
+        };
+        let (width, height) = (scaled(config.width, max_w), scaled(config.height, max_h));
         self.with_context_3d(|ctx| {
             ctx.process_command(Context3DCommand::ConfigureBackBuffer {
                 width,
                 height,
-                anti_alias,
-                depth_and_stencil,
-                wants_best_resolution,
-                wants_best_resolution_on_browser_zoom,
+                anti_alias: config.anti_alias,
+                depth_and_stencil: config.depth_and_stencil,
+                wants_best_resolution: config.wants_best_resolution,
+                wants_best_resolution_on_browser_zoom: config.wants_best_resolution_on_browser_zoom,
             })
         });
-        // Timffle: backBufferWidth/backBufferHeight reflect the last successful call.
+        // backBufferWidth/backBufferHeight reflect the last successful call.
         self.0.back_buffer_size.set((width, height));
+        self.0.back_buffer_scale.set((
+            width as f64 / config.width as f64,
+            height as f64 / config.height as f64,
+        ));
+        *self.0.render_target_0.borrow_mut() = None;
+    }
+
+    /// Timffle: called once per frame — re-applies `configureBackBuffer()`
+    /// when `wantsBestResolutionOnBrowserZoom` was set and the viewport scale
+    /// factor (browser zoom × device pixel ratio) has changed since.
+    pub fn refresh_best_resolution(self, context: &mut UpdateContext<'gc>) {
+        if self.0.disposed.get() {
+            return;
+        }
+        let Some(mut config) = self.0.back_buffer_config.get() else {
+            return;
+        };
+        if !config.wants_best_resolution_on_browser_zoom {
+            return;
+        }
+        let scale_factor = context.renderer.viewport_dimensions().scale_factor;
+        if scale_factor <= 0.0 || (scale_factor - config.applied_scale_factor).abs() < 1e-6 {
+            return;
+        }
+        config.applied_scale_factor = scale_factor;
+        self.0.back_buffer_config.set(Some(config));
+        self.apply_back_buffer_config(config);
+    }
+
+    /// Timffle: the back buffer (device pixels) read by `drawToBitmapData`.
+    pub fn back_buffer_handle(self) -> Option<BitmapHandle> {
+        self.with_context_3d(|ctx| ctx.back_buffer_bitmap_handle())
+    }
+
+    /// Timffle: the texture bound as colour output 0 (`None` = back buffer).
+    pub fn render_target_0(self) -> Option<(Rc<dyn Texture>, Context3DTextureFormat)> {
+        self.0.render_target_0.borrow().clone()
     }
 
     pub fn create_index_buffer(
@@ -346,25 +430,34 @@ impl<'gc> Context3DObject<'gc> {
     pub fn set_render_to_texture(
         self,
         texture: Rc<dyn Texture>,
+        format: Context3DTextureFormat,
         enable_depth_and_stencil: bool,
         anti_alias: u32,
         surface_selector: u32,
+        color_output_index: u32, // Timffle: multiple render targets
     ) {
+        if color_output_index == 0 {
+            *self.0.render_target_0.borrow_mut() = Some((texture.clone(), format));
+        }
         self.with_context_3d(|ctx| {
             ctx.process_command(Context3DCommand::SetRenderToTexture {
                 texture,
                 enable_depth_and_stencil,
                 anti_alias,
                 surface_selector,
+                color_output_index,
             })
         });
     }
 
     pub fn set_render_to_back_buffer(self) {
+        *self.0.render_target_0.borrow_mut() = None; // Timffle
         self.with_context_3d(|ctx| ctx.process_command(Context3DCommand::SetRenderToBackBuffer));
     }
 
     pub fn present(self) {
+        // Timffle: "Calling present() resets the target to the back buffer".
+        *self.0.render_target_0.borrow_mut() = None;
         self.with_context_3d(|ctx| ctx.present())
     }
 
@@ -385,6 +478,12 @@ impl<'gc> Context3DObject<'gc> {
                     Twips::from_pixels(self.stage3d().x()),
                     Twips::from_pixels(self.stage3d().y()),
                 );
+                // Timffle: a HiDPI back buffer (wantsBestResolution*) is drawn
+                // into the logical width×height area it was configured for.
+                let (scale_x, scale_y) = self.0.back_buffer_scale.get();
+                if scale_x != 1.0 || scale_y != 1.0 {
+                    transform.matrix *= Matrix::scale(1.0 / scale_x as f32, 1.0 / scale_y as f32);
+                }
 
                 context.commands.render_stage3d(handle, transform);
             }
@@ -613,6 +712,53 @@ pub struct Context3DData<'gc> {
     back_buffer_size: Cell<(u32, u32)>,
     max_back_buffer: Cell<(u32, u32)>,
     gpu_memory: Cell<u64>,
+
+    // Timffle: the last successful configureBackBuffer() call, re-applied
+    // on browser zoom changes (`wantsBestResolutionOnBrowserZoom`).
+    back_buffer_config: Cell<Option<BackBufferConfig>>,
+    // Timffle: device pixels per logical pixel of the back buffer
+    // (1.0 unless `wantsBestResolution*` enlarged it).
+    back_buffer_scale: Cell<(f64, f64)>,
+    // Timffle: the texture bound as colour output 0 by setRenderToTexture()
+    // (`None` while rendering to the back buffer); the extra outputs of a
+    // multiple-render-target setup are checked against it.
+    #[collect(require_static)]
+    render_target_0: RefCell<Option<(Rc<dyn Texture>, Context3DTextureFormat)>>,
+}
+
+// Timffle: see `Context3DObject::configure_back_buffer`.
+#[derive(Clone, Copy, Debug)]
+struct BackBufferConfig {
+    width: u32,
+    height: u32,
+    anti_alias: u32,
+    depth_and_stencil: bool,
+    wants_best_resolution: bool,
+    wants_best_resolution_on_browser_zoom: bool,
+    /// Viewport scale factor when configureBackBuffer() was called.
+    base_scale_factor: f64,
+    /// Viewport scale factor the buffer was last sized for.
+    applied_scale_factor: f64,
+}
+
+impl BackBufferConfig {
+    /// Device pixels per requested pixel.
+    fn effective_scale(&self) -> f64 {
+        let scale = if self.wants_best_resolution {
+            // The full device pixel ratio.
+            self.applied_scale_factor
+        } else if self.wants_best_resolution_on_browser_zoom {
+            // Only the zoom applied since the call.
+            self.applied_scale_factor / self.base_scale_factor
+        } else {
+            1.0
+        };
+        if scale.is_finite() && scale > 0.0 {
+            scale
+        } else {
+            1.0
+        }
+    }
 }
 
 // Timffle: bytes a texture of this size/format occupies on the GPU. Flash's
