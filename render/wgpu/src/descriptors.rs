@@ -26,6 +26,10 @@ pub struct Descriptors {
     pub shaders: Shaders,
     pipelines: Mutex<FnvHashMap<(u32, wgpu::TextureFormat), Arc<Pipelines>>>,
     pub filters: Filters,
+    /// Timffle: fixed `Context3D.driverInfo` instead of the adapter's
+    /// description. The regression tests set it so that image goldens that
+    /// print driverInfo do not depend on the machine's GPU and driver.
+    pub context3d_driver_info_override: Option<String>,
     /// Timffle: canvases and pipeline for the synchronous readback on the
     /// browser's WebGPU backend, created on first use.
     #[cfg(target_family = "wasm")]
@@ -54,6 +58,7 @@ impl Descriptors {
         let backend = adapter.get_info().backend;
 
         Self {
+            context3d_driver_info_override: None, // Timffle
             wgpu_instance: instance,
             adapter,
             device,
