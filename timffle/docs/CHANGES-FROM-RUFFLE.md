@@ -293,7 +293,7 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 - **FontDescription.isFontCompatible**：`library.get_embedded_font_by_name(name, EmbeddedCFF, bold, italic)` 有無；`isDeviceFontCompatible`：`get_or_load_device_font` 有無（後端解析不到時仍會退到內建預設字型，所以多半為 true，如同 Flash 在有系統預設字型的機器）。fontName null → #2007，weight／posture 不合法 → #2008。
 - **ElementFormat.getFontMetrics**：emBox = (0, -size×ascent 比例, size, size)，ascent 比例取該格式字型（內嵌 CFF → 裝置字型）的 `FontMetrics` ascent/(ascent+descent)，找不到用 0.8；其餘比例為 OS/2 慣例：strikethrough -0.26 em／0.075 em、underline 0.15 em／0.075 em、sub/superscript 0.15／-0.35 em、scale 0.65，lineGap 0。
 
-### 第 N 組：leftovers（AMF0 參照、AuthorizedFeaturesLoader）（合併時捨棄了 AMF0 物件參照的 commit：它讓 `shared_object_self_ref_avm1` 與 `localconnection_cyclic_args` 失敗；`ByteArray.writeObject` 仍是空殼）
+### 第 5 組：AuthorizedFeaturesLoader（leftovers 批；AMF0 參照見下面 mouse_amf0 節）（合併時捨棄了 AMF0 物件參照的 commit：它讓 `shared_object_self_ref_avm1` 與 `localconnection_cyclic_args` 失敗；`ByteArray.writeObject` 仍是空殼）
 
 - **flash.utils.ByteArray.writeObject（AMF0 參照）**：`core/src/avm2/amf.rs` 的 `ObjectTable` 新增 `amf0_references`（物件 → u16 索引）。序列化走到 `Value::Object` 時，若編碼為 AMF0 且物件屬於 AMF0 的複合物件（`is_amf0_complex`：陣列，或非 Function / DisplayObject / Vector / Date / XML / ByteArray / Dictionary 的物件），第一次出現時在寫出子內容**之前**登記索引（父先於子，與 Flash 相同），之後再遇到（重複或循環）即回傳 `AmfValue::Reference(index)`；Date、XML 等每次都以完整值寫出，與 Flash 相同。AMF3 路徑不變（flash-lso 的 AMF3 編碼器本來就會把重複 ObjectId 轉成參照），所以 `get_or_create_value` 的 stub 整個移除。反序列化：`AmfValue::Reference(n)` 以 `ObjectId(AMF0_REFERENCE_ID_BASE + n)` 在 object_map 查回同一物件。vendored `flash-lso/src/amf0/read.rs`：參照表只收 Object / TypedObject / ECMAArray / StrictArray，在讀子內容前佔位（`claim_reference_id`）、讀完填入（`store_reference`），並以 `ObjectId(1<<32 + index)` 標記以免和內嵌 AMF3 的 id 相撞；`types/reference.rs` 的 `Reference` 欄位改為 `pub`。
 - **flash.system.AuthorizedFeaturesLoader**（新檔 `core/src/avm2/globals/flash/system/AuthorizedFeaturesLoader.as`，純 AS）：繼承 EventDispatcher。這個播放器不連 Adobe 授權服務，等同 Flash Player 連不到伺服器：`loadAuthorizedFeatures()` 與 `loadAuthorizedFeaturesFromData(data)` 都以 `setTimeout(…, 0)` 非同步派發 `ErrorEvent.ERROR`（text「Error #2032: Stream Error.」，bubbles/cancelable 皆 false），`authorizedFeatures` 永遠 null（`AuthorizedFeatures` 本來就假設沒有 token）；`loadAuthorizedFeaturesFromData(null)` 丟 `TypeError #2007`。成員：`authorizedFeatures`、`loadAuthorizedFeatures()`、`loadAuthorizedFeaturesFromData()`。airsdk.dev 該頁回 404，簽章依 api-report 規格；事件型別依記憶中的 Adobe 參考（`error` / `complete`），見 (c)。
@@ -305,7 +305,7 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 - **TextBlock.bidiLevel**（`text_block.rs` `resolve_bidi`、`display_object/text_line.rs` `LineBidi`）：以 `unicode-bidi` 0.3.18（新依賴，純 Rust；desktop 已在 Cargo.lock 用它）做 UAX #9：`bidiLevel` 當段落嵌入層級（0 LTR、1 RTL，較大的值照 UAX #9 當明確層級），`BidiInfo::visual_runs` 取視覺順序的 run，RTL run 的字元反轉後組成視覺字串交給後備 EditText 繪製；TextLine 另存邏輯字串、邏輯→視覺的 UTF-16 位置對應與每個單元的解析層級。`rawTextLength`／`textBlockBeginIndex`／atom 索引都以邏輯順序計，`getAtomBounds`／`getAtomCenter`／`getAtomIndexAtPoint` 經對應表找視覺位置的字形邊界；`getAtomBidiLevel` 改為 native，回 atom 第一個字元的解析層級（例如 `"abc"` 在 `bidiLevel = 1` 下全是 2；`"12 34"` 在 1 下是 2,2,1,2,2、視覺順序是「34 12」；`"ab 12"` 在 1 下全是 2——UAX #9 W7 把跟在 L 後面的數字當 L）。`recreateTextLine` 會把重用行的後備 EditText 寬度改成新的 `width` 再排（否則沿用舊寬度不會重新斷行）。改 `bidiLevel`（值不同時）把 block 已有的行全設 `invalid`（Adobe 文件：「Changing it sets all previously broken lines to INVALID」）；負值 `ArgumentError #2004`（原有）。全 LTR 的文字在層級 0 下對應表是恆等，既有行為不變。含孤立代理對的文字無法轉成 UTF-8 做解析，維持邏輯順序、層級＝段落層級。
 - 新測試 `textblock_width_splitting`（Noto Sans 裝置字型，`test.toml` 的 `[default_fonts]`／`[fonts.noto_sans]` 與 `text_members` 相同）：寬度由量到的 `"aaaa"`／`"aaaa aaaa"` 的 `textWidth` 推算，涵蓋兩字／一字放得下、字寬剛好等於 `width`、字中硬斷（emergency）、放不下（null＋insufficientWidth）、`fitSomething`、明確換行與自動斷行混合、GroupElement、`recreateTextLine` 重斷與 insufficientWidth、`bidiLevel` 層級與視覺順序、負值錯誤、改值使行 invalid。
 
-### 第 N 組：9 格縮放與 Stage3D mip 鏈（render2）
+### 第 2／4 組：DisplayObject.scale9Grid 的 9 格縮放與 Stage3D mip 鏈
 
 **flash.display.DisplayObject.scale9Grid**（`core/src/display_object.rs` 的 `render_self_with_scaling_grid`、`core/src/avm2/globals/flash/display/display_object.rs`）：
 
@@ -324,7 +324,7 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 - `setRenderToTexture(…, antiAlias)`：wgpu 後端本來就以 antiAlias 的取樣數建立多重取樣貼圖並 resolve 到目標，只是留著空殼標記——移除；WebGL 上仍會退回 1（上游警告）。
 - 還是空殼（見 (d)）：`createTexture` 的 BGR_PACKED／COMPRESSED 格式（存成 RGBA8，上傳自 BitmapData 可用，但沒有 565 量化、DXT1 需要 BC 功能或 CPU 解碼器）、`setRenderToTexture` 的 colorOutputIndex > 0（多重渲染目標；Flash 只在 standard profile 支援，錯誤碼未查到）、`configureBackBuffer` 的 wantsBestResolution／wantsBestResolutionOnBrowserZoom（需要把 back buffer 乘上裝置像素比並在 Stage3D 繪製時縮回——設計：Context3DObject 記住比例、`render()` 乘 1/比例、backBufferWidth 回報放大後的值）、`drawToBitmapData`（需要把 front buffer 經 `render_offscreen` + sync 讀回 BitmapData：可用 `commands.render_stage3d(handle, transform)` 配合 BitmapData.draw 的 readback 路徑）、Texture／CubeTexture 的非 BGRA `uploadFromByteArray` 與不支援的 ATF 格式（RawCompressed DXT1／ETC1／ETC2／PVRTC：Cargo.lock 沒有解碼器 crate，wgpu 的 BC／ETC2 功能要看 adapter）。
 
-### 第 N 組：mouse_amf0（flash.ui.Mouse 自訂游標、AMF0 物件參照）
+### 第 2 組：flash.ui.Mouse 自訂游標與 ByteArray.writeObject 的 AMF0 物件參照
 
 - **flash.ui.Mouse.registerCursor / unregisterCursor / supportsNativeCursor / cursor（自訂名稱）**（`core/src/avm2/globals/flash/ui/mouse.rs`、`Mouse.as`、`core/src/backend/ui.rs`、`core/src/player.rs`、`web/src/ui.rs`、`desktop/src/backends/ui.rs`、`desktop/src/gui/controller.rs`、`desktop/src/app.rs`、`desktop/src/custom_event.rs`）：
   - `UiBackend` 新增 `supports_native_cursor(&self) -> bool`（預設 false）與 `set_custom_cursor(&mut self, Option<CustomCursor>)`（預設不做事）；`CustomCursor { frames: Vec<RgbaFrame{width,height,rgba}>, hot_spot: (u32,u32), frame_rate: f64 }`，`CustomCursor::MAX_SIZE = 32`。
@@ -354,7 +354,7 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 - **`beginShaderFill(shader, matrix)`／`lineShaderStyle(shader, matrix)`／`GraphicsShaderFill`**（`graphics.rs`、`drawing.rs`）：`Drawing::add_shader_fill` 記下 Pixel Bender handle、參數（用 ShaderJob 的 `get_shader_args` 在呼叫當下複製）與矩陣，回一個點陣圖填色樣式，id ≥ 0x8000 代表著色器填色；`BitmapSource::bitmap_size`／`bitmap_handle` 在圖形第一次向渲染器登記時才算：填色（與筆畫）的邊界經矩陣反矩陣映回著色器座標，從原點起取一張 `ceil(max)`（1～4096）大小的空材質，用 `run_pixelbender_shader(PixelBenderTarget::Bitmap)` 算一次，之後當成不重複、不平滑的點陣圖填色（矩陣 = 給定矩陣 × 20）。**近似**：著色器只在提交後第一次繪製時靜態算一次，之後改 `shader.data.*` 不會重算（直到繪圖內容改變）；`outCoord()` 從 0 起算，所以只有落在正象限的填色座標與 Flash 相同；渲染器跑不了（本機沒有 GPU 的 null renderer）時填色仍登記、畫成透明並印一次 warn，不會 panic。錯誤：`shader` 為 null → TypeError #2007；Shader 沒有位元碼 → ArgumentError #2004（Adobe 文件只說 ArgumentError，代碼是推論）。`readGraphicsData` 回 `GraphicsShaderFill(shader 同一物件, matrix)`（Flash 對著色器填色的回報未量測）。
 - **`BitmapData.applyFilter(src, sourceRect, destPoint, ShaderFilter)`**（`bitmap_data.rs`）：sourceRect 不是整張來源時，把該區域（夾在來源範圍內）用 `operations::copy_pixels` 複製到一張同透明度的暫存 BitmapData，著色器在暫存圖上跑（`outCoord()` 從矩形左上角起算，與其他濾鏡的子矩形一致），結果寫到 destPoint；寬或高夾成 0 時不做事。
 
-### 第 N 組：Stage3D 貼圖格式（s3dtex）
+### 第 4 組：Stage3D 貼圖格式（Context3D.createTexture 的 packed／compressed 格式、Texture／CubeTexture 的 ATF 上傳）
 
 **flash.display3D.Context3D.createTexture／createCubeTexture 的格式**（`render/wgpu/src/context3d/mod.rs` `convert_texture_format`、`render/wgpu/src/backend.rs` 的可選功能、`render/src/backend.rs` `Texture::compressed_format`）：
 
@@ -375,6 +375,23 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 - 上傳：先查 `byteArrayOffset + 6 > length` → `RangeError #3669`；解析失敗 → `#3677`；ATF v3 配 SWF < 29 或 v2 配 SWF < 21 → `#3677`（Adobe 文件明文）；尺寸不符 `#3679`、cube／非 cube 不符 `#3675`（原有）。每個面、每一層依貼圖儲存格式挑資料：BC 儲存要 DXT（alpha 格式對 `compressedAlpha`、非 alpha 對 `compressed`，否則 #3675）；ETC2 儲存要 ETC2，沒有則 ETC1（RGBA 貼圖把每個 ETC1 區塊前面加一個不透明 EAC 區塊：base 255、乘數 0）；RGBA8 儲存（含 `bgra` 貼圖，維持上游行為）依序用 DXT → ETC2 → ETC1 → PVRTC 的 CPU 解碼器；JPEG-XR 類資料（格式 0／1／2／4）解出 RGBA8 或 DXT 區塊後同樣處理（ETC2 儲存收不到 → #3675）。`async=true` 仍是 AS 端 `setTimeout` 後上傳並派送 `textureReady`。
 - `render/src/compressed.rs`（新，純 Rust、無新依賴）：`decode_dxt1`（c0 ≤ c1 時第 4 色是透明黑）、`decode_dxt5`（8 階／6 階 alpha）、`encode_dxt1`／`encode_dxt5`、`decode_etc2_rgb`（ETC1 個別／差分 + ETC2 的 T、H、平面模式，位元佈局依 Khronos Data Format Specification）、`decode_etc2_rgba`（EAC alpha 16×8 修正表）、`etc2_rgb_to_rgba_opaque`、`decode_pvrtc_4bpp`（Imagination 參考解壓器的作法：區塊 Morton 排序 `TwiddleUV`、A／B 兩個顏色面以 4×4 視窗雙線性放大（權重 (4-i)(4-j) 等）、5 位元 ×16 後以 `(v>>6)+(v>>1)` 展開、2 位元調變值 0/3/5/8 或 punch-through 0/4/4+alpha0/8），以及 565／4444 的量化與位元組轉換。9 個單元測試全部以手算的區塊為準。
 - 仍是空殼：無。ASTC 不在 ATF 規格裡，沒有做。
+
+### 第 4 組：Context3D 剩餘項目（configureBackBuffer wantsBestResolution、setRenderToTexture colorOutputIndex、drawToBitmapData）
+
+**flash.display3D.Context3D**
+
+- `configureBackBuffer(width, height, antiAlias, enableDepthAndStencil, wantsBestResolution, wantsBestResolutionOnBrowserZoom)`：
+  - `wantsBestResolution = true`：後緩衝區以「要求的大小 × 視埠縮放係數」的裝置像素配置（Adobe：「if the device supports HiDPI screens it will attempt to allocate a larger back buffer than indicated by the width and height」），顯示時以 1/縮放係數畫回同一塊邏輯區域（`Context3DObject::render` 乘上反向縮放），所以 Stage3D 在 HiDPI 螢幕或瀏覽器放大時不再模糊；`Stage.contentsScaleFactor` 就是這個係數。
+  - `wantsBestResolutionOnBrowserZoom = true`：後緩衝區「隨瀏覽器縮放比例成長」。這個播放器把裝置像素比和瀏覽器縮放合在一個視埠縮放係數裡，所以記下呼叫當時的係數當基準，之後每幀（`Stage::check_requested_context3ds`）比對：係數變了就用新的比例重新配置（`Context3DObject::refresh_best_resolution`）；兩個旗標都開時直接用完整係數。
+  - 縮放後的大小仍受 `maxBackBufferWidth`／`maxBackBufferHeight`（與 16384）限制（Adobe：「maxBackBufferWidth and maxBackBufferHeight cap the growth」），`backBufferWidth`／`backBufferHeight` 回報實際配置的裝置像素大小（Adobe：這兩個屬性「may be modified when the browser zoom factor changes」，即反映真正的緩衝區）。
+  - 先前批次的大小檢查（32～16384、#3669／#3780／#3781、maxBackBuffer*）保留，仍以要求的邏輯大小檢查。
+- `setRenderToTexture(texture, enableDepthAndStencil, antiAlias, surfaceSelector, colorOutputIndex)`：
+  - `colorOutputIndex` 0～3 為多重繪製目標：輸出 0 照舊，1～3 綁成同一個 render pass 的額外色彩附件（`WgpuContext3D::extra_color_targets`），深度／模板緩衝、取樣數、`clear()` 與混合、色彩遮罩都跟著輸出 0；`setRenderToBackBuffer()`、`present()`、`configureBackBuffer()` 解除全部，重新設定輸出 0 時只保留大小相同的額外輸出。
+  - AGAL（render/naga-agal）：片段程式的 `oc`／`oc0`～`oc3` 各自成為回傳結構的 `@location(0..3)` 成員，`agal_to_naga_with_color_outputs()` 依管線實際綁定的目標數產生對應數量的輸出（沒寫到的補零、超過的丟掉，對應 Flash 的 #3774「All the assigned render targets should match the outputs in the fragment program」——這裡不丟錯，只照綁定數輸出）；`oc4` 以上在上傳時丟 Error #3760（「The color output index is out of range.」）。
+  - 錯誤：`colorOutputIndex` 不在 0～3 → ArgumentError #3770（「ColorOutputIndex must be in the range [0..3].」）；非 0 且 profile 是 baseline／baselineConstrained／baselineExtended → ArgumentError #3779（「requires a Context3D that is created with the standard profile or above」，Adobe：「must be 0 in constrained or baseline mode」）；位元深度（RGBA_HALF_FLOAT 對 8 位元）與輸出 0 不同 → ArgumentError #3761（「The bit depth of all textures used for render to texture must be exactly the same.」）；大小與輸出 0 不同也丟 #3761（Adobe 沒寫明，見 (c)）。
+  - `surfaceSelector` 的立方體面選擇本來就有效（view 的 `base_array_layer`），額外輸出同樣支援。
+- `drawToBitmapData(destination, srcRect = null, destPoint = null)`：AIR 25 簽名。讀的是**後緩衝區**（Adobe：「the back render buffer, not the front buffer shown on stage」，要擷取畫面請在 `present()` 前呼叫）。實作是 `RenderBackend::copy_stage3d_to_bitmap`（wgpu：`copy_texture_to_texture` 進 BitmapData 的紋理，再用和 `BitmapData.draw()` 相同的 `QueueSyncHandle` 在下次讀取像素時同步回 CPU），所以不縮放、不混色、顏色視為預乘（Adobe：「the rendering context does not check the format」）。`srcRect` 預設整個後緩衝區、`destPoint` 預設 (0,0)；超出 BitmapData 的部分裁掉（Adobe：「it is not scaled to fit the bitmap」）。錯誤：`srcRect` 超出後緩衝區、`destPoint` 超出 BitmapData 或任一值 NaN → Error #3802（「Offset outside stage coordinate bound.」）；context 已 dispose → #3694；BitmapData 已 dispose → #2015。還沒 `configureBackBuffer()` 時什麼都不做。
+- 附帶：`clear()` 在 Ruffle 裡延遲到下一個 render pass 才執行，只 `clear()` 不畫三角形的幀原本不會顯示；現在 `present()` 與 `drawToBitmapData()` 前會用空 render pass 把待處理的 clear 套用（Flash 的 clear 是立即的）。
 
 ## 已知與真 Flash 還不同的地方
 
@@ -478,5 +495,10 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | Stage3D 貼圖上傳的錯誤碼 | `#3674`（miplevel）、`#3677`（解碼失敗／ATF 版本）、`RangeError #3669`（資料太短）、`#3675`（格式不符）依 Adobe 文件的錯誤名稱對應 `error_messages.rs`；來源比 mip 層大的「Invalid BitmapData Error」碼查不到，用 #3675。ATF 上傳到 `bgra` 貼圖維持上游的「接受並解碼」，真 Flash 是否接受未驗證。 |
 | Stage3D 在 ETC2-only 的 GPU | 壓縮貼圖存成 ETC2 時，`uploadFromBitmapData` 丟 #3675、只含 DXT 的 ATF 丟 #3675——與 Flash 在行動平台相同，但 `stage3d_texture_formats` 的黃金輸出是桌面行為（BC 或 RGBA8 儲存）。 |
 | Stage3D 測試 | 本容器沒有 GPU：`stage3d_texture_formats`（以及既有的 `stage3d_*` ATF 影像測試）無法執行，黃金輸出依 Adobe 文件與實作語意手寫；`cargo test -p ruffle_render --lib compressed` 的 9 個解碼器單元測試有跑。合併後請在有 GPU 的機器跑 `cargo test -p tests --test tests -- stage3d`。 |
+| 項目 | 差異 |
+| --- | --- |
+| `Context3D.configureBackBuffer` wantsBestResolution | 裝置像素比與瀏覽器縮放在這個播放器是同一個視埠縮放係數，`wantsBestResolutionOnBrowserZoom` 單獨開時以呼叫當時的係數為基準算比例；Flash 另外會對 Stage 送 `Event.BROWSER_ZOOM_CHANGE`，這裡沒有送。`backBufferWidth/Height` 回報裝置像素大小，是依 Adobe 對瀏覽器縮放的描述推論，未用真 Flash 量過。 |
+| `Context3D.setRenderToTexture` colorOutputIndex | 大小與輸出 0 不同時丟 #3761（Adobe 文件沒有列這個情況；wgpu 的附件必須同大小）；片段程式輸出數與綁定目標數不符時 Flash（enableErrorChecking）丟 #3774，這裡照綁定數補零／丟棄不丟錯；重新設定輸出 0 時只保留同大小的額外輸出，Flash 是否保留未驗證。 |
+| `Context3D.drawToBitmapData` | 寬或高為 0 的 `srcRect` 不複製也不丟錯（Flash 行為未驗證）；WebGL／canvas 後端沒有 Context3D，所以沒有此路徑。 |
 
 > 這些差異都是已知的，**沒有被藏起來**——黃金答案不會為了讓測試通過而被改寫。其中一部分是用需要遊戲檔案的探針量到的，那些探針沒有放進 repo，所以上表是結論而不是可直接重現的測試。
