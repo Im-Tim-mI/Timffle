@@ -3,23 +3,27 @@
 use crate::avm2::activation::Activation;
 use crate::avm2::error::{Error2004Type, make_error_2004, make_error_2007, make_error_2008};
 use crate::avm2::function::FunctionArgs;
+use crate::avm2::globals::flash::display::shader_job::get_shader_args;
 use crate::avm2::globals::flash::geom::transform::object_to_matrix;
 use crate::avm2::globals::slots::flash_display_graphics_bitmap_fill as graphics_bitmap_fill_slots;
 use crate::avm2::globals::slots::flash_display_graphics_gradient_fill as graphics_gradient_fill_slots;
 use crate::avm2::globals::slots::flash_display_graphics_path as graphics_path_slots;
+use crate::avm2::globals::slots::flash_display_graphics_shader_fill as graphics_shader_fill_slots;
 use crate::avm2::globals::slots::flash_display_graphics_solid_fill as graphics_solid_fill_slots;
 use crate::avm2::globals::slots::flash_display_graphics_stroke as graphics_stroke_slots;
 use crate::avm2::globals::slots::flash_display_graphics_triangle_path as graphics_triangle_path_slots;
-use crate::avm2::object::{Object, TObject as _, VectorObject};
+use crate::avm2::globals::slots::flash_display_shader as shader_slots;
+use crate::avm2::object::{ArrayObject, Object, TObject as _, VectorObject};
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::vector::VectorStorage;
 use crate::avm2::{ArrayStorage, Error};
-use crate::avm2_stub_method;
-use crate::display_object::TDisplayObject;
-use crate::drawing::Drawing;
+use crate::display_object::{DisplayObject, TDisplayObject, TDisplayObjectContainer};
+use crate::drawing::{Drawing, GraphicsReadItem, ObjectRoot};
 use crate::string::{AvmString, WStr};
 use either::Either;
+use gc_arena::Gc;
+use ruffle_render::matrix::Matrix as RenderMatrix;
 use ruffle_render::shape_utils::{DrawCommand, FillRule, GradientType};
 use std::f64::consts::FRAC_1_SQRT_2;
 use swf::{
@@ -62,8 +66,8 @@ pub fn begin_bitmap_fill<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(this) = this.as_display_object() {
-        let bitmap = args
-            .get_object(activation, 0, "bitmap")?
+        let bitmap_object = args.get_object(activation, 0, "bitmap")?;
+        let bitmap = bitmap_object
             .as_bitmap_data()
             .expect("Bitmap argument is ensured to be a BitmapData from actionscript");
         let matrix = if let Some(matrix) = args.try_get_object(1) {
@@ -89,6 +93,8 @@ pub fn begin_bitmap_fill<'gc>(
 
         if let Some(mut draw) = this.as_drawing() {
             let id = draw.add_bitmap(bitmap);
+            // Timffle: readGraphicsData returns the same BitmapData object.
+            draw.set_bitmap_object(id, stash_object(activation, bitmap_object));
             draw.set_fill_style(Some(FillStyle::Bitmap {
                 id,
                 matrix: matrix * scale_matrix,
@@ -585,146 +591,91 @@ fn draw_round_rect_internal(
     let tr_ellipse_center_x = x + width - top_right_width;
     let tr_ellipse_center_y = y + top_right_height;
 
-    // We'll start from the bottom-right corner of the rectangle,
-    // because that's what Flash Player does.
+    // Timffle: Flash Player starts at (x+w, y+h-ry) on the right edge and goes
+    // clockwise with two quadratic curves per corner (measured by readGraphicsData on
+    // Flash 32, D56Graphics2 s8/s9); straight edges of zero length still get a LineTo.
+    let point = |cx: f64, cy: f64, rx: f64, ry: f64, (ux, uy): (f64, f64)| {
+        Point::from_pixels(cx + rx * ux, cy + ry * uy)
+    };
+    let (brx, bry, brw, brh) = (
+        br_ellipse_center_x,
+        br_ellipse_center_y,
+        bottom_right_width,
+        bottom_right_height,
+    );
+    let (blx, bly, blw, blh) = (
+        bl_ellipse_center_x,
+        bl_ellipse_center_y,
+        bottom_left_width,
+        bottom_left_height,
+    );
+    let (tlx, tly, tlw, tlh) = (
+        tl_ellipse_center_x,
+        tl_ellipse_center_y,
+        top_left_width,
+        top_left_height,
+    );
+    let (trx, try_, trw, trh) = (
+        tr_ellipse_center_x,
+        tr_ellipse_center_y,
+        top_right_width,
+        top_right_height,
+    );
 
-    // Middle of bottom-right ellipse
-    let br_point_x = br_ellipse_center_x + bottom_right_width * ucp[2].0;
-    let br_point_y = br_ellipse_center_y + bottom_right_height * ucp[2].1;
-    let br_point = Point::from_pixels(br_point_x, br_point_y);
+    let bottom_r_point = point(brx, bry, brw, brh, ucp[0]);
+    draw.draw_command(DrawCommand::MoveTo(bottom_r_point));
 
-    draw.draw_command(DrawCommand::MoveTo(br_point));
-
-    let br_b_curve_x = br_ellipse_center_x + bottom_right_width * ucp[3].0;
-    let br_b_curve_y = br_ellipse_center_y + bottom_right_height * ucp[3].1;
-    let br_b_curve = Point::from_pixels(br_b_curve_x, br_b_curve_y);
-
-    let right_b_point_x = br_ellipse_center_x + bottom_right_width * ucp[4].0;
-    let right_b_point_y = br_ellipse_center_y + bottom_right_height * ucp[4].1;
-    let right_b_point = Point::from_pixels(right_b_point_x, right_b_point_y);
-
+    // Bottom-right corner.
     draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: br_b_curve,
-        anchor: right_b_point,
+        control: point(brx, bry, brw, brh, ucp[1]),
+        anchor: point(brx, bry, brw, brh, ucp[2]),
+    });
+    draw.draw_command(DrawCommand::QuadraticCurveTo {
+        control: point(brx, bry, brw, brh, ucp[3]),
+        anchor: point(brx, bry, brw, brh, ucp[4]),
     });
 
-    // Bottom line
-    let left_b_point_x = bl_ellipse_center_x + bottom_left_width * ucp[4].0;
-    let left_b_point_y = bl_ellipse_center_y + bottom_left_height * ucp[4].1;
-    let left_b_point = Point::from_pixels(left_b_point_x, left_b_point_y);
+    // Bottom line.
+    draw.draw_command(DrawCommand::LineTo(point(blx, bly, -blw, blh, ucp[4])));
 
-    draw.draw_command(DrawCommand::LineTo(left_b_point));
-
-    // Bottom-left ellipse
-    let b_bl_curve_x = bl_ellipse_center_x - bottom_left_width * ucp[3].0;
-    let b_bl_curve_y = bl_ellipse_center_y + bottom_left_height * ucp[3].1;
-    let b_bl_curve = Point::from_pixels(b_bl_curve_x, b_bl_curve_y);
-
-    let bl_point_x = bl_ellipse_center_x - bottom_left_width * ucp[2].0;
-    let bl_point_y = bl_ellipse_center_y + bottom_left_height * ucp[2].1;
-    let bl_point = Point::from_pixels(bl_point_x, bl_point_y);
-
+    // Bottom-left corner.
     draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: b_bl_curve,
-        anchor: bl_point,
+        control: point(blx, bly, -blw, blh, ucp[3]),
+        anchor: point(blx, bly, -blw, blh, ucp[2]),
+    });
+    draw.draw_command(DrawCommand::QuadraticCurveTo {
+        control: point(blx, bly, -blw, blh, ucp[1]),
+        anchor: point(blx, bly, -blw, blh, ucp[0]),
     });
 
-    let bl_l_curve_x = bl_ellipse_center_x - bottom_left_width * ucp[1].0;
-    let bl_l_curve_y = bl_ellipse_center_y + bottom_left_height * ucp[1].1;
-    let bl_l_curve = Point::from_pixels(bl_l_curve_x, bl_l_curve_y);
+    // Left side.
+    draw.draw_command(DrawCommand::LineTo(point(tlx, tly, -tlw, -tlh, ucp[0])));
 
-    let bottom_l_point_x = bl_ellipse_center_x - bottom_left_width * ucp[0].0;
-    let bottom_l_point_y = bl_ellipse_center_y + bottom_left_height * ucp[0].1;
-    let bottom_l_point = Point::from_pixels(bottom_l_point_x, bottom_l_point_y);
-
+    // Top-left corner.
     draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: bl_l_curve,
-        anchor: bottom_l_point,
+        control: point(tlx, tly, -tlw, -tlh, ucp[1]),
+        anchor: point(tlx, tly, -tlw, -tlh, ucp[2]),
+    });
+    draw.draw_command(DrawCommand::QuadraticCurveTo {
+        control: point(tlx, tly, -tlw, -tlh, ucp[3]),
+        anchor: point(tlx, tly, -tlw, -tlh, ucp[4]),
     });
 
-    // Left side
-    let top_l_point_x = tl_ellipse_center_x - top_left_width * ucp[0].0;
-    let top_l_point_y = tl_ellipse_center_y - top_left_height * ucp[0].1;
-    let top_l_point = Point::from_pixels(top_l_point_x, top_l_point_y);
+    // Top side.
+    draw.draw_command(DrawCommand::LineTo(point(trx, try_, trw, -trh, ucp[4])));
 
-    draw.draw_command(DrawCommand::LineTo(top_l_point));
-
-    // Top-left ellipse
-    let l_tl_curve_x = tl_ellipse_center_x - top_left_width * ucp[1].0;
-    let l_tl_curve_y = tl_ellipse_center_y - top_left_height * ucp[1].1;
-    let l_tl_curve = Point::from_pixels(l_tl_curve_x, l_tl_curve_y);
-
-    let tl_point_x = tl_ellipse_center_x - top_left_width * ucp[2].0;
-    let tl_point_y = tl_ellipse_center_y - top_left_height * ucp[2].1;
-    let tl_point = Point::from_pixels(tl_point_x, tl_point_y);
-
+    // Top-right corner.
     draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: l_tl_curve,
-        anchor: tl_point,
+        control: point(trx, try_, trw, -trh, ucp[3]),
+        anchor: point(trx, try_, trw, -trh, ucp[2]),
+    });
+    draw.draw_command(DrawCommand::QuadraticCurveTo {
+        control: point(trx, try_, trw, -trh, ucp[1]),
+        anchor: point(trx, try_, trw, -trh, ucp[0]),
     });
 
-    let tl_t_curve_x = tl_ellipse_center_x - top_left_width * ucp[3].0;
-    let tl_t_curve_y = tl_ellipse_center_y - top_left_height * ucp[3].1;
-    let tl_t_curve = Point::from_pixels(tl_t_curve_x, tl_t_curve_y);
-
-    let left_t_point_x = tl_ellipse_center_x - top_left_width * ucp[4].0;
-    let left_t_point_y = tl_ellipse_center_y - top_left_height * ucp[4].1;
-    let left_t_point = Point::from_pixels(left_t_point_x, left_t_point_y);
-
-    draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: tl_t_curve,
-        anchor: left_t_point,
-    });
-
-    // Top side
-    let right_t_point_x = tr_ellipse_center_x + top_right_width * ucp[4].0;
-    let right_t_point_y = tr_ellipse_center_y - top_right_height * ucp[4].1;
-    let right_t_point = Point::from_pixels(right_t_point_x, right_t_point_y);
-
-    draw.draw_command(DrawCommand::LineTo(right_t_point));
-
-    // Top-right ellipse
-    let t_tr_curve_x = tr_ellipse_center_x + top_right_width * ucp[3].0;
-    let t_tr_curve_y = tr_ellipse_center_y - top_right_height * ucp[3].1;
-    let t_tr_curve = Point::from_pixels(t_tr_curve_x, t_tr_curve_y);
-
-    let tr_point_x = tr_ellipse_center_x + top_right_width * ucp[2].0;
-    let tr_point_y = tr_ellipse_center_y - top_right_height * ucp[2].1;
-    let tr_point = Point::from_pixels(tr_point_x, tr_point_y);
-
-    draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: t_tr_curve,
-        anchor: tr_point,
-    });
-
-    let tr_r_curve_x = tr_ellipse_center_x + top_right_width * ucp[1].0;
-    let tr_r_curve_y = tr_ellipse_center_y - top_right_height * ucp[1].1;
-    let tr_r_curve = Point::from_pixels(tr_r_curve_x, tr_r_curve_y);
-
-    let top_r_point_x = tr_ellipse_center_x + top_right_width * ucp[0].0;
-    let top_r_point_y = tr_ellipse_center_y - top_right_height * ucp[0].1;
-    let top_r_point = Point::from_pixels(top_r_point_x, top_r_point_y);
-
-    draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: tr_r_curve,
-        anchor: top_r_point,
-    });
-
-    // Right side & other half of bottom-right ellipse
-    let bottom_r_point_x = br_ellipse_center_x + bottom_right_width * ucp[0].0;
-    let bottom_r_point_y = br_ellipse_center_y + bottom_right_height * ucp[0].1;
-    let bottom_r_point = Point::from_pixels(bottom_r_point_x, bottom_r_point_y);
-
+    // Right side, back to the start.
     draw.draw_command(DrawCommand::LineTo(bottom_r_point));
-
-    let r_br_curve_x = br_ellipse_center_x + bottom_right_width * ucp[1].0;
-    let r_br_curve_y = br_ellipse_center_y + bottom_right_height * ucp[1].1;
-    let r_br_curve = Point::from_pixels(r_br_curve_x, r_br_curve_y);
-
-    draw.draw_command(DrawCommand::QuadraticCurveTo {
-        control: r_br_curve,
-        anchor: br_point,
-    });
 }
 
 /// Implements `Graphics.drawRoundRect`.
@@ -1195,9 +1146,9 @@ impl TriangleData {
                     .iter()
                     .map(|&[i0, i1, i2]| [i0 as usize, i1 as usize, i2 as usize]),
             ),
-            Self::Sequential { triangles } => Either::Right(
-                (0..triangles.len()).map(|i| [i * 3, i * 3 + 1, i * 3 + 2]),
-            ),
+            Self::Sequential { triangles } => {
+                Either::Right((0..triangles.len()).map(|i| [i * 3, i * 3 + 1, i * 3 + 2]))
+            }
         }
     }
 }
@@ -1428,7 +1379,9 @@ fn draw_textured_triangle(
     let t_max = ts.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     let needs_split = t_min > 0.0 && t_max / t_min > 1.02;
     let edge = |a: Point<Twips>, b: Point<Twips>| {
-        (a.x.get() - b.x.get()).abs().max((a.y.get() - b.y.get()).abs())
+        (a.x.get() - b.x.get())
+            .abs()
+            .max((a.y.get() - b.y.get()).abs())
     };
     let longest = edge(tv[0].p, tv[1].p)
         .max(edge(tv[1].p, tv[2].p))
@@ -1532,8 +1485,8 @@ pub fn line_bitmap_style<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(this) = this.as_display_object() {
-        let bitmap = args
-            .get_object(activation, 0, "bitmap")?
+        let bitmap_object = args.get_object(activation, 0, "bitmap")?;
+        let bitmap = bitmap_object
             .as_bitmap_data()
             .expect("Bitmap argument is ensured to be a BitmapData from actionscript");
         let matrix = if let Some(matrix) = args.try_get_object(1) {
@@ -1559,6 +1512,8 @@ pub fn line_bitmap_style<'gc>(
 
         if let Some(mut draw) = this.as_drawing() {
             let id = draw.add_bitmap(bitmap);
+            // Timffle: readGraphicsData returns the same BitmapData object.
+            draw.set_bitmap_object(id, stash_object(activation, bitmap_object));
             draw.set_line_fill_style(FillStyle::Bitmap {
                 id,
                 matrix: matrix * scale_matrix,
@@ -1572,15 +1527,452 @@ pub fn line_bitmap_style<'gc>(
 }
 
 /// Implements `Graphics.readGraphicsData`
+///
+/// Timffle: real implementation over `Drawing::read_graphics_data`, in the structure
+/// measured on Flash Player 32 (timffle/difftest/src/D55Graphics.hx, D56Graphics2.hx,
+/// D57Winding.hx): every fill group as [fill, GraphicsPath, GraphicsEndFill], the strokes
+/// recorded inside it as [GraphicsStroke, GraphicsPath(nonZero), GraphicsStroke(0)], a
+/// trailing GraphicsEndFill when the list ends with a stroke; the object's own transform
+/// is not applied, the children's data (`recurse`, visible children only, in child order)
+/// is transformed into this object's space. Solid colours come back through Flash's 8-bit
+/// premultiplied round trip, gradient colours as ARGB, bitmap fill matrices scaled by
+/// 4095/4096 with repeat=true/smooth=false, strokes with pixelHinting=false,
+/// scaleMode=normal, caps=none, joints=round, miterLimit=3 (Flash does not keep them),
+/// cubic curves as four quadratics, round rects/circles/ellipses starting at
+/// (x+w, y+h-ry) clockwise.
 pub fn read_graphics_data<'gc>(
     activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
-    _args: FunctionArgs<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_method!(activation, "flash.display.Graphics", "readGraphicsData");
+    let this = this.as_object().unwrap();
+    let recurse = args.get_bool(0);
     let value_type = activation.avm2().class_defs().igraphicsdata;
-    let new_storage = VectorStorage::new(0, false, Some(value_type));
-    Ok(VectorObject::from_vector(new_storage, activation).into())
+    let mut out = Vec::new();
+    if let Some(display_object) = this.as_display_object() {
+        read_display_object_graphics(
+            activation,
+            display_object,
+            RenderMatrix::IDENTITY,
+            recurse,
+            &mut out,
+        )?;
+    }
+    let storage = VectorStorage::from_values(out, false, Some(value_type));
+    Ok(VectorObject::from_vector(storage, activation).into())
+}
+
+/// Timffle: the readGraphicsData items of one display object (and, with `recurse`, of
+/// its visible children, transformed by `transform`).
+fn read_display_object_graphics<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    display_object: DisplayObject<'gc>,
+    transform: RenderMatrix,
+    recurse: bool,
+    out: &mut Vec<Value<'gc>>,
+) -> Result<(), Error<'gc>> {
+    // Read everything out of the drawing before any AS constructor runs.
+    let (items, bitmap_objects, shader_fills) = match display_object.as_drawing() {
+        Some(drawing) => {
+            let items = drawing.read_graphics_data();
+            let mut bitmap_objects: Vec<(u16, Object<'gc>)> = Vec::new();
+            let mut shader_fills: Vec<(u16, Option<Object<'gc>>, Matrix)> = Vec::new();
+            let mut note_style = |style: &FillStyle| {
+                if let FillStyle::Bitmap { id, .. } = style {
+                    if let Some(matrix) = drawing.shader_fill_matrix(*id) {
+                        if !shader_fills.iter().any(|(i, ..)| i == id) {
+                            let shader = drawing
+                                .shader_fill_object(*id)
+                                .map(|root| *activation.context.dynamic_root.fetch(&root.0));
+                            shader_fills.push((*id, shader, matrix));
+                        }
+                    } else if !bitmap_objects.iter().any(|(i, _)| i == id)
+                        && let Some(root) = drawing.bitmap_object(*id)
+                    {
+                        bitmap_objects.push((*id, *activation.context.dynamic_root.fetch(&root.0)));
+                    }
+                }
+            };
+            for item in &items {
+                match item {
+                    GraphicsReadItem::Fill { style, .. } => note_style(style),
+                    GraphicsReadItem::Stroke { style, .. } => note_style(style.fill_style()),
+                }
+            }
+            (items, bitmap_objects, shader_fills)
+        }
+        None => (Vec::new(), Vec::new(), Vec::new()),
+    };
+
+    let mut last_was_stroke = false;
+    for item in items {
+        match item {
+            GraphicsReadItem::Fill {
+                style,
+                rule,
+                commands,
+            } => {
+                let fill = fill_style_to_object(
+                    activation,
+                    &style,
+                    transform,
+                    &bitmap_objects,
+                    &shader_fills,
+                )?;
+                out.push(fill);
+                out.push(path_to_object(activation, &commands, rule, transform)?);
+                out.push(construct_graphics(
+                    activation,
+                    |defs| defs.graphicsendfill,
+                    &[],
+                )?);
+                last_was_stroke = false;
+            }
+            GraphicsReadItem::Stroke { style, commands } => {
+                let fill = fill_style_to_object(
+                    activation,
+                    style.fill_style(),
+                    transform,
+                    &bitmap_objects,
+                    &shader_fills,
+                )?;
+                out.push(stroke_to_object(
+                    activation,
+                    style.width().to_pixels(),
+                    fill,
+                )?);
+                out.push(path_to_object(
+                    activation,
+                    &commands,
+                    FillRule::NonZero,
+                    transform,
+                )?);
+                out.push(stroke_to_object(activation, 0.0, Value::Null)?);
+                last_was_stroke = true;
+            }
+        }
+    }
+    if last_was_stroke {
+        out.push(construct_graphics(
+            activation,
+            |defs| defs.graphicsendfill,
+            &[],
+        )?);
+    }
+
+    if recurse && let Some(container) = display_object.as_container() {
+        for child in container.iter_render_list() {
+            if !child.visible() {
+                continue;
+            }
+            let child_transform = transform * child.base().matrix();
+            read_display_object_graphics(activation, child, child_transform, true, out)?;
+        }
+    }
+    Ok(())
+}
+
+/// Timffle: construct an instance of one of the `flash.display.Graphics*` data classes.
+fn construct_graphics<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    class: impl FnOnce(&crate::avm2::globals::SystemClassDefs<'gc>) -> crate::avm2::Class<'gc>,
+    args: &[Value<'gc>],
+) -> Result<Value<'gc>, Error<'gc>> {
+    let class = class(activation.avm2().class_defs())
+        .class_object()
+        .expect("Graphics data classes are loaded with playerglobal");
+    class.construct(activation, args)
+}
+
+/// Timffle: Flash Player reports solid colours after an 8-bit premultiplied-alpha round
+/// trip: p = round(c * a / 255), c' = floor(p * 255 / a) (matches 5 of the 7 measured
+/// samples of D56Graphics2 c1; the exact formula is unknown). Alpha 0 gives black.
+fn flash_color_roundtrip(color: Color) -> u32 {
+    let a = color.a as f64;
+    if color.a == 0 {
+        return 0;
+    }
+    let channel = |c: u8| -> u32 {
+        let p = (c as f64 * a / 255.0).round();
+        ((p * 255.0 / a).floor() as u32).min(255)
+    };
+    (channel(color.r) << 16) | (channel(color.g) << 8) | channel(color.b)
+}
+
+/// Timffle: a `flash.geom.Matrix` from an swf matrix (tx/ty in twips), optionally
+/// transformed into the parent's space and scaled by `factor` (Flash's 4095/4096 quirk
+/// for bitmap fill matrices).
+fn matrix_to_object<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    matrix: RenderMatrix,
+    transform: RenderMatrix,
+    factor: f64,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let m = transform * matrix;
+    activation.avm2().classes().matrix.construct(
+        activation,
+        &[
+            (m.a as f64 * factor).into(),
+            (m.b as f64 * factor).into(),
+            (m.c as f64 * factor).into(),
+            (m.d as f64 * factor).into(),
+            (m.tx.to_pixels() * factor).into(),
+            (m.ty.to_pixels() * factor).into(),
+        ],
+    )
+}
+
+/// Timffle: the `GraphicsSolidFill` / `GraphicsGradientFill` / `GraphicsBitmapFill` /
+/// `GraphicsShaderFill` object for a recorded fill style.
+fn fill_style_to_object<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    style: &FillStyle,
+    transform: RenderMatrix,
+    bitmap_objects: &[(u16, Object<'gc>)],
+    shader_fills: &[(u16, Option<Object<'gc>>, Matrix)],
+) -> Result<Value<'gc>, Error<'gc>> {
+    match style {
+        FillStyle::Color(color) => construct_graphics(
+            activation,
+            |defs| defs.graphicssolidfill,
+            &[
+                flash_color_roundtrip(*color).into(),
+                (color.a as f64 / 255.0).into(),
+            ],
+        ),
+        FillStyle::LinearGradient(gradient)
+        | FillStyle::RadialGradient(gradient)
+        | FillStyle::FocalGradient { gradient, .. } => {
+            let (gradient_type, focal_point) = match style {
+                FillStyle::LinearGradient(_) => ("linear", 0.0),
+                FillStyle::RadialGradient(_) => ("radial", 0.0),
+                FillStyle::FocalGradient { focal_point, .. } => ("radial", focal_point.to_f64()),
+                _ => unreachable!(),
+            };
+            let colors: Vec<Value<'gc>> = gradient
+                .records
+                .iter()
+                .map(|record| {
+                    let c = record.color;
+                    (((c.a as u32) << 24) | ((c.r as u32) << 16) | ((c.g as u32) << 8) | c.b as u32)
+                        .into()
+                })
+                .collect();
+            let alphas: Vec<Value<'gc>> = gradient
+                .records
+                .iter()
+                .map(|record| (record.color.a as f64 / 255.0).into())
+                .collect();
+            let ratios: Vec<Value<'gc>> = gradient
+                .records
+                .iter()
+                .map(|record| (record.ratio as u32).into())
+                .collect();
+            let colors =
+                ArrayObject::from_storage(activation.context, ArrayStorage::from_args(&colors));
+            let alphas =
+                ArrayObject::from_storage(activation.context, ArrayStorage::from_args(&alphas));
+            let ratios =
+                ArrayObject::from_storage(activation.context, ArrayStorage::from_args(&ratios));
+            let matrix = matrix_to_object(
+                activation,
+                RenderMatrix::from(gradient.matrix),
+                transform,
+                1.0,
+            )?;
+            let spread = match gradient.spread {
+                GradientSpread::Pad => "pad",
+                GradientSpread::Reflect => "reflect",
+                GradientSpread::Repeat => "repeat",
+            };
+            let interpolation = match gradient.interpolation {
+                GradientInterpolation::Rgb => "rgb",
+                GradientInterpolation::LinearRgb => "linearRGB",
+            };
+            construct_graphics(
+                activation,
+                |defs| defs.graphicsgradientfill,
+                &[
+                    AvmString::new_utf8(activation.gc(), gradient_type).into(),
+                    colors.into(),
+                    alphas.into(),
+                    ratios.into(),
+                    matrix,
+                    AvmString::new_utf8(activation.gc(), spread).into(),
+                    AvmString::new_utf8(activation.gc(), interpolation).into(),
+                    focal_point.into(),
+                ],
+            )
+        }
+        FillStyle::Bitmap { id, matrix, .. } => {
+            if let Some((_, shader, shader_matrix)) =
+                shader_fills.iter().find(|(fill_id, ..)| fill_id == id)
+            {
+                let matrix = matrix_to_object(
+                    activation,
+                    RenderMatrix::from(*shader_matrix),
+                    transform,
+                    1.0,
+                )?;
+                let shader = shader.map(Value::from).unwrap_or(Value::Null);
+                return construct_graphics(
+                    activation,
+                    |defs| defs.graphicsshaderfill,
+                    &[shader, matrix],
+                );
+            }
+            // The stored matrix maps bitmap pixels to twips: undo the x20 pixel scale.
+            let stored = RenderMatrix::from(*matrix);
+            let scale = Twips::TWIPS_PER_PIXEL as f32;
+            let given = RenderMatrix {
+                a: stored.a / scale,
+                b: stored.b / scale,
+                c: stored.c / scale,
+                d: stored.d / scale,
+                tx: stored.tx,
+                ty: stored.ty,
+            };
+            let matrix = matrix_to_object(activation, given, transform, 4095.0 / 4096.0)?;
+            let bitmap = bitmap_objects
+                .iter()
+                .find(|(bitmap_id, _)| bitmap_id == id)
+                .map(|(_, object)| Value::from(*object))
+                .unwrap_or(Value::Null);
+            construct_graphics(
+                activation,
+                |defs| defs.graphicsbitmapfill,
+                &[bitmap, matrix, true.into(), false.into()],
+            )
+        }
+    }
+}
+
+/// Timffle: a `GraphicsStroke` the way Flash reports it (only the thickness and the fill
+/// survive; pixelHinting=false, scaleMode=normal, caps=none, joints=round, miterLimit=3).
+fn stroke_to_object<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    thickness: f64,
+    fill: Value<'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let normal = AvmString::new_utf8(activation.gc(), "normal");
+    let none = AvmString::new_utf8(activation.gc(), "none");
+    let round = AvmString::new_utf8(activation.gc(), "round");
+    construct_graphics(
+        activation,
+        |defs| defs.graphicsstroke,
+        &[
+            thickness.into(),
+            false.into(),
+            normal.into(),
+            none.into(),
+            round.into(),
+            3.0.into(),
+            fill,
+        ],
+    )
+}
+
+/// Timffle: a `GraphicsPath` for recorded commands transformed by `transform`. Cubic
+/// curves are reported as four quadratics (split at t = 1/4, 1/2, 3/4; control point
+/// (3(Q1+Q2)-Q0-Q3)/4), every coordinate rounded to twips, like Flash Player.
+fn path_to_object<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    commands: &[DrawCommand],
+    rule: FillRule,
+    transform: RenderMatrix,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let mut command_values: Vec<Value<'gc>> = Vec::with_capacity(commands.len());
+    let mut data: Vec<Value<'gc>> = Vec::with_capacity(commands.len() * 2);
+    let px = |point: Point<Twips>| -> (f64, f64) {
+        let p = transform * point;
+        (p.x.to_pixels(), p.y.to_pixels())
+    };
+    let push_point = |data: &mut Vec<Value<'gc>>, (x, y): (f64, f64)| {
+        data.push(x.into());
+        data.push(y.into());
+    };
+    let round_twips =
+        |v: f64| (v * Twips::TWIPS_PER_PIXEL as f64).round() / Twips::TWIPS_PER_PIXEL as f64;
+    let mut from = (0.0, 0.0);
+    for command in commands {
+        match command {
+            DrawCommand::MoveTo(point) => {
+                command_values.push(1.into());
+                from = px(*point);
+                push_point(&mut data, from);
+            }
+            DrawCommand::LineTo(point) => {
+                command_values.push(2.into());
+                from = px(*point);
+                push_point(&mut data, from);
+            }
+            DrawCommand::QuadraticCurveTo { control, anchor } => {
+                command_values.push(3.into());
+                push_point(&mut data, px(*control));
+                from = px(*anchor);
+                push_point(&mut data, from);
+            }
+            DrawCommand::CubicCurveTo {
+                control_a,
+                control_b,
+                anchor,
+            } => {
+                let mut p0 = from;
+                let mut p1 = px(*control_a);
+                let mut p2 = px(*control_b);
+                let p3 = px(*anchor);
+                // Split off the first quarter three times (de Casteljau at t = 1/3,
+                // 1/2, 1 of the remainder = 1/4, 1/2, 3/4 of the whole curve).
+                for t in [0.25, 1.0 / 3.0, 0.5, 1.0] {
+                    let lerp = |a: (f64, f64), b: (f64, f64)| {
+                        (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t)
+                    };
+                    let q0 = lerp(p0, p1);
+                    let q1 = lerp(p1, p2);
+                    let q2 = lerp(p2, p3);
+                    let r0 = lerp(q0, q1);
+                    let r1 = lerp(q1, q2);
+                    let end = lerp(r0, r1);
+                    // Piece p0, q0, r0, end -> one quadratic.
+                    let control = (
+                        (3.0 * (q0.0 + r0.0) - p0.0 - end.0) / 4.0,
+                        (3.0 * (q0.1 + r0.1) - p0.1 - end.1) / 4.0,
+                    );
+                    command_values.push(3.into());
+                    push_point(&mut data, (round_twips(control.0), round_twips(control.1)));
+                    push_point(&mut data, (round_twips(end.0), round_twips(end.1)));
+                    // Remainder end, r1, q2, p3.
+                    p0 = end;
+                    p1 = r1;
+                    p2 = q2;
+                }
+                from = p3;
+            }
+        }
+    }
+    let int_class = activation.avm2().class_defs().int;
+    let number_class = activation.avm2().class_defs().number;
+    let commands = VectorObject::from_vector(
+        VectorStorage::from_values(command_values, false, Some(int_class)),
+        activation,
+    );
+    let data = VectorObject::from_vector(
+        VectorStorage::from_values(data, false, Some(number_class)),
+        activation,
+    );
+    let winding = match rule {
+        FillRule::EvenOdd => "evenOdd",
+        FillRule::NonZero => "nonZero",
+    };
+    construct_graphics(
+        activation,
+        |defs| defs.graphicspath,
+        &[
+            commands.into(),
+            data.into(),
+            AvmString::new_utf8(activation.gc(), winding).into(),
+        ],
+    )
 }
 
 fn read_point<'gc>(
@@ -1866,8 +2258,15 @@ fn handle_igraphics_fill<'gc>(
         let style = handle_solid_fill(activation, obj)?;
         Ok(Some(style))
     } else if class == activation.avm2().class_defs().graphicsshaderfill {
-        tracing::warn!("Graphics shader fill unimplemented {:?}", class);
-        Ok(None)
+        // Timffle: like beginShaderFill.
+        let shader = obj
+            .get_slot(graphics_shader_fill_slots::SHADER)
+            .as_object()
+            .ok_or_else(|| make_error_2007(activation, "shader"))?;
+        let matrix = obj.get_slot(graphics_shader_fill_slots::MATRIX).as_object();
+        Ok(Some(shader_fill_style(
+            activation, drawing, shader, matrix,
+        )?))
     } else {
         tracing::warn!("Unknown graphics fill class {:?}", class);
         Ok(None)
@@ -1985,10 +2384,11 @@ fn handle_bitmap_fill<'gc>(
     drawing: &mut Drawing,
     obj: &Object<'gc>,
 ) -> Result<FillStyle, Error<'gc>> {
-    let bitmap_data = obj
+    let bitmap_object = obj
         .get_slot(graphics_bitmap_fill_slots::BITMAP_DATA)
         .as_object()
-        .ok_or_else(|| make_error_2007(activation, "bitmap"))?
+        .ok_or_else(|| make_error_2007(activation, "bitmap"))?;
+    let bitmap_data = bitmap_object
         .as_bitmap_data()
         .expect("Bitmap argument is ensured to be a BitmapData from actionscript");
 
@@ -2020,6 +2420,8 @@ fn handle_bitmap_fill<'gc>(
     );
 
     let id = drawing.add_bitmap(bitmap);
+    // Timffle: readGraphicsData returns the same BitmapData object.
+    drawing.set_bitmap_object(id, stash_object(activation, bitmap_object));
 
     let style = FillStyle::Bitmap {
         id,
@@ -2029,4 +2431,81 @@ fn handle_bitmap_fill<'gc>(
     };
 
     Ok(style)
+}
+
+/// Timffle: keep an AVM2 object alive from inside a `Drawing` (see `ObjectRoot`).
+fn stash_object<'gc>(activation: &mut Activation<'_, 'gc>, object: Object<'gc>) -> ObjectRoot {
+    let mc = activation.gc();
+    ObjectRoot(
+        activation
+            .context
+            .dynamic_root
+            .stash::<gc_arena::Rootable![Object<'_>]>(mc, Gc::new(mc, object)),
+    )
+}
+
+/// Timffle: the fill style of a `beginShaderFill` / `lineShaderStyle` / `GraphicsShaderFill`
+/// (see `Drawing::add_shader_fill`). `shader` must not be null (TypeError #2007); a Shader
+/// without byte code throws ArgumentError #2004 (Flash's documented error family for a
+/// shader that cannot be used as a fill; the exact code was not measured).
+fn shader_fill_style<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    drawing: &mut Drawing,
+    shader: Object<'gc>,
+    matrix: Option<Object<'gc>>,
+) -> Result<FillStyle, Error<'gc>> {
+    let has_shader = shader
+        .get_slot(shader_slots::_DATA)
+        .as_object()
+        .and_then(|data| data.as_shader_data())
+        .is_some_and(|data| data.pixel_bender_shader().is_some());
+    if !has_shader {
+        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+    }
+    let (handle, arguments) = get_shader_args(shader, activation)?;
+    let matrix = matrix
+        .map(|matrix| Matrix::from(object_to_matrix(matrix)))
+        .unwrap_or(Matrix::IDENTITY);
+    let shader_root = stash_object(activation, shader);
+    Ok(drawing.add_shader_fill(handle, arguments, matrix, Some(shader_root)))
+}
+
+/// Implements `Graphics.beginShaderFill`.
+///
+/// Timffle: the shader is evaluated once over the fill's bounds when the shape is first
+/// rendered and used as a (non-repeating) bitmap fill; see `Drawing::add_shader_fill`.
+pub fn begin_shader_fill<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let shader = args.get_object(activation, 0, "shader")?;
+    let matrix = args.try_get_object(1);
+    if let Some(this) = this.as_display_object()
+        && let Some(mut draw) = this.as_drawing()
+    {
+        let style = shader_fill_style(activation, &mut draw, shader, matrix)?;
+        draw.set_fill_style(Some(style));
+    }
+    Ok(Value::Undefined)
+}
+
+/// Implements `Graphics.lineShaderStyle` (same evaluation as `beginShaderFill`, used as
+/// the stroke's fill).
+pub fn line_shader_style<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let shader = args.get_object(activation, 0, "shader")?;
+    let matrix = args.try_get_object(1);
+    if let Some(this) = this.as_display_object()
+        && let Some(mut draw) = this.as_drawing()
+    {
+        let style = shader_fill_style(activation, &mut draw, shader, matrix)?;
+        draw.set_line_fill_style(style);
+    }
+    Ok(Value::Undefined)
 }

@@ -1,6 +1,4 @@
 package flash.display {
-    import __ruffle__.stub_method;
-
     import flash.geom.Matrix;
 
     [Ruffle(Abstract)]
@@ -26,10 +24,10 @@ package flash.display {
             focalPointRatio:Number = 0
         ):void;
 
+        // Timffle: the shader is evaluated once over the fill's bounds when the shape is
+        // first rendered and used as a bitmap fill (see Drawing::add_shader_fill).
         [API("662")]
-        public function beginShaderFill(shader:Shader, matrix:Matrix = null):void {
-            stub_method("flash.display.Graphics", "beginShaderFill");
-        }
+        public native function beginShaderFill(shader:Shader, matrix:Matrix = null):void;
 
         [Ruffle(FastCall)]
         public native function clear():void;
@@ -143,10 +141,9 @@ package flash.display {
 
         private native function drawGraphicsDataItem(item:IGraphicsData):void;
 
+        // Timffle: like beginShaderFill, as the stroke's fill.
         [API("662")]
-        public function lineShaderStyle(shader:Shader, matrix:Matrix = null):void {
-            stub_method("flash.display.Graphics", "lineShaderStyle");
-        }
+        public native function lineShaderStyle(shader:Shader, matrix:Matrix = null):void;
 
         [API("662")]
         public native function lineBitmapStyle(

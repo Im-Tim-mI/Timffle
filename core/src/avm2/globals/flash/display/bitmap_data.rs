@@ -1139,10 +1139,25 @@ pub fn apply_filter<'gc>(
             .as_bitmap_data()
             .unwrap();
         let source_rect = args.get_object(activation, 1, "sourceRect")?;
-        let mut source_rect = object_to_rectangle(source_rect);
+        let source_rect = object_to_rectangle(source_rect);
         let filter = args.get_object(activation, 3, "filter")?;
         let filter = Filter::from_avm2_object(activation, filter)?;
 
+        let mut source_point = (
+            source_rect.x_min.to_pixels().floor() as u32,
+            source_rect.y_min.to_pixels().floor() as u32,
+        );
+        let mut source_size = (
+            source_rect.width().to_pixels().ceil() as u32,
+            source_rect.height().to_pixels().ceil() as u32,
+        );
+        // Timffle: a ShaderFilter over a sourceRect that is not the whole source: the
+        // region is copied into a temporary bitmap of the rect's size (clamped to the
+        // source) and the shader runs over that bitmap, so outCoord() starts at the
+        // rect's corner like for the other filters. Flash's behaviour at the rect's
+        // edges (it crops/translates oddly for a non-zero x/y, and ignores width/height
+        // when x = y = 0) is not reproduced; see timffle/docs/CHANGES-FROM-RUFFLE.md.
+        let mut source_bitmap = source_bitmap;
         if matches!(filter, Filter::ShaderFilter(_)) {
             let source_bitmap_rect = Rectangle {
                 x_min: Twips::ZERO,
@@ -1150,37 +1165,39 @@ pub fn apply_filter<'gc>(
                 y_min: Twips::ZERO,
                 y_max: Twips::from_pixels(source_bitmap.height() as f64),
             };
-            // Flash performs an odd translation/cropping behavior when sourceRect
-            // has a non-zero x or y starting value, which I haven't yet managed to reproduce.
-            //
-            // Additionally, when both x and y are 0, the 'width' and 'height' seem to
-            // be ignored completely in favor of the using the dimensions of the source
-            // image (even if a larger or smaller rect is passed in)
-            //
-            // To make matters worse, the behavior of ShaderFilter seems platform-dependent
-            // (or at least resolution-dependent). The test
-            // 'tests/tests/swfs/avm2/pixelbender_effect_glassDisplace_shaderfilter/test.swf'
-            // renders slightly differently in Linux vs a Windows VM (part of the mandelbrot fractal
-            // in the top image is cut off in the Windows Flash Player, but not in the Linux Flash Player)
             if source_rect != source_bitmap_rect {
-                avm2_stub_method!(
-                    activation,
-                    "flash.display.BitmapData",
-                    "applyFilter",
-                    "ShaderFilter with non-standard sourceRect"
+                let max_width = source_bitmap.width().saturating_sub(source_point.0);
+                let max_height = source_bitmap.height().saturating_sub(source_point.1);
+                let width = source_size.0.min(max_width);
+                let height = source_size.1.min(max_height);
+                if width == 0 || height == 0 {
+                    return Ok(Value::Undefined);
+                }
+                let temporary = BitmapData::new(
+                    activation.gc(),
+                    width,
+                    height,
+                    source_bitmap.transparency(),
+                    0,
                 );
-                source_rect = source_bitmap_rect;
+                operations::copy_pixels(
+                    activation.context,
+                    temporary,
+                    source_bitmap,
+                    (
+                        source_point.0 as i32,
+                        source_point.1 as i32,
+                        width as i32,
+                        height as i32,
+                    ),
+                    (0, 0),
+                    false,
+                );
+                source_bitmap = temporary;
+                source_point = (0, 0);
+                source_size = (width, height);
             }
         }
-
-        let source_point = (
-            source_rect.x_min.to_pixels().floor() as u32,
-            source_rect.y_min.to_pixels().floor() as u32,
-        );
-        let source_size = (
-            source_rect.width().to_pixels().ceil() as u32,
-            source_rect.height().to_pixels().ceil() as u32,
-        );
         let dest_point = args.get_object(activation, 2, "destPoint")?;
         let dest_point = (
             dest_point

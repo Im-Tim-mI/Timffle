@@ -1,0 +1,12 @@
+beginShaderFill null THREW TypeError #2007
+lineShaderStyle null THREW TypeError #2007
+beginShaderFill empty shader THREW ArgumentError #2004
+after errors n=0
+# pbj loaded bytes=447
+fill n=3 flash.display::GraphicsShaderFill shader same=true matrix=[1,0,0,1,0,0]
+fill pixel 10,10=FF640000 30,30=00000000
+fill+matrix matrix=[2,0,0,2,5,5] pixel 20,20=FF640000 5,5=00000000
+stroke n=4 fill=flash.display::GraphicsShaderFill shader same=true
+stroke pixel 10,10=FF640000 10,20=00000000
+graphicsData n=3 flash.display::GraphicsShaderFill matrix=[1,0,0,1,2,3] pixel 10,10=FF640000
+graphicsData null shader THREW TypeError #2007

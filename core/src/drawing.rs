@@ -1,12 +1,81 @@
 use crate::context::RenderContext;
-use ruffle_render::backend::{RenderBackend, ShapeHandle};
+use gc_arena::{DynamicRoot, Rootable};
+use ruffle_render::backend::{PixelBenderTarget, RenderBackend, ShapeHandle};
 use ruffle_render::bitmap::{BitmapHandle, BitmapInfo, BitmapSize, BitmapSource};
 use ruffle_render::commands::CommandHandler;
+use ruffle_render::pixel_bender::PixelBenderShaderHandle;
+use ruffle_render::pixel_bender_support::PixelBenderShaderArgument;
 use ruffle_render::shape_utils::{
     DistilledShape, DrawCommand, DrawPath, FillRule, cubic_curve_bounds, quadratic_curve_bounds,
 };
-use std::cell::OnceCell;
+use std::cell::{Cell, OnceCell, RefCell};
+use std::num::NonZeroU32;
 use swf::{FillStyle, LineStyle, Point, Rectangle, Twips};
+
+/// Timffle: a GC object kept alive by a `Drawing` (the `BitmapData` of a bitmap fill, so
+/// `Graphics.readGraphicsData` can hand back the same object Flash Player returns).
+#[derive(Clone)]
+pub struct ObjectRoot(pub DynamicRoot<Rootable![crate::avm2::Object<'_>]>);
+
+impl std::fmt::Debug for ObjectRoot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ObjectRoot")
+    }
+}
+
+/// Timffle: bitmap ids at or above this value name a `ShaderFill` instead of an entry of
+/// `Drawing::bitmaps` (see `Drawing::add_shader_fill`).
+const SHADER_FILL_ID_BASE: u16 = 0x8000;
+
+/// Timffle: a `Graphics.beginShaderFill` / `lineShaderStyle` fill. The Pixel Bender
+/// shader is evaluated once, when the shape is registered with the renderer, over the
+/// bounds of the fill it belongs to (mapped through the inverse of `matrix`, the
+/// shader-to-shape matrix), and the result is used as a bitmap fill. Shader inputs
+/// changed after the fill was committed are not re-evaluated until the drawing changes.
+#[derive(Clone)]
+pub struct ShaderFill {
+    shader: PixelBenderShaderHandle,
+    arguments: Vec<PixelBenderShaderArgument<'static>>,
+    /// Shader coordinates -> shape pixels, as given to `beginShaderFill`.
+    matrix: swf::Matrix,
+    /// The `Shader` object, handed back by readGraphicsData.
+    object: Option<ObjectRoot>,
+    /// Size of the evaluated bitmap, computed from the fill's bounds on first use.
+    size: Cell<Option<BitmapSize>>,
+    /// The evaluated bitmap (`Some(None)` once evaluation failed, e.g. without a GPU).
+    bitmap: RefCell<Option<Option<BitmapHandle>>>,
+}
+
+impl std::fmt::Debug for ShaderFill {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShaderFill")
+            .field("matrix", &self.matrix)
+            .field("size", &self.size.get())
+            .finish()
+    }
+}
+
+/// Timffle: the largest bitmap a shader fill is evaluated into (per side, pixels).
+const SHADER_FILL_MAX_SIZE: f64 = 4096.0;
+
+/// Timffle: one item of `Graphics.readGraphicsData`, in Flash Player's order (each fill
+/// group, then the strokes recorded inside it). Fill commands exclude the implicit
+/// closing segment; stroke commands include it and closed loops are already rotated
+/// the way Flash reports them (see `rotate_closed_stroke`).
+#[derive(Clone, Debug)]
+pub enum GraphicsReadItem {
+    Fill {
+        style: FillStyle,
+        /// The rule Flash reports: `evenOdd` for ordinary and triangle groups, the
+        /// `drawPath` rule for drawPath groups.
+        rule: FillRule,
+        commands: Vec<DrawCommand>,
+    },
+    Stroke {
+        style: LineStyle,
+        commands: Vec<DrawCommand>,
+    },
+}
 
 // Timffle: which API started a fill group. Flash Player keeps the sub-paths of one
 // `beginFill` in separate groups: ordinary drawing commands (moveTo/lineTo/drawRect…)
@@ -31,6 +100,10 @@ pub struct Drawing {
     edge_bounds: Rectangle<Twips>,
     paths: Vec<DrawingPath>,
     bitmaps: Vec<BitmapInfo>,
+    // Timffle: the `BitmapData` objects behind `bitmaps` (same length), for readGraphicsData.
+    bitmap_objects: Vec<Option<ObjectRoot>>,
+    // Timffle: shader fills, addressed by `SHADER_FILL_ID_BASE + index`.
+    shader_fills: Vec<ShaderFill>,
     current_fill: Option<DrawingFill>,
     current_line: Option<DrawingLine>,
     pending_lines: Vec<DrawingLine>,
@@ -55,6 +128,8 @@ impl Drawing {
             edge_bounds: Default::default(),
             paths: Vec::new(),
             bitmaps: Vec::new(),
+            bitmap_objects: Vec::new(),
+            shader_fills: Vec::new(),
             current_fill: None,
             current_line: None,
             pending_lines: Vec::new(),
@@ -72,6 +147,8 @@ impl Drawing {
             edge_bounds: shape.edge_bounds,
             paths: Vec::new(),
             bitmaps: Vec::new(),
+            bitmap_objects: Vec::new(),
+            shader_fills: Vec::new(),
             current_fill: None,
             current_line: None,
             pending_lines: Vec::new(),
@@ -172,6 +249,7 @@ impl Drawing {
                 rule: rule.unwrap_or(self.default_winding_rule),
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 origin,
+                implicit_closes: Vec::new(),
             });
         }
         self.fill_start = self.cursor;
@@ -241,6 +319,8 @@ impl Drawing {
         self.pending_lines.clear();
         self.paths.clear();
         self.bitmaps.clear();
+        self.bitmap_objects.clear();
+        self.shader_fills.clear();
         self.edge_bounds = Default::default();
         self.shape_bounds = Default::default();
         self.cursor = Point::ZERO;
@@ -337,7 +417,180 @@ impl Drawing {
     pub fn add_bitmap(&mut self, bitmap: BitmapInfo) -> u16 {
         let id = self.bitmaps.len() as u16;
         self.bitmaps.push(bitmap);
+        self.bitmap_objects.push(None);
         id
+    }
+
+    /// Timffle: remember the `BitmapData` object behind bitmap `id` (readGraphicsData
+    /// returns the same object, like Flash Player).
+    pub fn set_bitmap_object(&mut self, id: u16, object: ObjectRoot) {
+        if let Some(slot) = self.bitmap_objects.get_mut(id as usize) {
+            *slot = Some(object);
+        }
+    }
+
+    /// Timffle: the `BitmapData` object behind bitmap `id`, if known.
+    pub fn bitmap_object(&self, id: u16) -> Option<&ObjectRoot> {
+        self.bitmap_objects.get(id as usize)?.as_ref()
+    }
+
+    /// Timffle: register a shader fill (see `ShaderFill`) and return the bitmap fill
+    /// style that stands for it. `matrix` maps shader coordinates to shape pixels.
+    pub fn add_shader_fill(
+        &mut self,
+        shader: PixelBenderShaderHandle,
+        arguments: Vec<PixelBenderShaderArgument<'static>>,
+        matrix: swf::Matrix,
+        object: Option<ObjectRoot>,
+    ) -> FillStyle {
+        let id = SHADER_FILL_ID_BASE + self.shader_fills.len() as u16;
+        self.shader_fills.push(ShaderFill {
+            shader,
+            arguments,
+            matrix,
+            object,
+            size: Cell::new(None),
+            bitmap: RefCell::new(None),
+        });
+        let scale_matrix = swf::Matrix::scale(
+            (Twips::TWIPS_PER_PIXEL as i16).into(),
+            (Twips::TWIPS_PER_PIXEL as i16).into(),
+        );
+        FillStyle::Bitmap {
+            id,
+            matrix: matrix * scale_matrix,
+            is_smoothed: false,
+            is_repeating: false,
+        }
+    }
+
+    /// Timffle: whether bitmap `id` stands for a shader fill.
+    pub fn is_shader_fill(&self, id: u16) -> bool {
+        id >= SHADER_FILL_ID_BASE && ((id - SHADER_FILL_ID_BASE) as usize) < self.shader_fills.len()
+    }
+
+    /// Timffle: the bounds (in twips) of every fill and stroke drawn with bitmap `id`.
+    fn bitmap_fill_bounds(&self, id: u16) -> Rectangle<Twips> {
+        fn uses(style: &FillStyle, id: u16) -> bool {
+            matches!(style, FillStyle::Bitmap { id: fill_id, .. } if *fill_id == id)
+        }
+        let mut bounds = Rectangle::default();
+        let mut add = |commands: &[DrawCommand], width: Twips| {
+            let mut from = Point::ZERO;
+            for command in commands {
+                if !matches!(command, DrawCommand::MoveTo(_)) {
+                    bounds = stretch_bounds(&bounds, &DrawCommand::MoveTo(from), width, from);
+                    bounds = stretch_bounds(&bounds, command, width, from);
+                }
+                from = command.end_point();
+            }
+        };
+        let fills = self
+            .paths
+            .iter()
+            .filter_map(|path| match path {
+                DrawingPath::Fill(fill) => Some(fill),
+                DrawingPath::Line(_) => None,
+            })
+            .chain(self.current_fill.iter());
+        for fill in fills {
+            if uses(&fill.style, id) {
+                add(&fill.commands, Twips::ZERO);
+            }
+        }
+        let lines = self
+            .paths
+            .iter()
+            .filter_map(|path| match path {
+                DrawingPath::Line(line) => Some(line),
+                DrawingPath::Fill(_) => None,
+            })
+            .chain(self.pending_lines.iter())
+            .chain(self.current_line.iter());
+        for line in lines {
+            if uses(line.style.fill_style(), id) {
+                add(&line.commands, line.style.width());
+            }
+        }
+        bounds
+    }
+
+    /// Timffle: the size of the bitmap a shader fill is evaluated into: the fill's bounds
+    /// mapped back into shader space (where `outCoord()` starts at the origin), so the
+    /// shader sees the same coordinates as in Flash Player for a fill that lies in the
+    /// positive quadrant.
+    fn shader_fill_size(&self, id: u16) -> Option<BitmapSize> {
+        let entry = self.shader_fills.get((id - SHADER_FILL_ID_BASE) as usize)?;
+        if let Some(size) = entry.size.get() {
+            return Some(size);
+        }
+        let bounds = self.bitmap_fill_bounds(id);
+        if !bounds.is_valid() {
+            return None;
+        }
+        let inverse = ruffle_render::matrix::Matrix::from(entry.matrix)
+            .inverse()
+            .unwrap_or_default();
+        let corners = [
+            Point::new(bounds.x_min, bounds.y_min),
+            Point::new(bounds.x_max, bounds.y_min),
+            Point::new(bounds.x_min, bounds.y_max),
+            Point::new(bounds.x_max, bounds.y_max),
+        ];
+        let (mut max_x, mut max_y) = (0.0f64, 0.0f64);
+        for corner in corners {
+            let p = inverse * corner;
+            max_x = max_x.max(p.x.to_pixels());
+            max_y = max_y.max(p.y.to_pixels());
+        }
+        let size = BitmapSize {
+            width: max_x.ceil().clamp(1.0, SHADER_FILL_MAX_SIZE) as u32,
+            height: max_y.ceil().clamp(1.0, SHADER_FILL_MAX_SIZE) as u32,
+        };
+        entry.size.set(Some(size));
+        Some(size)
+    }
+
+    /// Timffle: evaluate the shader fill `id` (once) and return its bitmap.
+    fn shader_fill_bitmap(&self, id: u16, backend: &mut dyn RenderBackend) -> Option<BitmapHandle> {
+        let size = self.shader_fill_size(id)?;
+        let entry = self.shader_fills.get((id - SHADER_FILL_ID_BASE) as usize)?;
+        if let Some(cached) = entry.bitmap.borrow().as_ref() {
+            return cached.clone();
+        }
+        let result = (|| {
+            let handle = backend
+                .create_empty_texture(NonZeroU32::new(size.width)?, NonZeroU32::new(size.height)?)
+                .ok()?;
+            backend
+                .run_pixelbender_shader(
+                    entry.shader.clone(),
+                    &entry.arguments,
+                    &PixelBenderTarget::Bitmap(handle.clone()),
+                )
+                .ok()?;
+            Some(handle)
+        })();
+        if result.is_none() {
+            tracing::warn!("Shader fill could not be evaluated by this renderer; drawing nothing");
+        }
+        *entry.bitmap.borrow_mut() = Some(result.clone());
+        result
+    }
+
+    /// Timffle: the matrix a shader fill was given (shader coordinates -> shape pixels).
+    pub fn shader_fill_matrix(&self, id: u16) -> Option<swf::Matrix> {
+        self.shader_fills
+            .get(id.checked_sub(SHADER_FILL_ID_BASE)? as usize)
+            .map(|entry| entry.matrix)
+    }
+
+    /// Timffle: the `Shader` object of a shader fill, if known.
+    pub fn shader_fill_object(&self, id: u16) -> Option<&ObjectRoot> {
+        self.shader_fills
+            .get(id.checked_sub(SHADER_FILL_ID_BASE)? as usize)?
+            .object
+            .as_ref()
     }
 
     /// Obtain a `ShapeHandle` that represents this `Drawing`, or `None` if it is empty.
@@ -515,6 +768,7 @@ impl Drawing {
         if let Some(fill) = &mut self.current_fill
             && self.cursor != self.fill_start
         {
+            fill.implicit_closes.push(fill.commands.len());
             fill.commands.push(DrawCommand::LineTo(self.fill_start));
             if let Some(line) = &mut self.current_line
                 && line.auto_close
@@ -526,14 +780,162 @@ impl Drawing {
     }
 }
 
+impl Drawing {
+    /// Timffle: the recorded drawing in the form `Graphics.readGraphicsData` reports it
+    /// (measured on Flash Player 32, timffle/difftest/src/D55Graphics.hx,
+    /// D56Graphics2.hx, D57Winding.hx): every fill group in order, each followed by the
+    /// strokes recorded inside it; a stroke sub-path is split at every lineStyle change,
+    /// strokes of lineTo-drawn fills include the implicit closing segment and a closed
+    /// loop is reported starting after its first segment.
+    pub fn read_graphics_data(&self) -> Vec<GraphicsReadItem> {
+        let mut items = Vec::new();
+        let push_fill = |items: &mut Vec<GraphicsReadItem>, fill: &DrawingFill| {
+            let commands = fill_read_commands(&fill.commands, &fill.implicit_closes);
+            if commands
+                .iter()
+                .any(|c| !matches!(c, DrawCommand::MoveTo(_)))
+            {
+                items.push(GraphicsReadItem::Fill {
+                    style: fill.style.clone(),
+                    rule: match fill.origin {
+                        FillOrigin::Path(rule) => rule,
+                        FillOrigin::Commands | FillOrigin::Triangles => FillRule::EvenOdd,
+                    },
+                    commands,
+                });
+            }
+        };
+        let push_line = |items: &mut Vec<GraphicsReadItem>, line: &DrawingLine, close: bool| {
+            let mut commands = line.commands.clone();
+            if close
+                && let Some(last) = commands.last()
+                && last.end_point() != self.fill_start
+            {
+                commands.push(DrawCommand::LineTo(self.fill_start));
+            }
+            let commands = stroke_read_commands(&commands);
+            if !commands.is_empty() {
+                items.push(GraphicsReadItem::Stroke {
+                    style: line.style.clone(),
+                    commands,
+                });
+            }
+        };
+        for path in &self.paths {
+            match path {
+                DrawingPath::Fill(fill) => push_fill(&mut items, fill),
+                DrawingPath::Line(line) => push_line(&mut items, line, false),
+            }
+        }
+        if let Some(fill) = &self.current_fill {
+            push_fill(&mut items, fill);
+        }
+        // Only the stroke that is still being drawn gets the implicit closing segment
+        // of an open fill (`close_path` adds it to the current line at endFill time).
+        for line in &self.pending_lines {
+            push_line(&mut items, line, false);
+        }
+        if let Some(line) = &self.current_line {
+            push_line(
+                &mut items,
+                line,
+                self.current_fill.is_some() && line.auto_close,
+            );
+        }
+        items
+    }
+}
+
+/// Timffle: fill commands as readGraphicsData reports them: without the implicit closing
+/// segments, consecutive MoveTos collapsed into the last one, no trailing MoveTo.
+fn fill_read_commands(commands: &[DrawCommand], implicit_closes: &[usize]) -> Vec<DrawCommand> {
+    let mut out: Vec<DrawCommand> = Vec::with_capacity(commands.len());
+    for (i, command) in commands.iter().enumerate() {
+        if implicit_closes.contains(&i) {
+            continue;
+        }
+        if matches!(command, DrawCommand::MoveTo(_))
+            && matches!(out.last(), Some(DrawCommand::MoveTo(_)))
+        {
+            out.pop();
+        }
+        out.push(command.clone());
+    }
+    while matches!(out.last(), Some(DrawCommand::MoveTo(_))) {
+        out.pop();
+    }
+    out
+}
+
+/// Timffle: stroke commands as readGraphicsData reports them: sub-paths without a
+/// segment are dropped and closed loops are rotated (see `rotate_closed_stroke`).
+fn stroke_read_commands(commands: &[DrawCommand]) -> Vec<DrawCommand> {
+    let mut out = Vec::with_capacity(commands.len());
+    let mut sub_path: Vec<DrawCommand> = Vec::new();
+    let flush = |sub_path: &mut Vec<DrawCommand>, out: &mut Vec<DrawCommand>| {
+        if sub_path.len() > 1 {
+            out.extend(rotate_closed_stroke(sub_path));
+        }
+        sub_path.clear();
+    };
+    let mut start = Point::ZERO;
+    for command in commands {
+        if let DrawCommand::MoveTo(point) = command {
+            flush(&mut sub_path, &mut out);
+            start = *point;
+        } else if sub_path.is_empty() {
+            sub_path.push(DrawCommand::MoveTo(start));
+        }
+        sub_path.push(command.clone());
+    }
+    flush(&mut sub_path, &mut out);
+    out
+}
+
+/// Timffle: Flash Player reports a closed stroke loop `M p0, s1 (->p1), s2, …, sk (->p0)`
+/// as `M p1, s2, …, sk, s1` (it starts after the first segment and appends that segment
+/// at the end); segments after the closure point form a new MoveTo sub-path.
+fn rotate_closed_stroke(sub_path: &[DrawCommand]) -> Vec<DrawCommand> {
+    let DrawCommand::MoveTo(p0) = sub_path[0] else {
+        return sub_path.to_vec();
+    };
+    let closure = sub_path
+        .iter()
+        .enumerate()
+        .skip(2)
+        .find(|(_, c)| c.end_point() == p0)
+        .map(|(i, _)| i);
+    let Some(k) = closure else {
+        return sub_path.to_vec();
+    };
+    let first = &sub_path[1];
+    let mut out = Vec::with_capacity(sub_path.len() + 2);
+    out.push(DrawCommand::MoveTo(first.end_point()));
+    out.extend(sub_path[2..=k].iter().cloned());
+    out.push(first.clone());
+    if k + 1 < sub_path.len() {
+        out.push(DrawCommand::MoveTo(p0));
+        out.extend(sub_path[k + 1..].iter().cloned());
+    }
+    out
+}
+
 impl BitmapSource for Drawing {
     fn bitmap_size(&self, id: u16) -> Option<BitmapSize> {
+        // Timffle: shader fills are evaluated into a bitmap sized from the fill's bounds.
+        if self.is_shader_fill(id) {
+            return self.shader_fill_size(id);
+        }
         self.bitmaps.get(id as usize).map(|bm| BitmapSize {
             width: bm.width,
             height: bm.height,
         })
     }
-    fn bitmap_handle(&self, id: u16, _backend: &mut dyn RenderBackend) -> Option<BitmapHandle> {
+    fn bitmap_handle(&self, id: u16, backend: &mut dyn RenderBackend) -> Option<BitmapHandle> {
+        // Timffle: shader fills run the Pixel Bender shader when first rendered.
+        if self.is_shader_fill(id) {
+            return self.shader_fill_bitmap(id, backend);
+        }
         self.bitmaps.get(id as usize).map(|bm| bm.handle.clone())
     }
 }
@@ -545,6 +947,9 @@ struct DrawingFill {
     commands: Vec<DrawCommand>,
     // Timffle: which API started this group (see `FillOrigin`).
     origin: FillOrigin,
+    // Timffle: indices in `commands` of closing segments added by `close_path` (not
+    // reported by readGraphicsData).
+    implicit_closes: Vec<usize>,
 }
 
 #[derive(Debug, Clone)]
