@@ -94,7 +94,6 @@ package {
 
             trace("// flash.system.SystemUpdater");
             var updater:SystemUpdater = new SystemUpdater();
-            tryCall("update(null)", function():void { updater.update(null); });
             tryCall("update(bogus)", function():void { updater.update("bogus"); });
             updater.addEventListener(StatusEvent.STATUS, function(e:StatusEvent):void {
                 trace("updater status: " + e.code + " / " + e.level);
@@ -108,10 +107,14 @@ package {
             cancelled.addEventListener(StatusEvent.STATUS, function(e:StatusEvent):void {
                 trace("cancelled updater status (should not happen)");
             });
-            cancelled.update(SystemUpdaterType.SYSTEM);
+            // Flash Player 32 runs one update in the whole player: the DRM update above is
+            // still pending, so this is Error #2202 (measured).
+            tryCall("update on another instance", function():void { cancelled.update(SystemUpdaterType.SYSTEM); });
             cancelled.cancel();
             cancelled.cancel();
             trace("cancel(): no error");
+            // Last, because a null type leaves the updater busy for good (measured).
+            tryCall("update(null)", function():void { new SystemUpdater().update(null); });
 
             trace("// Security.disableAVM1Loading");
             Security.disableAVM1Loading = true;

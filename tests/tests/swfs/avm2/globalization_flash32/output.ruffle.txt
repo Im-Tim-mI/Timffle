@@ -1,0 +1,222 @@
+// DateTimeFormatter
+available=22 has zh-TW=true zh-CN=true ja-JP=true de-DE=true zh-Hant-TW=false
+en-US actual=en-US status=noError firstWeekday=0
+en-US long date=[EEEE, MMMM d, yyyy] time=[h:mm:ss a] both=[EEEE, MMMM d, yyyy h:mm:ss a] -> Tuesday, March 5, 2024 2:07:09 PM
+en-US medium date=[EEEE, MMMM d, yyyy] time=[h:mm:ss a] both=[EEEE, MMMM d, yyyy h:mm:ss a] -> Tuesday, March 5, 2024 2:07:09 PM
+en-US short date=[M/d/yyyy] time=[h:mm a] both=[M/d/yyyy h:mm a] -> 3/5/2024 2:07 PM
+en-US none date=[] time=[] both=[] -> 
+en-US local=Tuesday, March 5, 2024 2:07:09 PM
+en-US months=[January|February|March|April|May|June|July|August|September|October|November|December] short=[Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec] longAbbr=[Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec] standalone=[January|February|March|April|May|June|July|August|September|October|November|December]
+en-US weekdays=[Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday] short=[Sun|Mon|Tue|Wed|Thu|Fri|Sat] longAbbr=[Sun|Mon|Tue|Wed|Thu|Fri|Sat]
+en-US pattern status=unsupportedError -> 2024-03-05 Tuesday Tue Mar March PM 2:07:09 2 14 14         o'clock
+en-US pattern2 -> AD Anno Domini 24 2024 2024 March Tuesday   
+zh-TW actual=zh-TW status=noError firstWeekday=0
+zh-TW long date=[yyyy年M月d日 EEEE] time=[a hh:mm:ss] both=[yyyy年M月d日 EEEE a hh:mm:ss] -> 2024年3月5日 星期二 下午 02:07:09
+zh-TW medium date=[yyyy年M月d日 EEEE] time=[a hh:mm:ss] both=[yyyy年M月d日 EEEE a hh:mm:ss] -> 2024年3月5日 星期二 下午 02:07:09
+zh-TW short date=[yyyy/M/d] time=[a hh:mm] both=[yyyy/M/d a hh:mm] -> 2024/3/5 下午 02:07
+zh-TW none date=[] time=[] both=[] -> 
+zh-TW local=2024年3月5日 星期二 下午 02:07:09
+zh-TW months=[一月|二月|三月|四月|五月|六月|七月|八月|九月|十月|十一月|十二月] short=[1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月] longAbbr=[1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月] standalone=[一月|二月|三月|四月|五月|六月|七月|八月|九月|十月|十一月|十二月]
+zh-TW weekdays=[星期日|星期一|星期二|星期三|星期四|星期五|星期六] short=[週日|週一|週二|週三|週四|週五|週六] longAbbr=[週日|週一|週二|週三|週四|週五|週六]
+zh-TW pattern status=unsupportedError -> 2024-03-05 星期二 週二 3月 三月 下午 2:07:09 2 14 14         o'clock
+zh-TW pattern2 -> AD Anno Domini 24 2024 2024 三月 星期二   
+zh-CN actual=zh-CN status=noError firstWeekday=1
+zh-CN long date=[yyyy年M月d日EEEE] time=[H:mm:ss] both=[yyyy年M月d日EEEE H:mm:ss] -> 2024年3月5日星期二 14:07:09
+zh-CN medium date=[yyyy年M月d日EEEE] time=[H:mm:ss] both=[yyyy年M月d日EEEE H:mm:ss] -> 2024年3月5日星期二 14:07:09
+zh-CN short date=[yyyy/M/d] time=[H:mm] both=[yyyy/M/d H:mm] -> 2024/3/5 14:07
+zh-CN none date=[] time=[] both=[] -> 
+zh-CN local=2024年3月5日星期二 14:07:09
+zh-CN months=[一月|二月|三月|四月|五月|六月|七月|八月|九月|十月|十一月|十二月] short=[1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月] longAbbr=[1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月] standalone=[一月|二月|三月|四月|五月|六月|七月|八月|九月|十月|十一月|十二月]
+zh-CN weekdays=[星期日|星期一|星期二|星期三|星期四|星期五|星期六] short=[周日|周一|周二|周三|周四|周五|周六] longAbbr=[周日|周一|周二|周三|周四|周五|周六]
+zh-CN pattern status=unsupportedError -> 2024-03-05 星期二 周二 3月 三月 下午 2:07:09 2 14 14         o'clock
+zh-CN pattern2 -> AD Anno Domini 24 2024 2024 三月 星期二   
+ja-JP actual=ja-JP status=noError firstWeekday=0
+ja-JP long date=[yyyy年M月d日EEEE] time=[H:mm:ss] both=[yyyy年M月d日EEEE H:mm:ss] -> 2024年3月5日火曜日 14:07:09
+ja-JP medium date=[yyyy年M月d日EEEE] time=[H:mm:ss] both=[yyyy年M月d日EEEE H:mm:ss] -> 2024年3月5日火曜日 14:07:09
+ja-JP short date=[yyyy/MM/dd] time=[H:mm] both=[yyyy/MM/dd H:mm] -> 2024/03/05 14:07
+ja-JP none date=[] time=[] both=[] -> 
+ja-JP local=2024年3月5日火曜日 14:07:09
+ja-JP months=[1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月] short=[1|2|3|4|5|6|7|8|9|10|11|12] longAbbr=[1|2|3|4|5|6|7|8|9|10|11|12] standalone=[1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月]
+ja-JP weekdays=[日曜日|月曜日|火曜日|水曜日|木曜日|金曜日|土曜日] short=[日|月|火|水|木|金|土] longAbbr=[日|月|火|水|木|金|土]
+ja-JP pattern status=unsupportedError -> 2024-03-05 火曜日 火 3 3月 午後 2:07:09 2 14 14         o'clock
+ja-JP pattern2 -> AD Anno Domini 24 2024 2024 3月 火曜日   
+de-DE actual=de-DE status=noError firstWeekday=1
+de-DE long date=[EEEE, d. MMMM yyyy] time=[HH:mm:ss] both=[EEEE, d. MMMM yyyy HH:mm:ss] -> Dienstag, 5. März 2024 14:07:09
+de-DE medium date=[EEEE, d. MMMM yyyy] time=[HH:mm:ss] both=[EEEE, d. MMMM yyyy HH:mm:ss] -> Dienstag, 5. März 2024 14:07:09
+de-DE short date=[dd.MM.yy] time=[HH:mm] both=[dd.MM.yy HH:mm] -> 05.03.24 14:07
+de-DE none date=[] time=[] both=[] -> 
+de-DE local=Dienstag, 5. März 2024 14:07:09
+de-DE months=[Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember] short=[Jan|Feb|Mär|Apr|Mai|Jun|Jul|Aug|Sep|Okt|Nov|Dez] longAbbr=[Jan|Feb|Mär|Apr|Mai|Jun|Jul|Aug|Sep|Okt|Nov|Dez] standalone=[Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember]
+de-DE weekdays=[Sonntag|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag] short=[So|Mo|Di|Mi|Do|Fr|Sa] longAbbr=[So|Mo|Di|Mi|Do|Fr|Sa]
+de-DE pattern status=unsupportedError -> 2024-03-05 Dienstag Di Mär März nachm. 2:07:09 2 14 14         o'clock
+de-DE pattern2 -> AD Anno Domini 24 2024 2024 März Dienstag   
+xx status=patternSyntaxError pattern=[EEEE, MMMM d, yyyy h:mm:ss a]
+bad pattern THREW TypeError #2007
+bad style THREW ArgumentError #2008
+bad nameStyle THREW ArgumentError #2008
+NaN date -> [] status=illegalArgumentError
+invalid date THREW TypeError #2007
+// NumberFormatter
+en-US actual=en-US status=noError frac=2 group=[,] dec=[.] pattern=3;* negFmt=1 negSym=[-] digits=30 leadingZero=true trailingZeros=true useGrouping=true
+en-US 1,234,567.89 | -1,234.50 | 0.50 | -1,234,567.00 | 4,294,967,295.00
+en-US frac2 1,234,567.89 | -1,234.50 | 0.01 | 2.35 | -0.00
+en-US parse=1234.56 2-10 status=noError
+en-US parse(123)=123 1-4 status=noError
+en-US parseNumber=1234.5 status=noError / 1234.5 status=noError
+zh-TW actual=zh-TW status=noError frac=2 group=[,] dec=[.] pattern=3;* negFmt=1 negSym=[-] digits=30 leadingZero=true trailingZeros=true useGrouping=true
+zh-TW 1,234,567.89 | -1,234.50 | 0.50 | -1,234,567.00 | 4,294,967,295.00
+zh-TW frac2 1,234,567.89 | -1,234.50 | 0.01 | 2.35 | -0.00
+zh-TW parse=1234.56 2-10 status=noError
+zh-TW parse(123)=123 1-4 status=noError
+zh-TW parseNumber=1234.5 status=noError / 1234.5 status=noError
+zh-CN actual=zh-CN status=noError frac=2 group=[,] dec=[.] pattern=3;* negFmt=1 negSym=[-] digits=30 leadingZero=true trailingZeros=true useGrouping=true
+zh-CN 1,234,567.89 | -1,234.50 | 0.50 | -1,234,567.00 | 4,294,967,295.00
+zh-CN frac2 1,234,567.89 | -1,234.50 | 0.01 | 2.35 | -0.00
+zh-CN parse=1234.56 2-10 status=noError
+zh-CN parse(123)=123 1-4 status=noError
+zh-CN parseNumber=1234.5 status=noError / 1234.5 status=noError
+ja-JP actual=ja-JP status=noError frac=2 group=[,] dec=[.] pattern=3;* negFmt=1 negSym=[-] digits=30 leadingZero=true trailingZeros=true useGrouping=true
+ja-JP 1,234,567.89 | -1,234.50 | 0.50 | -1,234,567.00 | 4,294,967,295.00
+ja-JP frac2 1,234,567.89 | -1,234.50 | 0.01 | 2.35 | -0.00
+ja-JP parse=1234.56 2-10 status=noError
+ja-JP parse(123)=123 1-4 status=noError
+ja-JP parseNumber=1234.5 status=noError / 1234.5 status=noError
+de-DE actual=de-DE status=noError frac=2 group=[.] dec=[,] pattern=3;* negFmt=1 negSym=[-] digits=30 leadingZero=true trailingZeros=true useGrouping=true
+de-DE 1.234.567,89 | -1.234,50 | 0,50 | -1.234.567,00 | 4.294.967.295,00
+de-DE frac2 1.234.567,89 | -1.234,50 | 0,01 | 2,35 | -0,00
+de-DE parse=1.234 2-7 status=noError
+de-DE parse(123)=123 1-4 status=noError
+de-DE parseNumber=12345 status=noError / NaN status=parseError
+negFmt=7 -> 1 status=invalidAttrValue
+frac=-1 -> 2 status=illegalArgumentError
+frac=25 -> 25 status=noError 1.5000000000000000000000000
+pattern=3; -> 3;* status=illegalArgumentError
+pattern=abc -> 3;* status=illegalArgumentError
+digitsType=5 -> 5 status=noError
+digitsType=arabic -> 660 status=noError -١,٢٣٤.٥٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠٠
+groupingSeparator=null THREW TypeError #2007
+groupSep='' -> [] status=noError 1234567.0000000000000000000000000
+decSep=ab -> [ab] status=noError 1ab5000000000000000000000000
+negSym='' -> [-] status=unsupportedError -1ab5000000000000000000000000
+negSym=~ -> [-] status=unsupportedError -1.50
+negSym=- -> [-] status=unsupportedError
+currency negSym=~ -> [-] status=unsupportedError ($1.50)
+currency decSep=, -> [,] status=noError ($1,50)
+locale null THREW TypeError #2007
+xx-YY -> en-US status=usingDefaultWarning
+de-AT -> de-DE status=usingFallbackWarning 1.234,50
+de -> de-DE status=noError
+zh -> zh-CN status=noError
+zh-Hant-TW -> zh-TW status=noError
+// CurrencyFormatter
+en-US actual=en-US status=noError iso=USD sym=[$] frac=2 group=[,] dec=[.] pattern=3;* pos=0 neg=0 negSym=[-] leadingZero=true trailingZeros=true useGrouping=true
+en-US USD1,234.57 | (USD1,234.50) | $1,234.50 | ($1,234.50) | $0.50
+en-US safeUSD=true safeOwn=true status=noError
+en-US setCurrency status=noError (USD1,234.50) | (US$1,234.50)
+zh-TW actual=zh-TW status=noError iso=TWD sym=[NT$] frac=2 group=[,] dec=[.] pattern=3;* pos=0 neg=1 negSym=[-] leadingZero=true trailingZeros=true useGrouping=true
+zh-TW TWD1,234.57 | -TWD1,234.50 | NT$1,234.50 | -NT$1,234.50 | NT$0.50
+zh-TW safeUSD=false safeOwn=true status=noError
+zh-TW setCurrency status=noError -USD1,234.50 | -US$1,234.50
+zh-CN actual=zh-CN status=noError iso=CNY sym=[¥] frac=2 group=[,] dec=[.] pattern=3;* pos=0 neg=2 negSym=[-] leadingZero=true trailingZeros=true useGrouping=true
+zh-CN CNY1,234.57 | CNY-1,234.50 | ¥1,234.50 | ¥-1,234.50 | ¥0.50
+zh-CN safeUSD=false safeOwn=true status=noError
+zh-CN setCurrency status=noError USD-1,234.50 | US$-1,234.50
+ja-JP actual=ja-JP status=noError iso=JPY sym=[¥] frac=0 group=[,] dec=[.] pattern=3;* pos=0 neg=1 negSym=[-] leadingZero=true trailingZeros=true useGrouping=true
+ja-JP JPY1,235 | -JPY1,235 | ¥1,235 | -¥1,235 | ¥1
+ja-JP safeUSD=false safeOwn=true status=noError
+ja-JP setCurrency status=noError -USD1,235 | -US$1,235
+de-DE actual=de-DE status=noError iso=EUR sym=[€] frac=2 group=[.] dec=[,] pattern=3;* pos=3 neg=8 negSym=[-] leadingZero=true trailingZeros=true useGrouping=true
+de-DE 1.234,57 EUR | -1.234,50 EUR | 1.234,50 € | -1.234,50 € | 0,50 €
+de-DE safeUSD=false safeOwn=true status=noError
+de-DE setCurrency status=noError -1.234,50 USD | -1.234,50 US$
+usd -> iso=USD sym=[$] status=illegalArgumentError
+ABCD -> iso=USD sym=[$] status=illegalArgumentError
+XYZ,'' -> iso=XYZ sym=[] status=noError 1.00
+setCurrency null THREW TypeError #2007
+pos=4 -> 0 status=invalidAttrValue
+neg=16 -> 0 status=invalidAttrValue
+frac=-1 -> 2 status=illegalArgumentError
+0:($1.50) 1:-$1.50 2:$-1.50 3:$1.50- 4:(1.50$) 5:-1.50$ 6:1.50-$ 7:1.50$- 8:-1.50 $ 9:-$ 1.50 10:1.50 $- 11:$ 1.50- 12:$ -1.50 13:1.50- $ 14:($ 1.50) 15:(1.50 $)
+0:$1.50 1:1.50$ 2:$ 1.50 3:1.50 $
+parse[$ 5] -> 5 cur=[$] status=noError
+parse[$  5] -> 5 cur=[$ ] status=noError
+parse[USD  5] -> 5 cur=[USD ] status=noError
+parse[ $5] -> 5 cur=[$] status=noError
+parse[$5 ] -> 5 cur=[$] status=noError
+parse[US$ 5] -> 5 cur=[US$] status=noError
+parse[(USD 5)] -> -5 cur=[USD] status=noError
+parse[( $5 )] -> NaN cur=[] status=parseError
+parse[$5.] -> 5 cur=[$] status=noError
+parse[$.5] -> 0.5 cur=[$] status=noError
+parse[$1,23] -> 123 cur=[$] status=noError
+parse[$1e3] -> NaN cur=[] status=parseError
+parse[$+5] -> 5 cur=[$+] status=noError
+parse[$1 000] -> NaN cur=[] status=parseError
+parse[$1,234,567.891] -> 1234567.891 cur=[$] status=noError
+parse[$1,234.56] -> 1234.56 cur=[$] status=noError
+parse[1234.56 USD] -> NaN cur=[] status=parseError
+parse[USD 1234.56] -> 1234.56 cur=[USD] status=noError
+parse[(€12.5)] -> -12.5 cur=[€] status=noError
+parse[12abc34] -> NaN cur=[] status=parseError
+parse[USD 12 EUR] -> NaN cur=[] status=parseError
+parse[-$5] -> NaN cur=[] status=parseError
+parse[$ 5 -] -> NaN cur=[] status=parseError
+parse[5.5$] -> NaN cur=[] status=parseError
+parse[  $  1,000  ] -> 1000 cur=[$ ] status=noError
+parse[$-5] -> NaN cur=[] status=parseError
+parse[-5] -> NaN cur=[] status=parseError
+parse[5] -> 5 cur=[] status=noError
+parse[$] -> NaN cur=[] status=parseError
+parse[] -> NaN cur=[] status=illegalArgumentError
+parse[1.5 USD extra] -> NaN cur=[] status=parseError
+parse[$1.5 USD] -> NaN cur=[] status=parseError
+parse[$(1.5)] -> NaN cur=[] status=parseError
+parse[($1.5)] -> -1.5 cur=[$] status=noError
+parse[1,2,3.4] -> 123.4 cur=[] status=noError
+parse null THREW TypeError #2007
+de parse[5€] -> 5 cur=[€] status=noError
+de parse[5  €] -> 5 cur=[ €] status=noError
+de parse[5 € ] -> 5 cur=[€] status=noError
+de parse[-5€] -> -5 cur=[€] status=noError
+de parse[5 €-] -> NaN cur=[] status=parseError
+de parse[(5 €)] -> NaN cur=[] status=parseError
+de parse[1.234,56 €] -> 1234.56 cur=[€] status=noError
+de parse[€ 1.234,56] -> NaN cur=[] status=parseError
+de parse[-1,5 €] -> -1.5 cur=[€] status=noError
+de parse[1,5 EUR] -> 1.5 cur=[EUR] status=noError
+de parse[1.234,56] -> 1234.56 cur=[] status=noError
+// StringTools
+en-US actual=en-US status=noError upper=[IİII SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[iiıi ß σς ǆ àé ﬁ] status=noError
+zh-TW actual=zh-TW status=noError upper=[IİII SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[iiıi ß σς ǆ àé ﬁ] status=noError
+zh-CN actual=zh-CN status=noError upper=[IİII SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[iiıi ß σς ǆ àé ﬁ] status=noError
+ja-JP actual=ja-JP status=noError upper=[IİII SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[iiıi ß σς ǆ àé ﬁ] status=noError
+de-DE actual=de-DE status=noError upper=[IİII SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[iiıi ß σς ǆ àé ﬁ] status=noError
+tr-TR actual=tr-TR status=noError upper=[IİIİ SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[ıiıi ß σς ǆ àé ﬁ] status=noError
+lt-LT actual=en-US status=usingDefaultWarning upper=[IİII SS ΣΣ Ǆ ÀÉ ﬁ] status=noError lower=[iiıi ß σς ǆ àé ﬁ] status=noError
+null THREW TypeError #2007
+// Collator
+en-US actual=en-US status=noError sorting: a/A=-1 A/a=1 a/b=-1 é/e=1 e/é=-1 ab/aB=-1 version2/version10=1 O'Brian/OBrian=1 ａ/a=1 ア/あ=1 a/ä=-1 ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=1 a-b/ab=1 10/9=-1 /a=-1 æ/ae=0 ß/ss=0 Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=-1 côte/coté=1 ok/OK=-1
+en-US matching: a/A=0= A/a=0= a/b=-1 é/e=0= e/é=0= ab/aB=0= version2/version10=1 O'Brian/OBrian=0= ａ/a=0= ア/あ=0= a/ä=0= ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=0= a-b/ab=0= 10/9=-1 /a=-1 æ/ae=0= ß/ss=0= Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=0= côte/coté=0= ok/OK=0=
+en-US flags sorting: ignoreCase=false ignoreDiacritics=false ignoreSymbols=false ignoreKanaType=false ignoreCharacterWidth=false numeric=false matching: ignoreCase=true ignoreDiacritics=true ignoreSymbols=true ignoreKanaType=true ignoreCharacterWidth=true numeric=false
+zh-TW actual=zh-TW status=noError sorting: a/A=-1 A/a=1 a/b=-1 é/e=1 e/é=-1 ab/aB=-1 version2/version10=1 O'Brian/OBrian=1 ａ/a=1 ア/あ=1 a/ä=-1 ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=1 a-b/ab=1 10/9=-1 /a=-1 æ/ae=0 ß/ss=0 Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=-1 côte/coté=1 ok/OK=-1
+zh-TW matching: a/A=0= A/a=0= a/b=-1 é/e=0= e/é=0= ab/aB=0= version2/version10=1 O'Brian/OBrian=0= ａ/a=0= ア/あ=0= a/ä=0= ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=0= a-b/ab=0= 10/9=-1 /a=-1 æ/ae=0= ß/ss=0= Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=0= côte/coté=0= ok/OK=0=
+zh-TW flags sorting: ignoreCase=false ignoreDiacritics=false ignoreSymbols=false ignoreKanaType=false ignoreCharacterWidth=false numeric=false matching: ignoreCase=true ignoreDiacritics=true ignoreSymbols=true ignoreKanaType=true ignoreCharacterWidth=true numeric=false
+zh-CN actual=zh-CN status=noError sorting: a/A=-1 A/a=1 a/b=-1 é/e=1 e/é=-1 ab/aB=-1 version2/version10=1 O'Brian/OBrian=1 ａ/a=1 ア/あ=1 a/ä=-1 ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=1 a-b/ab=1 10/9=-1 /a=-1 æ/ae=0 ß/ss=0 Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=-1 côte/coté=1 ok/OK=-1
+zh-CN matching: a/A=0= A/a=0= a/b=-1 é/e=0= e/é=0= ab/aB=0= version2/version10=1 O'Brian/OBrian=0= ａ/a=0= ア/あ=0= a/ä=0= ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=0= a-b/ab=0= 10/9=-1 /a=-1 æ/ae=0= ß/ss=0= Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=0= côte/coté=0= ok/OK=0=
+zh-CN flags sorting: ignoreCase=false ignoreDiacritics=false ignoreSymbols=false ignoreKanaType=false ignoreCharacterWidth=false numeric=false matching: ignoreCase=true ignoreDiacritics=true ignoreSymbols=true ignoreKanaType=true ignoreCharacterWidth=true numeric=false
+ja-JP actual=ja-JP status=noError sorting: a/A=-1 A/a=1 a/b=-1 é/e=1 e/é=-1 ab/aB=-1 version2/version10=1 O'Brian/OBrian=1 ａ/a=1 ア/あ=1 a/ä=-1 ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=1 a-b/ab=1 10/9=-1 /a=-1 æ/ae=0 ß/ss=0 Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=-1 côte/coté=1 ok/OK=-1
+ja-JP matching: a/A=0= A/a=0= a/b=-1 é/e=0= e/é=0= ab/aB=0= version2/version10=1 O'Brian/OBrian=0= ａ/a=0= ア/あ=0= a/ä=0= ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=0= a-b/ab=0= 10/9=-1 /a=-1 æ/ae=0= ß/ss=0= Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=0= côte/coté=0= ok/OK=0=
+ja-JP flags sorting: ignoreCase=false ignoreDiacritics=false ignoreSymbols=false ignoreKanaType=false ignoreCharacterWidth=false numeric=false matching: ignoreCase=true ignoreDiacritics=true ignoreSymbols=true ignoreKanaType=true ignoreCharacterWidth=true numeric=false
+de-DE actual=de-DE status=noError sorting: a/A=-1 A/a=1 a/b=-1 é/e=1 e/é=-1 ab/aB=-1 version2/version10=1 O'Brian/OBrian=1 ａ/a=1 ア/あ=1 a/ä=-1 ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=1 a-b/ab=1 10/9=-1 /a=-1 æ/ae=0 ß/ss=0 Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=-1 côte/coté=1 ok/OK=-1
+de-DE matching: a/A=0= A/a=0= a/b=-1 é/e=0= e/é=0= ab/aB=0= version2/version10=1 O'Brian/OBrian=0= ａ/a=0= ア/あ=0= a/ä=0= ä/b=-1 z/ä=1 中/文=-1 一/丁=-1 ab/a b=0= a-b/ab=0= 10/9=-1 /a=-1 æ/ae=0= ß/ss=0= Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=0= côte/coté=0= ok/OK=0=
+de-DE flags sorting: ignoreCase=false ignoreDiacritics=false ignoreSymbols=false ignoreKanaType=false ignoreCharacterWidth=false numeric=false matching: ignoreCase=true ignoreDiacritics=true ignoreSymbols=true ignoreKanaType=true ignoreCharacterWidth=true numeric=false
+sv-SE actual=sv-SE status=noError sorting: a/A=-1 A/a=1 a/b=-1 é/e=1 e/é=-1 ab/aB=-1 version2/version10=1 O'Brian/OBrian=1 ａ/a=1 ア/あ=1 a/ä=-1 ä/b=1 z/ä=-1 中/文=-1 一/丁=-1 ab/a b=1 a-b/ab=1 10/9=-1 /a=-1 æ/ae=0 ß/ss=0 Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=-1 côte/coté=1 ok/OK=-1
+sv-SE matching: a/A=0= A/a=0= a/b=-1 é/e=0= e/é=0= ab/aB=0= version2/version10=1 O'Brian/OBrian=0= ａ/a=0= ア/あ=0= a/ä=-1 ä/b=1 z/ä=-1 中/文=-1 一/丁=-1 ab/a b=0= a-b/ab=0= 10/9=-1 /a=-1 æ/ae=0= ß/ss=0= Z/a=1 あ/い=-1 ア/イ=-1 cote/côte=0= côte/coté=0= ok/OK=0=
+sv-SE flags sorting: ignoreCase=false ignoreDiacritics=false ignoreSymbols=false ignoreKanaType=false ignoreCharacterWidth=false numeric=false matching: ignoreCase=true ignoreDiacritics=true ignoreSymbols=true ignoreKanaType=true ignoreCharacterWidth=true numeric=false
+numeric: version2/version10=-1 10/9=1 a10/a9=1 status=noError
+ignoreCase: a/A=0 ab/aB=0 status=noError
+ignoreDiacritics: é/e=0 a/ä=0 status=noError
+ignoreSymbols: O'Brian/OBrian=0 ab/a b=0 a-b/ab=0 status=noError
+ignoreWidth: ａ/a=0 status=noError
+ignoreKana: ア/あ=0 status=noError
+compare null THREW TypeError #2007

@@ -241,6 +241,7 @@ impl Drawing {
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 is_closed: false,
                 auto_close,
+                close_only: false,
             });
         }
         if let Some(style) = style {
@@ -249,7 +250,6 @@ impl Drawing {
                 rule: rule.unwrap_or(self.default_winding_rule),
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 origin,
-                implicit_closes: Vec::new(),
             });
         }
         self.fill_start = self.cursor;
@@ -308,6 +308,7 @@ impl Drawing {
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 is_closed: false,
                 auto_close,
+                close_only: false,
             });
             self.mark_dirty();
         }
@@ -346,6 +347,7 @@ impl Drawing {
                 commands: vec![DrawCommand::MoveTo(self.cursor)],
                 is_closed: false,
                 auto_close: true,
+                close_only: false,
             });
         }
 
@@ -768,11 +770,14 @@ impl Drawing {
         if let Some(fill) = &mut self.current_fill
             && self.cursor != self.fill_start
         {
-            fill.implicit_closes.push(fill.commands.len());
             fill.commands.push(DrawCommand::LineTo(self.fill_start));
             if let Some(line) = &mut self.current_line
                 && line.auto_close
             {
+                // Timffle: a stroke made of nothing but this closing segment (the
+                // lineStyle continued after a `drawPath`) is drawn but not reported by
+                // readGraphicsData (Flash Player 32, measured).
+                line.close_only = line.commands.len() == 1;
                 line.commands.push(DrawCommand::LineTo(self.fill_start));
             }
             self.mark_dirty();
@@ -790,7 +795,7 @@ impl Drawing {
     pub fn read_graphics_data(&self) -> Vec<GraphicsReadItem> {
         let mut items = Vec::new();
         let push_fill = |items: &mut Vec<GraphicsReadItem>, fill: &DrawingFill| {
-            let commands = fill_read_commands(&fill.commands, &fill.implicit_closes);
+            let commands = fill_read_commands(&fill.commands);
             if commands
                 .iter()
                 .any(|c| !matches!(c, DrawCommand::MoveTo(_)))
@@ -806,6 +811,9 @@ impl Drawing {
             }
         };
         let push_line = |items: &mut Vec<GraphicsReadItem>, line: &DrawingLine, close: bool| {
+            if line.close_only {
+                return;
+            }
             let mut commands = line.commands.clone();
             if close
                 && let Some(last) = commands.last()
@@ -846,21 +854,32 @@ impl Drawing {
     }
 }
 
-/// Timffle: fill commands as readGraphicsData reports them: without the implicit closing
-/// segments, consecutive MoveTos collapsed into the last one, no trailing MoveTo.
-fn fill_read_commands(commands: &[DrawCommand], implicit_closes: &[usize]) -> Vec<DrawCommand> {
-    let mut out: Vec<DrawCommand> = Vec::with_capacity(commands.len());
-    for (i, command) in commands.iter().enumerate() {
-        if implicit_closes.contains(&i) {
-            continue;
-        }
-        if matches!(command, DrawCommand::MoveTo(_))
-            && matches!(out.last(), Some(DrawCommand::MoveTo(_)))
+/// Timffle: fill commands as readGraphicsData reports them: consecutive MoveTos collapsed
+/// into the last one, no trailing MoveTo, and every sub-path closed with a line back to
+/// its start (Flash Player 32 reports the closing segment of an open fill, also of a
+/// `drawPath` sub-path and of a fill that `endFill` has not closed yet; measured).
+fn fill_read_commands(commands: &[DrawCommand]) -> Vec<DrawCommand> {
+    let mut out: Vec<DrawCommand> = Vec::with_capacity(commands.len() + 2);
+    let mut start: Option<Point<Twips>> = None;
+    let close = |out: &mut Vec<DrawCommand>, start: Option<Point<Twips>>| {
+        if let (Some(start), Some(last)) = (start, out.last())
+            && !matches!(last, DrawCommand::MoveTo(_))
+            && last.end_point() != start
         {
-            out.pop();
+            out.push(DrawCommand::LineTo(start));
+        }
+    };
+    for command in commands {
+        if let DrawCommand::MoveTo(point) = command {
+            close(&mut out, start);
+            if matches!(out.last(), Some(DrawCommand::MoveTo(_))) {
+                out.pop();
+            }
+            start = Some(*point);
         }
         out.push(command.clone());
     }
+    close(&mut out, start);
     while matches!(out.last(), Some(DrawCommand::MoveTo(_))) {
         out.pop();
     }
@@ -947,9 +966,6 @@ struct DrawingFill {
     commands: Vec<DrawCommand>,
     // Timffle: which API started this group (see `FillOrigin`).
     origin: FillOrigin,
-    // Timffle: indices in `commands` of closing segments added by `close_path` (not
-    // reported by readGraphicsData).
-    implicit_closes: Vec<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -959,6 +975,8 @@ struct DrawingLine {
     is_closed: bool,
     // Timffle: false for drawPath strokes, which never get the implicit closing segment.
     auto_close: bool,
+    // Timffle: the only segment is the implicit closing one (see `close_path`).
+    close_only: bool,
 }
 
 #[derive(Debug, Clone)]

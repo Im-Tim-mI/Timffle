@@ -122,13 +122,32 @@ package flash.text {
 
         public native function get selectedText():String;
 
-        // Timffle: the undocumented rich-text trio playerglobal declares.
-        // `getRawText` is the plain text, `getXMLText` the Flash HTML
-        // (`<TEXTFORMAT>`/`<P>`/`<FONT>`) of a character range, and
-        // `insertXMLText` replaces a range with such HTML, keeping its formatting.
+        // Timffle: the undocumented rich-text trio playerglobal declares, as Flash Player 32
+        // behaves (measured): `getRawText` is the text with paragraph breaks as "\n",
+        // `getXMLText` a `<flashrichtext version="1">` document with one `<textformat>` per
+        // format run, and `insertXMLText` replaces a range with such a document.
         public native function getRawText():String;
-        public native function getXMLText(beginIndex:int = 0, endIndex:int = 2147483647):String;
-        public native function insertXMLText(beginIndex:int, endIndex:int, richText:String, pasting:Boolean = false):void;
+
+        public function getXMLText(beginIndex:int = 0, endIndex:int = 2147483647):String {
+            var xml:String = this.nativeGetXMLText(beginIndex, endIndex);
+            if (xml == null) {
+                throw new ArgumentError("Error #2005: Parameter beginIndex is of the incorrect type. Should be type int.", 2005);
+            }
+            return xml;
+        }
+
+        public function insertXMLText(beginIndex:int, endIndex:int, richText:String, pasting:Boolean = false):void {
+            var result:int = this.nativeInsertXMLText(beginIndex, endIndex, richText);
+            if (result == 1) {
+                throw new Error("Error #2138: Rich text XML could not be parsed.", 2138);
+            }
+            if (result == 2) {
+                throw new RangeError("Error #2006: The supplied index is out of bounds.", 2006);
+            }
+        }
+
+        private native function nativeGetXMLText(beginIndex:int, endIndex:int):String;
+        private native function nativeInsertXMLText(beginIndex:int, endIndex:int, richText:String):int;
 
         public native function getCharIndexAtPoint(x:Number, y:Number):int;
 
@@ -145,8 +164,11 @@ package flash.text {
         // Timffle: this player parses `<img>` tags (src, id, size, align...) but
         // does not load or lay out the picture, so no Loader exists for it; Flash
         // returns null when no `<img>` with that id exists, and that is what the
-        // caller sees here.
+        // caller sees here. A null id is TypeError #2007 as in Flash Player 32.
         public function getImageReference(id:String):DisplayObject {
+            if (id == null) {
+                throw new TypeError("Error #2007: Parameter id must be non-null.", 2007);
+            }
             return null;
         }
 

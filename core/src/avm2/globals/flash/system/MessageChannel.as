@@ -1,5 +1,4 @@
 package flash.system {
-    import flash.errors.ScriptTimeoutError;
     import flash.events.Event;
     import flash.events.EventDispatcher;
     import flash.utils.setTimeout;
@@ -14,16 +13,17 @@ package flash.system {
     // event-loop turn (Flash delivers it on the receiving worker's loop,
     // never inside `send()`). `receive()` returns the oldest message, or
     // null when the queue is empty. `close()` switches the channel to
-    // "closing" (a `channelState` event) and to "closed" (another one) once
-    // the queue has been drained — at once when it is already empty.
-    // `send()` or `receive()` on a closed channel: `Error #3738:
-    // MessageChannel is closed.`; the "not a sender"/"not a receiver" errors
-    // (#3736/#3737) cannot arise with one worker. Waiting — `receive(true)`
-    // on an empty queue, `send()` with the queue at `queueLimit` — would
-    // pause the primordial worker until a worker that can never exist acts;
-    // in Flash that ends in `ScriptTimeoutError #1502` once the 15-second
-    // script limit passes, and this player throws it at once instead of
-    // freezing the page for 15 seconds first.
+    // "closing" at once and to "closed" once the queue has been drained (at
+    // once when it is already empty); one `channelState` event follows on
+    // the next event-loop turn, after the pending `channelMessage` events
+    // (Flash Player 32, measured). `send()` on a closing or closed channel and
+    // `receive()` on a closed one: `Error #3738: MessageChannel is closed.`;
+    // the "not a sender"/"not a receiver" errors (#3736/#3737) cannot arise
+    // with one worker. Measured on Flash's primordial worker talking to
+    // itself: `receive(true)` on an empty queue freezes for the 15-second
+    // script limit and then returns null (this player returns null at once),
+    // and `send()` with the queue already at `queueLimit` returns at once
+    // without queueing the message.
     [API("682")]
     [Ruffle(Abstract)]
     public final class MessageChannel extends EventDispatcher {
@@ -43,10 +43,6 @@ package flash.system {
 
         private static function closedError():Error {
             return new Error("Error #3738: MessageChannel is closed.", 3738);
-        }
-
-        private static function timeoutError():ScriptTimeoutError {
-            return new ScriptTimeoutError("Error #1502: A script has executed for longer than the default timeout period of 15 seconds.", 1502);
         }
 
         public function get messageAvailable():Boolean {
@@ -70,7 +66,7 @@ package flash.system {
                 throw closedError();
             }
             if (queueLimit >= 0 && this._queue.length >= queueLimit) {
-                throw timeoutError();
+                return;
             }
             this._queue.push(Worker.copyForTransfer(arg));
             var self:MessageChannel = this;
@@ -84,14 +80,11 @@ package flash.system {
                 throw closedError();
             }
             if (this._queue.length == 0) {
-                if (blockUntilReceived && this.state == MessageChannelState.OPEN) {
-                    throw timeoutError();
-                }
                 return null;
             }
             var message:* = this._queue.shift();
             if (this.state == MessageChannelState.CLOSING && this._queue.length == 0) {
-                this.setState(MessageChannelState.CLOSED);
+                this._state = MessageChannelState.CLOSED;
             }
             return message;
         }
@@ -100,15 +93,11 @@ package flash.system {
             if (this.state != MessageChannelState.OPEN) {
                 return;
             }
-            this.setState(MessageChannelState.CLOSING);
-            if (this._queue.length == 0) {
-                this.setState(MessageChannelState.CLOSED);
-            }
-        }
-
-        private function setState(state:String):void {
-            this._state = state;
-            this.dispatchEvent(new Event(Event.CHANNEL_STATE));
+            this._state = this._queue.length == 0 ? MessageChannelState.CLOSED : MessageChannelState.CLOSING;
+            var self:MessageChannel = this;
+            setTimeout(function():void {
+                self.dispatchEvent(new Event(Event.CHANNEL_STATE));
+            }, 0);
         }
 
         override public function toString():String {

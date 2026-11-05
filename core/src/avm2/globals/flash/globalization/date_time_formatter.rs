@@ -3,12 +3,12 @@
 //! Implements the Unicode LDML pattern letters the Adobe reference lists
 //! (`G y M d E Q w W D F a h H K k m s S z Z v`, quoted literals), the
 //! `DateTimeStyle` patterns of each locale in `locale_data`, and the month and
-//! weekday name tables. Time zone names (`z`, `v`) have no OS source here, so
-//! they fall back to the localized GMT form (`GMT+05:45`) exactly as the
-//! reference documents for platforms without zone names.
+//! weekday name tables. Like Flash Player 32 on Windows (measured), the letters the
+//! operating system's formatter has no field for (`Q w D F S z Z v`) are accepted
+//! with `unsupportedError` and format as nothing, and `medium` uses the long patterns.
 
 use super::locale_data::{
-    self, ILLEGAL_ARGUMENT_ERROR, LocaleData, NO_ERROR, PATTERN_SYNTAX_ERROR,
+    self, ILLEGAL_ARGUMENT_ERROR, LocaleData, NO_ERROR, PATTERN_SYNTAX_ERROR, UNSUPPORTED_ERROR,
 };
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
@@ -77,7 +77,9 @@ pub fn init<'gc>(
 fn style_index(style: &str) -> Option<Option<usize>> {
     match style {
         "long" => Some(Some(0)),
-        "medium" => Some(Some(1)),
+        // Timffle: Windows has only long and short date/time formats; Flash 32 gives
+        // `medium` the long patterns (measured for en-US, zh-TW, zh-CN, ja-JP, de-DE).
+        "medium" => Some(Some(0)),
         "short" => Some(Some(2)),
         "none" => Some(None),
         _ => None,
@@ -139,6 +141,24 @@ fn pattern_is_valid(pattern: &str) -> bool {
     true
 }
 
+/// Timffle: pattern letters Flash 32 on Windows cannot render — the operating system's
+/// date formatter has no quarter, week, day-of-year, time zone or fraction-of-second
+/// fields. `setDateTimePattern` keeps the pattern but reports `unsupportedError`, and
+/// they format as nothing (measured).
+const UNSUPPORTED_LETTERS: &str = "QwDFSzZv";
+
+fn pattern_uses_unsupported_letters(pattern: &str) -> bool {
+    let mut in_quote = false;
+    pattern.chars().any(|c| {
+        if c == '\'' {
+            in_quote = !in_quote;
+            false
+        } else {
+            !in_quote && UNSUPPORTED_LETTERS.contains(c)
+        }
+    })
+}
+
 /// `public native function setDateTimePattern(pattern:String):void`
 pub fn native_set_date_time_pattern<'gc>(
     activation: &mut Activation<'_, 'gc>,
@@ -155,24 +175,17 @@ pub fn native_set_date_time_pattern<'gc>(
     set_str(activation, this, slots::_DATE_STYLE, "custom")?;
     set_str(activation, this, slots::_TIME_STYLE, "custom")?;
     set_str(activation, this, slots::_DATE_TIME_PATTERN, &pattern)?;
-    set_status(activation, this, NO_ERROR)?;
+    let status = if pattern_uses_unsupported_letters(&pattern) {
+        UNSUPPORTED_ERROR
+    } else {
+        NO_ERROR
+    };
+    set_status(activation, this, status)?;
     Ok(Value::Undefined)
 }
 
 fn pad(value: impl std::fmt::Display, width: usize) -> String {
     format!("{value:0>width$}")
-}
-
-fn gmt_offset(offset: FixedOffset, localized: bool) -> String {
-    let secs = offset.local_minus_utc();
-    let sign = if secs < 0 { '-' } else { '+' };
-    let secs = secs.abs();
-    let (h, m) = (secs / 3600, (secs % 3600) / 60);
-    if localized {
-        format!("GMT{sign}{h:02}:{m:02}")
-    } else {
-        format!("{sign}{h:02}{m:02}")
-    }
 }
 
 /// Renders `date` with an LDML `pattern` and the names of `locale`.
@@ -217,6 +230,9 @@ pub fn render_pattern(pattern: &str, date: &DateTime<FixedOffset>, locale: &Loca
         }
         i += count;
 
+        if UNSUPPORTED_LETTERS.contains(c) {
+            continue;
+        }
         let month = date.month() as usize;
         let weekday = date.weekday().num_days_from_sunday() as usize;
         let hour = date.hour();
@@ -234,13 +250,15 @@ pub fn render_pattern(pattern: &str, date: &DateTime<FixedOffset>, locale: &Loca
                 if count == 2 {
                     out.push_str(&pad(year.rem_euclid(100), 2));
                 } else {
-                    out.push_str(&pad(year, count));
+                    // Timffle: Flash 32 writes `yyyyy` like `yyyy` (no fifth digit).
+                    out.push_str(&pad(year, count.min(4)));
                 }
             }
             'M' => match count {
                 1 => out.push_str(&month.to_string()),
                 2 => out.push_str(&pad(month, 2)),
-                4 => out.push_str(
+                // Timffle: Flash 32 writes `MMMMM` as the full name, like `MMMM`.
+                4.. => out.push_str(
                     names
                         .months_format
                         .as_ref()
@@ -250,25 +268,10 @@ pub fn render_pattern(pattern: &str, date: &DateTime<FixedOffset>, locale: &Loca
             },
             'd' => out.push_str(&pad(date.day(), count.min(2))),
             'E' => match count {
-                4 => out.push_str(names.weekdays[weekday]),
+                // Timffle: `EEEEE` is the full name too in Flash 32.
+                4.. => out.push_str(names.weekdays[weekday]),
                 _ => out.push_str(names.weekdays_abbr[weekday]),
             },
-            'Q' => {
-                let quarter = (month - 1) / 3 + 1;
-                match count {
-                    1 => out.push_str(&quarter.to_string()),
-                    2 => out.push_str(&pad(quarter, 2)),
-                    _ => out.push_str(&format!("Q{quarter}")),
-                }
-            }
-            'w' => {
-                // Week of the year, weeks starting on the locale's first weekday.
-                let first = locale.first_weekday as u32;
-                let jan1 = date.with_ordinal(1).unwrap_or(*date);
-                let jan1_wd = (jan1.weekday().num_days_from_sunday() + 7 - first) % 7;
-                let week = (date.ordinal0() + jan1_wd) / 7 + 1;
-                out.push_str(&pad(week, count.min(2)));
-            }
             'W' => {
                 let first = locale.first_weekday as u32;
                 let day1 = date.with_day(1).unwrap_or(*date);
@@ -276,8 +279,6 @@ pub fn render_pattern(pattern: &str, date: &DateTime<FixedOffset>, locale: &Loca
                 let week = (date.day0() + day1_wd) / 7 + 1;
                 out.push_str(&week.to_string());
             }
-            'D' => out.push_str(&pad(date.ordinal(), count.min(3))),
-            'F' => out.push_str(&((date.day0() / 7) + 1).to_string()),
             'a' => out.push_str(names.am_pm[if hour >= 12 { 1 } else { 0 }]),
             'h' => {
                 let h = if hour.is_multiple_of(12) {
@@ -292,20 +293,6 @@ pub fn render_pattern(pattern: &str, date: &DateTime<FixedOffset>, locale: &Loca
             'k' => out.push_str(&pad(if hour == 0 { 24 } else { hour }, count.min(2))),
             'm' => out.push_str(&pad(date.minute(), count.min(2))),
             's' => out.push_str(&pad(date.second(), count.min(2))),
-            'S' => {
-                let millis = date.nanosecond() / 1_000_000;
-                let digits = count.min(5);
-                let s = match digits {
-                    1 => format!("{}", millis / 100),
-                    2 => format!("{:02}", millis / 10),
-                    3 => format!("{millis:03}"),
-                    4 => format!("{millis:03}0"),
-                    _ => format!("{millis:03}00"),
-                };
-                out.push_str(&s);
-            }
-            'z' | 'v' => out.push_str(&gmt_offset(date.offset().fix(), true)),
-            'Z' => out.push_str(&gmt_offset(date.offset().fix(), count < 4)),
             other => {
                 for _ in 0..count {
                     out.push(other);

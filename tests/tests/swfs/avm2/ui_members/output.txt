@@ -39,10 +39,10 @@ cas mismatch 20 20
 cas match 20 7
 cas 0 10 -1
 length after cas 12 12
-unaligned THREW ArgumentError 2004
-negative THREW ArgumentError 2004
-past end THREW RangeError 2006
-straddling THREW ArgumentError 2004
+unaligned THREW RangeError 1506
+negative THREW RangeError 1506
+past end THREW RangeError 1506
+straddling THREW RangeError 1506
 cas length mismatch 12 12
 cas length match 12 16
 cas length shrink 16 4

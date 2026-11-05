@@ -15,7 +15,8 @@ package flash.system {
     // between workers, except the five types Flash shares by reference
     // (Worker, MessageChannel, shareable ByteArray, Mutex, Condition); null
     // or undefined removes the key and an absent key reads null, as
-    // documented. `start()` on the primordial worker, which is already
+    // documented. As in Flash Player 32 (measured), every read is a new copy
+    // and a null key is just the key "null". `start()` on the primordial worker, which is already
     // running, is `Error #1511: Worker is already started.`; `terminate()`
     // is `Error #3732: Worker.terminate is only available for background
     // workers.` (both from the AS3 runtime-error list). `addEventListener`/
@@ -65,9 +66,6 @@ package flash.system {
         }
 
         public function setSharedProperty(key:String, value:*):void {
-            if (key == null) {
-                throw new TypeError("Error #2007: Parameter key must be non-null.", 2007);
-            }
             if (value === null || value === undefined) {
                 delete _sharedProperties[key];
                 return;
@@ -76,11 +74,8 @@ package flash.system {
         }
 
         public function getSharedProperty(key:String):* {
-            if (key == null) {
-                throw new TypeError("Error #2007: Parameter key must be non-null.", 2007);
-            }
-            if (key in _sharedProperties) {
-                return _sharedProperties[key];
+            if (String(key) in _sharedProperties) {
+                return copyForTransfer(_sharedProperties[key]);
             }
             return null;
         }

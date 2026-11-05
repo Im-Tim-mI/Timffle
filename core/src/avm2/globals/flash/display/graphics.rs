@@ -1719,8 +1719,10 @@ fn flash_color_roundtrip(color: Color) -> u32 {
 }
 
 /// Timffle: a `flash.geom.Matrix` from an swf matrix (tx/ty in twips), optionally
-/// transformed into the parent's space and scaled by `factor` (Flash's 4095/4096 quirk
-/// for bitmap fill matrices).
+/// transformed into the parent's space, with a–d scaled by `factor` (Flash's 4095/4096
+/// quirk for bitmap fill matrices). Flash Player 32 reports a fill matrix's translation
+/// in whole pixels, cut toward zero (measured: tx 1.5 → 1, ty −2.5 → −2, a bitmap fill's
+/// tx 5 stays 5).
 fn matrix_to_object<'gc>(
     activation: &mut Activation<'_, 'gc>,
     matrix: RenderMatrix,
@@ -1735,8 +1737,8 @@ fn matrix_to_object<'gc>(
             (m.b as f64 * factor).into(),
             (m.c as f64 * factor).into(),
             (m.d as f64 * factor).into(),
-            (m.tx.to_pixels() * factor).into(),
-            (m.ty.to_pixels() * factor).into(),
+            m.tx.to_pixels().trunc().into(),
+            m.ty.to_pixels().trunc().into(),
         ],
     )
 }
@@ -1765,7 +1767,11 @@ fn fill_style_to_object<'gc>(
             let (gradient_type, focal_point) = match style {
                 FillStyle::LinearGradient(_) => ("linear", 0.0),
                 FillStyle::RadialGradient(_) => ("radial", 0.0),
-                FillStyle::FocalGradient { focal_point, .. } => ("radial", focal_point.to_f64()),
+                // Flash Player 32 reads the 8.8 fixed-point focal ratio back over 255
+                // (0.5 → 0.50196, −0.4 → −0.4), measured.
+                FillStyle::FocalGradient { focal_point, .. } => {
+                    ("radial", f64::from(focal_point.get()) / 255.0)
+                }
                 _ => unreachable!(),
             };
             let colors: Vec<Value<'gc>> = gradient

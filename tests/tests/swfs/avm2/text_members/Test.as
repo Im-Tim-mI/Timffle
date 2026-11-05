@@ -59,14 +59,24 @@ package {
             trace("getXMLText(-5, 99): " + tf.getXMLText(-5, 99));
             trace("getXMLText(3, 3): [" + tf.getXMLText(3, 3) + "]");
 
-            tf.insertXMLText(6, 10, "<i>fancy</i>");
+            // Flash Player 32 reads only its own <flashrichtext> documents (measured).
+            try {
+                tf.insertXMLText(6, 10, "<i>fancy</i>");
+            } catch (e:Error) {
+                trace("insertXMLText(HTML): " + e.errorID);
+            }
+            tf.insertXMLText(6, 10, '<flashrichtext version="1"><textformat italic="true">(fancy)</textformat></flashrichtext>');
             trace("after insertXMLText text: " + tf.text);
             trace("after insertXMLText html: " + tf.htmlText);
             trace("format at 6: italic=" + tf.getTextFormat(6, 7).italic + " bold=" + tf.getTextFormat(6, 7).bold);
             trace("format at 0: italic=" + tf.getTextFormat(0, 1).italic + " bold=" + tf.getTextFormat(0, 1).bold);
-            tf.insertXMLText(0, 0, "<u>Oh </u>");
+            tf.insertXMLText(0, 0, '<flashrichtext version="1"><textformat underline="true">(Oh )</textformat></flashrichtext>');
             trace("after insertXMLText at 0: " + tf.text + " underline=" + tf.getTextFormat(0, 1).underline);
-            tf.insertXMLText(100, 200, "<b>!</b>");
+            try {
+                tf.insertXMLText(100, 200, '<flashrichtext version="1"><textformat bold="true">(!)</textformat></flashrichtext>');
+            } catch (e:Error) {
+                trace("insertXMLText past end: " + e.errorID);
+            }
             trace("after insertXMLText past end: " + tf.text);
 
             var plain:TextField = new TextField();

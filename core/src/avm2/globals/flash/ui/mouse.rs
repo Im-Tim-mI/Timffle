@@ -110,13 +110,13 @@ pub fn get_supports_native_cursor<'gc>(
 /// Timffle: `Mouse.registerCursor(name, cursor)`: copies the frames of the
 /// `MouseCursorData` into the player's cursor registry under `name`.
 ///
-/// Validation (the reference documents no errors; the codes are Flash Player's generic
-/// ones for these argument faults): a null `name` or `cursor` is a TypeError #2007;
-/// a `data` that is null or empty, a frame that is disposed, or a frame larger than
-/// 32x32 pixels (the limit the `MouseCursorData` reference states) is an ArgumentError
-/// #2004; so is one of the built-in names (`auto`, `arrow`, `button`, `hand`, `ibeam`),
-/// which `Mouse.cursor` keeps for the built-in cursors. Registering a name again replaces
-/// its cursor; if that cursor is being shown, the host shows the new one.
+/// Validation, as measured in Flash Player 32 (timffle/difftest/src/S5CursorLines.hx):
+/// a null `name` or `cursor` is TypeError #2007; an empty `data` vector or a negative
+/// `hotSpot` is ArgumentError #2008; a frame larger than 32x32 pixels is ArgumentError
+/// #2004 and a disposed one #2015. A null `data`, a built-in name (`arrow`, `auto`…), a
+/// hot spot outside the frame and frames of different sizes are all accepted; a null
+/// `data` leaves nothing to show, so nothing is registered (inferred). Registering a name
+/// again replaces its cursor; if that cursor is being shown, the host shows the new one.
 pub fn register_cursor<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
@@ -125,21 +125,16 @@ pub fn register_cursor<'gc>(
     let name = args.get_string_non_null(activation, 0, "name")?;
     let data = args.get_object(activation, 1, "cursor")?;
 
-    if &name == b"auto" || MouseCursor::from_avm2_str(&name).is_some() {
-        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
-    }
-
     let data_name = AvmString::new_utf8(activation.gc(), "data");
     let frames = Value::from(data).get_public_property(data_name, activation)?;
-    let frames = frames
-        .as_object()
-        .and_then(|frames| {
-            let storage = frames.as_vector_storage()?;
-            Some(storage.iter().collect::<Vec<_>>())
-        })
-        .unwrap_or_default();
+    let Some(frames) = frames.as_object().and_then(|frames| {
+        let storage = frames.as_vector_storage()?;
+        Some(storage.iter().collect::<Vec<_>>())
+    }) else {
+        return Ok(Value::Undefined);
+    };
     if frames.is_empty() {
-        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        return Err(make_error_2008(activation, "cursor"));
     }
     let frames = frames
         .into_iter()
@@ -162,7 +157,10 @@ pub fn register_cursor<'gc>(
             let y = point
                 .get_slot(point_slots::Y)
                 .coerce_to_number(activation)?;
-            (x.max(0.0) as u32, y.max(0.0) as u32)
+            if x < 0.0 || y < 0.0 {
+                return Err(make_error_2008(activation, "cursor"));
+            }
+            (x as u32, y as u32)
         }
         None => (0, 0),
     };

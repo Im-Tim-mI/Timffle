@@ -284,7 +284,13 @@ fn classify(c: char) -> Primary {
 
 /// Pseudo-diacritic weights for letters that NFKD does not decompose.
 const STROKE: u32 = 0x338;
+/// Marks the first half of an expansion (`æ` → a+e, `ß` → s+s). Timffle: Flash 32
+/// (Windows) compares an expansion equal to its letters (`æ` = `ae`, `ß` = `ss`,
+/// measured for en-US, zh-TW, zh-CN, ja-JP, de-DE and sv-SE), so this mark only
+/// identifies the letter for the Danish tailoring and is not compared.
 const LIGATURE: u32 = 0x1;
+/// Secondary weight of the German phonebook `ä` → a+e expansion (compared).
+const PHONEBOOK_UMLAUT: u32 = 0x2;
 
 fn push_letter(
     elements: &mut Vec<Element>,
@@ -352,7 +358,7 @@ fn tailor(element: &mut Element, tailoring: Tailoring) -> Option<Element> {
         Tailoring::Swedish => {
             let index = match base {
                 'a' if has(0x30A) => Some(27),
-                'a' if has(0x308) || has(LIGATURE) => Some(28),
+                'a' if has(0x308) => Some(28),
                 'o' if has(0x308) || has(STROKE) => Some(29),
                 _ => None,
             };
@@ -378,7 +384,7 @@ fn tailor(element: &mut Element, tailoring: Tailoring) -> Option<Element> {
         Tailoring::Phonebook => {
             if matches!(base, 'a' | 'o' | 'u') && has(0x308) {
                 element.secondary.retain(|m| *m != 0x308);
-                element.secondary.push(LIGATURE);
+                element.secondary.push(PHONEBOOK_UMLAUT);
                 return Some(Element {
                     primary: Primary::Latin(b'e' - b'a'),
                     secondary: Vec::new(),
@@ -393,9 +399,19 @@ fn tailor(element: &mut Element, tailoring: Tailoring) -> Option<Element> {
     }
 }
 
+/// Timffle: Windows "word sort", which Flash 32 uses: the hyphen and the apostrophe have
+/// no weight of their own (`a-b` and `O'Brian` sort next to `ab` and `OBrian`); on an
+/// otherwise equal comparison the string that has them sorts after (measured).
+fn is_word_sort_ignorable(c: char) -> bool {
+    matches!(c, '-' | '\'')
+}
+
 fn elements(s: &str, options: CollatorOptions, tailoring: Tailoring) -> Vec<Element> {
     let mut elements: Vec<Element> = Vec::new();
     for c in s.chars() {
+        if is_word_sort_ignorable(c) {
+            continue;
+        }
         let width = match c as u32 {
             0xFF01..=0xFF60 | 0xFFE0..=0xFFE6 => 1,
             0xFF61..=0xFFDC | 0xFFE8..=0xFFEE => 2,
@@ -476,10 +492,14 @@ fn collate(options: CollatorOptions, tailoring: Tailoring, s1: &str, s2: &str) -
         return primary;
     }
     if !options.contains(CollatorOptions::IGNORE_DIACRITICS) {
-        let secondary = e1
-            .iter()
-            .map(|e| &e.secondary)
-            .cmp(e2.iter().map(|e| &e.secondary));
+        let marks = |e: &Element| -> Vec<u32> {
+            e.secondary
+                .iter()
+                .copied()
+                .filter(|m| *m != LIGATURE)
+                .collect()
+        };
+        let secondary = e1.iter().map(marks).cmp(e2.iter().map(marks));
         if secondary != Ordering::Equal {
             return secondary;
         }
@@ -503,6 +523,10 @@ fn collate(options: CollatorOptions, tailoring: Tailoring, s1: &str, s2: &str) -
         }
     }
     let _ = is_variable;
+    if !options.contains(CollatorOptions::IGNORE_SYMBOLS) {
+        let ignorable = |s: &str| s.chars().filter(|c| is_word_sort_ignorable(*c)).count();
+        return ignorable(s1).cmp(&ignorable(s2));
+    }
     Ordering::Equal
 }
 

@@ -14,7 +14,8 @@ package flash.globalization {
         [Ruffle(NativeAccessible)]
         private var _digitsType:uint = NationalDigitsType.EUROPEAN;
         [Ruffle(NativeAccessible)]
-        private var _fractionalDigits:int = 0;
+        // Timffle: Flash 32 on Windows starts at the system setting (2 for every locale measured).
+        private var _fractionalDigits:int = 2;
         [Ruffle(NativeAccessible)]
         private var _groupingPattern:String = "3;*";
         [Ruffle(NativeAccessible)]
@@ -74,8 +75,9 @@ package flash.globalization {
             return this._fractionalDigits;
         }
         public function set fractionalDigits(value:int):void {
+            // Timffle: Flash 32 rejects a negative value with illegalArgumentError (measured).
             if (value < 0) {
-                this._lastOperationStatus = LastOperationStatus.INVALID_ATTR_VALUE;
+                this._lastOperationStatus = LastOperationStatus.ILLEGAL_ARGUMENT_ERROR;
                 return;
             }
             this._fractionalDigits = value;
@@ -162,8 +164,9 @@ package flash.globalization {
             if (value == null) {
                 throwNonNull("negativeSymbol");
             }
-            this._negativeSymbol = value;
-            this._lastOperationStatus = LastOperationStatus.NO_ERROR;
+            // Timffle: Flash 32 (Windows) keeps the operating system's negative sign: any new
+            // value, even the current one, is refused with unsupportedError (measured).
+            this._lastOperationStatus = LastOperationStatus.UNSUPPORTED_ERROR;
         }
 
         public function get requestedLocaleIDName():String {

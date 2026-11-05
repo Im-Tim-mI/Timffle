@@ -21,6 +21,7 @@ pub const ILLEGAL_ARGUMENT_ERROR: &str = "illegalArgumentError";
 pub const PARSE_ERROR: &str = "parseError";
 pub const PATTERN_SYNTAX_ERROR: &str = "patternSyntaxError";
 pub const UNEXPECTED_TOKEN: &str = "unexpectedToken";
+pub const UNSUPPORTED_ERROR: &str = "unsupportedError";
 
 /// Per-language names (month and weekday names, AM/PM markers).
 pub struct Names {
@@ -1328,7 +1329,9 @@ pub fn resolve(
             default_script(&p.language, &p.region) == wanted_script
         });
         let locale = by_script.copied().unwrap_or(same_language[0]);
-        let status = if is_default {
+        // Timffle: Flash 32 resolves a bare language ("de", "zh") to its main region with
+        // noError (measured); only a region the table does not have is a fallback.
+        let status = if is_default || parsed.region.is_empty() {
             NO_ERROR
         } else {
             USING_FALLBACK_WARNING

@@ -497,6 +497,63 @@ impl<'gc> EditText<'gc> {
         spans.to_html(self.swf_version())
     }
 
+    /// Timffle: the `<flashrichtext>` document of the characters `from..to`
+    /// (`TextField.getXMLText`; the caller clamps the range).
+    pub fn rich_text_range(self, from: usize, to: usize) -> WString {
+        let len = self.text_length();
+        let to = to.min(len);
+        let from = from.min(to);
+        let mut spans = self.0.text_spans.borrow().clone();
+        if to < len {
+            spans.replace_text(to, len, WStr::empty());
+        }
+        if from > 0 {
+            spans.replace_text(0, from, WStr::empty());
+        }
+        crate::html::rich_text::to_flash_rich_text(&spans)
+    }
+
+    /// Timffle: replaces the characters `from..to` with the runs of a
+    /// `<flashrichtext>` document (`TextField.insertXMLText`). Each run's
+    /// attributes apply on top of the previous run's format, starting from the
+    /// format at `from`.
+    pub fn insert_rich_text(
+        self,
+        from: usize,
+        to: usize,
+        runs: &[crate::html::RichTextRun],
+        context: &mut UpdateContext<'gc>,
+    ) {
+        {
+            let mut spans = self.0.text_spans.borrow_mut();
+            let len = spans.text().len();
+            let mut format = if len == 0 {
+                spans.default_format().clone()
+            } else {
+                let at = from.min(len - 1);
+                spans.get_text_format(at, at + 1)
+            };
+            let mut text = WString::new();
+            let mut ranges = Vec::new();
+            for run in runs {
+                crate::html::rich_text::apply_attributes(&mut format, &run.attributes);
+                let start = text.len();
+                text.push_str(&run.text);
+                ranges.push((start, text.len(), format.clone()));
+            }
+            spans.replace_text(from, to, &text);
+            for (start, end, format) in ranges {
+                if start < end {
+                    spans.set_text_format(from + start, from + end, &format);
+                }
+            }
+        }
+        // The field holds rich text now: `htmlText` reports the runs' formatting.
+        self.set_is_html(true);
+        *self.0.original_html_text.borrow_mut() = None;
+        self.relayout(context);
+    }
+
     /// Timffle: replaces the characters `from..to` with HTML-formatted text,
     /// keeping the HTML's formatting (`TextField.insertXMLText`, rich paste).
     /// Indices past the text are clamped.

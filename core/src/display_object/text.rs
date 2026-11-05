@@ -144,11 +144,12 @@ impl<'gc> Text<'gc> {
                 continue;
             };
             let metrics = font.metrics();
-            for entry in &block.glyphs {
+            for (index_in_record, entry) in block.glyphs.iter().enumerate() {
                 let Some(glyph) = font.get_glyph(entry.index as usize) else {
                     continue;
                 };
                 glyphs.push(StaticGlyph {
+                    index_in_record,
                     character: glyph.character(),
                     font,
                     color,
@@ -261,6 +262,8 @@ impl<'gc> Text<'gc> {
 /// are in the text's own coordinate space (before `DefineText`'s matrix).
 #[derive(Clone, Copy)]
 pub struct StaticGlyph<'gc> {
+    /// The glyph's position in its `DefineText` text record (`indexInRun`).
+    pub index_in_record: usize,
     pub character: char,
     pub font: Font<'gc>,
     pub color: swf::Color,
@@ -739,9 +742,14 @@ impl<'gc> TextSnapshot<'gc> {
         from: i32,
         to: i32,
     ) -> Vec<TextRunInfo<'gc>> {
-        let Some((start, end)) = self.clamp_range(from, to) else {
+        // Timffle: unlike the other range methods, Flash Player 32 includes `endIndex`
+        // here (`getTextRunInfo(0, 2)` is three characters; `(0, 0)`, `(1, 1)` and
+        // `(38, 40)` of a 38-character snapshot are one), measured.
+        let Some((start, _)) = self.clamp_range(from, to) else {
             return Vec::new();
         };
+        let last = self.count() - 1;
+        let end = usize::try_from(to).unwrap_or_default().min(last).max(start) + 1;
         let mut runs = Vec::new();
         for chunk in &self.0.chunks {
             let chunk_start = chunk.global_index;
@@ -787,6 +795,12 @@ impl<'gc> TextSnapshot<'gc> {
             };
             let local = inverse * point;
             for (i, glyph) in chunk.object.glyph_layout(context).into_iter().enumerate() {
+                // Timffle: a font without layout data has no character boxes, and
+                // Flash Player 32 never hits such text (measured: -1 even at the
+                // character's position with a large maxDistance).
+                if !glyph.font.has_layout() {
+                    continue;
+                }
                 let bounds = glyph.bounds();
                 let index = chunk.global_index + i;
                 if max_distance <= 0.0 {
@@ -815,7 +829,7 @@ impl<'gc> TextSnapshot<'gc> {
 
 /// Timffle: one entry of `TextSnapshot.getTextRunInfo`.
 pub struct TextRunInfo<'gc> {
-    /// The character's index in the whole snapshot (`indexInRun`).
+    /// The character's index in the whole snapshot.
     pub index: usize,
     pub selected: bool,
     pub glyph: StaticGlyph<'gc>,

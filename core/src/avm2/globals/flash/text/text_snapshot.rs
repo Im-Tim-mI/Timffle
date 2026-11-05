@@ -91,12 +91,12 @@ pub fn get_text<'gc>(
 
 /// Implements `TextSnapshot.getTextRunInfo`
 ///
-/// One plain object per character with the properties the Adobe reference
-/// lists: `indexInRun`, `selected`, `font`, `color` (alpha in the top byte),
-/// `height` (pixels), `matrix_a`…`matrix_ty` (the character's position in the
-/// parent container, `[1 0 0 1 x y]` for upright text) and `corner0x`…
-/// `corner3y` (the bounding box in the parent container, top-left, top-right,
-/// bottom-right, bottom-left).
+/// One plain object per character (`endIndex` included) with the properties the
+/// Adobe reference lists: `indexInRun` (within the text record), `selected`,
+/// `font`, `color` (alpha in the top byte), `height` (pixels), `matrix_a`…
+/// `matrix_ty` (the character's position in the parent container) and
+/// `corner0x`…`corner3y` (the bounding box in the parent container, top-left,
+/// top-right, bottom-right, bottom-left; all 0 for a font without layout data).
 pub fn get_text_run_info<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -121,7 +121,9 @@ pub fn get_text_run_info<'gc>(
         let glyph = run.glyph;
         let position = run.matrix * Point::new(glyph.x, glyph.baseline);
         let color = (u32::from(glyph.color.a) << 24) | glyph.color.to_rgb();
-        set("indexInRun", Value::from_usize_lossy(run.index));
+        // Timffle: `indexInRun` counts within the glyph's text record (one line of a
+        // multi-line static text), as Flash Player 32 reports it (measured).
+        set("indexInRun", Value::from_usize_lossy(glyph.index_in_record));
         set("selected", run.selected.into());
         set(
             "font",
@@ -129,10 +131,16 @@ pub fn get_text_run_info<'gc>(
         );
         set("color", Value::Number(color as f64));
         set("height", Value::Number(glyph.height.to_pixels()));
-        set("matrix_a", Value::Number(run.matrix.a as f64));
-        set("matrix_b", Value::Number(run.matrix.b as f64));
-        set("matrix_c", Value::Number(run.matrix.c as f64));
-        set("matrix_d", Value::Number(run.matrix.d as f64));
+        // Timffle: Flash Player 32 reports a font without layout data (no character
+        // boxes) with all four corners at 0 and the matrix's a–d in pixels per twip
+        // (an upright 1:1 text is `[0.05 0 0 0.05 x y]`), measured. Fonts with layout
+        // data were not measured and keep the boxes and the plain matrix.
+        let no_layout = !glyph.font.has_layout();
+        let scale = if no_layout { 1.0 / 20.0 } else { 1.0 };
+        set("matrix_a", Value::Number(run.matrix.a as f64 * scale));
+        set("matrix_b", Value::Number(run.matrix.b as f64 * scale));
+        set("matrix_c", Value::Number(run.matrix.c as f64 * scale));
+        set("matrix_d", Value::Number(run.matrix.d as f64 * scale));
         set("matrix_tx", Value::Number(position.x.to_pixels()));
         set("matrix_ty", Value::Number(position.y.to_pixels()));
         let bounds = glyph.bounds();
@@ -150,8 +158,13 @@ pub fn get_text_run_info<'gc>(
         ];
         for (corner, (x_name, y_name)) in corners.into_iter().zip(names) {
             let corner = run.matrix * corner;
-            set(x_name, Value::Number(corner.x.to_pixels()));
-            set(y_name, Value::Number(corner.y.to_pixels()));
+            let (x, y) = if no_layout {
+                (0.0, 0.0)
+            } else {
+                (corner.x.to_pixels(), corner.y.to_pixels())
+            };
+            set(x_name, Value::Number(x));
+            set(y_name, Value::Number(y));
         }
         storage.push(object.into());
     }

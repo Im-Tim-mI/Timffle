@@ -210,7 +210,7 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | changed | `core/src/avm2/globals/flash/printing/PrintJob.as` |
 | changed | `core/src/avm2/globals/flash/profiler.as` |
 | changed | `core/src/avm2/globals/flash/sampler.as` |
-| added by Timffle | `core/src/avm2/globals/flash/sampler.rs` |
+| added by Timffle | `core/src/avm2/globals/flash/sampler.rs` (getSamples only) |
 | changed | `core/src/avm2/globals/flash/sampler/NewObjectSample.as` |
 | changed | `core/src/avm2/globals/flash/sensors/Accelerometer.as` |
 | changed | `core/src/avm2/globals/flash/sensors/Geolocation.as` |
@@ -316,6 +316,7 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | changed | `core/src/external.rs` |
 | changed | `core/src/font/font_renderer.rs` |
 | changed | `core/src/frame_lifecycle.rs` |
+| added by Timffle | `core/src/html/rich_text.rs` |
 | changed | `core/src/html/test.rs` |
 | changed | `core/src/html/text_format.rs` |
 | changed | `core/src/input.rs` |

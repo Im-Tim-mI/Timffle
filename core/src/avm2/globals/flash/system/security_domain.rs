@@ -23,23 +23,29 @@ pub fn instantiate_internal<'gc>(
     Ok(SecurityDomainObject::new(activation).into())
 }
 
-/// Timffle: `SecurityDomain.domainID` (Flash Player 11.3): a string naming
-/// the security domain. Ruffle has one `SecurityDomain` object, standing for
-/// the domain of the calling SWF, so the ID is that SWF's origin
-/// (`scheme://host[:port]`, as `Security.pageDomain` spells it) — a local
-/// file's origin is opaque, so a local SWF reads "file://". Adobe's reference
-/// no longer documents this member and the exact text Flash gives was not
-/// measured.
+/// Timffle: `SecurityDomain.domainID` (Flash Player 11.3): Flash Player 32
+/// gives the SHA-256 of the calling SWF's host name as 64 upper-case hex digits
+/// (measured: a SWF from `http://127.0.0.1:18865/` reads
+/// `12CA17B4…`, the digest of "127.0.0.1"; the scheme and port are not part of it).
+/// A local file has no host, so it is the digest of the empty string
+/// (inferred, not measured).
 pub fn get_domain_id<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write;
+
     let movie = activation.caller_movie_or_root();
-    let id = match Url::parse(movie.url()) {
-        Ok(url) if url.origin().is_tuple() => url.origin().ascii_serialization(),
-        Ok(url) => format!("{}://", url.scheme()),
-        Err(_) => String::new(),
-    };
+    let host = Url::parse(movie.url())
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned))
+        .unwrap_or_default();
+    let digest = Sha256::digest(host.as_bytes());
+    let mut id = String::with_capacity(64);
+    for byte in digest {
+        let _ = write!(id, "{byte:02X}");
+    }
     Ok(AvmString::new_utf8(activation.gc(), id).into())
 }

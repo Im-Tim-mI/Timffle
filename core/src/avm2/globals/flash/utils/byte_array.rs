@@ -4,10 +4,7 @@ use crate::avm2::Avm2StrRepresentable;
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::bytearray::{CompressionAlgorithm, Endian, ObjectEncoding};
-use crate::avm2::error::{
-    Error2004Type, Error2006Type, make_error_2004, make_error_2006, make_error_2008,
-    make_error_2058,
-};
+use crate::avm2::error::{make_error_1000, make_error_1506, make_error_2008, make_error_2058};
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::object::Object;
 use crate::avm2::parameters::ParametersExt;
@@ -339,8 +336,8 @@ pub fn set_length<'gc>(
 // (the AVM's `compareAndSwapInt32` on the buffer), so the value is read and written in the
 // host's byte order -- little-endian on every platform Flash Player ran on -- and the `endian`
 // property is not consulted. This player runs on one thread, so a plain compare-and-store is
-// the same atomic operation. Errors as in the AVM: a negative or unaligned index is
-// ArgumentError #2004, an index past `length - 4` is RangeError #2006.
+// the same atomic operation. A negative, unaligned or too large index is RangeError #1506
+// (measured in Flash Player 32).
 pub fn atomic_compare_and_swap_int_at<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -352,14 +349,14 @@ pub fn atomic_compare_and_swap_int_at<'gc>(
     let new_value = args.get_i32(2);
 
     if byte_index < 0 || byte_index % 4 != 0 {
-        return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        return Err(make_error_1506(activation));
     }
 
     if let Some(mut bytearray) = this.as_bytearray_mut() {
         let offset = byte_index as usize;
-        let bytes = bytearray
-            .read_at(4, offset)
-            .map_err(|_| make_error_2006(activation, Error2006Type::RangeError))?;
+        let Ok(bytes) = bytearray.read_at(4, offset) else {
+            return Err(make_error_1506(activation));
+        };
         let actual = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
         if actual == expected {
             bytearray
@@ -373,9 +370,9 @@ pub fn atomic_compare_and_swap_int_at<'gc>(
 }
 
 // Timffle: `ByteArray.atomicCompareAndSwapLength`: the length is changed only when it equals
-// `expectedLength`; the previous length is returned either way. A negative `newLength` cannot
-// be a length (the property is a uint) and is refused with RangeError #2006 (assumption, not
-// measured on Flash Player: the reference documents no error for it).
+// `expectedLength`; the previous length is returned either way. A negative `newLength` is a
+// huge unsigned length, which Flash Player 32 fails to allocate: `Error #1000` (out of
+// memory), measured.
 pub fn atomic_compare_and_swap_length<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -389,7 +386,7 @@ pub fn atomic_compare_and_swap_length<'gc>(
         let previous = bytearray.len();
         if previous as i64 == expected as i64 {
             if new_length < 0 {
-                return Err(make_error_2006(activation, Error2006Type::RangeError));
+                return Err(make_error_1000(activation));
             }
             bytearray.set_length(new_length as usize);
         }
