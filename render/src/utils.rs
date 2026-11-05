@@ -493,11 +493,32 @@ fn decode_jpegxr(data: &[u8]) -> Result<Bitmap<'static>, Error> {
     let image_reader =
         image::ImageReader::with_format(Cursor::new(bmp_buffer), image::ImageFormat::Tiff);
 
-    let data = image_reader
+    let image = image_reader
         .decode()
-        .map_err(Error::MalformedTiffFromJpegXr)?
-        .to_rgba8()
-        .into_vec();
+        .map_err(Error::MalformedTiffFromJpegXr)?;
+
+    // Timffle: a JPEG XR without alpha is an opaque bitmap (`BitmapData.transparent` false after
+    // Loader.loadBytes), like in Flash Player.
+    if !info.has_alpha() {
+        return Ok(Bitmap::new(
+            jpeg_width,
+            jpeg_height,
+            BitmapFormat::Rgb,
+            image.to_rgb8().into_vec(),
+        ));
+    }
+
+    let mut data = image.to_rgba8().into_vec();
+    if info.premultiplied_alpha() {
+        // Timffle: lossy premultiplied files can decode to colour above alpha; Flash Player
+        // clamps them (BitmapData pixels are premultiplied).
+        for px in data.as_chunks_mut::<4>().0 {
+            let a = px[3];
+            px[0] = px[0].min(a);
+            px[1] = px[1].min(a);
+            px[2] = px[2].min(a);
+        }
+    }
 
     Ok(Bitmap::new(
         jpeg_width,
