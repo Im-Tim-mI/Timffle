@@ -13,7 +13,8 @@ import flash.utils.getQualifiedClassName;
 // order, and decoding the result again with Loader.loadBytes (lossless = every pixel back;
 // lossy opaque = the very pixels Flash decodes, because the files are the same as Flash's).
 // output.txt is the standalone Flash Player 32.0.0.465 run of this very SWF (served over HTTP
-// by the difftest server, which is the only case where the lines are also POSTed). File lengths
+// by the difftest server, which is the only case where the lines are also POSTed); the 4:2:0 and
+// 4:2:2 lines were added and re-recorded the same way. File lengths
 // are not printed: Flash appends one or two zero bytes after the codestream.
 public class Test extends Sprite {
     private static var lines:Array = [];
@@ -88,6 +89,10 @@ public class Test extends Sprite {
         header("g8t q0", g8t, 0, "auto", 0);
         header("g8t q20", g8t, 20, "auto", 0);
         header("one q100", one, 100, "4:4:4", 15);
+        header("g8o q20 420", g8o, 20, "4:2:0", 0);
+        header("g8o q0 422", g8o, 0, "4:2:2", 0);
+        header("g8t q0 420", g8t, 0, "4:2:0", 0);
+        header("g8t q50 422", g8t, 50, "4:2:2", 0);
 
         errors(g8o);
 
@@ -106,6 +111,12 @@ public class Test extends Sprite {
             var c:ByteArray = n37o.encode(n37o.rect, new JPEGXREncoderOptions(80));
             log("sizes q0>q20>q80 " + (a.length > b.length && b.length > c.length));
         });
+        step("sizes cs", function():void {
+            var f:ByteArray = n37o.encode(n37o.rect, new JPEGXREncoderOptions(20, "4:4:4"));
+            var h:ByteArray = n37o.encode(n37o.rect, new JPEGXREncoderOptions(20, "4:2:2"));
+            var q:ByteArray = n37o.encode(n37o.rect, new JPEGXREncoderOptions(20, "4:2:0"));
+            log("sizes 444>422>420 " + (f.length > h.length && h.length > q.length));
+        });
 
         roundTrip("g8o q0", g8o, g8o.rect, 0, "auto", 0);
         roundTrip("g8t q0", g8t, g8t.rect, 0, "auto", 0);
@@ -119,6 +130,13 @@ public class Test extends Sprite {
         roundTrip("n40t q50", n40t, n40t.rect, 50, "auto", 0);
         roundTrip("n37o q20 trim6", n37o, n37o.rect, 20, "auto", 6);
         roundTrip("n40t q20 trim6", n40t, n40t.rect, 20, "auto", 6);
+        roundTrip("g8o q0 420", g8o, g8o.rect, 0, "4:2:0", 0);
+        roundTrip("n37o q0 420", n37o, n37o.rect, 0, "4:2:0", 0);
+        roundTrip("n37o q20 422", n37o, n37o.rect, 20, "4:2:2", 0);
+        roundTrip("n37o q50 420", n37o, n37o.rect, 50, "4:2:0", 0);
+        roundTrip("n37o sub q0 422", n37o, new Rectangle(5, 3, 19, 11), 0, "4:2:2", 0);
+        roundTrip("g8t q0 422", g8t, g8t.rect, 0, "4:2:2", 0);
+        roundTrip("n40t q20 420", n40t, n40t.rect, 20, "4:2:0", 0);
         next();
     }
 
@@ -197,7 +215,8 @@ public class Test extends Sprite {
                 }
                 var line:String = name + " loaded " + info.contentType + " " + bmp.width + "x" + bmp.height +
                     " transparent=" + bmp.transparent;
-                if (q == 0 && trim == 0) {
+                // 4:2:0 and 4:2:2 subsample the chroma even with quantization 0
+                if (q == 0 && trim == 0 && (cs == "auto" || cs == "4:4:4")) {
                     line += " differing=" + differ;
                 } else {
                     var psnr:Number = 10 * Math.log(255 * 255 / Math.max(se / (bmp.width * bmp.height * 4), 1e-9)) / Math.LN10;
