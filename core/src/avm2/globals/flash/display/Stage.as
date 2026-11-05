@@ -363,11 +363,13 @@ package flash.display {
         // null is TypeError #2007 (measured on Flash Player 32).
         [API("662")]
         public function set colorCorrection(value:String):void {
+            // Thrown here, not through Error.throwError: Flash's stack trace
+            // starts at this setter.
             if (value == null) {
-                Error.throwError(TypeError, 2007, "colorCorrection");
+                throw new TypeError("Error #2007: Parameter colorCorrection must be non-null.", 2007);
             }
             if (value != ColorCorrection.DEFAULT && value != ColorCorrection.ON && value != ColorCorrection.OFF) {
-                Error.throwError(ArgumentError, 2008, "colorCorrection");
+                throw new ArgumentError("Error #2008: Parameter colorCorrection must be one of the accepted values.", 2008);
             }
             this._colorCorrection = value;
         }

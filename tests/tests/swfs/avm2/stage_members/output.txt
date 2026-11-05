@@ -1,5 +1,5 @@
 allowsFullScreen = true
-allowsFullScreenInteractive = true
+allowsFullScreenInteractive = false
 colorCorrection = default
 colorCorrectionSupport = unsupported
 constructor = null

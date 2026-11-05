@@ -416,15 +416,18 @@ pub fn get_allows_full_screen<'gc>(
 
 /// Implement `allowsFullScreenInteractive`'s getter
 ///
-/// Timffle: the player's full-screen mode always keeps keyboard input (it
-/// never restricts keys the way Flash Player's plain full screen does), so
-/// `FULL_SCREEN_INTERACTIVE` is allowed exactly when full screen is.
+/// Timffle: false, as in the standalone Flash Player 32 (measured,
+/// timffle/difftest/src/D42Stage.hx) and in the browser plugin without the
+/// `allowFullScreenInteractive` embed parameter, which this player does not
+/// have. Setting `displayState` to `FULL_SCREEN_INTERACTIVE` still works where
+/// full screen is allowed, as it does in the standalone Flash Player, and the
+/// player's full screen keeps keyboard input either way.
 pub fn get_allows_full_screen_interactive<'gc>(
-    activation: &mut Activation<'_, 'gc>,
+    _activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    Ok(activation.context.stage.allow_fullscreen().into())
+    Ok(false.into())
 }
 
 /// Timffle: `fullScreenSourceRect`'s getter (a copy, as in Flash Player).
