@@ -15,9 +15,15 @@ package flash.net.drm {
     // `loadVoucher`/`loadPreviewVoucher`/`storeVoucher` -> drmError,
     // `returnVoucher` -> returnVoucherError, `addToDeviceGroup` /
     // `removeFromDeviceGroup` -> addToDeviceGroupError / removeFromDeviceGroupError.
-    // Argument checks run synchronously first (#2007 for null parameters, #2008 for
-    // a bad LoadVoucherSetting, ArgumentError #2004 for `returnVoucher` without a
-    // server or without both ids, as documented).
+    // Argument checks run synchronously first, as in Flash Player 32 (measured,
+    // tests/tests/swfs/avm2/av_drm_arguments): `loadVoucher` with a null content
+    // data or a setting that is not a LoadVoucherSetting, `loadPreviewVoucher(null)`
+    // and `returnVoucher` without a server or without both ids throw an
+    // ArgumentError with errorID 0 and no text; `authenticate`, `addToDeviceGroup`,
+    // `removeFromDeviceGroup`, `storeVoucher` and `setAuthenticationToken` accept
+    // null arguments. Flash Player 32 itself has the Adobe Access module (its
+    // `isSupported` is true), so the events of a player without it could not be
+    // measured; error 3344 comes from the runtime error list.
     [API("667")]
     public final class DRMManager extends EventDispatcher {
         private static var _instance:DRMManager = null;
@@ -55,26 +61,11 @@ package flash.net.drm {
 
         [API("674")]
         public function addToDeviceGroup(deviceGroup:DRMDeviceGroup, forceRefresh:Boolean = false):void {
-            if (deviceGroup == null) {
-                throw new TypeError("Error #2007: Parameter deviceGroup must be non-null.", 2007);
-            }
             this.fail(new DRMDeviceGroupErrorEvent(DRMDeviceGroupErrorEvent.ADD_TO_DEVICE_GROUP_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, deviceGroup, false, true));
         }
 
         public function authenticate(serverURL:String, domain:String, username:String, password:String):void {
-            if (serverURL == null) {
-                throw new TypeError("Error #2007: Parameter serverURL must be non-null.", 2007);
-            }
-            if (domain == null) {
-                throw new TypeError("Error #2007: Parameter domain must be non-null.", 2007);
-            }
-            if (username == null) {
-                throw new TypeError("Error #2007: Parameter username must be non-null.", 2007);
-            }
-            if (password == null) {
-                throw new TypeError("Error #2007: Parameter password must be non-null.", 2007);
-            }
             this.fail(new DRMAuthenticationErrorEvent(DRMAuthenticationErrorEvent.AUTHENTICATION_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, serverURL, domain));
         }
@@ -82,7 +73,7 @@ package flash.net.drm {
         [API("667")]
         public function loadPreviewVoucher(contentData:DRMContentData):void {
             if (contentData == null) {
-                throw new TypeError("Error #2007: Parameter contentData must be non-null.", 2007);
+                throw new ArgumentError();
             }
             this.fail(new DRMErrorEvent(DRMErrorEvent.DRM_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, contentData, false, true));
@@ -90,14 +81,11 @@ package flash.net.drm {
 
         public function loadVoucher(contentData:DRMContentData, setting:String):void {
             if (contentData == null) {
-                throw new TypeError("Error #2007: Parameter contentData must be non-null.", 2007);
-            }
-            if (setting == null) {
-                throw new TypeError("Error #2007: Parameter setting must be non-null.", 2007);
+                throw new ArgumentError();
             }
             if (setting != LoadVoucherSetting.ALLOW_SERVER && setting != LoadVoucherSetting.FORCE_REFRESH
                 && setting != LoadVoucherSetting.LOCAL_ONLY) {
-                throw new ArgumentError("Error #2008: Parameter setting must be one of the accepted values.", 2008);
+                throw new ArgumentError();
             }
             this.fail(new DRMErrorEvent(DRMErrorEvent.DRM_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, contentData, false, true));
@@ -105,9 +93,6 @@ package flash.net.drm {
 
         [API("674")]
         public function removeFromDeviceGroup(deviceGroup:DRMDeviceGroup):void {
-            if (deviceGroup == null) {
-                throw new TypeError("Error #2007: Parameter deviceGroup must be non-null.", 2007);
-            }
             this.fail(new DRMDeviceGroupErrorEvent(DRMDeviceGroupErrorEvent.REMOVE_FROM_DEVICE_GROUP_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, deviceGroup, false, true));
         }
@@ -119,7 +104,7 @@ package flash.net.drm {
         [API("690")]
         public function returnVoucher(inServerURL:String, immediateCommit:Boolean, licenseID:String, policyID:String):void {
             if (inServerURL == null || (licenseID == null && policyID == null)) {
-                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+                throw new ArgumentError();
             }
             this.fail(new DRMReturnVoucherErrorEvent(DRMReturnVoucherErrorEvent.RETURN_VOUCHER_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, inServerURL, licenseID, policyID));
@@ -128,12 +113,6 @@ package flash.net.drm {
         // The token cache of the (absent) module: kept per server and domain so a
         // later `authenticate` could use it; null clears the entry.
         public function setAuthenticationToken(serverUrl:String, domain:String, token:ByteArray):void {
-            if (serverUrl == null) {
-                throw new TypeError("Error #2007: Parameter serverUrl must be non-null.", 2007);
-            }
-            if (domain == null) {
-                throw new TypeError("Error #2007: Parameter domain must be non-null.", 2007);
-            }
             var key:String = serverUrl + "\n" + domain;
             if (token == null) {
                 delete this._tokens[key];
@@ -144,9 +123,6 @@ package flash.net.drm {
 
         [API("674")]
         public function storeVoucher(voucher:ByteArray):void {
-            if (voucher == null) {
-                throw new TypeError("Error #2007: Parameter voucher must be non-null.", 2007);
-            }
             this.fail(new DRMErrorEvent(DRMErrorEvent.DRM_ERROR, false, false,
                 "Missing Flash Access module.", 3344, 0, null, false, true));
         }

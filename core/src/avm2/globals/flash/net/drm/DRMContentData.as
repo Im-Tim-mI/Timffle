@@ -1,14 +1,11 @@
 package flash.net.drm {
-    import flash.errors.IllegalOperationError;
     import flash.utils.ByteArray;
 
     // Timffle: the DRM metadata of a protected file. Parsing the metadata is done by
-    // the Adobe Access module, which this player does not have: a DRMContentData
-    // built from bytes fails with IllegalOperationError #2014 ("Feature is not
-    // available at this time"), the error Flash Player uses for a feature that is
-    // not present on the system. An empty DRMContentData (no bytes) is allowed and
-    // describes nothing: every property is null and `getVoucherAccessInfo()` returns
-    // the single default entry the reference promises.
+    // the Adobe Access module, which this player does not have, so no metadata is
+    // ever read: like Flash Player 32 with bytes that are not DRM metadata, the
+    // constructor accepts any ByteArray (or none), every property is null and
+    // `getVoucherAccessInfo()` is null (measured, tests/tests/swfs/avm2/av_drm_arguments).
     [API("667")]
     public class DRMContentData {
         private var _serverURL:String = null;
@@ -18,9 +15,6 @@ package flash.net.drm {
 
         [API("667")]
         public function DRMContentData(rawData:ByteArray = null) {
-            if (rawData != null) {
-                throw new IllegalOperationError("Error #2014: Feature is not available at this time.", 2014);
-            }
         }
 
         public function get serverURL():String {
@@ -41,9 +35,7 @@ package flash.net.drm {
 
         [API("667")]
         public function getVoucherAccessInfo():Vector.<VoucherAccessInfo> {
-            var result:Vector.<VoucherAccessInfo> = new Vector.<VoucherAccessInfo>();
-            result.push(new VoucherAccessInfo());
-            return result;
+            return null;
         }
     }
 }

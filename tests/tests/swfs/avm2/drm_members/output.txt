@@ -5,40 +5,39 @@ singleton: true
 new DRMManager(): ArgumentError #2012
 networkIdleTimeout: 0
 networkIdleTimeout: 30
-authenticate(null): TypeError #2007
 authenticate: queued
-loadVoucher(bogus): ArgumentError #2008
-loadVoucher(null): TypeError #2007
+loadVoucher(bogus): ArgumentError #0
+loadVoucher(null): ArgumentError #0
 loadVoucher/loadPreviewVoucher: queued
-returnVoucher(null url): ArgumentError #2004
-returnVoucher(no ids): ArgumentError #2004
+returnVoucher(null url): ArgumentError #0
+returnVoucher(no ids): ArgumentError #0
 returnVoucher: queued
 deviceGroup: null null null null
 deviceGroup.name: family
-addToDeviceGroup(null): TypeError #2007
 addToDeviceGroup/removeFromDeviceGroup: queued
-storeVoucher(null): TypeError #2007
 storeVoucher: queued
-setAuthenticationToken(null): TypeError #2007
 setAuthenticationToken/resetDRMVouchers ok
 // DRMContentData
 serverURL: null
 authenticationMethod: null
 licenseID: null
 domain: null
-getVoucherAccessInfo: 1
+getVoucherAccessInfo: null
 VoucherAccessInfo: null null null null null
-new DRMContentData(bytes): flash.errors::IllegalOperationError #2014
+new DRMContentData(bytes): null
 // data classes
 new DRMVoucher(): ArgumentError #2012
 new DRMPlaybackTimeWindow(): ArgumentError #2012
 AddToDeviceGroupSetting: allowServer forceRefresh localOnly
 LoadVoucherSetting: allowServer forceRefresh localOnly
 // waiting for the events
+authenticationError: #3344 sub 0 null d 'Missing Flash Access module.'
 authenticationError: #3344 sub 0 https://drm.example/ domain 'Missing Flash Access module.'
 drmError: #3344 sub 0 contentData [object DRMContentData] systemUpdateNeeded false drmUpdateNeeded true
 drmError: #3344 sub 0 contentData [object DRMContentData] systemUpdateNeeded false drmUpdateNeeded true
 returnVoucherError: #3344 https://drm.example/ license null
+addToDeviceGroupError: #3344 null drmUpdateNeeded true
 addToDeviceGroupError: #3344 family drmUpdateNeeded true
 removeFromDeviceGroupError: #3344 family
+drmError: #3344 sub 0 contentData null systemUpdateNeeded false drmUpdateNeeded true
 drmError: #3344 sub 0 contentData null systemUpdateNeeded false drmUpdateNeeded true

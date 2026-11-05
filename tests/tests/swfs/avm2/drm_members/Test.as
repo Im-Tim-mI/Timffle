@@ -49,10 +49,10 @@ package {
                 trace("returnVoucherError: #" + e.errorID + " " + e.serverURL + " " + e.licenseID + " " + e.policyID);
             });
             manager.addEventListener(DRMDeviceGroupErrorEvent.ADD_TO_DEVICE_GROUP_ERROR, function(e:DRMDeviceGroupErrorEvent):void {
-                trace("addToDeviceGroupError: #" + e.errorID + " " + e.deviceGroup.name + " drmUpdateNeeded " + e.drmUpdateNeeded);
+                trace("addToDeviceGroupError: #" + e.errorID + " " + (e.deviceGroup ? e.deviceGroup.name : null) + " drmUpdateNeeded " + e.drmUpdateNeeded);
             });
             manager.addEventListener(DRMDeviceGroupErrorEvent.REMOVE_FROM_DEVICE_GROUP_ERROR, function(e:DRMDeviceGroupErrorEvent):void {
-                trace("removeFromDeviceGroupError: #" + e.errorID + " " + e.deviceGroup.name);
+                trace("removeFromDeviceGroupError: #" + e.errorID + " " + (e.deviceGroup ? e.deviceGroup.name : null));
             });
 
             try {
@@ -126,14 +126,13 @@ package {
             trace("authenticationMethod: " + data.authenticationMethod);
             trace("licenseID: " + data.licenseID);
             trace("domain: " + data.domain);
-            var infos:Vector.<VoucherAccessInfo> = data.getVoucherAccessInfo();
-            trace("getVoucherAccessInfo: " + infos.length);
-            var info:VoucherAccessInfo = infos[0];
+            trace("getVoucherAccessInfo: " + data.getVoucherAccessInfo());
+            var info:VoucherAccessInfo = new VoucherAccessInfo();
             trace("VoucherAccessInfo: " + info.displayName + " " + info.authenticationMethod + " " + info.domain + " " + info.policyID + " " + info.deviceGroup);
             var bytes:ByteArray = new ByteArray();
             bytes.writeUTFBytes("not drm metadata");
             try {
-                new DRMContentData(bytes);
+                trace("new DRMContentData(bytes): " + new DRMContentData(bytes).serverURL);
             } catch (e:Error) {
                 trace("new DRMContentData(bytes): " + getQualifiedClassName(e) + " #" + e.errorID);
             }
