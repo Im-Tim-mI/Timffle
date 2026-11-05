@@ -58,6 +58,17 @@ impl<'gc> BoundMethod<'gc> {
         self.method
     }
 
+    /// Timffle: the scope chain the closure was created in (`flash.sampler.getLexicalScopes`).
+    pub fn scope(&self) -> ScopeChain<'gc> {
+        self.scope
+    }
+
+    /// Timffle: the receiver a bound method closure always runs with
+    /// (`flash.sampler.getSavedThis`); `None` for a plain function.
+    pub fn bound_receiver(&self) -> Option<Value<'gc>> {
+        self.bound_receiver
+    }
+
     pub fn exec(
         &self,
         unbound_receiver: Value<'gc>,
