@@ -53,6 +53,7 @@
 - **`TextBlock.recreateTextLine` 與 TextLine 子物件照真 Flash**：重建的行回到新行的顯示狀態（位置、縮放、旋轉、3D、alpha、混合模式、遮罩、visible、`cacheAsBitmap`、`opaqueBackground` 歸零，子物件移除、事件監聽者清掉，名稱與父物件保留）；原地重建時後面的行變成 invalid、連結不變，搬到別處時舊串列接起來並讓其後的行 invalid、新位置原本的行被換掉（invalid、斷開連結）；TextLine 現在真的是容器（`addChild` 有效、子物件畫在文字上面，`tabChildren` 固定 false）。`avm2/textblock_recreateline` 與 Flash 相同、取消 `known_failure`；`textblock_line_changes` 仍是已知失敗（`static` 行的情況，已知差異檔更新）。
 - **ApplicationDomain：子網域自己先定義的類別不被父網域後來載入的同名類別蓋掉**：名稱查找仍然父網域優先（26292），但找到的名稱若子網域自己也有定義（只會發生在子網域先定義、父網域後來才載入同名定義時），回子網域自己的，與 Flash 相同；`avm2/loader_duplicate_class` 通過，其他 `loader*`、`*domain*` 測試照常通過。
 - **`NetConnection.call` 的請求在同一個 tick 送出**：26335 把網路連線的更新移到影格之前後，影格裡排入的 AMF 請求要等到下一個 tick 才送，晚於同一影格送出的 LocalConnection 訊息；現在送出請求改在影格之後（只是發出請求，不影響畫面）。
+- **AVM1 NetConnection／LocalConnection 的 AMF0 位元組與 Flash 相同**：巢狀陣列只有小於 `length` 的索引屬性時寫成 strict array（空洞寫 `undefined`；SharedObject 照 Flash 的 .sol 仍是 ECMA array），參考編號照 Flash 只算物件、陣列、Date 與 XML（被序列化的物件本身是 0），不再把數字、字串等也算進去（`vendor/rust-flash-lso` 加 `Amf0Writer::without_primitive_references`）。`avm1/amf_array_serialization`、`avm1/amf0_serde_suite`（追蹤輸出）、`avm1/netconnection_serialize_arrays` 與 Flash 相同，取消 `known_failure`；`amf0_serde_suite` 的 SharedObject 檔仍是已知差異。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 

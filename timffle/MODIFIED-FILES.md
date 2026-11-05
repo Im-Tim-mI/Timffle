@@ -1081,6 +1081,12 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | Change | File |
 |---|---|
 | changed | `vendor/rust-flash-lso/flash-lso/src/amf0/read.rs` |
+| changed | `vendor/rust-flash-lso/flash-lso/src/amf0/writer/amf0_writer.rs` |
+| changed | `vendor/rust-flash-lso/flash-lso/src/amf0/writer/array_writer.rs` |
+| changed | `vendor/rust-flash-lso/flash-lso/src/amf0/writer/obj_writer.rs` |
+| changed | `vendor/rust-flash-lso/flash-lso/src/amf0/writer/object_writer.rs` |
+| changed | `vendor/rust-flash-lso/flash-lso/src/amf0/writer/strict_array_writer.rs` |
+| changed | `vendor/rust-flash-lso/flash-lso/src/amf0/writer/typed_object_writer.rs` |
 | changed | `vendor/rust-flash-lso/flash-lso/src/amf3/length.rs` |
 | changed | `vendor/rust-flash-lso/flash-lso/src/amf3/write.rs` |
 | changed | `vendor/rust-flash-lso/flash-lso/src/types/reference.rs` |

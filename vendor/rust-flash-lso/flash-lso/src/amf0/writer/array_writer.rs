@@ -16,7 +16,7 @@ pub struct ArrayWriter<'a, 'b> {
 impl<'a> ObjWriter<'a> for ArrayWriter<'a, '_> {
     fn add_element(&mut self, name: &str, s: Value, inc_ref: bool) {
         if inc_ref {
-            self.make_reference();
+            self.primitive_reference();
         }
 
         self.elements
@@ -131,6 +131,10 @@ impl<'a> ObjWriter<'a> for ArrayWriter<'a, '_> {
                 r,
             )
         }
+    }
+
+    fn primitive_reference(&mut self) {
+        self.parent.primitive_reference();
     }
 
     fn make_reference(&mut self) -> Reference {
