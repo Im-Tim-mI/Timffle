@@ -280,6 +280,19 @@ Ruffle 上游只有 `Collator` 的骨架（大小寫折疊後比較碼位），�
 - **VideoTexture**：補 `attachCamera`／`attachNetStream`／`videoWidth`／`videoHeight`。沒有硬體影片轉貼圖 → `supportsVideoTexture` false、`createVideoTexture()` null，類別仍是 abstract（`new` 丟 #2012），所以永遠拿不到實例；成員以「未附加來源」行為實作（記錄來源、null 解除、寬高 0）。
 - **CubeTexture.uploadCompressedTextureFromByteArray(async)**：AS 端和 `Texture` 相同；native 改名 `…Internal`。
 
+### 第 3 組：flash.text.engine
+
+Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段文字，atom／mirror／群組操作全是空殼或缺少。Timffle：
+
+- **ContentElement**（`content_element_object.rs`、`content_element.rs`）：新增 `group_element`／`text_block` 擁有者欄位，`GroupElement.setElements`／`replaceElements` 插入時記錄、移除時清掉，`TextBlock.content` 設定時記錄（同一個元素再放進另一個 block 時由後者接管，不丟錯——既有測試 `textblock_createline_errors` 把同一個 content 放進兩個 block，真 Flash 不丟錯）。`textBlock` 沿群組鏈往上找根元素的 block；`textBlockBeginIndex` 沿鏈加總前面兄弟的 rawText 長度，不在 block 時 -1；`rawText` 與 `text` 同，但 GraphicElement 貢獻 U+FDEF。`eventMirror`／`textRotation` 的 stub 巨集移除：值真的儲存、驗證並由 `TextLine.mirrorRegions`／`getAtomTextRotation` 讀取（字形本身還沒有旋轉繪製，見差異表）。
+- **GroupElement**（AS）：`getElementAtCharIndex`（超出 rawText 範圍 RangeError #2006）、`groupElements(begin, end)`（把區段搬進新的 GroupElement 並放回原位，索引錯 #2006）、`ungroupElements(index)`（不是 GroupElement → ArgumentError #2004）、`mergeTextElements(begin, end)`（任一不是 TextElement → #2004；文字接到第一個元素，其餘移除）。
+- **GraphicElement**（`graphic_element.rs`）：`ElementData::Graphic { graphic, element_width, element_height }`，建構子經 setter 填值；版面裡以一個 U+FDEF 字元佔位（用該元素的 elementFormat，沒有 format 時與 TextElement 一樣丟 #2175）。
+- **TextBlock**（`text_block.rs`、AS）：`lineOffset` → `TextFormat.indent`，`fitSomething` false 且第一行放不下任何字元（或唯一字元寬過 width）→ 回 null、`textLineCreationResult = insufficientWidth`；`tabStops` 的 position 進 `TextFormat.tab_stops`；`lineRotation` 用 `set_rotation` 轉整個 TextLine。`firstInvalidLine` 回第一個 validity ≠ valid 的行；`getTextLineAtCharIndex` 超出 block 文字長度丟 #2006；四個 boundary 方法用 `unicode-segmentation`（已在 Cargo.lock），索引超出丟 #2006、沒有更多邊界回 -1；`releaseLineCreationData` 是真的無事可做（本播放器不快取 shaping 資料，文件註明）；`dump` 輸出自訂 XML（Flash 的格式無文件）。`applyNonLinearFontScaling`／`baselineFontDescription`／`baselineFontSize`／`baselineZero`／`textJustifier` 的 setter 空殼巨集移除（值儲存並驗證；對版面的影響見差異表）；`bidiLevel` 仍留空殼（沒有雙向排版）。 **合併時的修正**：代理把 `DoCreateTextLine` 改成「每個 TextLine 只保留第一視覺行」的切割，讓上游由 Flash 導出的 `textline_splitting_basic`／`textline_raw_text_length` 失敗，已還原；`createTextLine`／`recreateTextLine` 仍標為空殼（`fitSomething` 與一段切成多行是上游既有行為），`lineOffset`／`tabStops`／`lineRotation` 保留。
+- **TextLine**（`text_line.rs`、AS）：atom = UAX #29 字素；`getAtomBounds`／`getAtomCenter` 取該字素每個字元的 `EditText::char_bounds` 聯集；`getAtomIndexAtPoint` 把舞台座標 `global_to_local` 後找含該點的 atom；`getAtomWordBoundaryOnLeft` 用 UAX #29 字界；索引超出丟 #2006。`getAtomGraphic`／`getAtomTextRotation`／`hasGraphicElement` 經新的 internal native `ContentElement.leafAtCharIndex` 找到葉元素；`getAtomBidiLevel` 回 block 的 `bidiLevel`；`getBaselinePosition` 以 roman 基線為 0，由行的 ascent/descent 推 ascent/descent/ideographic*（無效名稱 #2008）；`totalAscent`／`totalDescent`／`totalHeight` 等於文字值（圖形還沒有獨立 inline box）；`unjustifiedTextWidth` = `textWidth`（沒有套 justification）。`mirrorRegions`：對每個 atom 沿群組鏈找最近有 `eventMirror` 的元素，連續同元素合併成一個區域（bounds 聯集），串成 previous/next 鏈；沒有 → null。`TextLineMirrorRegion` 改成真類別（internal 欄位 + 唯讀 getter）。
+- **TextJustifier.getJustifierForLocale**：ja／zh／ko → EastAsianJustifier，其餘 SpaceJustifier，lineJustification 皆 unjustified；null → TypeError #2007、少於 2 字元 → #2004（與建構子相同）。
+- **FontDescription.isFontCompatible**：`library.get_embedded_font_by_name(name, EmbeddedCFF, bold, italic)` 有無；`isDeviceFontCompatible`：`get_or_load_device_font` 有無（後端解析不到時仍會退到內建預設字型，所以多半為 true，如同 Flash 在有系統預設字型的機器）。fontName null → #2007，weight／posture 不合法 → #2008。
+- **ElementFormat.getFontMetrics**：emBox = (0, -size×ascent 比例, size, size)，ascent 比例取該格式字型（內嵌 CFF → 裝置字型）的 `FontMetrics` ascent/(ascent+descent)，找不到用 0.8；其餘比例為 OS/2 慣例：strikethrough -0.26 em／0.075 em、underline 0.15 em／0.075 em、sub/superscript 0.15／-0.35 em、scale 0.65，lineGap 0。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -350,5 +363,13 @@ Ruffle 上游只有 `Collator` 的骨架（大小寫折疊後比較碼位），�
 | `maxBackBufferWidth/Height` 超出範圍 | 文件只說「不能大於系統上限、不能小於 32／最後設定值」，沒說丟什麼錯；這裡夾值不丟錯。 |
 | `totalGPUMemory` 的程式大小 | 用 AGAL 位元組數代替驅動程式實際配置量。 |
 | Stage3D 測試 | 本容器沒有 Vulkan ICD／EGL，wgpu 找不到轉接器：`stage3d_members` 只涵蓋不需要 context 的部分（`supportsVideoTexture`、`new VideoTexture()` #2012、`TextureBase.dispose()`、`stage3Ds`）；`dispose()`→#3694、`totalGPUMemory`、`backBuffer*`、`maxBackBuffer*` 的程式碼只經 `cargo check` 與人工閱讀，未在此機器執行。合併後請在有 GPU 的機器跑 `cargo test -p tests --test tests -- stage3d`。 |
+| 項目 | 差異 |
+| ContentElement.textRotation／TextBlock.baselineZero／applyNonLinearFontScaling／textJustifier／baselineFont* | 值儲存、驗證並可讀回，但版面不旋轉個別字形、不換基線零點、不做 justification 與非線性縮放；`getBaselinePosition` 以 roman 基線為 0 回報，而 TextLine 的繪製原點仍是 EditText 的左上角（上游既有差異）。 |
+| TextBlock.bidiLevel | 仍是空殼（沒有雙向排版）；`getAtomBidiLevel` 一律回 block 的 bidiLevel。 |
+| TextBlock.dump()／TextLine.dump() | Flash 的 XML 格式無文件，輸出為自訂格式。 |
+| GraphicElement 版面 | 佔一個 U+FDEF 字元而不是 elementWidth × elementHeight 的 inline box；`graphic` 不會被加成 TextLine 的子物件；totalAscent/Descent 不含圖形高度。 |
+| 同一元素放進第二個 TextBlock／GroupElement | 不丟 ArgumentError（既有 Flash 錄製測試顯示 content 可重複），由後者接管擁有權。 |
+| ElementFormat.getFontMetrics | underline／strikethrough／sub/superscript 不是從字型 OS/2 表讀，而是慣例比例。 |
+| createTextLine 的行切割 | 仍是上游行為：一段文字排在一個 TextLine 裡（不照 width 切成多行）、`fitSomething` 忽略；代理的切割版本讓 Flash 導出的測試失敗，合併時還原，兩個方法仍是空殼。 |
 
 > 這些差異都是已知的，**沒有被藏起來**——黃金答案不會為了讓測試通過而被改寫。其中一部分是用需要遊戲檔案的探針量到的，那些探針沒有放進 repo，所以上表是結論而不是可直接重現的測試。

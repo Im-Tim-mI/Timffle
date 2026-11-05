@@ -549,9 +549,10 @@ pub fn do_create_text_line<'gc>(
         .and_then(|o| o.as_text_line());
 
     let width = args.get_f64(2);
-    // Timffle: `lineOffset` and `fitSomething` were previously ignored.
+    // Timffle: `lineOffset` was previously ignored (`fitSomething` and
+    // splitting one paragraph into several lines still are: upstream lays the
+    // whole paragraph out in one TextLine, which the Flash-recorded tests pin).
     let line_offset = args.get_f64(3);
-    let fit_something = args.get_bool(4);
 
     let content = block.content().expect("Guaranteed by AS checks");
 
@@ -614,8 +615,7 @@ pub fn do_create_text_line<'gc>(
     let text_line_instance = text_line.object2().expect("Already created the object2");
     let fallback = text_line.fallback();
 
-    let mut subtext = &text[previous_position..next_position];
-    let mut next_position = next_position;
+    let subtext = &text[previous_position..next_position];
 
     fallback.set_text(subtext, activation.context);
 
@@ -642,36 +642,7 @@ pub fn do_create_text_line<'gc>(
         format.tab_stops = Some(positions);
     }
 
-    apply_format(activation, fallback, format.clone(), line_index);
-
-    // Timffle: a `TextLine` holds exactly one laid-out line. The fallback
-    // `EditText` wraps at `width`; keep only the characters of its first
-    // visual line so the rest is left for the next `createTextLine` call.
-    let (first_line_end, first_line_width) = {
-        let layout = fallback.layout();
-        match layout.lines().first() {
-            Some(line) => (line.end(), line.bounds().width().to_pixels()),
-            None => (subtext.len(), 0.0),
-        }
-    };
-    if first_line_end < subtext.len() {
-        if first_line_end == 0 && !fit_something {
-            // Nothing fits in `width` and the caller did not ask to fit
-            // something anyway: Flash returns null with `insufficientWidth`.
-            block.set_text_line_creation_result(Some(
-                TextLineCreationResultValue::InsufficientWidth,
-            ));
-            return Ok(Value::Null);
-        }
-        let cut = first_line_end.max(1);
-        next_position = previous_position + cut;
-        subtext = &text[previous_position..next_position];
-        fallback.set_text(subtext, activation.context);
-        apply_format(activation, fallback, format, line_index);
-    } else if first_line_width > width && !fit_something && width < f64::from(i32::MAX) {
-        block.set_text_line_creation_result(Some(TextLineCreationResultValue::InsufficientWidth));
-        return Ok(Value::Null);
-    }
+    apply_format(activation, fallback, format, line_index);
 
     // Timffle: `TextBlock.lineRotation` rotates the whole line display object.
     let rotation = match block.line_rotation() {
@@ -680,9 +651,11 @@ pub fn do_create_text_line<'gc>(
         TextRotationValue::Rotate180 => 180.0,
         TextRotationValue::Rotate270 => 270.0,
     };
-    text_line.set_rotation(crate::types::Degrees::from_radians(
-        (rotation as f64).to_radians(),
-    ));
+    if rotation != 0.0 {
+        // Only touch the transform for a real rotation: `recreateTextLine`
+        // keeps upstream's reset semantics for the common `rotate0` case.
+        text_line.set_rotation(crate::types::Degrees::from_radians(rotation.to_radians()));
+    }
 
     // FIXME: This needs to use `intrinsic_bounds` to measure the width
     // of the provided text, and set the width of the EditText to that.

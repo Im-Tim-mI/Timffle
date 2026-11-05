@@ -907,7 +907,8 @@
     "textBlockBeginIndex",
     "textRotation"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "6 個成員真實作（擁有者記錄、rawText U+FDEF）；textRotation 只儲存不旋轉字形；SWF 測試未跑"
   },
   {
    "class": "flash.text.engine.ElementFormat",
@@ -916,7 +917,8 @@
    "stubbed": [
     "getFontMetrics()"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "getFontMetrics 依字型 ascent/descent + OS/2 慣例比例；未讀字型 OS/2 表"
   },
   {
    "class": "flash.text.engine.FontDescription",
@@ -927,7 +929,8 @@
    "stubbed": [
     "static isFontCompatible()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "isFontCompatible 查內嵌 CFF 字型、isDeviceFontCompatible 查裝置字型；SWF 測試未跑"
   },
   {
    "class": "flash.text.engine.GraphicElement",
@@ -938,7 +941,8 @@
     "elementWidth",
     "graphic"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "graphic/elementWidth/elementHeight 真儲存；版面只佔 U+FDEF，沒有 inline box"
   },
   {
    "class": "flash.text.engine.GroupElement",
@@ -950,7 +954,8 @@
     "ungroupElements()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "4 個方法（AS，錯誤碼 2004/2006）；SWF 測試未跑"
   },
   {
    "class": "flash.text.engine.TextBlock",
@@ -978,7 +983,8 @@
     "tabStops",
     "textJustifier"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "7 個缺少成員補齊、createTextLine 真的切行 + lineOffset/fitSomething/tabStops/lineRotation；bidiLevel 仍空殼；dump 格式自訂；SWF 測試未跑 | merger: the one-visual-line-per-TextLine createTextLine change broke the Flash-recorded tests textline_splitting_basic/textline_raw_text_length and was reverted; createTextLine/recreateTextLine stay stubbed (fitSomething + paragraph splitting = upstream behaviour), lineOffset/tabStops/lineRotation kept."
   },
   {
    "class": "flash.text.engine.TextJustifier",
@@ -987,7 +993,8 @@
     "static getJustifierForLocale()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "getJustifierForLocale（ja/zh/ko → EastAsianJustifier）"
   },
   {
    "class": "flash.text.engine.TextLine",
@@ -1016,7 +1023,8 @@
     "totalDescent",
     "unjustifiedTextWidth"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "atom 查詢由字形位置算、mirrorRegions/getMirrorRegion/dump/totalHeight；圖形 inline box 與 justification 未做；SWF 測試未跑"
   },
   {
    "class": "flash.text.engine.TextLineMirrorRegion",
@@ -1030,7 +1038,8 @@
     "textLine"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "真類別，由 TextLine.mirrorRegions 建立；SWF 測試未跑"
   },
   {
    "class": "flash.display3D.Context3D",

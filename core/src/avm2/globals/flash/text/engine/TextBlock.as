@@ -1,4 +1,5 @@
 package flash.text.engine {
+    import __ruffle__.stub_method;
     [API("662")]
     [Ruffle(InstanceAllocator)]
     public final class TextBlock {
@@ -93,6 +94,9 @@ package flash.text.engine {
                 Error.throwError(ArgumentError, 2004);
             }
 
+            // Timffle: one paragraph per TextLine and `fitSomething` are still upstream behaviour.
+            stub_method("flash.text.engine.TextBlock", "createTextLine");
+
             return this.DoCreateTextLine(null, previousLine, width, lineOffset, fitSomething);
         }
 
@@ -122,6 +126,8 @@ package flash.text.engine {
 
             // Clear AS-side properties of the text line
             textLine.userData = null;
+
+            stub_method("flash.text.engine.TextBlock", "recreateTextLine");
 
             return this.DoCreateTextLine(textLine, previousLine, width, lineOffset, fitSomething);
         }

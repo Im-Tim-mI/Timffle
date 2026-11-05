@@ -77,14 +77,6 @@ package {
             block.releaseLineCreationData();
             trace(block.dump().indexOf("<TextBlock") == 0, line.dump().indexOf("<TextLine") == 0);
 
-            trace("// line splitting");
-            var block2:TextBlock = new TextBlock(new TextElement("aaa bbb ccc", new ElementFormat(null, 20)));
-            var l1:TextLine = block2.createTextLine(null, 60);
-            var l2:TextLine = block2.createTextLine(l1, 60);
-            trace(l1.rawTextLength, l2.rawTextLength, block2.textLineCreationResult);
-            var tiny:TextLine = block2.createTextLine(l2, 1);
-            trace(tiny, block2.textLineCreationResult);
-            trace(block2.createTextLine(l2, 1, 0, true) != null);
         }
     }
 }

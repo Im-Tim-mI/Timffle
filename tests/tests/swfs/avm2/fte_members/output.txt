@@ -1,0 +1,40 @@
+// ContentElement bookkeeping before a block
+true null -1
+12 11 fdef
+10 12 true
+// in a block
+true true 6 11
+true true true
+2006
+// boundaries
+1 4 5 6
+2006
+// lines
+true 12 true 6 7
+7 true false rotate0 0
+true true true
+0 true
+true true null
+2006
+// mirror regions
+null
+1 true true true true
+true null
+// group operations
+2 2 true true
+3 true 0
+true Hello world 2 null
+2004
+2004
+// justifier / fonts / metrics
+true true
+unjustified
+2007
+false
+false
+2008
+20 20 true 3 0.65
+// block properties
+90
+1
+true true
