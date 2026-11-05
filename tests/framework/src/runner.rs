@@ -105,6 +105,7 @@ impl TestRunner {
                 test.fonts()?,
                 test.font_sorts(),
                 test.options.player_options.device_font_renderer(),
+                test.options.player_options.mouse_lock(),
             ))
             .with_viewport_dimensions(
                 viewport_dimensions.width,

@@ -3,6 +3,7 @@
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::events::Event;
+use crate::avm2::globals::slots::flash_events_mouse_event as mouse_event_slots;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, Object, ScriptObject, TObject};
 use crate::avm2::value::Value;
@@ -17,6 +18,7 @@ use ruffle_common::utils::HasPrefixField;
 use ruffle_macros::istr;
 use std::cell::{Ref, RefMut};
 use std::fmt::Debug;
+use swf::Point;
 
 /// A class instance allocator that allocates Event objects.
 pub fn event_allocator<'gc>(
@@ -119,10 +121,16 @@ impl<'gc> EventObject<'gc> {
         bubbles: bool,
         button: MouseButton,
     ) -> EventObject<'gc> {
-        let local = target.local_mouse_position(activation.context);
+        // Timffle: a locked mouse has no position (Flash Player 32: localX/Y
+        // read 0 on every mouse event while `Stage.mouseLock` is on).
+        let local = if activation.context.stage.mouse_lock() {
+            Point::ZERO
+        } else {
+            target.local_mouse_position(activation.context)
+        };
 
         let mouse_event_cls = activation.avm2().classes().mouseevent;
-        Self::from_class_and_args(
+        let event = Self::from_class_and_args(
             activation,
             mouse_event_cls,
             &[
@@ -154,7 +162,25 @@ impl<'gc> EventObject<'gc> {
                 // delta
                 delta.into(),
             ],
-        )
+        );
+
+        // Timffle: the relative motion of a locked mouse (raw screen pixels).
+        if let Some((movement_x, movement_y)) = activation.context.mouse_data.movement
+            && event_type == istr!("mouseMove")
+        {
+            let object: Object<'gc> = event.into();
+            object.set_slot_no_coerce(
+                mouse_event_slots::_MOVEMENT_X,
+                movement_x.into(),
+                activation.gc(),
+            );
+            object.set_slot_no_coerce(
+                mouse_event_slots::_MOVEMENT_Y,
+                movement_y.into(),
+                activation.gc(),
+            );
+        }
+        event
     }
 
     pub fn mouse_event_down(

@@ -54,6 +54,8 @@ DIFFTEST_HTTP_PORT=18865 DIFFTEST_SOCK_PORT=18866 python3 server.py
 python3 verify_flash_goldens.py                       # 只檢查最新一次 Flash 輸出是否仍等於黃金答案
 ```
 
+**要送滑鼠輸入的黃金答案**放在 `difftest/expected-interactive/`（不在 `run_all.sh` 裡）：`d66movement`（`MouseEvent.movementX/Y`、`Stage.mouseLock`）由 `drive_movement.py <display>` 在私有 Xvfb 用 XTest 送點擊、滾輪、全螢幕與相對移動；設 `RUFFLE_BIN`（與 `RUFFLE_HOME`）改跑桌面版，報告寫到 `results/ruffle/`。SWF 要用 `./build.sh D66Movement d66movement -D harness -D harness_base=http://127.0.0.1:<埠> -swf-version 32` 編。
+
 比對時會忽略以 `~` 開頭的行（計時、版本、各播放器容許不同的原始數值）。一個黃金答案**至少要跑兩次真 Flash**確認輸出穩定才存。
 
 ### 新增一個測試

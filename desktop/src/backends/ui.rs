@@ -21,11 +21,25 @@ use std::path::Path;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::AsyncReadExt;
 use url::Url;
+use winit::dpi::PhysicalPosition;
 use winit::event_loop::EventLoopProxy;
 use winit::raw_window_handle::HasDisplayHandle;
 use winit::window::{CursorGrabMode, Fullscreen, Window};
+
+/// Timffle: `Stage.mouseLock` fell back to `CursorGrabMode::Confined` (X11 has
+/// no locked mode). X11 also delivers every raw motion event twice to a client
+/// that grabs the pointer, so the relative motion is then taken from the
+/// cursor position instead of `DeviceEvent::MouseMotion`.
+pub static MOUSE_LOCK_CONFINED: AtomicBool = AtomicBool::new(false);
+
+/// Timffle: where a confined, "locked" pointer is kept.
+pub fn window_centre(window: &Window) -> PhysicalPosition<f64> {
+    let size = window.inner_size();
+    PhysicalPosition::new(f64::from(size.width / 2), f64::from(size.height / 2))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceFontRenderer {
@@ -299,11 +313,25 @@ impl UiBackend for DesktopUiBackend {
 
     fn set_mouse_lock(&mut self, lock: bool) -> bool {
         if lock {
-            self.window
-                .set_cursor_grab(CursorGrabMode::Locked)
-                .or_else(|_| self.window.set_cursor_grab(CursorGrabMode::Confined))
+            if self.window.set_cursor_grab(CursorGrabMode::Locked).is_ok() {
+                MOUSE_LOCK_CONFINED.store(false, Ordering::Relaxed);
+                return true;
+            }
+            if self
+                .window
+                .set_cursor_grab(CursorGrabMode::Confined)
                 .is_ok()
+            {
+                // Timffle: a confined pointer still moves; the window measures
+                // each move from the centre and warps the pointer back there
+                // (see `MainWindow::locked_cursor_moved`).
+                MOUSE_LOCK_CONFINED.store(true, Ordering::Relaxed);
+                let _ = self.window.set_cursor_position(window_centre(&self.window));
+                return true;
+            }
+            false
         } else {
+            MOUSE_LOCK_CONFINED.store(false, Ordering::Relaxed);
             self.window.set_cursor_grab(CursorGrabMode::None).is_ok()
         }
     }

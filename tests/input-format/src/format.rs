@@ -126,6 +126,10 @@ pub enum AutomatedEvent {
         assert_cursor: Option<MouseCursor>,
     },
 
+    /// Timffle: relative pointer motion in device pixels, as a locked pointer
+    /// reports it (used by the player only while `Stage.mouseLock` is on).
+    MouseMoveRelative { dx: f64, dy: f64 },
+
     /// Click a mouse button.
     MouseDown {
         pos: MousePosition,

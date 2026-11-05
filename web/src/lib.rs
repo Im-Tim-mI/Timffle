@@ -701,11 +701,23 @@ impl RuffleHandle {
                 false,
                 move |js_event: PointerEvent| {
                     let _ = ruffle.with_instance(move |instance| {
-                        let event = PlayerEvent::MouseMove {
-                            x: js_event.offset_x() * instance.device_pixel_ratio,
-                            y: js_event.offset_y() * instance.device_pixel_ratio,
-                        };
+                        let dpr = instance.device_pixel_ratio;
                         let _ = instance.with_core_mut(|core| {
+                            // Timffle: under Pointer Lock (`Stage.mouseLock`) the
+                            // position is frozen and only `movementX/Y` change; Flash
+                            // reports that motion in screen pixels, the browser in
+                            // CSS pixels.
+                            let event = if core.mouse_lock() {
+                                PlayerEvent::MouseMoveRelative {
+                                    dx: f64::from(js_event.movement_x()) * dpr,
+                                    dy: f64::from(js_event.movement_y()) * dpr,
+                                }
+                            } else {
+                                PlayerEvent::MouseMove {
+                                    x: js_event.offset_x() * dpr,
+                                    y: js_event.offset_y() * dpr,
+                                }
+                            };
                             core.handle_event(event);
                         });
                         if instance.has_focus {

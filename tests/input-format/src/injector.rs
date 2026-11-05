@@ -95,6 +95,7 @@ impl InputInjector {
                 match event {
                     AutomatedEvent::Wait => break,
                     AutomatedEvent::MouseMove { .. }
+                    | AutomatedEvent::MouseMoveRelative { .. }
                     | AutomatedEvent::KeyDown { .. }
                     | AutomatedEvent::KeyUp { .. }
                     | AutomatedEvent::TextInput { .. }

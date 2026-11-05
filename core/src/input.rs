@@ -265,6 +265,8 @@ impl InputManager {
             }
 
             PlayerEvent::MouseMove { x, y } => InputEvent::MouseMove { x, y },
+            // Timffle: `Player::handle_input_event` turns these into `MouseMove`.
+            PlayerEvent::MouseMoveRelative { dx, dy } => InputEvent::MouseMove { x: dx, y: dy },
             PlayerEvent::MouseUp { x, y, button } => InputEvent::MouseUp { x, y, button },
             PlayerEvent::MouseDown {
                 x,
