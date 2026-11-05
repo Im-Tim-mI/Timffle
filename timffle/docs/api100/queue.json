@@ -780,7 +780,8 @@
     "equals()",
     "static getAvailableLocaleIDNames()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "仿 UCA 多層排序、六個選項全部生效、sv/da/de-phonebook 客製；DUCET 全表與中文排序未帶"
   },
   {
    "class": "flash.globalization.CurrencyFormatter",
@@ -808,7 +809,8 @@
     "trailingZeros",
     "useGrouping"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "20 個成員；正負版面表、setCurrency 驗證、parse"
   },
   {
    "class": "flash.globalization.DateTimeFormatter",
@@ -826,7 +828,8 @@
     "setDateTimeStyles()",
     "static getAvailableLocaleIDNames()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "LDML 樣式字母全部、樣式表、月份/星期名、首日；z/v 用 GMT 格式"
   },
   {
    "class": "flash.globalization.LocaleID",
@@ -842,7 +845,8 @@
     "lastOperationStatus",
     "static determinePreferredLocales()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "BCP 47/UTS #35 解析、likely-subtags 猜 script/region、-u- 與 @ 鍵值、determinePreferredLocales；測試 globalization_members"
   },
   {
    "class": "flash.globalization.NumberFormatter",
@@ -858,7 +862,8 @@
     "parseNumber()",
     "static getAvailableLocaleIDNames()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "所有屬性與 parse/parseNumber 照文件；22 地區資料表"
   },
   {
    "class": "flash.globalization.StringTools",
@@ -871,7 +876,8 @@
     "toLowerCase()",
     "toUpperCase()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "完整 Unicode 大小寫 + tr/az/lt 規則；地區退回照文件"
   },
   {
    "class": "flash.text.engine.ContentElement",
@@ -1440,7 +1446,8 @@
     "toString()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "partial",
+   "note": "net5: full data class (flags, peers, multicast addresses, SHA-256 passwords, makeUnique, G:+hex options; new GroupSpecifier('test') == Flash's G:0101010c050e74657374). partial: option type ids beyond 01/0c/0e are Timffle's own (Adobe never published them). Test netgroup_groupspecifier_members."
   },
   {
    "class": "flash.net.NetGroup",
@@ -1469,7 +1476,8 @@
     "writeRequestedObject()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: ctor ArgumentError #2126 on a non-RTMFP connection (#2007 null, #2004 bad groupspec); 21 members declared with the not-connected answers; convertPeerIDToGroupAddress = SHA-256 of the peer id."
   },
   {
    "class": "flash.net.NetGroupInfo",
@@ -1486,7 +1494,8 @@
     "toString()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: new class, 8 rates 0 + toString."
   },
   {
    "class": "flash.net.NetStream",
@@ -1546,7 +1555,8 @@
     "videoSampleAccess",
     "videoStreamSettings"
    ],
-   "status": "todo"
+   "status": "partial",
+   "note": "net5: 4 missing + 50 stubs done; real on FLV progressive playback (codecs, decodedFrames, currentFPS, bufferLength/backBufferLength, bufferTime gates play start, info, soundTransform, close/dispose, step, inBufferSeek, appendBytes data generation mode, ctor/attach #2007/#2126); FMS/RTMFP-only members as Flash on connect(null). partial: publish()/play2 transitions/appendBytes outside data generation mode need real Flash to decide what is reported. Test netstream_members."
   },
   {
    "class": "flash.net.NetStreamMulticastInfo",
@@ -1555,7 +1565,8 @@
    "stubbed": [
     "toString()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: toString; counters 0 (no multicast)."
   },
   {
    "class": "flash.net.drm.AddToDeviceGroupSetting",
@@ -1566,7 +1577,8 @@
     "static LOCAL_ONLY"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: new class, 3 constants [API(692)]."
   },
   {
    "class": "flash.net.drm.DRMContentData",
@@ -1579,7 +1591,8 @@
     "licenseID",
     "serverURL"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: empty content data (null props, one default VoucherAccessInfo); bytes -> IllegalOperationError #2014 (no module)."
   },
   {
    "class": "flash.net.drm.DRMDeviceGroup",
@@ -1591,7 +1604,8 @@
     "name",
     "serverURL"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: stored fields, name read/write."
   },
   {
    "class": "flash.net.drm.DRMManager",
@@ -1611,7 +1625,8 @@
     "storeVoucher()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: Flash without the Access module: isSupported false, singleton (#2012 on new), argument checks then async error events with errorID 3344 (drmError/authenticationError/returnVoucherError/add|removeFromDeviceGroupError). Test drm_members."
   },
   {
    "class": "flash.net.drm.DRMPlaybackTimeWindow",
@@ -1622,7 +1637,8 @@
     "startDate"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: getters over stored fields (abstract: only the module creates one)."
   },
   {
    "class": "flash.net.drm.DRMVoucher",
@@ -1640,7 +1656,8 @@
     "voucherStartDate"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: 10 members over stored fields, toByteArray (abstract)."
   },
   {
    "class": "flash.net.drm.VoucherAccessInfo",
@@ -1653,7 +1670,8 @@
     "domain",
     "policyID"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "net5: getters over stored fields; the default entry of DRMContentData."
   },
   {
    "class": "flash.printing.PrintJob",
