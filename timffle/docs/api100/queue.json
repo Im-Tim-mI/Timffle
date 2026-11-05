@@ -1,0 +1,1817 @@
+{
+ "groups": {
+  "1": "networking card to 100%",
+  "2": "core display/text/system/utils/XML/sound used by ordinary games",
+  "3": "globalization and the Flash Text Engine",
+  "4": "Stage3D",
+  "5": "features the browser has no equivalent for: implement as Flash behaves on a machine without the feature (isSupported=false, null devices, the errors Flash throws), never fake success"
+ },
+ "classes": [
+  {
+   "class": "flash.display.Loader",
+   "group": 1,
+   "missing": [],
+   "stubbed": [
+    "load() (addChild at the correct time)"
+   ],
+   "status": "blocked",
+   "note": "2026-11-04 batch 1: 'reusing a Loader' stubs removed (loader_reuse covers it). Still stubbed: load() 'addChild at the correct time' in core/src/loader.rs (~line 2438): Flash attaches the loaded child to the Loader after an enterFrame (see tests large_preload); Ruffle inserts it right after the first frame. Needs the timing change + large_preload expectations. Do this first next run. | 2026-11-04 batch 2: BLOCKED (rule 9) - Flash attaches the content after an enterFrame; changing the load scheduling needs a real-Flash timing golden for the large_preload_* tests (enterFrame trace is commented out in Main.as, so the existing output.txt does not pin the timing). Open question for tim; revisit at the end with a difftest golden."
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "group": 1,
+   "missing": [],
+   "stubbed": [],
+   "status": "done",
+   "note": "2026-11-04 batch 1: sameDomain/childAllowsParent/parentAllowsChild from security domain + Security.allowDomain lists (no policy files); isURLInaccessible (true before load, measured in from_shumway loaded-content-properties; redirect rule after); sandbox bridges stored with owner checks (SecurityError #2047, code unverified); getLoaderInfoByDefinition = release FP (null in localTrusted, SecurityError elsewhere). Test loaderinfo_security_properties."
+  },
+  {
+   "class": "flash.net.LocalConnection",
+   "group": 1,
+   "missing": [],
+   "stubbed": [],
+   "status": "done",
+   "note": "2026-11-04 batch 1: allowDomain/allowInsecureDomain real allow lists checked on delivery (superdomain default, HTTPS rule, '*'/'localhost'), refused send -> status level error; #2052 on non-strings; names qualified with the creating SWF's domain. Test localconnection_allowdomain."
+  },
+  {
+   "class": "flash.net.URLLoader",
+   "group": 1,
+   "missing": [],
+   "stubbed": [],
+   "status": "done",
+   "note": "2026-11-04 batch 1: addEventListener override (same as EventDispatcher). Test urlloader_urlstream_members."
+  },
+  {
+   "class": "flash.net.URLStream",
+   "group": 1,
+   "missing": [],
+   "stubbed": [],
+   "status": "done",
+   "note": "2026-11-04 batch 1: diskCacheEnabled read-only, always false (browser FP never disk-caches). Test urlloader_urlstream_members."
+  },
+  {
+   "class": "XML",
+   "group": 2,
+   "missing": [
+    "hasOwnProperty()",
+    "propertyIsEnumerable()",
+    "prototype.hasOwnProperty()",
+    "prototype.propertyIsEnumerable()",
+    "prototype.valueOf"
+   ],
+   "stubbed": [
+    "setNotification()"
+   ],
+   "status": "done",
+   "note": "batch 5: AS3::hasOwnProperty/propertyIsEnumerable + prototype.hasOwnProperty/propertyIsEnumerable/valueOf; setNotification real (11 commands measured on Flash 32, D48XmlNotify/D49XmlSetName). Known: Object.prototype.hasOwnProperty.call(xml) hits an upstream vtable quirk (bound AS3 method), unrelated to XML."
+  },
+  {
+   "class": "XMLList",
+   "group": 2,
+   "missing": [
+    "hasOwnProperty()",
+    "propertyIsEnumerable()",
+    "prototype.hasOwnProperty()",
+    "prototype.propertyIsEnumerable()",
+    "prototype.valueOf"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 5: AS3::hasOwnProperty/propertyIsEnumerable + prototype.hasOwnProperty/propertyIsEnumerable/valueOf (D47XmlProps)."
+  },
+  {
+   "class": "flash.accessibility.Accessibility",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "static sendEvent()",
+    "static updateProperties()"
+   ],
+   "status": "done",
+   "note": "batch 6: updateProperties/sendEvent throw IllegalOperationError #2014 when hasAccessibility is false (Flash without a screen-reader bridge; measured on Flash 32). Commit 6dee6d12f."
+  },
+  {
+   "class": "flash.debugger",
+   "group": 2,
+   "missing": [
+    "enterDebugger()"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 6: enterDebugger() release-player no-op (flash/debugger.as). Commit 6dee6d12f."
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "clear()",
+    "clearData()",
+    "formats",
+    "getData()",
+    "hasFormat()",
+    "setData()",
+    "setDataHandler()"
+   ],
+   "status": "done",
+   "note": "batch 6: real generalClipboard (formats list in Avm2, air:text mirrored to host clipboard, getData only inside Event.PASTE -> #2179, new -> #2178, AIR-only formats false, #2191/#2176 gating on wasm). Event.PASTE now dispatched. Measured on Flash 32 (D50ClipAcc); paste-handler behaviour per AS3 docs (Wine could not deliver a paste). Commit 6dee6d12f."
+  },
+  {
+   "class": "flash.display.AVLoader",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "load()"
+   ],
+   "status": "done",
+   "note": "batch 7: load() throws Error #2037 like Flash Player 32 (no AVStream pipeline; D51DisplayMisc). Flash-without-feature."
+  },
+  {
+   "class": "flash.display.AVM1Movie",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "addCallback()",
+    "call()"
+   ],
+   "status": "done",
+   "note": "batch 7: call()/addCallback() throw IllegalOperationError #2014 for any argument like Flash Player 32 (AIR-only bridge; D51DisplayMisc)."
+  },
+  {
+   "class": "flash.display.BitmapData",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "applyFilter()",
+    "encode()",
+    "generateFilterRect()"
+   ],
+   "status": "partial",
+   "note": "batch 7: generateFilterRect real (Flash rounding/clamp/per-filter growth, blur formula from D53/D54 probes); encode real for PNG/JPEG with Flash error codes. Remaining stubs: encode JPEGXREncoderOptions (needs jxrlib encoder FFI; crate only decodes) and applyFilter ShaderFilter with non-standard sourceRect (needs a real-Flash pixel golden)."
+  },
+  {
+   "class": "flash.display.DisplayObject",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "scale9Grid"
+   ],
+   "status": "todo",
+   "note": "scale9Grid getter/setter already store the rect; the stub is because rendering ignores the grid. Needs real 9-slice rendering (own batch)."
+  },
+  {
+   "class": "flash.display.DisplayObjectContainer",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "areInaccessibleObjectsUnderPoint()",
+    "getObjectsUnderPoint()"
+   ],
+   "status": "done",
+   "note": "batch 7: getObjectsUnderPoint follows Flash order/rules (self included, button state child, hidden/masked subtrees skipped, scrollRect not clipping; D51/D52); areInaccessibleObjectsUnderPoint via allows_access_from. shumway getobjectsunderpoint + hittesting known_failure removed."
+  },
+  {
+   "class": "flash.display.Graphics",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "beginShaderFill()",
+    "drawGraphicsData()",
+    "drawPath()",
+    "drawTriangles()",
+    "lineShaderStyle()",
+    "readGraphicsData()"
+   ],
+   "status": "partial",
+   "note": "batch 8: drawPath (fill groups + strokes never closed), drawTriangles (union, uvt affine+perspective, #2004 lengths), drawGraphicsData (GraphicsPath via drawPathObject->drawPath) real. Left: beginShaderFill, lineShaderStyle, readGraphicsData (Flash structure fully measured: see STATUS 2026-11-04 22:xx and difftest results/flash/d55graphics.txt, d56graphics2.txt, d57winding.txt)."
+  },
+  {
+   "class": "flash.display.InteractiveObject",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "accessibilityImplementation",
+    "needsSoftKeyboard",
+    "requestSoftKeyboard()",
+    "softKeyboardInputAreaOfInterest"
+   ],
+   "status": "done",
+   "note": "batch 9: accessibilityImplementation/needsSoftKeyboard/softKeyboardInputAreaOfInterest stored (same object back), requestSoftKeyboard focuses the object when needsSoftKeyboard and returns false = Flash without a virtual keyboard (D58Misc)."
+  },
+  {
+   "class": "flash.display.MovieClip",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "trackAsMenu"
+   ],
+   "status": "done",
+   "note": "batch 9: trackAsMenu real (MovieClipData.track_as_menu; ClipEvent::MenuRelease gives click to the trackAsMenu object the mouse is released over after the pressed object's releaseOutside, flag read at dispatch time; also fixed Player::check_display_object_equality for script-created objects). Measured with real drags (drive_drag.py)."
+  },
+  {
+   "class": "flash.display.Shader",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "precisionHint"
+   ],
+   "status": "done",
+   "note": "batch 9: precisionHint validated (full/fast only, else ArgumentError #2004), stored."
+  },
+  {
+   "class": "flash.display.ShaderJob",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "start()"
+   ],
+   "status": "done",
+   "note": "batch 9: start sync/async (Avm2::shader_jobs queue run at end of Player::run_actions, ShaderEvent.COMPLETE), progress NaN/0/1, cancel, Flash error codes (#2172/#2007/#2004/#2164/#1126), ByteArray endian + wgpu readback height fix. Assumption: start(true) dispatches no complete event."
+  },
+  {
+   "class": "flash.display.Sprite",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "startTouchDrag()",
+    "stopTouchDrag()"
+   ],
+   "status": "done",
+   "note": "batch 9: startTouchDrag/stopTouchDrag accepted and inert = Flash without a touch screen (measured any touchPointID)."
+  },
+  {
+   "class": "flash.display.Stage",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "allowsFullScreen",
+    "allowsFullScreenInteractive",
+    "colorCorrection",
+    "colorCorrectionSupport",
+    "constructor",
+    "displayContextInfo",
+    "fullScreenHeight",
+    "fullScreenSourceRect",
+    "fullScreenWidth",
+    "isFocusInaccessible()",
+    "mouseLock",
+    "softKeyboardRect",
+    "stageVideos",
+    "wmodeGPU"
+   ],
+   "status": "done",
+   "note": "batch 3 (a999157d6): all 14 stubs real; values measured on Flash 32 (D42Stage.hx, D43StageFull.hx); test stage_members. mouseLock backends: web Pointer Lock + desktop winit grab (desktop not cargo-checked here: no ALSA dev files). MouseEvent.movementX/Y still 0 (not in stub-report)."
+  },
+  {
+   "class": "flash.events.TransformGestureEvent",
+   "group": 2,
+   "missing": [
+    "static GESTURE_DIRECTIONAL_TAP"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 9: GESTURE_DIRECTIONAL_TAP = \"gestureDirectionalTap\" [API(\"674\")] (AIR 3.0 constant; FP32 standalone reports undefined)."
+  },
+  {
+   "class": "flash.external.ExternalInterface",
+   "group": 2,
+   "missing": [
+    "static marshallExceptions"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 10: marshallExceptions native getter/setter; AS callback errors rethrown in JS and JS exceptions rethrown in call() when true (web)."
+  },
+  {
+   "class": "flash.geom.Transform",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "concatenatedColorTransform"
+   ],
+   "status": "done",
+   "note": "batch 10: concatenatedColorTransform = product stage..object when on stage, own otherwise (Flash 32)."
+  },
+  {
+   "class": "flash.media",
+   "group": 2,
+   "missing": [
+    "avSendToURL()",
+    "scanHardware()"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 10: new flash/media.as: scanHardware() no devices to find; avSendToURL() #2007 on null features/request, rest unreachable (no AuthorizedFeatures token can exist)."
+  },
+  {
+   "class": "flash.media.H264VideoStreamSettings",
+   "group": 2,
+   "missing": [
+    "codec",
+    "level",
+    "profile",
+    "setProfileLevel()"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 10: new class; codec H264Avc, profile/level defaults and setProfileLevel validation (#2008/#1009) per Flash 32."
+  },
+  {
+   "class": "flash.media.Sound",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "bytesLoaded",
+    "close()",
+    "extract()",
+    "isBuffering",
+    "isURLInaccessible",
+    "load()",
+    "loadPCMFromByteArray()",
+    "url"
+   ],
+   "status": "done",
+   "note": "batch 10: url/bytesLoaded/bytesTotal/isBuffering/isURLInaccessible real (url set at first progress, isBuffering true from load() on like Flash), close() real (#2029 without an open stream, abandons a running download), extract() real (44.1 kHz float frames in ByteArray endian at position, sequential cursor, resampling, cached decoder via AudioBackend::sound_samples), loadPCMFromByteArray real (float/short, mono/stereo, any rate, Flash error codes), load() context accepted (bufferTime always satisfied, checkPolicyFile guards nothing restricted). Reference D60Media.hx/D61Extract.hx."
+  },
+  {
+   "class": "flash.media.SoundMixer",
+   "group": 2,
+   "missing": [
+    "static audioPlaybackMode",
+    "static useSpeakerphoneForVoice"
+   ],
+   "stubbed": [],
+   "status": "done",
+   "note": "batch 10: audioPlaybackMode/useSpeakerphoneForVoice stored like desktop Flash (null default -> Boolean getter false). API tag 674 (675 would hide them for FP SWFs)."
+  },
+  {
+   "class": "flash.media.Video",
+   "group": 2,
+   "missing": [
+    "attachCamera()"
+   ],
+   "stubbed": [
+    "attachNetStream()",
+    "clear()",
+    "videoHeight",
+    "videoWidth"
+   ],
+   "status": "done",
+   "note": "batch 10: videoWidth/videoHeight real (decoded frame / FLV metadata / SWF stream header, kept after detach), clear() real (hides the frame until a newer one), attachNetStream(null) detaches, attachCamera() accepts null (no camera exists)."
+  },
+  {
+   "class": "flash.media.VideoStreamSettings",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "quality",
+    "setKeyFrameInterval()",
+    "setMode()",
+    "setQuality()"
+   ],
+   "status": "done",
+   "note": "batch 10: setKeyFrameInterval/setMode/setQuality store with Flash 32 clamping; quality getter real."
+  },
+  {
+   "class": "flash.net",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "sendToURL()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.FileReference",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "cancel()",
+    "download()",
+    "upload()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.FileReferenceList",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "browse()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.NetConnection",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "connect()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.NetMonitor",
+   "group": 2,
+   "missing": [
+    "listStreams()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.ObjectEncoding",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "static dynamicPropertyWriter"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.SecureSocket",
+   "group": 2,
+   "missing": [
+    "addBinaryChainBuildingCertificate()",
+    "connect()",
+    "serverCertificate",
+    "serverCertificateStatus",
+    "static isSupported"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "group": 2,
+   "missing": [
+    "client",
+    "connect()",
+    "fps",
+    "send()",
+    "setDirty()",
+    "static defaultObjectEncoding",
+    "static deleteAll()",
+    "static getDiskUsage()",
+    "static getRemote()",
+    "static preventBackup"
+   ],
+   "stubbed": [
+    "close()",
+    "objectEncoding"
+   ],
+   "status": "done",
+   "note": "batch 4 (2026-11-04): all 12 members real; getRemote/connect/send/setDirty/close/fps behave like Flash with a remote object that has no server (no RTMP in Ruffle: connect -> UriMismatch + #2139); deleteAll/getDiskUsage AIR-only -> #2014 like Flash Player; objectEncoding AMF0/AMF3 real (sizes 42/52 match Flash); preventBackup null until set. Probe D45SharedObject.hx, test shared_object_members."
+  },
+  {
+   "class": "flash.net.Socket",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "bytesPending"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.URLRequest",
+   "group": 2,
+   "missing": [
+    "useRedirectedURL()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.profiler",
+   "group": 2,
+   "missing": [
+    "profile()"
+   ],
+   "stubbed": [
+    "showRedrawRegions()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.ApplicationInstaller",
+   "group": 2,
+   "missing": [
+    "install()",
+    "isInstalled",
+    "static iconDigest()",
+    "static stringsDigest()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.ApplicationInstallerMode",
+   "group": 2,
+   "missing": [
+    "static INSTALL_ONLY",
+    "static INSTALL_WITH_SHORTCUTS",
+    "static SHORTCUTS_ONLY"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "group": 2,
+   "missing": [
+    "static _internal",
+    "static cpuAddressSize"
+   ],
+   "stubbed": [
+    "static avHardwareDisable",
+    "static cpuArchitecture",
+    "static hasAccessibility",
+    "static hasAudio",
+    "static hasAudioEncoder",
+    "static hasEmbeddedVideo",
+    "static hasIME",
+    "static hasMP3",
+    "static hasMultiChannelAudio()",
+    "static hasPrinting",
+    "static hasScreenBroadcast",
+    "static hasScreenPlayback",
+    "static hasStreamingAudio",
+    "static hasStreamingVideo",
+    "static hasTLS",
+    "static hasVideoEncoder",
+    "static isDebugger",
+    "static isEmbeddedInAcrobat",
+    "static localFileReadDisable",
+    "static manufacturer",
+    "static maxLevelIDC",
+    "static screenColor",
+    "static serverString",
+    "static supports32BitProcesses",
+    "static supports64BitProcesses",
+    "static touchscreenType"
+   ],
+   "status": "done",
+   "note": "2026-11-04 batch 2: all 37 members native from SystemProperties (shared with AVM1); serverString in the Flash 32 field order; reference values from real Flash 32.0.0.465 (difftest D41Capabilities.hx). Test capabilities_members."
+  },
+  {
+   "class": "flash.system.IME",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "static compositionAbandoned()",
+    "static compositionSelectionChanged()",
+    "static conversionMode",
+    "static doConversion()",
+    "static enabled",
+    "static setCompositionString()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.Security",
+   "group": 2,
+   "missing": [
+    "static disableAVM1Loading",
+    "static exactSettings"
+   ],
+   "stubbed": [
+    "static loadPolicyFile()",
+    "static showSettings()"
+   ],
+   "status": "partial",
+   "note": "2026-11-04 batch 1: allowDomain/allowInsecureDomain implemented (per-SWF AllowedDomains on SwfMovieData, #2052 on non-strings; used by LoaderInfo trust properties). Left: exactSettings, disableAVM1Loading (missing), loadPolicyFile, showSettings (stubs)."
+  },
+  {
+   "class": "flash.system.SecurityDomain",
+   "group": 2,
+   "missing": [
+    "domainID"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.System",
+   "group": 2,
+   "missing": [
+    "static ime",
+    "static pause()",
+    "static processCPUUsage",
+    "static resume()",
+    "static useCodePage",
+    "static vmVersion"
+   ],
+   "stubbed": [
+    "static disposeXML()",
+    "static exit()",
+    "static freeMemory",
+    "static pauseForGCIfCollectionImminent()",
+    "static privateMemory",
+    "static totalMemoryNumber"
+   ],
+   "status": "done",
+   "note": "batch 4 (2026-11-04): all 12 members real; memory figures from a counting global allocator (core/src/memory.rs) + process RSS/wasm memory; disposeXML cuts the tree below the node (parent() null) like Flash; pauseForGCIfCollectionImminent requests a full cycle via gc-arena debt; exit quits desktop (UiBackend::exit) / #2017 / #2018; ime = one IME instance; vmVersion \"2.1 sec cyclone\"; pause/resume no-ops like the release player; processCPUUsage 0 (AIR-only). Probes D44System.hx, D46SystemExit.hx, test system_members."
+  },
+  {
+   "class": "flash.system.SystemUpdater",
+   "group": 2,
+   "missing": [
+    "cancel()",
+    "update()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.Font",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "static enumerateFonts()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.TextField",
+   "group": 2,
+   "missing": [
+    "getRawText()",
+    "getXMLText()"
+   ],
+   "stubbed": [
+    "getImageReference()",
+    "insertXMLText()",
+    "mouseWheelEnabled",
+    "static isFontCompatible()",
+    "textInteractionMode",
+    "useRichTextClipboard"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.TextRenderer",
+   "group": 2,
+   "missing": [
+    "static antiAliasType"
+   ],
+   "stubbed": [
+    "static displayMode",
+    "static maxLevel",
+    "static setAdvancedAntiAliasingTable()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "charCount",
+    "findText()",
+    "getSelected()",
+    "getSelectedText()",
+    "getText()",
+    "getTextRunInfo()",
+    "hitTestTextNearPos()",
+    "setSelectColor()",
+    "setSelected()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.ContextMenu",
+   "group": 2,
+   "missing": [
+    "clone()",
+    "link"
+   ],
+   "stubbed": [
+    "static isSupported"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.Keyboard",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "static capsLock",
+    "static hasVirtualKeyboard",
+    "static numLock",
+    "static physicalKeyboardType"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.Mouse",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "static registerCursor()",
+    "static supportsCursor",
+    "static supportsNativeCursor",
+    "static unregisterCursor()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.MouseCursorData",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "data",
+    "frameRate",
+    "hotSpot"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.Multitouch",
+   "group": 2,
+   "missing": [
+    "static mapTouchToMouse",
+    "static maxTouchPoints",
+    "static supportedGestures",
+    "static supportsGestureEvents",
+    "static supportsTouchEvents"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.utils.ByteArray",
+   "group": 2,
+   "missing": [
+    "atomicCompareAndSwapIntAt()",
+    "atomicCompareAndSwapLength()"
+   ],
+   "stubbed": [
+    "shareable",
+    "writeObject()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.xml.XMLDocument",
+   "group": 2,
+   "missing": [],
+   "stubbed": [
+    "toString()"
+   ],
+   "status": "done",
+   "note": "batch 5: toString = xmlDecl + docTypeDecl + children (\"<>\" when empty); parseXML lifts <?xml?>/<!DOCTYPE> out (D47XmlProps)."
+  },
+  {
+   "class": "flash.globalization.Collator",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "actualLocaleIDName",
+    "compare()",
+    "equals()",
+    "static getAvailableLocaleIDNames()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "actualLocaleIDName",
+    "currencyISOCode",
+    "currencySymbol",
+    "decimalSeparator",
+    "digitsType",
+    "format()",
+    "formattingWithCurrencySymbolIsSafe()",
+    "fractionalDigits",
+    "groupingPattern",
+    "groupingSeparator",
+    "lastOperationStatus",
+    "leadingZero",
+    "negativeCurrencyFormat",
+    "negativeSymbol",
+    "parse()",
+    "positiveCurrencyFormat",
+    "setCurrency()",
+    "static getAvailableLocaleIDNames()",
+    "trailingZeros",
+    "useGrouping"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "actualLocaleIDName",
+    "format()",
+    "formatUTC()",
+    "getFirstWeekday()",
+    "getMonthNames()",
+    "getWeekdayNames()",
+    "lastOperationStatus",
+    "setDateTimePattern()",
+    "setDateTimeStyles()",
+    "static getAvailableLocaleIDNames()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "getKeysAndValues()",
+    "getLanguage()",
+    "getRegion()",
+    "getScript()",
+    "getVariant()",
+    "isRightToLeft()",
+    "lastOperationStatus",
+    "static determinePreferredLocales()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "actualLocaleIDName",
+    "formatInt()",
+    "formatNumber()",
+    "formatUint()",
+    "lastOperationStatus",
+    "parse()",
+    "parseNumber()",
+    "static getAvailableLocaleIDNames()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.globalization.StringTools",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "actualLocaleIDName",
+    "lastOperationStatus",
+    "static getAvailableLocaleIDNames()",
+    "toLowerCase()",
+    "toUpperCase()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "eventMirror",
+    "groupElement",
+    "rawText",
+    "textBlock",
+    "textBlockBeginIndex",
+    "textRotation"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.ElementFormat",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "getFontMetrics()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.FontDescription",
+   "group": 3,
+   "missing": [
+    "static isDeviceFontCompatible()"
+   ],
+   "stubbed": [
+    "static isFontCompatible()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.GraphicElement",
+   "group": 3,
+   "missing": [],
+   "stubbed": [
+    "elementHeight",
+    "elementWidth",
+    "graphic"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.GroupElement",
+   "group": 3,
+   "missing": [
+    "getElementAtCharIndex()",
+    "groupElements()",
+    "mergeTextElements()",
+    "ungroupElements()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "group": 3,
+   "missing": [
+    "dump()",
+    "findNextAtomBoundary()",
+    "findNextWordBoundary()",
+    "findPreviousAtomBoundary()",
+    "findPreviousWordBoundary()",
+    "getTextLineAtCharIndex()",
+    "releaseLineCreationData()"
+   ],
+   "stubbed": [
+    "applyNonLinearFontScaling",
+    "baselineFontDescription",
+    "baselineFontSize",
+    "baselineZero",
+    "bidiLevel",
+    "createTextLine()",
+    "firstInvalidLine",
+    "lastLine",
+    "lineRotation",
+    "recreateTextLine()",
+    "tabStops",
+    "textJustifier"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.TextJustifier",
+   "group": 3,
+   "missing": [
+    "static getJustifierForLocale()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "group": 3,
+   "missing": [
+    "dump()",
+    "getMirrorRegion()",
+    "mirrorRegions",
+    "totalHeight"
+   ],
+   "stubbed": [
+    "atomCount",
+    "getAtomBidiLevel()",
+    "getAtomBounds()",
+    "getAtomCenter()",
+    "getAtomGraphic()",
+    "getAtomIndexAtCharIndex()",
+    "getAtomIndexAtPoint()",
+    "getAtomTextBlockBeginIndex()",
+    "getAtomTextBlockEndIndex()",
+    "getAtomTextRotation()",
+    "getAtomWordBoundaryOnLeft()",
+    "getBaselinePosition()",
+    "hasGraphicElement",
+    "totalAscent",
+    "totalDescent",
+    "unjustifiedTextWidth"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "group": 3,
+   "missing": [
+    "bounds",
+    "element",
+    "mirror",
+    "nextRegion",
+    "previousRegion",
+    "textLine"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "group": 4,
+   "missing": [
+    "totalGPUMemory"
+   ],
+   "stubbed": [
+    "backBufferHeight",
+    "backBufferWidth",
+    "configureBackBuffer()",
+    "createTexture()",
+    "createVideoTexture()",
+    "dispose()",
+    "drawToBitmapData()",
+    "driverInfo",
+    "maxBackBufferHeight",
+    "maxBackBufferWidth",
+    "setRenderToTexture()",
+    "setSamplerStateAt()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.IndexBuffer3D",
+   "group": 4,
+   "missing": [],
+   "stubbed": [
+    "dispose()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.Program3D",
+   "group": 4,
+   "missing": [],
+   "stubbed": [
+    "dispose()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.VertexBuffer3D",
+   "group": 4,
+   "missing": [],
+   "stubbed": [
+    "dispose()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.textures.CubeTexture",
+   "group": 4,
+   "missing": [],
+   "stubbed": [
+    "uploadCompressedTextureFromByteArray()",
+    "uploadFromBitmapData()",
+    "uploadFromByteArray()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.textures.Texture",
+   "group": 4,
+   "missing": [],
+   "stubbed": [
+    "uploadCompressedTextureFromByteArray()",
+    "uploadFromBitmapData()",
+    "uploadFromByteArray()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.textures.TextureBase",
+   "group": 4,
+   "missing": [],
+   "stubbed": [
+    "dispose()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.display3D.textures.VideoTexture",
+   "group": 4,
+   "missing": [
+    "attachCamera()",
+    "attachNetStream()",
+    "videoHeight",
+    "videoWidth"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.automation.ActionGenerator",
+   "group": 5,
+   "missing": [
+    "generateAction()",
+    "generateActions()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.automation.Configuration",
+   "group": 5,
+   "missing": [
+    "static deviceConfiguration",
+    "static testAutomationConfiguration"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "group": 5,
+   "missing": [
+    "cancel()",
+    "capture()",
+    "captureBitmapData()",
+    "capturePTS",
+    "captureSource",
+    "clipRect",
+    "fileNameBase"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.concurrent.Condition",
+   "group": 5,
+   "missing": [
+    "mutex",
+    "notify()",
+    "notifyAll()",
+    "wait()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.concurrent.Mutex",
+   "group": 5,
+   "missing": [
+    "lock()",
+    "tryLock()",
+    "unlock()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "group": 5,
+   "missing": [
+    "altitude",
+    "clone()",
+    "heading",
+    "horizontalAccuracy",
+    "latitude",
+    "longitude",
+    "speed",
+    "static UPDATE",
+    "timestamp",
+    "toString()",
+    "verticalAccuracy"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "group": 5,
+   "missing": [
+    "addCustomHeader()",
+    "clearPauseAtPeriodEnd()",
+    "cookieHeader",
+    "getABRProfileCount()",
+    "getABRProfileInfoAtIndex()",
+    "getBackgroundPeriodInfo()",
+    "getBackgroundTimeline()",
+    "getCuePoint()",
+    "getMediaPreferredStartTime()",
+    "getPerceivedBandwidth()",
+    "getPeriodInfo()",
+    "getPeriodInfoWithTagsAcrossIndexes()",
+    "getSubscribedTag()",
+    "getSubscribedTagForBackgroundManifest()",
+    "getTimeline()",
+    "getTimelineSubscribedTag()",
+    "getTimelineSubscribedTagForBackgroundManifest()",
+    "getTrackCount()",
+    "getTrackInfo()",
+    "insertByLocalTime()",
+    "insertByVirtualTime()",
+    "load()",
+    "loadManifest()",
+    "loadWithBackgroundManifest()",
+    "masterUpdateInterval",
+    "networkingParams",
+    "releaseManifest()",
+    "removeByLocalTime()",
+    "removeByVirtualTime()",
+    "removeByVirtualTimeWithReplacement()",
+    "selectTrack()",
+    "selectTrackString()",
+    "setABRParameters()",
+    "setBandwidth()",
+    "setCuePointTags()",
+    "setHoldAt()",
+    "setPauseAtPeriodEnd()",
+    "setSubscribedTags()",
+    "setSubscribedTagsForBackgroundManifest()",
+    "useRedirectedUrl"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.AVSource",
+   "group": 5,
+   "missing": [
+    "dispose()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "group": 5,
+   "missing": [
+    "backBufferLength",
+    "backBufferTime",
+    "bufferLength",
+    "bufferTime",
+    "captionStyle",
+    "captionsEnabled",
+    "clientLivePoint",
+    "currentFPS",
+    "decoderType",
+    "dispose()",
+    "droppedFrames",
+    "fastForward()",
+    "frameTime",
+    "initialBufferTime",
+    "pause()",
+    "play()",
+    "playState",
+    "renderType",
+    "resume()",
+    "rewind()",
+    "seek()",
+    "seekToKeyFrame()",
+    "seekToLivePoint()",
+    "seekToLocalTime()",
+    "setPlaySpeed()",
+    "step()",
+    "time",
+    "useHardwareDecoder",
+    "volume"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.AVURLLoader",
+   "group": 5,
+   "missing": [
+    "addEventListener()",
+    "close()",
+    "cookieHeader",
+    "load()",
+    "stream"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.AVURLStream",
+   "group": 5,
+   "missing": [
+    "cookieHeader",
+    "load()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.AudioDeviceManager",
+   "group": 5,
+   "missing": [
+    "deviceNames",
+    "selectedDeviceIndex",
+    "static audioDeviceManager",
+    "static isSupported"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.Camera",
+   "group": 5,
+   "missing": [
+    "position",
+    "setCursor()"
+   ],
+   "stubbed": [
+    "activityLevel",
+    "bandwidth",
+    "copyToByteArray()",
+    "copyToVector()",
+    "currentFPS",
+    "drawToBitmapData()",
+    "fps",
+    "height",
+    "index",
+    "keyFrameInterval",
+    "loopback",
+    "motionLevel",
+    "motionTimeout",
+    "muted",
+    "name",
+    "quality",
+    "setKeyFrameInterval()",
+    "setLoopback()",
+    "setMode()",
+    "setMotionLevel()",
+    "setQuality()",
+    "static getCamera()",
+    "static isSupported",
+    "static names",
+    "width"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "activityLevel",
+    "codec",
+    "enableVAD",
+    "encodeQuality",
+    "enhancedOptions",
+    "framesPerPacket",
+    "gain",
+    "index",
+    "muted",
+    "name",
+    "noiseSuppressionLevel",
+    "rate",
+    "setLoopBack()",
+    "setSilenceLevel()",
+    "setUseEchoSuppression()",
+    "silenceLevel",
+    "silenceTimeout",
+    "soundTransform",
+    "static getEnhancedMicrophone()",
+    "static getMicrophone()",
+    "static isSupported",
+    "static names",
+    "useEchoSuppression"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.MicrophoneEnhancedOptions",
+   "group": 5,
+   "missing": [
+    "autoGain"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "group": 5,
+   "missing": [
+    "attachAVStream()",
+    "attachCamera()",
+    "attachNetStream()",
+    "colorSpaces",
+    "depth",
+    "pan",
+    "videoHeight",
+    "videoWidth",
+    "viewPort",
+    "zoom"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "group": 5,
+   "missing": [
+    "addBootstrapPeer()",
+    "addIPMulticastAddress()",
+    "authorizations()",
+    "groupspecWithAuthorizations()",
+    "groupspecWithoutAuthorizations()",
+    "ipMulticastMemberUpdatesEnabled",
+    "makeUnique()",
+    "minGroupspecVersion",
+    "multicastEnabled",
+    "objectReplicationEnabled",
+    "peerToPeerDisabled",
+    "postingEnabled",
+    "routingEnabled",
+    "serverChannelEnabled",
+    "setPostingPassword()",
+    "setPublishPassword()",
+    "static encodeBootstrapPeerIDSpec()",
+    "static encodeIPMulticastAddressSpec()",
+    "static encodePostingAuthorization()",
+    "static encodePublishAuthorization()",
+    "static maxSupportedGroupspecVersion",
+    "toString()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "group": 5,
+   "missing": [
+    "addHaveObjects()",
+    "addMemberHint()",
+    "addNeighbor()",
+    "addWantObjects()",
+    "close()",
+    "convertPeerIDToGroupAddress()",
+    "denyRequestedObject()",
+    "estimatedMemberCount",
+    "info",
+    "localCoverageFrom",
+    "localCoverageTo",
+    "neighborCount",
+    "post()",
+    "receiveMode",
+    "removeHaveObjects()",
+    "removeWantObjects()",
+    "replicationStrategy",
+    "sendToAllNeighbors()",
+    "sendToNearest()",
+    "sendToNeighbor()",
+    "writeRequestedObject()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "group": 5,
+   "missing": [
+    "objectReplicationReceiveBytesPerSecond",
+    "objectReplicationSendBytesPerSecond",
+    "postingReceiveControlBytesPerSecond",
+    "postingReceiveDataBytesPerSecond",
+    "postingSendControlBytesPerSecond",
+    "postingSendDataBytesPerSecond",
+    "routingReceiveBytesPerSecond",
+    "routingSendBytesPerSecond",
+    "toString()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "group": 5,
+   "missing": [
+    "audioCodec",
+    "decodedFrames",
+    "onPeerConnect()",
+    "videoCodec"
+   ],
+   "stubbed": [
+    "appendBytes()",
+    "appendBytesAction()",
+    "attach()",
+    "attachAudio()",
+    "attachCamera()",
+    "audioReliable",
+    "audioSampleAccess",
+    "backBufferLength",
+    "backBufferTime",
+    "bufferLength",
+    "bufferTime",
+    "bufferTimeMax",
+    "checkPolicyFile",
+    "close()",
+    "currentFPS",
+    "dataReliable",
+    "dispose()",
+    "farID",
+    "farNonce",
+    "inBufferSeek",
+    "info",
+    "liveDelay",
+    "maxPauseBufferTime",
+    "multicastAvailabilitySendToAll",
+    "multicastAvailabilityUpdatePeriod",
+    "multicastFetchPeriod",
+    "multicastInfo",
+    "multicastPushNeighborLimit",
+    "multicastRelayMarginDuration",
+    "multicastWindowDuration",
+    "nearNonce",
+    "objectEncoding",
+    "peerStreams",
+    "play2()",
+    "publish()",
+    "receiveAudio()",
+    "receiveVideo()",
+    "receiveVideoFPS()",
+    "send()",
+    "soundTransform",
+    "static resetDRMVouchers()",
+    "step()",
+    "useHardwareDecoder",
+    "useJitterBuffer",
+    "videoReliable",
+    "videoSampleAccess",
+    "videoStreamSettings"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.NetStreamMulticastInfo",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "toString()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.AddToDeviceGroupSetting",
+   "group": 5,
+   "missing": [
+    "static ALLOW_SERVER",
+    "static FORCE_REFRESH",
+    "static LOCAL_ONLY"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.DRMContentData",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "authenticationMethod",
+    "domain",
+    "getVoucherAccessInfo()",
+    "licenseID",
+    "serverURL"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.DRMDeviceGroup",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "authenticationMethod",
+    "domain",
+    "name",
+    "serverURL"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "group": 5,
+   "missing": [
+    "addToDeviceGroup()",
+    "authenticate()",
+    "loadPreviewVoucher()",
+    "loadVoucher()",
+    "removeFromDeviceGroup()",
+    "resetDRMVouchers()",
+    "returnVoucher()",
+    "setAuthenticationToken()",
+    "static getDRMManager()",
+    "static isSupported",
+    "static networkIdleTimeout",
+    "storeVoucher()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.DRMPlaybackTimeWindow",
+   "group": 5,
+   "missing": [
+    "endDate",
+    "period",
+    "startDate"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "group": 5,
+   "missing": [
+    "licenseID",
+    "offlineLeaseEndDate",
+    "offlineLeaseStartDate",
+    "playbackTimeWindow",
+    "policies",
+    "policyID",
+    "serverURL",
+    "toByteArray()",
+    "voucherEndDate",
+    "voucherStartDate"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.net.drm.VoucherAccessInfo",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "authenticationMethod",
+    "deviceGroup",
+    "displayName",
+    "domain",
+    "policyID"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "group": 5,
+   "missing": [
+    "addPage()",
+    "orientation",
+    "pageHeight",
+    "pageWidth",
+    "paperHeight",
+    "paperWidth",
+    "send()",
+    "start()",
+    "static isSupported"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.sampler",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "clearSamples()",
+    "getGetterInvocationCount()",
+    "getInvocationCount()",
+    "getLexicalScopes()",
+    "getMasterString()",
+    "getMemberNames()",
+    "getSampleCount()",
+    "getSamples()",
+    "getSavedThis()",
+    "getSetterInvocationCount()",
+    "getSize()",
+    "isGetterSetter()",
+    "pauseSampling()",
+    "sampleInternalAllocs()",
+    "setSamplerCallback()",
+    "startSampling()",
+    "stopSampling()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.sampler.NewObjectSample",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "object",
+    "size"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.sensors.Accelerometer",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "muted",
+    "setRequestedUpdateInterval()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.sensors.Geolocation",
+   "group": 5,
+   "missing": [],
+   "stubbed": [
+    "muted",
+    "setRequestedUpdateInterval()"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "group": 5,
+   "missing": [
+    "createApplicationInstaller()",
+    "enableAVLoader()",
+    "enableAVURLLoader()",
+    "enableAVURLStream()",
+    "enableDiskCache()",
+    "enableHLSPlayback()",
+    "enableMediaPlayerHLSPlayback()"
+   ],
+   "stubbed": [],
+   "status": "partial",
+   "note": "batch 10: class added (ctor #2012 like Flash; enableAVLoader/enableDiskCache/enableHLSPlayback false: no authorization server). createApplicationInstaller/enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback need the ApplicationInstaller/AVURLLoader/AVURLStream/MediaPlayer classes (group 5)."
+  },
+  {
+   "class": "flash.system.AuthorizedFeaturesLoader",
+   "group": 5,
+   "missing": [
+    "authorizedFeatures",
+    "loadAuthorizedFeatures()",
+    "loadAuthorizedFeaturesFromData()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "group": 5,
+   "missing": [
+    "addEventListener()",
+    "close()",
+    "messageAvailable",
+    "receive()",
+    "removeEventListener()",
+    "toString()"
+   ],
+   "stubbed": [
+    "send()",
+    "state"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.Worker",
+   "group": 5,
+   "missing": [
+    "addEventListener()",
+    "isPrimordial",
+    "removeEventListener()",
+    "state",
+    "terminate()"
+   ],
+   "stubbed": [
+    "createMessageChannel()",
+    "getSharedProperty()",
+    "setSharedProperty()",
+    "start()",
+    "static current"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.system.WorkerDomain",
+   "group": 5,
+   "missing": [
+    "listWorkers()"
+   ],
+   "stubbed": [
+    "createWorker()",
+    "static current"
+   ],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.GameInputControl",
+   "group": 5,
+   "missing": [
+    "device",
+    "id",
+    "maxValue",
+    "minValue",
+    "value"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "group": 5,
+   "missing": [
+    "enabled",
+    "getCachedSamples()",
+    "getControlAt()",
+    "id",
+    "name",
+    "numControls",
+    "sampleInterval",
+    "startCachingSamples()",
+    "stopCachingSamples()"
+   ],
+   "stubbed": [],
+   "status": "todo"
+  }
+ ]
+}
