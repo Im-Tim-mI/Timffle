@@ -983,8 +983,8 @@
     "tabStops",
     "textJustifier"
    ],
-   "status": "partial",
-   "note": "7 個缺少成員補齊、createTextLine 真的切行 + lineOffset/fitSomething/tabStops/lineRotation；bidiLevel 仍空殼；dump 格式自訂；SWF 測試未跑 | merger: the one-visual-line-per-TextLine createTextLine change broke the Flash-recorded tests textline_splitting_basic/textline_raw_text_length and was reverted; createTextLine/recreateTextLine stay stubbed (fitSomething + paragraph splitting = upstream behaviour), lineOffset/tabStops/lineRotation kept."
+   "status": "done",
+   "note": "7 個缺少成員補齊、createTextLine 真的切行 + lineOffset/fitSomething/tabStops/lineRotation；bidiLevel 仍空殼；dump 格式自訂；SWF 測試未跑 | merger: the one-visual-line-per-TextLine createTextLine change broke the Flash-recorded tests textline_splitting_basic/textline_raw_text_length and was reverted; createTextLine/recreateTextLine stay stubbed (fitSomething + paragraph splitting = upstream behaviour), lineOffset/tabStops/lineRotation kept. | createTextLine/recreateTextLine 真的照 width 斷行（一個 TextLine 一個視覺行、空白歸前一行、明確換行字元屬前一行）、fitSomething、textLineCreationResult success/emergency/insufficientWidth/complete；bidiLevel 用 unicode-bidi 做 UAX #9 解析與視覺反轉、改值使行 invalid；getAtomBidiLevel 回解析層級；測試 textblock_width_splitting；Flash 錄的 textline_splitting_basic/textline_raw_text_length 仍綠"
   },
   {
    "class": "flash.text.engine.TextJustifier",
