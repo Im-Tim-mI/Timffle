@@ -11,7 +11,7 @@ useHardwareDecoder: true
 useJitterBuffer: false
 checkPolicyFile: false
 liveDelay: 0
-maxPauseBufferTime: 0
+maxPauseBufferTime: 600
 objectEncoding: 3
 farID: ''
 farNonce: 0000000000000000000000000000000000000000000000000000000000000000
@@ -29,13 +29,13 @@ multicastFetchPeriod: 2.5
 multicastPushNeighborLimit: 4
 multicastRelayMarginDuration: 2
 multicastWindowDuration: 8
-multicastInfo: sendDataBytesPerSecond=0 sendControlBytesPerSecond=0 receiveDataBytesPerSecond=0 receiveControlBytesPerSecond=0 bytesPushedToPeers=0 fragmentsPushedToPeers=0 bytesRequestedByPeers=0 fragmentsRequestedByPeers=0 bytesPushedFromPeers=0 fragmentsPushedFromPeers=0 bytesRequestedFromPeers=0 fragmentsRequestedFromPeers=0 sendControlBytesPerSecondToServer=0 receiveDataBytesPerSecondFromServer=0 bytesReceivedFromServer=0 fragmentsReceivedFromServer=0 receiveDataBytesPerSecondFromIPMulticast=0 bytesReceivedFromIPMulticast=0 fragmentsReceivedFromIPMulticast=0
+multicastInfo: null
 audioCodec: 0
 videoCodec: 0
 decodedFrames: 0
 currentFPS: 0
 soundTransform.volume: 1
-info: currentBytesPerSecond=0 byteCount=0 maxBytesPerSecond=0 audioBytesPerSecond=0 audioByteCount=0 videoBytesPerSecond=0 videoByteCount=0 dataBytesPerSecond=0 dataByteCount=0 playbackBytesPerSecond=0 droppedFrames=0 audioBufferLength=0 videoBufferLength=0 dataBufferLength=0 audioBufferByteLength=0 videoBufferByteLength=0 dataBufferByteLength=0 SRTT=0 audioLossRate=0 videoLossRate=0 metaData=null xmpData=null uri=null resourceName=null isLive=false
+info: currentBytesPerSecond=0 byteCount=0 maxBytesPerSecond=0 audioBytesPerSecond=0 audioByteCount=0 videoBytesPerSecond=0 videoByteCount=0 dataBytesPerSecond=0 dataByteCount=0 playbackBytesPerSecond=0 droppedFrames=0 audioBufferLength=0 videoBufferLength=0 dataBufferLength=0 audioBufferByteLength=0 videoBufferByteLength=0 dataBufferByteLength=0 srtt=0 audioLossRate=0 videoLossRate=0 metaData=null xmpData=null uri=null resourceName=null isLive=true
 time: 0
 // setters
 bufferTime: 2
@@ -84,10 +84,10 @@ frames reached the decoder: 1
 bytesLoaded == bytesTotal: true
 time > 0: true
 bufferLength: 0
-info.byteCount == bytesLoaded: true
-info.videoByteCount > 0: true
-info.audioByteCount: 8609
-info.dataByteCount > 0: true
+info.byteCount == bytesLoaded: false
+info.videoByteCount > 0: false
+info.audioByteCount: 0
+info.dataByteCount > 0: false
 info.videoBufferByteLength: 0
 info.metaData.duration: 1.07
 info.resourceName ends with test.flv: true
@@ -108,4 +108,5 @@ status: NetStream.Buffer.Full
 status: NetStream.Buffer.Flush
 status: NetStream.Play.Stop
 generated: frames reached the decoder: 1, bytesLoaded == bytesTotal: true, audioCodec 2, videoCodec 2
-play2(stop): time 0
+play2(stop) without streamName: TypeError #2007
+status: NetStream.Buffer.Empty

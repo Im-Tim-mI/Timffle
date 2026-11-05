@@ -1,0 +1,55 @@
+// info classes
+NetStreamInfo(1..20,{a:1},null,'u','r',true): currentBytesPerSecond=1 byteCount=2 maxBytesPerSecond=3 audioBytesPerSecond=4 audioByteCount=5 videoBytesPerSecond=6 videoByteCount=7 dataBytesPerSecond=8 dataByteCount=9 playbackBytesPerSecond=10 droppedFrames=11 audioBufferLength=15 videoBufferLength=16 dataBufferLength=17 audioBufferByteLength=12 videoBufferByteLength=13 dataBufferByteLength=14 srtt=18 audioLossRate=19 videoLossRate=20 metaData=[object Object] xmpData=null uri=u resourceName=r isLive=true
+NetStreamInfo(1..20) getters: 12,15,18,true,,
+NetStreamMulticastInfo(1..19): sendDataBytesPerSecond=1 sendControlBytesPerSecond=2 receiveDataBytesPerSecond=3 receiveControlBytesPerSecond=4 bytesPushedToPeers=5 fragmentsPushedToPeers=6 bytesRequestedByPeers=7 fragmentsRequestedByPeers=8 bytesPushedFromPeers=9 fragmentsPushedFromPeers=10 bytesRequestedFromPeers=11 fragmentsRequestedFromPeers=12 sendControlBytesPerSecondToServer=13 receiveDataBytesPerSecondFromServer=14 bytesReceivedFromServer=15 fragmentsReceivedFromServer=16 receiveDataBytesPerSecondFromIPMulticast=17 bytesReceivedFromIPMulticast=18 fragmentsReceivedFromIPMulticast=19
+NetGroupInfo(1..8): postingSendDataBytesPerSecond=1 postingSendControlBytesPerSecond=2 postingReceiveDataBytesPerSecond=3 postingReceiveControlBytesPerSecond=4 routingSendBytesPerSecond=5 routingReceiveBytesPerSecond=6 objectReplicationSendBytesPerSecond=7 objectReplicationReceiveBytesPerSecond=8
+NetStreamInfo() threw ArgumentError #1063
+NetGroupInfo() threw ArgumentError #1063
+nc connected=true protocol=rtmp
+// a fresh stream
+maxPauseBufferTime default: 600
+maxPauseBufferTime = -1: 0
+maxPauseBufferTime = 1000: 1000
+info: currentBytesPerSecond=0 byteCount=0 maxBytesPerSecond=0 audioBytesPerSecond=0 audioByteCount=0 videoBytesPerSecond=0 videoByteCount=0 dataBytesPerSecond=0 dataByteCount=0 playbackBytesPerSecond=0 droppedFrames=0 audioBufferLength=0 videoBufferLength=0 dataBufferLength=0 audioBufferByteLength=0 videoBufferByteLength=0 dataBufferByteLength=0 srtt=0 audioLossRate=0 videoLossRate=0 metaData=null xmpData=null uri=null resourceName=null isLive=true
+info is a new object each time: true
+multicastInfo: null
+close() before play returned, time=0
+// publish() on connect(null)
+publish('name','live') returned
+publish() returned
+publish('name','bogus') returned
+// appendBytes() outside data generation mode
+appendBytes threw TypeError #2004
+appendBytesAction threw TypeError #2004
+appendBytes(empty) threw TypeError #2004
+appendBytes after play(null) returned
+appendBytes after play(null) and close() returned
+events of the synchronous part: nc NetConnection.Connect.Success(status)
+// play, then close() right after onMetaData
+appendBytes while playing a file threw TypeError #2004
+before close(): nsPlay NetStream.Play.Start(status), nsPlay onMetaData 320x233
+close() returned, time=0 bytesLoaded=0
+after close(): (none)
+// play2() on an idle progressive stream
+play2(switch) returned
+switch: nsP2 NetStream.Play.Start(status), nsP2 onMetaData 320x233, nsP2 NetStream.Buffer.Flush(status), nsP2 NetStream.Play.Stop(status), nsP2 onPlayStatus NetStream.Play.Complete, nsP2 NetStream.Buffer.Empty(status)
+play2(resume) returned
+resume: nsP2 NetStream.Play.Start(status), nsP2 onMetaData 320x233, nsP2 NetStream.Buffer.Flush(status), nsP2 NetStream.Play.Stop(status), nsP2 onPlayStatus NetStream.Play.Complete, nsP2 NetStream.Buffer.Empty(status)
+play2(append) returned
+append: nsP2 NetStream.Play.Start(status), nsP2 onMetaData 320x233, nsP2 NetStream.Buffer.Flush(status), nsP2 NetStream.Play.Stop(status), nsP2 onPlayStatus NetStream.Play.Complete, nsP2 NetStream.Buffer.Empty(status)
+play2(stop) returned
+stop: nsP2 NetStream.Play.Start(status), nsP2 onMetaData 320x233, nsP2 NetStream.Buffer.Flush(status), nsP2 NetStream.Play.Stop(status), nsP2 onPlayStatus NetStream.Play.Complete, nsP2 NetStream.Buffer.Empty(status)
+// NetStream/NetGroup on a failed RTMP connection
+nc2 connect returned connected=false
+nc2: nc2 NetConnection.Connect.Failed(error)
+nc2 connected=false
+nc2 protocol threw ArgumentError #2126
+new NetStream(nc2) threw ArgumentError #2126
+new NetGroup(nc2) threw ArgumentError #2126
+new NetGroup(local) threw ArgumentError #2129
+new NetGroup(local, bad spec) threw ArgumentError #2129
+new NetStream(local, peer 0) threw ArgumentError #2129
+new NetStream(local, peer 1) threw ArgumentError #2129
+new NetStream(local, peer 2) threw ArgumentError #2129
+new NetStream(local, peer 3) ok
+// done

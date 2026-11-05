@@ -411,34 +411,27 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | `Graphics.drawTriangles` 的貼圖取樣 | 真 Flash 取最近貼圖格時有半格的偏移（u=0.5 落在格 9 而不是格 10），Timffle 用 GPU 的 `floor(u·寬)`；只差在貼圖格邊界那一排像素。透視（t）是以細分的仿射小片逼近，邊界位置誤差小於 1 px。 |
 | `ShaderJob` 的背景執行 | 真 Flash 在另一條執行緒跑背景的 ShaderJob、`complete` 回到主執行緒；Timffle 在同一輪腳本結束時（下一幀之前）同步執行並派送 `complete`，同時只會有一個工作在跑、順序相同，但 `progress` 不會出現 0 與 1 之間的值。 |
 | `<prototype>.hasOwnProperty.call(…)` | `Object.prototype.hasOwnProperty`／`propertyIsEnumerable`（以及 `XML.prototype`、`XMLList.prototype` 上的同名函式）在 Ruffle 取出來的是綁在那個 prototype 物件上的 AS3 方法，`.call(other, name)` 因此忽略 `other`；直接呼叫 `obj.hasOwnProperty(name)` 正確。上游既有行為。 |
-| `Sound.extract()` 的取樣值 | 真 Flash 對 `loadPCMFromByteArray` 載入的聲音，開頭十幾個取樣框回 0（像是濾波器暖機），Timffle 從第一框就回真的值；其他取樣率的聲音真 Flash 用它自己的重取樣濾波（22.05 kHz 的 ±0.5 方波讀回 0.75／0.25），Timffle 用取樣保持；MP3 的解碼器延遲由各自的解碼器決定，前幾框可能不同。個數、位置、端序、量化（16 位元截斷）相同。 |
-| `Sound.load()` 失敗的請求 | 真 Flash 對 HTTP 404 也先送 `progress`（錯誤頁的位元組數）再 `ioError`，之後重新 `load()` 時 `bytesLoaded` 會累加；Timffle 送 `open` 後直接 `ioError`，`bytesLoaded` 不累加。 |
-| `NetStream` 的狀態順序 | 真 Flash 在 `onMetaData` 之後才送 `NetStream.Play.Start`（那時 `Video.videoWidth` 已知）、`Buffer.Empty` 在 `Play.Stop` 之前；Ruffle 的順序相反（上游既有）。`onMetaData` 回呼裡的 `videoWidth` 相同。 |
+| `Sound.extract()` 的取樣值 | 真 Flash 對 `loadPCMFromByteArray` 載入的 44.1 kHz 立體聲，開頭 31 個取樣框回 0（像是濾波器暖機），Timffle 從第一框就回真的值；其他取樣率的聲音真 Flash 用它自己的重取樣濾波（22.05 kHz 的 ±0.5 方波讀回 0.75／0.25），Timffle 用取樣保持；MP3 的解碼器延遲由各自的解碼器決定，前幾框可能不同。個數、位置、端序、量化（16 位元截斷）相同（`D60Media`／`D61Extract` 於 2026-11-05 重量，仍成立）。 |
+| `Sound.load()` 失敗的請求 | 真 Flash 對 HTTP 404 先送 `open`，再送兩次 `progress`（錯誤頁的 0／7、7／7 位元組）才 `ioError #2032`，之後重新 `load()` 時 `bytesLoaded` 會累加（4187，比 `bytesTotal` 4180 多）；Timffle 送 `open` 後直接 `ioError`，`bytesLoaded` 不累加（`D60Media` 於 2026-11-05 重量，仍成立）。 |
+| `NetStream` 的狀態順序 | 用 320×233 的測試 FLV 量到的順序與 Timffle 相同（`netstream_local_events`）：`Play.Start`、`onMetaData`、`Buffer.Flush`、`Play.Stop`、client 的 `onPlayStatus(NetStream.Play.Complete)`、`Buffer.Empty`；`Buffer.Full` 與 `onMetaData` 誰先在 Flash 上每次不同。之前記的「`onMetaData` 之後才 `Play.Start`、`Buffer.Empty` 在 `Play.Stop` 之前」是用遊戲檔量的，這次沒有重現，可能依檔案而異。AVM1 的 `onPlayStatus` 沒有量，Timffle 只在 AVM2 呼叫。 |
 | `FileReference.download()` 的檔名 | 真 Flash 對 `defaultFileName` 的字元限制會丟錯（文件沒寫是哪一個錯誤碼），Timffle 不檢查；`upload()` 的 `testUpload` 探測 POST（Windows 專用）不送。 |
 | `FileReferenceList.browse()` 時的 `fileList` | 對話框開著時 `fileList` 是空陣列、取消後仍是空陣列，取自上游由 Flash 導出的測試；濾鏡無效（`#2097`）時是否先清空沒有量到（Timffle 先驗證再清空）。 |
 | 遞迴深度 | 網頁版保護上限 900 層；需要更深遞迴的演算法（例如遠距離的 A* 尋路）結果會被截斷，桌面版不受影響。 |
 | URLStream／LocalConnection 其他 | 未證明所有協定、所有外部接收端、跨使用者隔離都與 Flash 相同；AMF3 中沒有 `ObjectId` 型別（Date、XML、ByteArray、數值 Vector）的共享身分仍以完整寫出處理。 |
-| `Camera.isSupported`／`Microphone.isSupported` | 真 Flash 桌面版即使沒有裝置也回 true（這是「平台支援」旗標）；Timffle 沒有擷取管線，回 false。`getCamera()`／`getMicrophone()` 為 null 這點相同。 |
-| `new Camera()`／`new Microphone()`／`new AudioDeviceManager()` | 依「只能由播放器建立的類別丟 #2012」推定，沒有用真 Flash 量過。 |
-| `StageVideo` 的 `RangeError` | 手冊只給訊息文字，沒有錯誤編號，Timffle 的 errorID 是 0；真 Flash 的編號未量。`colorSpaces` 在不可用時真 Flash 可能仍列出 BT.601，Timffle 回空。 |
-| `StageVideoAvailabilityEvent` 的時機與 `driver` | Timffle 在監聽者加入的下一幀送；真 Flash 另外在進出全螢幕改變可用性時也送（Timffle 永遠不可用，所以不會變）。`driver` 真 Flash 會給顯示卡驅動字串，Timffle 是 null。 |
-| AV 類別的回傳碼 | 手冊頁已下架；`PLAYBACK_NOT_ENABLED` 是依 AVResult 常數的語意選的，`AVURLLoader`／`AVURLStream.load()` 的 #2037 是從量到的 `AVLoader.load()` 類推，都沒有用真 Flash 量過。 |
-| `AudioDeviceManager.selectedDeviceIndex` 設值 | 在使用者動作中、索引超出（空的）裝置清單時真 Flash 的行為未知，Timffle 不改值、不丟錯。 |
+| `Camera.isSupported`／`Microphone.isSupported` | 真 Flash 桌面版沒有攝影機也回 `Camera.isSupported` true（`names` 空、`getCamera()` null）；Wine 有 PulseAudio 輸入，所以 `Microphone.isSupported` true、`names` 兩項、`getMicrophone()` 有物件。Timffle 沒有擷取管線，兩者都回 false、`getMicrophone()` null；要不要改成 true 待決定。（Flash 值是 Wine 下 Flash Player 32 standalone 量的，同一支測試跑兩次相同） |
+| `StageVideo.colorSpaces` | 錯誤碼已與 Flash 相同（`stagevideo_bounds`）。Flash 在 stage video 可用時列 9 個色彩空間（`BT.601`…`RGB`），每次回同一個 Vector；不可用時列什麼量不到（Wine 下一律可用），Timffle 回空的 Vector（也是同一個）。 |
+| `StageVideoAvailabilityEvent` 的值與 `driver` | 送出時機已與 Flash 相同：加監聽者後下一次計時器時送，同一幀加幾個都只送一次，送給舞台上所有監聽者（`stagevideo_bounds`）。Wine 下真 Flash 回 `available`、reason `noError`、`driver` 是顯示卡字串（`Direct3D11-11.1,<顯示卡名>,…`）；Timffle 永遠 `unavailable`、`driver` null。進出全螢幕造成的可用性變化 Timffle 不會發生，沒有比對。 |
+| AV 類別的回傳碼 | 回傳碼、例外與 `AVURLLoader.stream` 已依 Flash 量到的值實作（`av_drm_arguments`：載入與選軌 17、`setBandwidth`／暫停到段尾 6、標籤 0、移除／插入 null、`play` 57、`pause` 0、seek 6、快轉／倒帶 19、`step` 21、`addCustomHeader` 一律 #2004）。只有 `setABRParameters` 沒有量（Timffle 回 17）。 |
+| `AudioDeviceManager`（`isSupported`、`selectedDeviceIndex`） | Wine 下真 Flash 有兩個輸出裝置：`isSupported` true；`selectedDeviceIndex` 在使用者動作之外也能設，超出清單（5、-1、-2）丟 `RangeError #1125`。Timffle 沒有裝置清單，`isSupported` false，任何索引都丟 #1125（空清單本身在 Flash 上量不到，依「超出清單就 #1125」推定）。 |
 | 項目 | 差異 |
 | flash.globalization 地區資料 | 只帶 22 個地區；其他地區照文件退回（同語言 → `usingFallbackWarning`，未知語言 → 預設地區與 `usingDefaultWarning`），真 Flash 在 Windows 可能有該地區的資料。`getAvailableLocaleIDNames()` 回這 22 個。 |
 | 地區表的細節 | 日期時間樣式、縮寫、貨幣版面是依 Windows／CLDR 慣例整理（例如 en-US 負數貨幣 `($1.50)`、zh-TW 長時間 `下午 01:43:01`），真 Flash 逐 OS 版本不同；`shortAbbreviation` 與 `longAbbreviation` 相同（文件註明部分 OS 如此）；`Q`×4、`G`×4 只有英文全名；`z`／`v` 一律是 GMT 格式。 |
 | NumberFormatter／CurrencyFormatter 超範圍設定 | 依 LastOperationStatus 文件回 `invalidAttrValue` 不丟例外；NumberFormatter 文件另一處寫會丟 ArgumentError，兩處文件矛盾，待真 Flash 確認。 |
 | CurrencyFormatter.parse() | 比文件寬鬆：不檢查貨幣／符號／數字的順序是否與 `positiveCurrencyFormat`／`negativeCurrencyFormat` 完全一致，只要文字在一側即可。 |
 | Collator | 近似 UCA，沒有 DUCET 全表：非拉丁字母按碼位排序、法文的反向第二層沒有做、`@collation=pinyin/stroke` 等中文排序沒有專門資料（退回碼位順序）。`numericComparison` 真 Flash 在 Windows／Linux 回 `unsupportedError`，這裡真的生效並回 `noError`。`collator_compare_basic` 的 `output.txt` 是 Linux Flash 錄的（忽略變音符號無效），仍標 `known_failure`。 |
-| `NetStream.close()` 的事件 | 文件只說停播、時間歸 0；真 Flash 是否在 `close()` 時送 `NetStream.Play.Stop`／`Buffer.Flush` 沒有量到，Timffle 不送。 |
-| `NetStream.publish()`／`appendBytes()` 不在資料產生模式 | 在 `connect(null)` 的連線上 `publish()` 真 Flash 報什麼（或丟什麼）沒有文件；文件只說 `appendBytes()` 在非資料產生模式「raises an exception」但沒寫哪一個。Timffle 兩者都不做事、不報。 |
-| `NetStream.play2()` 的轉場 | `switch`／`swap`／`append*`／`resume` 在漸進下載上化成 `play(streamName)`；`NetStream.Play.Transition`／`TransitionComplete` 是 FMS 送的，這裡不會出現。 |
-| `NetStream.maxPauseBufferTime` 預設值 | 文件沒寫讀取未設定時的值（只說未設定時暫停上限是 60 秒或 2×bufferTime），Timffle 回 0。 |
-| `NetStreamInfo` 的每秒速率 | 真 Flash 每類（音訊／視訊／資料）各自量；Timffle 量總下載速率再依已看到的位元組比例分配，每秒取樣一次。 |
-| `NetStreamInfo`／`NetStreamMulticastInfo`／`NetGroupInfo.toString()` 的格式 | 文件只說「包含各屬性的值」；`name=value` 空格相連、宣告順序是依 Flash 慣例推定，沒有量到。 |
-| `GroupSpecifier` 的選項型別 | 只有固定選項 `01`、`0c` 與名稱 `0e` 與 Flash 相同；旗標、bootstrap、multicast、密碼、唯一標記的型別號與密碼雜湊的確切構造（SHA-256(password+salt)）是 Timffle 自訂。這裡沒有 RTMFP，字串只會被 `NetGroup`／`NetStream` 的建構子拒絕，不會送到任何伺服器。 |
-| `NetGroup` 在非 RTMFP 連線上的錯誤碼 | 參考文件只說 `ArgumentError`；Timffle 用 `#2126`。 |
-| `DRMManager` 沒有模組時的事件細節 | 錯誤碼 3344 取自 runtime error 清單（「Missing Flash Access module」）；`drmUpdateNeeded` true、`storeVoucher()` 也送 `drmError` 是推定；`DRMContentData(bytes)` 丟 `#2014` 也是推定（文件沒寫建構子的錯誤）。 |
+| `NetStreamInfo` 的每秒速率 | 漸進下載時真 Flash 的位元組數與每秒速率（`currentBytesPerSecond`、`byteCount`、`maxBytesPerSecond`、音訊／視訊／資料各三項）全是 0，檔案下載完也一樣，只有 `playbackBytesPerSecond` 有值；Timffle 已照做。`playbackBytesPerSecond` 的算法沒有比對（Flash 對 14,567 位元組的測試檔回 13029.67），資料產生模式（`appendBytes`）下的值沒有量。 |
+| `NetStream` 的其他預設值（量到、未改） | 驗證時順便量到、不在這次範圍內的差異：`connect(null)` 的 NetStream 在真 Flash 上 `bufferTime` 是 0（Timffle 0.1，上游既有）、`audioSampleAccess`／`videoSampleAccess` 讀寫都丟 `ArgumentError #2154`、`multicast*` 六個設定讀回 0 且設值無效、`farNonce`／`nearNonce` 是空字串、還沒播放時 `audioCodec` 128／`videoCodec` 2048；`MicrophoneEnhancedOptions.autoGain` 與 `DRMDeviceGroup.name` 的設值在 Flash 上無效。Timffle 都還是舊值。 |
+| `DRMManager` 沒有模組時的事件細節 | 同步的參數檢查已與 Flash 相同（`av_drm_arguments`：`loadVoucher`／`loadPreviewVoucher`／`returnVoucher` 丟 errorID 0 的 `ArgumentError`，其他方法接受 null；`DRMContentData(bytes)` 不丟錯、`getVoucherAccessInfo()` null）。Flash Player 32 自己帶 Adobe Access 模組（`isSupported` true、`networkIdleTimeout` 預設 120000，連不到伺服器的 `authenticate` 反而送兩次 `authenticationComplete`），所以「沒有模組」時的事件量不到：錯誤碼 3344、`drmUpdateNeeded` true、`storeVoucher()` 送 `drmError` 仍是推定。 |
 | `Font.enumerateFonts(true)` | Flash 列出作業系統全部的裝置字型；Timffle 只列已載入的與內建名稱的實作（主機沒有列舉 API）。 |
 | `TextSnapshot` 的字框 | 字框高度用字型的 ascent／descent；DefineFont 沒有版面資訊（Flash 文件說的「沒有字元度量」）時高度是 0，`hitTestTextNearPos` 只有點剛好在基線上才命中（Flash 文件說回 −1）；`getTextRunInfo` 的四角順序（左上、右上、右下、左下）與 `includeLineEndings` 在同一個 DefineText 的多行之間不補換行，都沒有在真 Flash 量過。 |
 | `TextRenderer` 的錯誤 | 非法的 `displayMode`／`maxLevel`／`antiAliasType`／表格項目丟 `ArgumentError #2008`，參考只寫「只接受哪些值」沒寫錯誤碼，未在真 Flash 量過。 |
@@ -469,7 +462,7 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | 同一元素放進第二個 TextBlock／GroupElement | 不丟 ArgumentError（既有 Flash 錄製測試顯示 content 可重複），由後者接管擁有權。 |
 | ElementFormat.getFontMetrics | underline／strikethrough／sub/superscript 不是從字型 OS/2 表讀，而是慣例比例。 |
 | 類別/成員 | 差異 |
-| `AuthorizedFeaturesLoader` 事件 | 失敗時派發 `ErrorEvent.ERROR`、text「Error #2032: Stream Error.」；Adobe 參考頁已下線（404），實際事件型別/文字未能對照真 Flash 確認。 |
+| `AuthorizedFeaturesLoader` 事件 | 網路被擋時真 Flash 送 `ErrorEvent.ERROR`、text `Error #3727`（Timffle 已改成同一個錯誤，`loadAuthorizedFeaturesFromData(null)` 也不再丟錯）。同時有幾個 loader 或連續呼叫時，Flash 的錯誤事件會送給誰不固定（一次是同一個 loader 收兩次，另一次第一個 loader 沒收到、第二個收到一次）；Timffle 每次呼叫送一次給呼叫的 loader。 |
 | AMF0 `SharedObject` 參照表範圍 | 一個 `flush()` 共用一張參照表（跨頂層屬性）；真 Flash 的 .sol 是否每個頂層屬性重置參照表未驗證。 |
 | `TextBlock.createTextLine` 的斷行機會 | 斷行機會沿用 EditText 的換行規則（空白／tab；U+200B 不是斷點，Flash 的 UAX #14 會在 ZWSP、連字號後、CJK 字之間等處斷行）；`emergency` 的判定是「斷在非空白之後」。`lineOffset` 仍當第一行縮排（前一批的做法），Flash 的 `lineOffset` 只影響 tab 原點。`insufficientWidth` 的判定是第一個字素的右緣超過 `width`，Flash 以第一個 atom 的 advance 判定（含字距時可能差一點）。 |
 | `TextBlock.bidiLevel` | 層級解析與 run 反轉照 UAX #9（`unicode-bidi`），但沒有阿拉伯文連寫字形、鏡像括號（`TextLineMirrorRegion` 以外的 glyph mirroring）與 RTL 段落的行原點對齊（Flash 在 `bidiLevel = 1` 時行從右邊的 `width` 起算、`textWidth` 以右為基準）；`getAtomBidiLevel` 的預期值取自 UAX #9，未用真 Flash 錄製。 |

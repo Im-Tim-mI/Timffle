@@ -7,13 +7,14 @@ package flash.system {
     // Timffle: the loader that asks Adobe's authorization service for an
     // `AuthorizedFeatures` token (Adobe Primetime: HLS through AVStream, the
     // disk cache, the application installer). This player contacts no
-    // authorization service, so it behaves like Flash Player on a machine that
-    // cannot reach the service: `loadAuthorizedFeatures()` fails
-    // asynchronously with the documented `error` event (ErrorEvent.ERROR),
-    // `loadAuthorizedFeaturesFromData()` cannot validate any signed token
-    // and fails the same way (a null ByteArray is `TypeError #2007` like any
-    // non-null parameter), and `authorizedFeatures` stays null: no token
-    // ever exists, which is exactly what `AuthorizedFeatures` assumes.
+    // authorization service, so it behaves like Flash Player 32 when the
+    // service cannot be reached (measured with the network blocked):
+    // `loadAuthorizedFeatures()` returns and an `ErrorEvent.ERROR` with
+    // `Error #3727` ("Failed to obtain authorization token") follows
+    // asynchronously. `loadAuthorizedFeaturesFromData()` cannot validate any
+    // signed token and fails the same way; Flash Player 32 does not throw for
+    // a null ByteArray. `authorizedFeatures` stays null: no token ever exists,
+    // which is exactly what `AuthorizedFeatures` assumes.
     [API("688")]
     public final class AuthorizedFeaturesLoader extends EventDispatcher {
         private var _authorizedFeatures:AuthorizedFeatures = null;
@@ -27,22 +28,20 @@ package flash.system {
         }
 
         public function loadAuthorizedFeatures():void {
-            this.fail("Error #2032: Stream Error.");
+            this.fail();
         }
 
         public function loadAuthorizedFeaturesFromData(data:ByteArray):void {
-            if (data == null) {
-                throw new TypeError("Error #2007: Parameter data must be non-null.", 2007);
-            }
-            this.fail("Error #2032: Stream Error.");
+            this.fail();
         }
 
         // The authorization service is asynchronous, so the failure is too:
         // listeners added right after the call still receive it.
-        private function fail(text:String):void {
+        private function fail():void {
             var self:AuthorizedFeaturesLoader = this;
             setTimeout(function():void {
-                self.dispatchEvent(new ErrorEvent(ErrorEvent.ERROR, false, false, text));
+                self.dispatchEvent(new ErrorEvent(ErrorEvent.ERROR, false, false,
+                    "Error #3727: Failed to obtain authorization token.", 3727));
             }, 0);
         }
     }

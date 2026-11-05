@@ -421,8 +421,19 @@ pub fn append_bytes_action_internal<'gc>(
     Ok(false.into())
 }
 
-/// The numbers and objects behind `NetStream.info`, in the order
-/// `NetStreamInfo.ruffleInit` expects them (see NetStreamInfo.as).
+/// The numbers and objects behind `NetStream.info` (see `NetStream.info` in
+/// NetStream.as for how they reach the `NetStreamInfo` constructor):
+/// [currentBytesPerSecond, byteCount, maxBytesPerSecond, audioBytesPerSecond,
+///  audioByteCount, videoBytesPerSecond, videoByteCount, dataBytesPerSecond,
+///  dataByteCount, playbackBytesPerSecond, droppedFrames, audioBufferLength,
+///  videoBufferLength, dataBufferLength, audioBufferByteLength,
+///  videoBufferByteLength, dataBufferByteLength, metaData, xmpData, resourceName].
+///
+/// Timffle: the transfer counters and rates are what Flash Player 32 reports
+/// for a progressive download, which is the only kind of stream here: 0 for
+/// every byte count and every per-second rate except `playbackBytesPerSecond`,
+/// even after the whole file arrived (measured over HTTP on Flash Player 32;
+/// those fields describe RTMP traffic).
 pub fn info_values<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -435,23 +446,20 @@ pub fn info_values<'gc>(
         return Ok(Value::Null);
     };
     let stats = ns.buffer_stats();
-    let (current_bps, max_bps, playback_bps) = ns.rates();
-    let total = (stats.audio_bytes + stats.video_bytes + stats.data_bytes).max(1) as f64;
-    // Per-kind rates: the download rate split like the bytes seen so far.
-    let share = |bytes: usize| current_bps * bytes as f64 / total;
+    let (_, _, playback_bps) = ns.rates();
     let time = ns.time();
     let ahead = |end: Option<i32>| end.map_or(0.0, |e| ((e as f64 - time) / 1000.0).max(0.0));
     let mc = activation.gc();
     let values: Vec<Value<'gc>> = vec![
-        current_bps.into(),
-        (ns.bytes_loaded() as f64).into(),
-        max_bps.into(),
-        share(stats.audio_bytes).into(),
-        (stats.audio_bytes as f64).into(),
-        share(stats.video_bytes).into(),
-        (stats.video_bytes as f64).into(),
-        share(stats.data_bytes).into(),
-        (stats.data_bytes as f64).into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
         playback_bps.into(),
         (ns.dropped_frames() as f64).into(),
         ahead(stats.audio_end).into(),

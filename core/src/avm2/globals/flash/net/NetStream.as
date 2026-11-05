@@ -25,7 +25,8 @@ package flash.net {
 
         private var _connection:NetConnection;
         private var _bufferTimeMax:Number = 0;
-        private var _maxPauseBufferTime:Number = 0;
+        // Flash Player 32: 600 until set; negative values become 0.
+        private var _maxPauseBufferTime:Number = 600;
         private var _checkPolicyFile:Boolean = false;
         private var _useHardwareDecoder:Boolean = true;
         private var _useJitterBuffer:Boolean = false;
@@ -54,6 +55,13 @@ package flash.net {
             if (!connection.connected) {
                 throw new ArgumentError("Error #2126: NetConnection object must be connected.", 2126);
             }
+            // Timffle: a peer-to-peer or group stream (any `peer` other than
+            // CONNECT_TO_FMS) needs RTMFP; Flash Player 32 answers it on a
+            // `connect(null)` NetConnection with #2129 (measured,
+            // tests/tests/swfs/avm2/netstream_local_events).
+            if (peer != CONNECT_TO_FMS && connection.protocol != "rtmfp") {
+                Error.throwError(ArgumentError, 2129, connection.uri);
+            }
             this._connection = connection;
             // Timffle: NetMonitor bookkeeping (`listStreams()`, `netStreamCreate`).
             this.registerWithMonitors();
@@ -62,13 +70,17 @@ package flash.net {
         private native function registerWithMonitors():void;
 
         // Timffle: Data Generation Mode (`play(null)` on a `connect(null)` NetConnection):
-        // the bytes join the stream buffer like downloaded data. Outside that mode the
-        // call does nothing here (Flash raises an exception whose class is not documented).
+        // the bytes join the stream buffer like downloaded data. Outside that mode (a
+        // stream that never had `play(null)`, or one playing a file) Flash Player 32
+        // throws `TypeError #2004`, for `appendBytesAction()` too (measured,
+        // tests/tests/swfs/avm2/netstream_local_events).
         public function appendBytes(bytes:ByteArray):void {
             if (bytes == null) {
                 throw new TypeError("Error #2007: Parameter bytes must be non-null.", 2007);
             }
-            this.appendBytesInternal(bytes);
+            if (!this.appendBytesInternal(bytes)) {
+                Error.throwError(TypeError, 2004);
+            }
         }
 
         private native function appendBytesInternal(bytes:ByteArray):Boolean;
@@ -82,7 +94,9 @@ package flash.net {
                 && action != NetStreamAppendBytesAction.RESET_SEEK) {
                 throw new ArgumentError("Error #2008: Parameter action must be one of the accepted values.", 2008);
             }
-            this.appendBytesActionInternal(action);
+            if (!this.appendBytesActionInternal(action)) {
+                Error.throwError(TypeError, 2004);
+            }
         }
 
         private native function appendBytesActionInternal(action:String):Boolean;
@@ -119,18 +133,14 @@ package flash.net {
         public native function play(...args):void;
 
         // Timffle: dynamic streaming needs Flash Media Server. On progressive playback
-        // the transitions reduce to what the file source can do: `stop` closes the
-        // stream, every other transition (`reset`, `switch`, `swap`, `append`,
-        // `appendAndWait`, `resume`) plays `streamName` from its `start` offset.
-        // `NetStream.Play.Transition` / `TransitionComplete` are server messages
-        // and never arrive.
+        // Flash Player 32 ignores the transition: `switch`, `resume`, `append` and even
+        // `stop` play `streamName` again from the beginning (measured,
+        // tests/tests/swfs/avm2/netstream_local_events), so every transition plays
+        // `streamName` from its `start` offset here. `NetStream.Play.Transition` /
+        // `TransitionComplete` are server messages and never arrive.
         public function play2(param:NetStreamPlayOptions):void {
             if (param == null) {
                 throw new TypeError("Error #2007: Parameter param must be non-null.", 2007);
-            }
-            if (param.transition == NetStreamPlayTransitions.STOP) {
-                this.close();
-                return;
             }
             if (param.streamName == null) {
                 throw new TypeError("Error #2007: Parameter streamName must be non-null.", 2007);
@@ -304,11 +314,12 @@ package flash.net {
 
         public native function set inBufferSeek(isInBuffer:Boolean):void;
 
+        // Timffle: a new object each time. Flash Player 32 reports `isLive` true for a
+        // stream that plays nothing and false while a file plays; `uri` is null.
         public function get info():NetStreamInfo {
-            var result:NetStreamInfo = new NetStreamInfo();
-            // Progressive download: `uri` is null and `isLive` false (reference).
-            result.ruffleInit(this.infoValues(), null, false);
-            return result;
+            var v:Array = this.infoValues();
+            return new NetStreamInfo(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10],
+                v[14], v[15], v[16], v[11], v[12], v[13], 0, 0, 0, v[17], v[18], null, v[19], v[19] == null);
         }
 
         private native function infoValues():Array;
@@ -323,7 +334,7 @@ package flash.net {
         }
 
         public function set maxPauseBufferTime(time:Number):void {
-            this._maxPauseBufferTime = time;
+            this._maxPauseBufferTime = time > 0 ? time : 0;
         }
 
         public function get multicastAvailabilitySendToAll():Boolean {
@@ -350,9 +361,10 @@ package flash.net {
             this._multicastFetchPeriod = period;
         }
 
-        // Timffle: no multicast traffic: every counter is 0.
+        // Timffle: Flash Player 32 answers null for a stream that is not multicast,
+        // and no stream here is.
         public function get multicastInfo():NetStreamMulticastInfo {
-            return new NetStreamMulticastInfo();
+            return null;
         }
 
         public function get multicastPushNeighborLimit():Number {

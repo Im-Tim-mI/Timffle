@@ -1,0 +1,81 @@
+// viewPort
+viewPort (0,0,0,0) ok -> (x=0, y=0, w=0, h=0)
+viewPort (-8192,-8192,1,1) ok -> (x=-8192, y=-8192, w=1, h=1)
+viewPort (-8193,0,1,1) threw RangeError #2006 kept (x=-8192, y=-8192, w=1, h=1)
+viewPort (8191,8191,1,1) ok -> (x=8191, y=8191, w=1, h=1)
+viewPort (8192,0,1,1) threw RangeError #2006 kept (x=8191, y=8191, w=1, h=1)
+viewPort (0,8192,1,1) threw RangeError #2006 kept (x=8191, y=8191, w=1, h=1)
+viewPort (0,0,-1,1) threw RangeError #2004 kept (x=8191, y=8191, w=1, h=1)
+viewPort (0,0,1,-1) threw RangeError #2004 kept (x=8191, y=8191, w=1, h=1)
+viewPort (0,0,8192,1) threw RangeError #2006 kept (x=8191, y=8191, w=1, h=1)
+viewPort (0,0,9000,9000) threw RangeError #2006 kept (x=8191, y=8191, w=1, h=1)
+viewPort (100,100,8191,8191) ok -> (x=100, y=100, w=8191, h=8191)
+viewPort (-8192,0,8191,1) ok -> (x=-8192, y=0, w=8191, h=1)
+viewPort (NaN,0,1,1) threw RangeError #2004 kept (x=-8192, y=0, w=8191, h=1)
+viewPort (0,0,NaN,1) threw RangeError #2004 kept (x=-8192, y=0, w=8191, h=1)
+viewPort (0,0,Infinity,1) threw RangeError #2004 kept (x=-8192, y=0, w=8191, h=1)
+viewPort (NaN,0,-1,1) threw RangeError #2004 kept (x=-8192, y=0, w=8191, h=1)
+viewPort (9000,0,-1,1) threw RangeError #2006 kept (x=-8192, y=0, w=8191, h=1)
+viewPort (1.5,2.5,3.5,4.5) ok -> (x=1.5, y=2.5, w=3.5, h=4.5)
+viewPort (-8192.5,0,1,1) threw RangeError #2006 kept (x=1.5, y=2.5, w=3.5, h=4.5)
+viewPort (8191.4,0,1,1) threw RangeError #2006 kept (x=1.5, y=2.5, w=3.5, h=4.5)
+viewPort null threw TypeError #2007 kept (x=1.5, y=2.5, w=3.5, h=4.5)
+// zoom
+zoom (1,1) ok -> (x=1, y=1)
+zoom (0.99,1) threw RangeError #2006 kept (x=1, y=1)
+zoom (1,0) threw RangeError #2006 kept (x=1, y=1)
+zoom (8,8) ok -> (x=8, y=8)
+zoom (16,16) ok -> (x=16, y=16)
+zoom (16.01,1) threw RangeError #2006 kept (x=16, y=16)
+zoom (1,17) threw RangeError #2006 kept (x=16, y=16)
+zoom (NaN,1) threw RangeError #2004 kept (x=16, y=16)
+zoom (-1,1) threw RangeError #2006 kept (x=16, y=16)
+zoom (2.5,3.5) ok -> (x=2.5, y=3.5)
+zoom null threw TypeError #2007 kept (x=2.5, y=3.5)
+// pan
+pan (0,0) ok -> (x=0, y=0)
+pan (-1,1) ok -> (x=-1, y=1)
+pan (-1.01,0) threw RangeError #2006 kept (x=-1, y=1)
+pan (0,1.01) threw RangeError #2006 kept (x=-1, y=1)
+pan (NaN,0) threw RangeError #2004 kept (x=-1, y=1)
+pan (0.25,-0.75) ok -> (x=0.25, y=-0.75)
+pan null threw TypeError #2007 kept (x=0.25, y=-0.75)
+// depth
+depth -5 -> -5
+depth max -> 2147483647
+colorSpaces is the same object each time: true
+// constructors
+new StageVideo() threw ArgumentError #2012
+new AudioDeviceManager() threw ArgumentError #2012
+new Camera() -> [object Camera]
+camera values -> '0,0,0,0,0,0,0,false,0,0,false,null,0,0'
+camera setters -> '0,0,0,0,0,0,0,0,false'
+camera.copyToByteArray(null, null) threw TypeError #2007
+camera.copyToVector(null, null) threw TypeError #2007
+camera.drawToBitmapData(null) threw TypeError #2007
+camera.drawToBitmapData(1x1) -> 'ok'
+Camera.names is a new Array each time -> true
+new Microphone() -> [object Microphone]
+microphone values -> '0,null,false,0,null,0,0,0,false,null,0,0,0,0,1,false'
+microphone setters -> 'null,0,0,0,0,0,false,0,0,false,1,null'
+microphone.codec = null threw TypeError #2007
+microphone.codec = bogus -> 'null'
+microphone.soundTransform = null threw TypeError #2007
+// AV classes present
+flash.media.AVStream=true flash.media.AVPlayer=missing(#1065) flash.media.AVURLLoader=true flash.media.AVURLStream=true flash.display.AVLoader=true flash.system.AuthorizedFeaturesLoader=true flash.media.AVSegmentedSource=true flash.media.MediaPlayer=missing(#1065)
+// availability listeners
+f0 listener1, target is stage: true, reason is a string: true
+f0 listener2
+f3 listener3 added
+f3 listener1, target is stage: true, reason is a string: true
+f3 listener2
+f3 listener3 (added in frame 3)
+f6 listener1 removed and re-added
+f6 listener2
+f6 listener3 (added in frame 3)
+f6 listener1, target is stage: true, reason is a string: true
+f9 listener4 added for the capture phase
+f9 listener2
+f9 listener3 (added in frame 3)
+f9 listener1, target is stage: true, reason is a string: true
+// done

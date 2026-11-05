@@ -14,8 +14,9 @@ import flash.system.AuthorizedFeatures;
 import flash.utils.describeType;
 
 // Flash Player without Adobe Primetime authorization: the AV classes exist
-// and are configurable, but nothing can be enabled, so playback calls answer
-// AVResult.PLAYBACK_NOT_ENABLED and the AV loaders refuse to load (#2037).
+// and are configurable, but nothing can be enabled; the result codes are the
+// ones Flash Player 32 gives (measured, see av_drm_arguments) and the AV
+// loaders refuse to load (#2037).
 public class Test extends Sprite {
     public function Test() {
         trace("== AVSource");
@@ -55,9 +56,9 @@ public class Test extends Sprite {
         trace("setPauseAtPeriodEnd = " + seg.setPauseAtPeriodEnd(0).result);
         trace("clearPauseAtPeriodEnd = " + seg.clearPauseAtPeriodEnd(0).result);
         trace("releaseManifest = " + seg.releaseManifest(1).result);
-        trace("removeByVirtualTime = " + seg.removeByVirtualTime(0, 1).result);
-        trace("removeByLocalTime = " + seg.removeByLocalTime(0, 0, 1, true).result);
-        trace("removeByVirtualTimeWithReplacement = " + seg.removeByVirtualTimeWithReplacement(0, 1, false).result);
+        trace("removeByVirtualTime = " + seg.removeByVirtualTime(0, 1));
+        trace("removeByLocalTime = " + seg.removeByLocalTime(0, 0, 1, true));
+        trace("removeByVirtualTimeWithReplacement = " + seg.removeByVirtualTimeWithReplacement(0, 1, false));
         trace("setSubscribedTags = " + seg.setSubscribedTags(["#EXT-X-CUE"]).result);
         trace("setSubscribedTagsForBackgroundManifest = " + seg.setSubscribedTagsForBackgroundManifest([]).result);
         trace("setCuePointTags = " + seg.setCuePointTags([]).result);
@@ -68,8 +69,8 @@ public class Test extends Sprite {
             trace("setSubscribedTags(null) threw " + getQualifiedClassName(e) + " #" + e.errorID);
         }
         var ins:AVInsertionResult = seg.insertByVirtualTime(5, 1);
-        trace("insertByVirtualTime = " + ins.result + ", periodIndex = " + ins.periodIndex + ", insertedBeforeReadHead = " + ins.insertedBeforeReadHead);
-        trace("insertByLocalTime = " + seg.insertByLocalTime(0, 5, 1).result);
+        trace("insertByVirtualTime = " + ins);
+        trace("insertByLocalTime = " + seg.insertByLocalTime(0, 5, 1));
         trace("networkingParams = " + seg.networkingParams + ", readSetCookieHeader = " + seg.networkingParams.readSetCookieHeader);
         var params:AVNetworkingParams = new AVNetworkingParams(true);
         seg.networkingParams = params;
@@ -83,8 +84,13 @@ public class Test extends Sprite {
         seg.cookieHeader = "a=b";
         seg.masterUpdateInterval = 5000;
         seg.useRedirectedUrl = true;
-        seg.addCustomHeader("X-Test", new <String>["1"]);
         trace("configuration setters ok");
+        try {
+            seg.addCustomHeader("X-Test", new <String>["1"]);
+            trace("addCustomHeader did not throw");
+        } catch (e:Error) {
+            trace("addCustomHeader threw " + getQualifiedClassName(e) + " #" + e.errorID);
+        }
         try {
             seg.addCustomHeader(null, null);
             trace("addCustomHeader(null) did not throw");
@@ -135,8 +141,13 @@ public class Test extends Sprite {
         stream.bufferTime = 3;
         stream.initialBufferTime = 1;
         stream.backBufferTime = 30;
-        stream.captionStyle = null;
         trace("buffer setters ok");
+        try {
+            stream.captionStyle = null;
+            trace("captionStyle = null did not throw");
+        } catch (e:Error) {
+            trace("captionStyle = null threw " + getQualifiedClassName(e) + " #" + e.errorID);
+        }
         stream.dispose();
         trace("dispose ok, play after dispose = " + stream.play().result);
 

@@ -1,7 +1,9 @@
 package flash.net {
-    // Timffle: filled by `NetStream.info` from the stream's buffer; `toString()` lists
-    // the properties as `name=value` pairs separated by spaces in declaration order,
-    // the layout Flash Player uses for this class.
+    // Timffle: the statistics of a NetStream. Flash Player 32 has a public
+    // constructor taking the values in this order (20 numbers are required);
+    // `toString()` lists the properties as `name=value` pairs separated by
+    // spaces, with `srtt` in lower case (measured on Flash Player 32,
+    // tests/tests/swfs/avm2/netstream_local_events).
     public final class NetStreamInfo {
         private var _audioBufferByteLength:Number = 0;
         private var _audioBufferLength:Number = 0;
@@ -29,37 +31,37 @@ package flash.net {
         private var _videoLossRate:Number = 0;
         private var _xmpData:Object = null;
 
-        // Timffle: `values` comes from the native `NetStream.infoValues()`:
-        // [currentBytesPerSecond, byteCount, maxBytesPerSecond, audioBytesPerSecond,
-        //  audioByteCount, videoBytesPerSecond, videoByteCount, dataBytesPerSecond,
-        //  dataByteCount, playbackBytesPerSecond, droppedFrames, audioBufferLength,
-        //  videoBufferLength, dataBufferLength, audioBufferByteLength,
-        //  videoBufferByteLength, dataBufferByteLength, metaData, xmpData, resourceName].
-        internal function ruffleInit(values:Array, uri:String, isLive:Boolean):void {
-            if (values == null) {
-                return;
-            }
-            this._currentBytesPerSecond = values[0];
-            this._byteCount = values[1];
-            this._maxBytesPerSecond = values[2];
-            this._audioBytesPerSecond = values[3];
-            this._audioByteCount = values[4];
-            this._videoBytesPerSecond = values[5];
-            this._videoByteCount = values[6];
-            this._dataBytesPerSecond = values[7];
-            this._dataByteCount = values[8];
-            this._playbackBytesPerSecond = values[9];
-            this._droppedFrames = values[10];
-            this._audioBufferLength = values[11];
-            this._videoBufferLength = values[12];
-            this._dataBufferLength = values[13];
-            this._audioBufferByteLength = values[14];
-            this._videoBufferByteLength = values[15];
-            this._dataBufferByteLength = values[16];
-            this._metaData = values[17];
-            this._xmpData = values[18];
-            this._resourceName = values[19];
+        public function NetStreamInfo(curBPS:Number, byteCount:Number, maxBPS:Number, audioBPS:Number,
+                audioByteCount:Number, videoBPS:Number, videoByteCount:Number, dataBPS:Number,
+                dataByteCount:Number, playbackBPS:Number, droppedFrames:Number,
+                audioBufferByteLength:Number, videoBufferByteLength:Number, dataBufferByteLength:Number,
+                audioBufferLength:Number, videoBufferLength:Number, dataBufferLength:Number,
+                srtt:Number, audioLossRate:Number, videoLossRate:Number, metaData:Object = null,
+                xmpData:Object = null, uri:String = null, resourceName:String = null, isLive:Boolean = true) {
+            this._currentBytesPerSecond = curBPS;
+            this._byteCount = byteCount;
+            this._maxBytesPerSecond = maxBPS;
+            this._audioBytesPerSecond = audioBPS;
+            this._audioByteCount = audioByteCount;
+            this._videoBytesPerSecond = videoBPS;
+            this._videoByteCount = videoByteCount;
+            this._dataBytesPerSecond = dataBPS;
+            this._dataByteCount = dataByteCount;
+            this._playbackBytesPerSecond = playbackBPS;
+            this._droppedFrames = droppedFrames;
+            this._audioBufferByteLength = audioBufferByteLength;
+            this._videoBufferByteLength = videoBufferByteLength;
+            this._dataBufferByteLength = dataBufferByteLength;
+            this._audioBufferLength = audioBufferLength;
+            this._videoBufferLength = videoBufferLength;
+            this._dataBufferLength = dataBufferLength;
+            this._SRTT = srtt;
+            this._audioLossRate = audioLossRate;
+            this._videoLossRate = videoLossRate;
+            this._metaData = metaData;
+            this._xmpData = xmpData;
             this._uri = uri;
+            this._resourceName = resourceName;
             this._isLive = isLive;
         }
 
@@ -81,7 +83,7 @@ package flash.net {
                 + " audioBufferByteLength=" + this._audioBufferByteLength
                 + " videoBufferByteLength=" + this._videoBufferByteLength
                 + " dataBufferByteLength=" + this._dataBufferByteLength
-                + " SRTT=" + this._SRTT
+                + " srtt=" + this._SRTT
                 + " audioLossRate=" + this._audioLossRate
                 + " videoLossRate=" + this._videoLossRate
                 + " metaData=" + this._metaData

@@ -1,11 +1,11 @@
 == AVSource
 AVSource dispose twice ok
 == AVSegmentedSource
-load = 57 (PLAYBACK_NOT_ENABLED = 57)
-load DASH = 57
+load = 17 (PLAYBACK_NOT_ENABLED = 57)
+load DASH = 17
 load(null) threw TypeError #2007
-loadManifest = 57
-loadWithBackgroundManifest = 57
+loadManifest = 17
+loadWithBackgroundManifest = 17
 getTimeline = null
 getBackgroundTimeline = null
 getPeriodInfo(0) = null
@@ -18,43 +18,44 @@ getSubscribedTag = null
 getTimelineSubscribedTag = null
 getPerceivedBandwidth = 0
 getMediaPreferredStartTime = -1
-selectTrack = 57
-selectTrackString = 57
-setBandwidth = 57
-setHoldAt = 57
-setPauseAtPeriodEnd = 57
-clearPauseAtPeriodEnd = 57
-releaseManifest = 57
-removeByVirtualTime = 57
-removeByLocalTime = 57
-removeByVirtualTimeWithReplacement = 57
-setSubscribedTags = 57
-setSubscribedTagsForBackgroundManifest = 57
-setCuePointTags = 57
+selectTrack = 17
+selectTrackString = 17
+setBandwidth = 6
+setHoldAt = 17
+setPauseAtPeriodEnd = 6
+clearPauseAtPeriodEnd = 6
+releaseManifest = 17
+removeByVirtualTime = null
+removeByLocalTime = null
+removeByVirtualTimeWithReplacement = null
+setSubscribedTags = 0
+setSubscribedTagsForBackgroundManifest = 0
+setCuePointTags = 0
 setSubscribedTags(null) threw TypeError #2007
-insertByVirtualTime = 57, periodIndex = -1, insertedBeforeReadHead = false
-insertByLocalTime = 57
+insertByVirtualTime = null
+insertByLocalTime = null
 networkingParams = [object AVNetworkingParams], readSetCookieHeader = true
-networkingParams after set is the same object: true
+networkingParams after set is the same object: false
 networkingParams = null threw TypeError #2007
 configuration setters ok
-addCustomHeader(null) threw TypeError #2007
-dispose ok, load after dispose = 57
+addCustomHeader threw ArgumentError #2004
+addCustomHeader(null) threw ArgumentError #2004
+dispose ok, load after dispose = 17
 == AVStream
 new AVStream(null) threw TypeError #2007
 play = 57
-pause = 57
-resume = false
-seek = 57
-seekToKeyFrame = 57
-seekToLivePoint = 57
-seekToLocalTime = 57
-fastForward = 57
-rewind = 57
-step = 57
+pause = 0
+resume = true
+seek = 6
+seekToKeyFrame = 6
+seekToLivePoint = 6
+seekToLocalTime = 6
+fastForward = 19
+rewind = 19
+step = 21
 setPlaySpeed ok
 playState.state = 0
-time = 0, frameTime = 0, currentFPS = 0
+time = 0, frameTime = -1e-9, currentFPS = 0
 bufferLength = 0, backBufferLength = 0, clientLivePoint = 0
 droppedFrames = 0
 decoderType = undefined, renderType = undefined
@@ -67,11 +68,12 @@ volume after set 0.25 = 0.25
 volume after set 5 = 1
 volume after set -1 = 0
 buffer setters ok
+captionStyle = null threw TypeError #2007
 dispose ok, play after dispose = 57
 == AVURLLoader
-stream = null, dataFormat = text
+stream = [object AVURLStream], dataFormat = text
 load threw Error #2037
-load(null) threw TypeError #2007
+load(null) threw Error #2037
 close threw flash.errors::IOError #2029
 new AVURLLoader(request) threw Error #2037
 hasEventListener(complete) = true
@@ -81,4 +83,4 @@ load threw Error #2037
 connected after load = false
 close threw flash.errors::IOError #2029
 == AuthorizedFeatures
-methods = enableAVLoader,enableAVURLLoader,enableAVURLStream,enableDiskCache,enableHLSPlayback,enableMediaPlayerHLSPlayback
+methods = createApplicationInstaller,enableAVLoader,enableAVURLLoader,enableAVURLStream,enableDiskCache,enableHLSPlayback,enableMediaPlayerHLSPlayback

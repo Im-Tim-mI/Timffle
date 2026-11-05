@@ -19,9 +19,8 @@ package flash.media {
         }
 
         override public function load(request:URLRequest):void {
-            if (request == null) {
-                Error.throwError(TypeError, 2007, "request");
-            }
+            // Flash Player 32 answers #2037 before looking at the request
+            // (a null request is #2037 too).
             Error.throwError(Error, 2037);
         }
 

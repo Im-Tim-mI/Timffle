@@ -1,8 +1,10 @@
 package flash.net {
     // Timffle: the multicast statistics of a stream. This player has no RTMFP
-    // multicast, so every counter is 0 (a non-multicast stream in Flash Player
-    // reports zeros too). `toString()` lists the properties as `name=value` pairs
-    // separated by spaces in declaration order, like `NetStreamInfo`.
+    // multicast; `NetStream.multicastInfo` is null for its streams, as in Flash
+    // Player 32 for a stream that is not multicast. The constructor takes the
+    // 19 values in this order and `toString()` lists them as `name=value`
+    // pairs separated by spaces (measured on Flash Player 32,
+    // tests/tests/swfs/avm2/netstream_local_events).
     public final class NetStreamMulticastInfo {
         private var _bytesPushedFromPeers:Number = 0;
         private var _bytesPushedToPeers:Number = 0;
@@ -23,6 +25,28 @@ package flash.net {
         private var _sendControlBytesPerSecond:Number = 0;
         private var _sendControlBytesPerSecondToServer:Number = 0;
         private var _sendDataBytesPerSecond:Number = 0;
+
+        public function NetStreamMulticastInfo(sendDataBytesPerSecond:Number, sendControlBytesPerSecond:Number, receiveDataBytesPerSecond:Number, receiveControlBytesPerSecond:Number, bytesPushedToPeers:Number, fragmentsPushedToPeers:Number, bytesRequestedByPeers:Number, fragmentsRequestedByPeers:Number, bytesPushedFromPeers:Number, fragmentsPushedFromPeers:Number, bytesRequestedFromPeers:Number, fragmentsRequestedFromPeers:Number, sendControlBytesPerSecondToServer:Number, receiveDataBytesPerSecondFromServer:Number, bytesReceivedFromServer:Number, fragmentsReceivedFromServer:Number, receiveDataBytesPerSecondFromIPMulticast:Number, bytesReceivedFromIPMulticast:Number, fragmentsReceivedFromIPMulticast:Number) {
+            this._sendDataBytesPerSecond = sendDataBytesPerSecond;
+            this._sendControlBytesPerSecond = sendControlBytesPerSecond;
+            this._receiveDataBytesPerSecond = receiveDataBytesPerSecond;
+            this._receiveControlBytesPerSecond = receiveControlBytesPerSecond;
+            this._bytesPushedToPeers = bytesPushedToPeers;
+            this._fragmentsPushedToPeers = fragmentsPushedToPeers;
+            this._bytesRequestedByPeers = bytesRequestedByPeers;
+            this._fragmentsRequestedByPeers = fragmentsRequestedByPeers;
+            this._bytesPushedFromPeers = bytesPushedFromPeers;
+            this._fragmentsPushedFromPeers = fragmentsPushedFromPeers;
+            this._bytesRequestedFromPeers = bytesRequestedFromPeers;
+            this._fragmentsRequestedFromPeers = fragmentsRequestedFromPeers;
+            this._sendControlBytesPerSecondToServer = sendControlBytesPerSecondToServer;
+            this._receiveDataBytesPerSecondFromServer = receiveDataBytesPerSecondFromServer;
+            this._bytesReceivedFromServer = bytesReceivedFromServer;
+            this._fragmentsReceivedFromServer = fragmentsReceivedFromServer;
+            this._receiveDataBytesPerSecondFromIPMulticast = receiveDataBytesPerSecondFromIPMulticast;
+            this._bytesReceivedFromIPMulticast = bytesReceivedFromIPMulticast;
+            this._fragmentsReceivedFromIPMulticast = fragmentsReceivedFromIPMulticast;
+        }
 
         public function toString():String {
             return "sendDataBytesPerSecond=" + this._sendDataBytesPerSecond

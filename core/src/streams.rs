@@ -1492,6 +1492,7 @@ impl<'gc> NetStream<'gc> {
                     context,
                     [("code", "NetStream.Play.Stop"), ("level", "status")],
                 );
+                self.call_play_complete(context);
             }
 
             // Check if AVM code in the event handler invoked stream.play() and replaced the source.
@@ -1723,7 +1724,12 @@ impl<'gc> NetStream<'gc> {
     /// `close()` does not blank the `Video`; `dispose()` does).
     pub fn close(self, context: &mut UpdateContext<'gc>) {
         self.pause(context, false);
+        // Timffle: a stream stays in Data Generation Mode after `close()`: Flash
+        // Player 32 still takes `appendBytes()` there (measured,
+        // tests/tests/swfs/avm2/netstream_local_events).
+        let data_generation = self.source().data_generation.get();
         self.reset_buffer(context);
+        self.source().data_generation.set(data_generation);
         self.0.url.replace(None);
         StreamManager::deactivate(context, self);
     }
@@ -2006,6 +2012,47 @@ impl<'gc> NetStream<'gc> {
                 Avm2::dispatch_event(activation.context, net_status_event, object.into());
             }
             None => {}
+        }
+    }
+
+    /// Timffle: after `NetStream.Play.Stop` of a played file, Flash Player 32
+    /// calls the client's `onPlayStatus` with `NetStream.Play.Complete`
+    /// (measured, tests/tests/swfs/avm2/netstream_local_events). A client
+    /// without that method is skipped (AVM2 only; the AVM1 order was not
+    /// measured).
+    fn call_play_complete(self, context: &mut UpdateContext<'gc>) {
+        if !matches!(self.0.avm_object.get(), Some(NetStreamKind::Avm2(_))) {
+            return;
+        }
+        let Some(client) = self.client() else {
+            return;
+        };
+        let mut activation = Avm2Activation::from_nothing(context);
+        let name = AvmString::new_utf8(activation.gc(), "onPlayStatus");
+        let client = Avm2Value::from(client);
+        if !client.has_public_property(name, &mut activation) {
+            return;
+        }
+        let info = crate::avm2::object::ScriptObject::new_object(activation.context);
+        let info_value = Avm2Value::from(info);
+        let code = AvmString::new_utf8(activation.gc(), "NetStream.Play.Complete");
+        let level = AvmString::new_utf8(activation.gc(), "status");
+        let _ = info_value.set_public_property(
+            AvmString::new_utf8(activation.gc(), "code"),
+            code.into(),
+            &mut activation,
+        );
+        let _ = info_value.set_public_property(
+            AvmString::new_utf8(activation.gc(), "level"),
+            level.into(),
+            &mut activation,
+        );
+        if let Err(e) = client.call_public_property(
+            name,
+            FunctionArgs::from_slice(&[info_value]),
+            &mut activation,
+        ) {
+            tracing::error!("Got error when calling onPlayStatus on a NetStream client: {e:?}");
         }
     }
 

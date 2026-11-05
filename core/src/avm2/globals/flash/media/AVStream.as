@@ -5,17 +5,17 @@ package flash.media {
     // AVStream plays only after `AuthorizedFeatures.enableHLSPlayback()` has
     // been called with a token from Adobe's authorization service; this
     // player contacts no such service, so no stream is ever enabled: Flash
-    // Player without the feature. Every transport call therefore answers
-    // with the result code the API has for exactly that state,
-    // `AVResult.PLAYBACK_NOT_ENABLED` (57), the stream never leaves
-    // `AVPlayState.UNINITIALIZED`, nothing is decoded (no frames, no
-    // buffer, no live point) and the decoder/render types stay
-    // `AVStream.UNDEFINED`. The stream settings (`bufferTime`,
-    // `initialBufferTime`, `backBufferTime`, `volume`, `useHardwareDecoder`,
-    // `captionsEnabled`, `captionStyle`) are stored like any NetStream's so
-    // that a player's configuration round-trips. A null source is
-    // `TypeError #2007`, the usual answer of Flash's natives to a missing
-    // required object.
+    // Player without the feature. The transport calls answer with the codes
+    // Flash Player 32 gives such a stream (measured,
+    // tests/tests/swfs/avm2/av_drm_arguments): `play()`
+    // `AVResult.PLAYBACK_NOT_ENABLED` (57), `pause()` `SUCCESS` and
+    // `resume()` true, the seeks `GENERIC_ERROR` (6), `fastForward`/`rewind`
+    // `INVALID_OPERATION` (19), `step` `INVALID_WITH_AUDIO_ONLY_FILE` (21).
+    // The stream never leaves `AVPlayState.UNINITIALIZED`, nothing is decoded
+    // (no frames, no buffer, no live point; `frameTime` is -1e-9 as in Flash)
+    // and the decoder/render types stay `AVStream.UNDEFINED`. The stream
+    // settings are stored like any NetStream's; a null source or caption
+    // style is `TypeError #2007`.
     [API("688")]
     public class AVStream extends EventDispatcher {
         public static const HARDWARE:String = "hardware";
@@ -51,40 +51,40 @@ package flash.media {
         }
 
         public function fastForward(rate:Number):AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.INVALID_OPERATION);
         }
 
         public function pause():AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.SUCCESS);
         }
 
         public function play():AVResult {
             return this.notEnabled();
         }
 
-        // Boolean in Flash's playerglobal: whether playback resumed.
+        // Boolean in Flash's playerglobal; Flash Player 32 answers true.
         public function resume():Boolean {
-            return false;
+            return true;
         }
 
         public function rewind(rate:Number):AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.INVALID_OPERATION);
         }
 
         public function seek(offset:Number, inBufferSeek:Boolean = true):AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.GENERIC_ERROR);
         }
 
         public function seekToKeyFrame(offset:Number, inBufferSeek:Boolean = true):AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.GENERIC_ERROR);
         }
 
         public function seekToLivePoint():AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.GENERIC_ERROR);
         }
 
         public function seekToLocalTime(periodIndex:int, time:Number):AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.GENERIC_ERROR);
         }
 
         // Nothing is playing, so there is no speed to change.
@@ -92,7 +92,7 @@ package flash.media {
         }
 
         public function step(frames:int):AVResult {
-            return this.notEnabled();
+            return new AVResult(AVResult.INVALID_WITH_AUDIO_ONLY_FILE);
         }
 
         public function get backBufferLength():Number {
@@ -112,6 +112,9 @@ package flash.media {
         }
 
         public function set captionStyle(value:AVCaptionStyle):void {
+            if (value == null) {
+                Error.throwError(TypeError, 2007, "captionStyle");
+            }
             this._captionStyle = value;
         }
 
@@ -140,7 +143,7 @@ package flash.media {
         }
 
         public function get frameTime():Number {
-            return 0;
+            return -1e-9;
         }
 
         public function set initialBufferTime(value:Number):void {
