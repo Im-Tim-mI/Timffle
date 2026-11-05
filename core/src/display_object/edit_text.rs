@@ -473,6 +473,119 @@ impl<'gc> EditText<'gc> {
         }
     }
 
+    /// Timffle: `TextField.useRichTextClipboard`.
+    pub fn use_rich_text_clipboard(self) -> bool {
+        self.contains_flag(EditTextFlag::USE_RICH_TEXT_CLIPBOARD)
+    }
+
+    pub fn set_use_rich_text_clipboard(self, value: bool) {
+        self.set_flag(EditTextFlag::USE_RICH_TEXT_CLIPBOARD, value);
+    }
+
+    /// Timffle: the Flash HTML of the characters `from..to` (`TextField.getXMLText`
+    /// and the rich-text clipboard). Indices past the text are clamped.
+    pub fn html_text_range(self, from: usize, to: usize) -> WString {
+        let len = self.text_length();
+        let from = from.min(len);
+        let to = to.clamp(from, len);
+        if from == 0 && to == len {
+            return self.0.text_spans.borrow().to_html(self.swf_version());
+        }
+        let mut spans = self.0.text_spans.borrow().clone();
+        spans.replace_text(to, len, WStr::empty());
+        spans.replace_text(0, from, WStr::empty());
+        spans.to_html(self.swf_version())
+    }
+
+    /// Timffle: replaces the characters `from..to` with HTML-formatted text,
+    /// keeping the HTML's formatting (`TextField.insertXMLText`, rich paste).
+    /// Indices past the text are clamped.
+    pub fn insert_html_text(
+        self,
+        from: usize,
+        to: usize,
+        html: &WStr,
+        context: &mut UpdateContext<'gc>,
+    ) {
+        let len = self.text_length();
+        let from = from.min(len);
+        let to = to.clamp(from, len);
+        let default_format = self.0.text_spans.borrow().default_format().clone();
+        let parsed = FormatSpans::from_html(
+            html,
+            default_format,
+            self.0.style_sheet.get().style_sheet(),
+            self.is_multiline(),
+            self.contains_flag(EditTextFlag::CONDENSE_WHITE),
+            self.swf_version(),
+        );
+        let text = parsed.text().to_owned();
+        {
+            let mut spans = self.0.text_spans.borrow_mut();
+            spans.replace_text(from, to, &text);
+            for (start, end, _, span) in parsed.iter_spans() {
+                if start < end {
+                    spans.set_text_format(from + start, from + end, &span.get_text_format());
+                }
+            }
+        }
+        self.relayout(context);
+    }
+
+    /// Timffle: after a copy/cut of `from..to`, leaves the selection's HTML on
+    /// the clipboard (`air:html`) when `useRichTextClipboard` is on, otherwise
+    /// drops any earlier `air:html` so a plain copy stays plain.
+    fn copy_rich_text(self, from: usize, to: usize, context: &mut UpdateContext<'gc>) {
+        let html = self
+            .use_rich_text_clipboard()
+            .then(|| self.html_text_range(from, to));
+        crate::avm2::globals::flash::desktop::clipboard::set_html_content(context, html);
+    }
+
+    /// Timffle: a paste with `useRichTextClipboard` on and `air:html` on the
+    /// clipboard: like `text_input` (editable check, `textInput` event, caret
+    /// after the inserted text, `change`) but the HTML's formatting is kept.
+    fn rich_text_input(self, html: WString, plain: &str, context: &mut UpdateContext<'gc>) {
+        if !self.is_editable() || self.available_chars() == 0 {
+            return;
+        }
+        let Some(selection) = self.selection() else {
+            return;
+        };
+
+        if let Some(target) = self.object2() {
+            let character_string = AvmString::new_utf8(context.gc(), plain.replace('\r', "\n"));
+            let mut activation = Avm2Activation::from_nothing(context);
+            let text_evt = Avm2EventObject::text_event(
+                &mut activation,
+                "textInput",
+                character_string,
+                true,
+                true,
+            );
+            Avm2::dispatch_event(activation.context, text_evt, target.into());
+            if text_evt.event().is_cancelled() {
+                return;
+            }
+        }
+
+        let before = self.text_length();
+        self.insert_html_text(selection.start(), selection.end(), &html, context);
+        let removed = selection.end() - selection.start();
+        let inserted = (self.text_length() + removed).saturating_sub(before);
+        self.set_selection(Some(TextSelection::for_position(
+            selection.start() + inserted,
+        )));
+
+        let mut activation = Avm1Activation::from_nothing(
+            context,
+            ActivationIdentifier::root("[Propagate Text Binding]"),
+            self.into(),
+        );
+        self.propagate_text_binding(&mut activation);
+        self.on_changed(&mut activation);
+    }
+
     pub fn set_html_text(self, text: &WStr, context: &mut UpdateContext<'gc>) {
         if self.html_text() == text {
             // Note: this check not only prevents text relayout,
@@ -1762,6 +1875,8 @@ impl<'gc> EditText<'gc> {
             TextControlCode::Copy => {
                 let text = &self.text()[selection.start()..selection.end()];
                 context.ui.set_clipboard_content(text.to_string());
+                // Timffle: `useRichTextClipboard`
+                self.copy_rich_text(selection.start(), selection.end(), context);
             }
             TextControlCode::Paste => 'paste: {
                 // Timffle: Flash dispatches `Event.PASTE` to the focused object
@@ -1781,11 +1896,23 @@ impl<'gc> EditText<'gc> {
                     break 'paste;
                 }
 
+                // Timffle: `useRichTextClipboard` pastes the `air:html` copy
+                // with its formatting when there is one.
+                if self.use_rich_text_clipboard()
+                    && let Some(html) =
+                        crate::avm2::globals::flash::desktop::clipboard::html_content(context)
+                {
+                    self.rich_text_input(html, &text, context);
+                    break 'paste;
+                }
+
                 self.text_input(text, context);
             }
             TextControlCode::Cut => {
                 let text = &self.text()[selection.start()..selection.end()];
                 context.ui.set_clipboard_content(text.to_string());
+                // Timffle: `useRichTextClipboard`
+                self.copy_rich_text(selection.start(), selection.end(), context);
 
                 self.replace_text(selection.start(), selection.end(), WStr::empty(), context);
                 if is_selectable {
@@ -3191,6 +3318,8 @@ bitflags::bitflags! {
         const HAS_BACKGROUND = 1 << 1;
         const CONDENSE_WHITE = 1 << 13;
         const ALWAYS_SHOW_SELECTION = 1 << 14;
+        /// Timffle: `TextField.useRichTextClipboard`.
+        const USE_RICH_TEXT_CLIPBOARD = 1 << 15;
 
         // The following bits need to match `swf::EditTextFlag`.
         const READ_ONLY = 1 << 3;

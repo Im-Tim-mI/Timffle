@@ -1,16 +1,10 @@
 package flash.text {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-    import __ruffle__.stub_method;
-
     import flash.display.InteractiveObject;
     import flash.display.DisplayObject;
     import flash.geom.Rectangle;
 
     [Ruffle(InstanceAllocator)]
     public class TextField extends InteractiveObject {
-        internal var _useRichTextClipboard:Boolean;
-
         public native function get alwaysShowSelection():Boolean;
         public native function set alwaysShowSelection(value:Boolean):void;
 
@@ -89,14 +83,11 @@ package flash.text {
         public native function get type():String;
         public native function set type(value:String):void;
 
-        public function get useRichTextClipboard():Boolean {
-            return this._useRichTextClipboard;
-        }
-
-        public function set useRichTextClipboard(value:Boolean):void {
-            this._useRichTextClipboard = value;
-            stub_setter("flash.text.TextField", "useRichTextClipboard");
-        }
+        // Timffle: when true, copy/cut also puts the selection's HTML on the
+        // clipboard (`air:html`) and paste reads it back with its formatting
+        // (see `EditText::text_control_input`).
+        public native function get useRichTextClipboard():Boolean;
+        public native function set useRichTextClipboard(value:Boolean):void;
 
         public native function get wordWrap():Boolean;
         public native function set wordWrap(value:Boolean):void;
@@ -131,9 +122,13 @@ package flash.text {
 
         public native function get selectedText():String;
 
-        public function insertXMLText(beginIndex:int, endIndex:int, text:String, paste:Boolean = false):void {
-            stub_method("flash.text.TextField", "insertXMLText");
-        }
+        // Timffle: the undocumented rich-text trio playerglobal declares.
+        // `getRawText` is the plain text, `getXMLText` the Flash HTML
+        // (`<TEXTFORMAT>`/`<P>`/`<FONT>`) of a character range, and
+        // `insertXMLText` replaces a range with such HTML, keeping its formatting.
+        public native function getRawText():String;
+        public native function getXMLText(beginIndex:int = 0, endIndex:int = 2147483647):String;
+        public native function insertXMLText(beginIndex:int, endIndex:int, richText:String, pasting:Boolean = false):void;
 
         public native function getCharIndexAtPoint(x:Number, y:Number):int;
 
@@ -147,8 +142,11 @@ package flash.text {
 
         public native function getFirstCharInParagraph(charIndex:int):int;
 
+        // Timffle: this player parses `<img>` tags (src, id, size, align...) but
+        // does not load or lay out the picture, so no Loader exists for it; Flash
+        // returns null when no `<img>` with that id exists, and that is what the
+        // caller sees here.
         public function getImageReference(id:String):DisplayObject {
-            stub_method("flash.text.TextField", "getImageReference");
             return null;
         }
 
@@ -158,14 +156,16 @@ package flash.text {
 
         public native function getParagraphLength(charIndex:int):int;
 
-        public static function isFontCompatible(fontName:String, fontStyle:String):Boolean {
-            stub_method("flash.text.TextField", "isFontCompatible");
-            return true;
-        }
+        // Timffle: true only for an embedded (`FontType.EMBEDDED`) font of that
+        // name and style, registered with `Font.registerFont` or defined in
+        // the calling SWF; an unknown `fontStyle` is `ArgumentError #2008`.
+        public static native function isFontCompatible(fontName:String, fontStyle:String):Boolean;
 
+        // Timffle: read-only in Flash Player. "selection" exists only on mobile
+        // (chosen from the built-in context menu); on desktop the mode is always
+        // "normal", which is what this player has.
         [API("670")]
         public function get textInteractionMode():String {
-            stub_getter("flash.text.TextField", "textInteractionMode");
             return TextInteractionMode.NORMAL;
         }
     }

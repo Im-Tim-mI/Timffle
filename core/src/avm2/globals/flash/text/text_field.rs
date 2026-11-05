@@ -9,9 +9,9 @@ use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{ArrayObject, ArrayStorage, Error};
 use crate::display_object::{AutoSizeMode, EditText, TextSelection};
+use crate::font::FontType; // Timffle
 use crate::html::TextFormat;
 use crate::string::AvmString;
-use crate::{avm2_stub_getter, avm2_stub_setter};
 use ruffle_macros::istr;
 use swf::{Color, Point};
 
@@ -1466,22 +1466,170 @@ pub fn set_max_chars<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: wired to the flag `EditText` checks on `ClipEvent::MouseWheel`.
 pub fn get_mouse_wheel_enabled<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.text.TextField", "mouseWheelEnabled");
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        return Ok(this.is_mouse_wheel_enabled().into());
+    }
+
     Ok(true.into())
 }
 
 pub fn set_mouse_wheel_enabled<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        this.set_mouse_wheel_enabled(args.get_bool(0));
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.useRichTextClipboard`
+pub fn get_use_rich_text_clipboard<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_setter!(activation, "flash.text.TextField", "mouseWheelEnabled");
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        return Ok(this.use_rich_text_clipboard().into());
+    }
+
+    Ok(false.into())
+}
+
+pub fn set_use_rich_text_clipboard<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        this.set_use_rich_text_clipboard(args.get_bool(0));
+    }
+
     Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.getRawText`: the text without any markup.
+pub fn get_raw_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        return Ok(AvmString::new(activation.gc(), this.text()).into());
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.getXMLText`: the Flash HTML of the characters
+/// `beginIndex..endIndex` (clamped to the text, like `replaceText`).
+pub fn get_xml_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        let from = usize::try_from(args.get_i32(0)).unwrap_or_default();
+        let to = usize::try_from(args.get_i32(1)).unwrap_or_default();
+        return Ok(AvmString::new(activation.gc(), this.html_text_range(from, to)).into());
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.insertXMLText`: replaces `beginIndex..endIndex` with
+/// HTML-formatted text. `pasting` only matters to Flash's own paste path (the
+/// rich clipboard goes through `EditText::text_control_input` here).
+pub fn insert_xml_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        let from = usize::try_from(args.get_i32(0)).unwrap_or_default();
+        let to = usize::try_from(args.get_i32(1)).unwrap_or_default();
+        let rich_text = args.get_string(activation, 2);
+        this.insert_html_text(from, to, &rich_text, activation.context);
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.isFontCompatible`
+pub fn is_font_compatible<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let font_name = args.get_string_non_null(activation, 0, "fontName")?;
+    let font_style = args.get_string_non_null(activation, 1, "fontStyle")?;
+    let (bold, italic) = if &font_style == b"regular" {
+        (false, false)
+    } else if &font_style == b"bold" {
+        (true, false)
+    } else if &font_style == b"italic" {
+        (false, true)
+    } else if &font_style == b"boldItalic" {
+        (true, true)
+    } else {
+        return Err(make_error_2008(activation, "fontStyle"));
+    };
+    let movie = activation.caller_movie_or_root();
+    let found = activation
+        .context
+        .library
+        .get_embedded_font_by_name(
+            &font_name.to_utf8_lossy(),
+            FontType::Embedded,
+            bold,
+            italic,
+            Some(movie),
+        )
+        .is_some();
+    Ok(found.into())
 }
 
 pub fn get_restrict<'gc>(

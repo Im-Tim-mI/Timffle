@@ -1,0 +1,7 @@
+[
+  { "type": "MouseMove", "pos": [50, 30] },
+  { "type": "MouseWheel", "lines": -3 },
+  { "type": "Wait" },
+  { "type": "MouseWheel", "lines": -3 },
+  { "type": "Wait" }
+]

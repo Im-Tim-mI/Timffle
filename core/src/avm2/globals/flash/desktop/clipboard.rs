@@ -39,7 +39,7 @@ use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{ArrayStorage, Avm2};
 use crate::context::UpdateContext;
-use crate::string::{AvmString, WStr};
+use crate::string::{AvmString, WStr, WString};
 use flash_lso::types::AMFVersion;
 use gc_arena::Collect;
 
@@ -125,6 +125,33 @@ fn store<'gc>(activation: &mut Activation<'_, 'gc>, entry: ClipboardEntry<'gc>) 
         avm2.clipboard[i] = entry;
     } else {
         avm2.clipboard.push(entry);
+    }
+}
+
+/// Replaces the `air:html` entry: a rich-text copy (`TextField.useRichTextClipboard`)
+/// stores the selection's HTML there, a plain copy removes it.
+pub fn set_html_content<'gc>(context: &mut UpdateContext<'gc>, html: Option<WString>) {
+    let mc = context.gc();
+    let format = WStr::from_units(HTML_FORMAT);
+    if let Some(i) = find_entry(context.avm2, format) {
+        context.avm2.clipboard.remove(i);
+    }
+    if let Some(html) = html {
+        context.avm2.clipboard.push(ClipboardEntry {
+            format: AvmString::new(mc, format),
+            data: ClipboardData::Value(AvmString::new(mc, html).into()),
+            serializable: true,
+        });
+    }
+}
+
+/// The `air:html` string on the clipboard, if `setData` or a rich-text copy
+/// put one there (a data handler is not run here).
+pub fn html_content<'gc>(context: &mut UpdateContext<'gc>) -> Option<WString> {
+    let i = find_entry(context.avm2, WStr::from_units(HTML_FORMAT))?;
+    match context.avm2.clipboard[i].data {
+        ClipboardData::Value(Value::String(html)) => Some(html.as_wstr().to_owned()),
+        _ => None,
     }
 }
 
