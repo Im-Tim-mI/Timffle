@@ -1303,6 +1303,8 @@ make_error_fn!(make_error_3772, 3772, argument_error);
 make_error_fn!(make_error_3773, 3773, argument_error);
 // Timffle: Context3D.drawToBitmapData srcRect/destPoint outside the buffers.
 make_error_fn!(make_error_3802, 3802, error);
+// Timffle: BitmapData.encode with JPEGXREncoderOptions.trimFlexBits above 15.
+make_error_fn!(make_error_3699, 3699, error);
 
 #[inline(never)]
 #[cold]

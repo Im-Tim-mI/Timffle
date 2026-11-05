@@ -209,7 +209,7 @@ package flash.display {
 
         private native function generateFilterRectInternal(sourceRect:Rectangle, filter:BitmapFilter):Rectangle;
 
-        // Timffle: PNG and JPEG encoding (image crate); the compressor is
+        // Timffle: PNG and JPEG encoding (image crate), JPEG XR (own encoder); the compressor is
         // checked here like Flash does (null #2007, other objects #2004,
         // JPEG quality above 100 RangeError #2006).
         [API("680")]
@@ -230,13 +230,16 @@ package flash.display {
                 }
                 param = quality;
             } else if (compressor is JPEGXREncoderOptions) {
-                kind = 2;
+                // Timffle: JPEG XR (own encoder); the options are checked natively, after the
+                // rectangle, in Flash's order.
+                var xr:JPEGXREncoderOptions = JPEGXREncoderOptions(compressor);
+                return this.encodeInternal(rect, 2, xr.quantization, byteArray, xr.colorSpace, xr.trimFlexBits);
             } else {
                 Error.throwError(ArgumentError, 2004);
             }
-            return this.encodeInternal(rect, kind, param, byteArray);
+            return this.encodeInternal(rect, kind, param, byteArray, null, 0);
         }
 
-        private native function encodeInternal(rect:Rectangle, kind:int, param:int, byteArray:ByteArray):ByteArray;
+        private native function encodeInternal(rect:Rectangle, kind:int, param:uint, byteArray:ByteArray, colorSpace:String, trimFlexBits:uint):ByteArray;
     }
 }

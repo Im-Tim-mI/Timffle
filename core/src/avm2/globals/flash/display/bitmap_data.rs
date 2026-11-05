@@ -5,7 +5,8 @@ use crate::avm2::activation::Activation;
 use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::error::{
     Error2004Type, Error2006Type, make_error_2004, make_error_2005, make_error_2006,
-    make_error_2008, make_error_2015, make_error_2027, make_error_2167,
+    make_error_2007, make_error_2008, make_error_2015, make_error_2027, make_error_2167,
+    make_error_3699,
 };
 use crate::avm2::filters::FilterAvm2Ext;
 use crate::avm2::function::FunctionArgs;
@@ -20,7 +21,6 @@ use crate::avm2::object::{BitmapDataObject, ByteArrayObject, Object, TObject, Ve
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::vector::VectorStorage;
-use crate::avm2_stub_method;
 use crate::bitmap::bitmap_data::{BitmapData, ChannelOptions, ThresholdOperation};
 use crate::bitmap::bitmap_data::{BitmapDataDrawError, IBitmapDrawable};
 use crate::bitmap::{is_size_valid, operations};
@@ -30,6 +30,11 @@ use crate::swf::BlendMode;
 use ruffle_render::filters::Filter;
 use ruffle_render::transform::Transform;
 use std::str::FromStr;
+
+// Timffle: JPEG XR encoder for encode(..., JPEGXREncoderOptions)
+mod jpegxr_encode;
+#[cfg(all(test, feature = "jpegxr"))]
+mod jpegxr_flash_samples;
 use swf::Twips;
 
 // Computes the integer x,y,width,height values from
@@ -1938,16 +1943,18 @@ fn new_rectangle_from_pixels<'gc>(
 
 /// Implements `BitmapData.encodeInternal` (the native part of `encode`).
 ///
-/// Timffle: real PNG and JPEG encoding with the `image` crate. Like Flash
-/// Player 32 (timffle/difftest/src/D51DisplayMisc.hx): the rectangle is
-/// rounded like every `BitmapData` rectangle and clamped to the bitmap, and
-/// an empty or disjoint one is `ArgumentError #2006`; a disposed bitmap is
-/// `ArgumentError #2015`; PNG is RGBA for a transparent bitmap and RGB
-/// otherwise (`fastCompression` picks the fast zlib level); JPEG drops the
-/// alpha channel; the bytes go to the given ByteArray at its current
-/// position (the same object comes back, position at the end of the data) or
-/// to a new big-endian ByteArray. JPEG XR encoding still needs an encoder
-/// (the bundled jxrlib bindings only decode) and stays a stub.
+/// Timffle: real PNG and JPEG encoding with the `image` crate, and JPEG XR with Timffle's own
+/// encoder (`bitmap_data/jpegxr_encode.rs`). Like Flash Player 32
+/// (timffle/difftest/src/D51DisplayMisc.hx, D63JpegXr.hx, D64JpegXrQp.hx, D65JpegXrMap.hx): the
+/// rectangle is rounded like every `BitmapData` rectangle and clamped to the bitmap, and an empty
+/// or disjoint one is `ArgumentError #2006`; a disposed bitmap is `ArgumentError #2015`; PNG is
+/// RGBA for a transparent bitmap and RGB otherwise (`fastCompression` picks the fast zlib level);
+/// JPEG drops the alpha channel; JPEG XR checks quantization (above 100: `RangeError #2006`),
+/// colorSpace (null: `TypeError #2007`, not one of the four constants: `ArgumentError #2004`) and
+/// trimFlexBits (above 15: `Error #3699`) in that order, after the rectangle, and writes 24bppBGR
+/// or, for a transparent bitmap, 32bppPBGRA with an alpha plane; the bytes go to the given
+/// ByteArray at its current position (the same object comes back, position at the end of the
+/// data) or to a new big-endian ByteArray.
 pub fn encode_internal<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
@@ -1965,7 +1972,7 @@ pub fn encode_internal<'gc>(
     bitmap_data.check_valid(activation)?;
     let rect = args.get_object(activation, 0, "rect")?;
     let kind = args.get_i32(1);
-    let param = args.get_i32(2);
+    let param = args.get_u32(2);
     let byte_array = args.try_get_object(3);
 
     let (x, y, w, h) = get_rectangle_x_y_width_height(activation, rect)?;
@@ -1983,20 +1990,54 @@ pub fn encode_internal<'gc>(
         return Err(make_error_2006(activation, Error2006Type::ArgumentError));
     }
 
-    if kind == 2 {
-        avm2_stub_method!(
-            activation,
-            "flash.display.BitmapData",
-            "encode",
-            "JPEGXREncoderOptions"
-        );
-        return Ok(Value::Null);
-    }
-
     let transparent = bitmap_data.transparency();
     let width = region.width();
     let height = region.height();
+
+    if kind == 2 {
+        if param > 100 {
+            return Err(make_error_2006(activation, Error2006Type::RangeError));
+        }
+        let Some(color_space) = args.try_get_string(4) else {
+            return Err(make_error_2007(activation, "colorSpace"));
+        };
+        // "auto" is 4:4:4 in Flash. 4:2:0 and 4:2:2 are encoded as 4:4:4 too (the encoder has
+        // no chroma subsampling): valid files, bigger than Flash's, at least as good.
+        if !(&color_space == b"auto"
+            || &color_space == b"4:4:4"
+            || &color_space == b"4:2:2"
+            || &color_space == b"4:2:0")
+        {
+            return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+        }
+        let trim_flex_bits = args.get_u32(5);
+        if trim_flex_bits > 15 {
+            return Err(make_error_3699(activation));
+        }
+        let mut pixels = Vec::with_capacity((width * height) as usize);
+        {
+            let read = bitmap_data.read_area(region, activation.context.renderer);
+            for py in region.y_min..region.y_max {
+                for px in region.x_min..region.x_max {
+                    // Flash stores its own (premultiplied) pixel values: 32bppPBGRA.
+                    let color = read.get_pixel32_raw(px, py);
+                    pixels.push([color.red(), color.green(), color.blue(), color.alpha()]);
+                }
+            }
+        }
+        let encoded = jpegxr_encode::encode(
+            width,
+            height,
+            &pixels,
+            transparent,
+            jpegxr_encode::quantization_to_qp_index(param),
+            trim_flex_bits as u8,
+        );
+        return write_encoded(activation, &encoded, byte_array);
+    }
+
     let channels = if kind == 0 && transparent { 4 } else { 3 };
+    let mut encoded = Vec::new();
     let mut pixels = Vec::with_capacity((width * height) as usize * channels);
     {
         let read = bitmap_data.read_area(region, activation.context.renderer);
@@ -2013,7 +2054,6 @@ pub fn encode_internal<'gc>(
         }
     }
 
-    let mut encoded = Vec::new();
     let result = if kind == 0 {
         let compression = if param != 0 {
             CompressionType::Fast
@@ -2040,11 +2080,20 @@ pub fn encode_internal<'gc>(
         tracing::error!("BitmapData.encode failed: {error}");
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
+    write_encoded(activation, &encoded, byte_array)
+}
 
+/// Timffle: the end of `encodeInternal`: the bytes at the given ByteArray's position, or a new
+/// ByteArray.
+fn write_encoded<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    encoded: &[u8],
+    byte_array: Option<Object<'gc>>,
+) -> Result<Value<'gc>, Error<'gc>> {
     if let Some(byte_array) = byte_array {
         if let Some(mut storage) = byte_array.as_bytearray_mut() {
             storage
-                .write_bytes(&encoded)
+                .write_bytes(encoded)
                 .map_err(|e| e.to_avm(activation))?;
             return Ok(byte_array.into());
         }
@@ -2052,7 +2101,7 @@ pub fn encode_internal<'gc>(
     }
     let mut storage = ByteArrayStorage::new(activation.context);
     storage
-        .write_bytes(&encoded)
+        .write_bytes(encoded)
         .map_err(|e| e.to_avm(activation))?;
     Ok(ByteArrayObject::from_storage(activation.context, storage).into())
 }
