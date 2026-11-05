@@ -43,7 +43,10 @@ package flash.events {
         private var _altKey:Boolean;
         private var _ctrlKey:Boolean;
         private var _shiftKey:Boolean;
+        // Timffle: written by the player for mouseMove events while Stage.mouseLock is on.
+        [Ruffle(NativeAccessible)]
         private var _movementX:Number;
+        [Ruffle(NativeAccessible)]
         private var _movementY:Number;
 
         public function MouseEvent(
@@ -69,12 +72,14 @@ package flash.events {
             this.buttonDown = buttonDown;
             this.delta = delta;
 
-            this.movementX = 0.0; // unimplemented
-            this.movementY = 0.0; // unimplemented
+            // Timffle: Flash Player 32 starts every MouseEvent with 0; the player fills in
+            // the relative motion for mouseMove events while the mouse is locked.
+            this.movementX = 0.0;
+            this.movementY = 0.0;
         }
 
         override public function clone():Event {
-            // note: movementX/Y not cloned
+            // movementX/Y are not cloned (Flash Player 32: a clone of a locked mouseMove reads 0)
             return new MouseEvent(
                 this.type,
                 this.bubbles,

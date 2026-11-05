@@ -18,6 +18,14 @@ pub enum PlayerEvent {
         x: f64,
         y: f64,
     },
+    /// Timffle: relative pointer motion in device pixels (the raw motion of a
+    /// locked pointer: winit `DeviceEvent::MouseMotion`, the browser's
+    /// `PointerEvent.movementX/Y` scaled by `devicePixelRatio`). The player uses
+    /// it only while `Stage.mouseLock` is on, and then ignores `MouseMove`.
+    MouseMoveRelative {
+        dx: f64,
+        dy: f64,
+    },
     MouseUp {
         x: f64,
         y: f64,

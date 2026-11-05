@@ -151,6 +151,13 @@ pub struct MouseData<'gc> {
     /// while the drag is still active; this flag makes the nested call a
     /// no-op instead of recursing until stack overflow.
     pub updating_drop_target: bool,
+
+    /// Timffle: the relative motion (device pixels) of the mouse event being
+    /// handled while `Stage.mouseLock` is on; `MouseEvent.movementX/Y` of the
+    /// `mouseMove` it produces. `None` for every other event (Flash Player 32
+    /// reports 0 for an unlocked mouse and for non-move events).
+    #[collect(require_static)]
+    pub movement: Option<(f64, f64)>,
 }
 
 impl<'gc> MouseData<'gc> {
@@ -390,6 +397,11 @@ pub struct Player {
 
     mouse_in_stage: bool,
     mouse_position: Point<Twips>,
+
+    /// Timffle: the mouse was locked (`Stage.mouseLock`) since the last
+    /// absolute pointer position, so `mouse_position` is not where the pointer
+    /// is; nothing is under the pointer until the host reports a position again.
+    mouse_position_stale: bool,
 
     /// The current mouse cursor icon.
     mouse_cursor: MouseCursor,
@@ -884,6 +896,12 @@ impl Player {
         })
     }
 
+    /// Timffle: whether `Stage.mouseLock` is on (the host then sends
+    /// `PlayerEvent::MouseMoveRelative`).
+    pub fn mouse_lock(&mut self) -> bool {
+        self.mutate_with_update_context(|context| context.stage.mouse_lock())
+    }
+
     /// Timffle: the host reports that the pointer lock changed on its own
     /// (for example the user pressed Escape in the browser).
     pub fn set_mouse_lock(&mut self, locked: bool) {
@@ -1081,6 +1099,7 @@ impl Player {
             PlayerEvent::KeyDown { .. }
             | PlayerEvent::KeyUp { .. }
             | PlayerEvent::MouseMove { .. }
+            | PlayerEvent::MouseMoveRelative { .. }
             | PlayerEvent::MouseUp { .. }
             | PlayerEvent::MouseDown { .. }
             | PlayerEvent::MouseLeave
@@ -1128,6 +1147,26 @@ impl Player {
     ///    second wave of event processing.
     fn handle_input_event(&mut self, event: PlayerEvent) -> bool {
         let mut player_event_handled = false;
+
+        // Timffle: while `Stage.mouseLock` is on, the pointer only reports
+        // relative motion (Flash Player 32: every locked mouseMove targets the
+        // stage, `movementX/Y` is the raw screen-pixel motion, `localX/Y` read 0
+        // and `stage.mouseX/Y` is that motion in stage units; down/up/wheel read
+        // 0). Absolute moves are ignored while locked, relative ones otherwise.
+        let mouse_locked = self.mutate_with_update_context(|context| context.stage.mouse_lock());
+        let mut movement = None;
+        let event = match event {
+            PlayerEvent::MouseMoveRelative { dx, dy } => {
+                if !mouse_locked {
+                    return false;
+                }
+                movement = Some((dx, dy));
+                PlayerEvent::MouseMove { x: dx, y: dy }
+            }
+            PlayerEvent::MouseMove { .. } if mouse_locked => return false,
+            event => event,
+        };
+
         let prev_mouse_buttons = self.input.get_mouse_down_buttons();
         let Some(event) = self.input.process_event(event) else {
             return false;
@@ -1459,21 +1498,48 @@ impl Player {
             let inverse_view_matrix =
                 self.mutate_with_update_context(|context| context.stage.inverse_view_matrix());
             let prev_mouse_position = self.mouse_position;
-            self.mouse_position = inverse_view_matrix * Point::from_pixels(x, y);
+            if !mouse_locked {
+                self.mouse_position_stale = false;
+            }
+            self.mouse_position = if !mouse_locked {
+                inverse_view_matrix * Point::from_pixels(x, y)
+            } else if movement.is_some() {
+                // Timffle: the motion vector in stage coordinates (no translation).
+                Point::ZERO
+                    + (inverse_view_matrix * Point::from_pixels(x, y)
+                        - inverse_view_matrix * Point::ZERO)
+            } else {
+                Point::ZERO
+            };
 
             // Update the dragged object here to keep it constantly in sync with the mouse position.
             self.mutate_with_update_context(|context| {
                 Self::update_drag(context);
             });
 
-            let is_mouse_moved = prev_mouse_position != self.mouse_position;
+            let is_mouse_moved = if mouse_locked {
+                movement.is_some_and(|(dx, dy)| dx != 0.0 || dy != 0.0)
+            } else {
+                prev_mouse_position != self.mouse_position
+            };
 
+            self.mutate_with_update_context(|context| context.mouse_data.movement = movement);
             // This fires button rollover/press events, which should run after the above mouseMove events.
-            if self.update_mouse_state(
+            let mouse_state_changed = self.update_mouse_state(
                 changed_mouse_buttons,
                 is_mouse_moved,
                 &mut player_event_handled,
-            ) {
+            );
+            self.mutate_with_update_context(|context| context.mouse_data.movement = None);
+            if mouse_state_changed {
+                self.needs_render = true;
+            }
+            // Timffle: a handler of this event locked the mouse; Flash Player 32
+            // sends mouseOut/rollOut to the object under the pointer right away.
+            if !mouse_locked
+                && self.mouse_lock()
+                && self.update_mouse_state(EnumSet::empty(), false, &mut player_event_handled)
+            {
                 self.needs_render = true;
             }
         }
@@ -1618,7 +1684,13 @@ impl Player {
     ) -> bool {
         let mut new_cursor = self.mouse_cursor;
         let mut mouse_cursor_needs_check = self.mouse_cursor_needs_check;
-        let mouse_in_stage = self.mouse_in_stage();
+        // Timffle: a locked mouse points at nothing (Flash Player 32: the object
+        // under the pointer gets mouseOut/rollOut and later events target the stage).
+        let mouse_locked = self.mutate_with_update_context(|context| context.stage.mouse_lock());
+        if mouse_locked {
+            self.mouse_position_stale = true;
+        }
+        let mouse_in_stage = self.mouse_in_stage() && !self.mouse_position_stale;
 
         // Determine the display object the mouse is hovering over.
         // Search through levels from top-to-bottom, returning the first display object that is under the mouse.
@@ -1627,7 +1699,8 @@ impl Player {
             // skip mouse hover when it's not necessary.
             let mut skip_mouse_hover = !is_mouse_moved
                 && changed_mouse_buttons.is_empty()
-                && context.mouse_data.hovered.is_some();
+                && context.mouse_data.hovered.is_some()
+                && !mouse_locked;
 
             let new_over_object = if mouse_in_stage {
                 run_mouse_pick(context, true)
@@ -1723,7 +1796,9 @@ impl Player {
             {
                 // If the mouse button is down, the object the user clicked on grabs the focus
                 // and fires "drag" events.
-                if context.input.is_mouse_down(MouseButton::Left) {
+                // Timffle: not when the mouse gets locked (Flash Player 32: plain
+                // mouseOut/rollOut, with buttonDown still true).
+                if context.input.is_mouse_down(MouseButton::Left) && !mouse_locked {
                     context.mouse_data.hovered = new_over_object;
                     if let Some(down_object) = context.mouse_data.pressed {
                         if InteractiveObject::option_ptr_eq(
@@ -3238,6 +3313,7 @@ impl PlayerBuilder {
                 middle_pressed: None,
                 forced_cursor: None,
                 updating_drop_target: false,
+                movement: None,
             },
             avm1_shared_objects: HashMap::new(),
             avm2_shared_objects: HashMap::new(),
@@ -3331,6 +3407,7 @@ impl PlayerBuilder {
                 // Input
                 input: InputManager::new(self.gamepad_button_mapping),
                 mouse_in_stage: true,
+                mouse_position_stale: false,
                 mouse_position: Point::ZERO,
                 mouse_cursor: MouseCursor::Arrow,
                 mouse_cursor_needs_check: false,

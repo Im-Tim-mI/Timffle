@@ -9,3 +9,4 @@ pub use navigator::DesktopNavigatorInterface;
 pub use navigator::PathAllowList;
 pub use ui::DesktopUiBackend;
 pub use ui::DeviceFontRenderer;
+pub use ui::{MOUSE_LOCK_CONFINED, window_centre};
