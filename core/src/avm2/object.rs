@@ -1054,6 +1054,35 @@ pub fn abstract_class_allocator<'gc>(
     Err(make_error_2012(activation, class_name))
 }
 
+/// Timffle: constructs an instance of an abstract class for the player itself.
+///
+/// `new` on such a class is #2012 before any constructor runs (Flash's stack
+/// trace shows only the caller), but the player still hands out instances
+/// (singletons, objects made by the engine). This allocates with the nearest
+/// superclass allocator that is not [`abstract_class_allocator`] and then runs
+/// the class's constructor, as `new` would have.
+pub fn construct_abstract_class<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    class: ClassObject<'gc>,
+    args: &[Value<'gc>],
+) -> Result<Object<'gc>, Error<'gc>> {
+    let abstract_allocator: crate::avm2::class::AllocatorFn = abstract_class_allocator;
+    let mut allocator: crate::avm2::class::AllocatorFn = scriptobject_allocator;
+    let mut ancestor = class.superclass_object();
+    while let Some(c) = ancestor {
+        let candidate = c.inner_class_definition().instance_allocator().0;
+        if !std::ptr::fn_addr_eq(candidate, abstract_allocator) {
+            allocator = candidate;
+            break;
+        }
+        ancestor = c.superclass_object();
+    }
+
+    let instance = allocator(class, activation)?;
+    class.call_init(instance.into(), FunctionArgs::from_slice(args), activation)?;
+    Ok(instance)
+}
+
 /// Implements a custom call handler for classes that are constructed when
 /// called.
 pub fn construct_call_handler<'gc>(

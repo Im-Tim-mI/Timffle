@@ -22,8 +22,12 @@ package {
                 + " getSelectedText=[" + empty.getSelectedText() + "]"
                 + " runs=" + empty.getTextRunInfo(0, 10).length
                 + " hit=" + empty.hitTestTextNearPos(0, 0));
-            var fresh:TextSnapshot = new TextSnapshot();
-            trace("new TextSnapshot(): charCount=" + fresh.charCount);
+            try {
+                new TextSnapshot();
+                trace("new TextSnapshot(): constructed");
+            } catch (err:ArgumentError) {
+                trace("new TextSnapshot(): " + err.errorID);
+            }
 
             var loader:Loader = new Loader();
             loader.contentLoaderInfo.addEventListener(Event.COMPLETE, onLoaded);

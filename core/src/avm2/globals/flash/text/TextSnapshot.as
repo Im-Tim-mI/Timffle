@@ -1,9 +1,10 @@
 package flash.text {
     // Timffle: real implementation over the static texts of one container
-    // (see core/src/avm2/globals/flash/text/text_snapshot.rs). A snapshot made
-    // with `new TextSnapshot()` has no text; `DisplayObjectContainer.textSnapshot`
-    // fills one in natively.
-    [Ruffle(InstanceAllocator)]
+    // (see core/src/avm2/globals/flash/text/text_snapshot.rs). Snapshots come
+    // only from `DisplayObjectContainer.textSnapshot`, which makes them
+    // natively; `new TextSnapshot()` is #2012 before any constructor runs, as
+    // in Flash Player.
+    [Ruffle(Abstract)]
     public class TextSnapshot {
         public native function get charCount():int;
 

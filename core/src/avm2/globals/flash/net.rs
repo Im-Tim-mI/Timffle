@@ -11,6 +11,8 @@ use crate::backend::navigator::NavigationMethod;
 use indexmap::IndexMap;
 use ruffle_common::sandbox::SandboxType;
 
+// Timffle: `flash.net.drm` natives
+pub mod drm;
 pub mod file_reference;
 pub mod file_reference_list;
 pub mod group_specifier;

@@ -5,8 +5,13 @@ package flash.text.engine {
     // Timffle: real class. Regions are built by `TextLine.mirrorRegions` from
     // the content elements of the line that have an `eventMirror`; they are
     // read-only in Flash Player, so the fields are filled by the engine only.
+    // `new TextLineMirrorRegion()` is #2012 before any constructor runs, as in
+    // Flash; `TextLine` gets its regions from `create()`.
     [API("662")]
+    [Ruffle(Abstract)]
     public final class TextLineMirrorRegion {
+        internal static native function create():TextLineMirrorRegion;
+
         internal var _bounds:Rectangle;
         internal var _element:ContentElement;
         internal var _mirror:EventDispatcher;

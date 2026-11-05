@@ -18,8 +18,6 @@ use crate::display_object::TextSnapshot;
 use crate::string::AvmString;
 use swf::Point;
 
-pub use crate::avm2::object::text_snapshot_allocator;
-
 fn snapshot<'gc>(this: Value<'gc>) -> Option<TextSnapshot<'gc>> {
     this.as_object()
         .and_then(|this| this.as_text_snapshot_object())

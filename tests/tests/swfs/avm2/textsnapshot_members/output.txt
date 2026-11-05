@@ -1,5 +1,5 @@
 sprite without static text: charCount=0 getText=[] findText=-1 getSelected=false getSelectedText=[] runs=0 hit=-1
-new TextSnapshot(): charCount=0
+new TextSnapshot(): 2012
 Caught error: ArgumentError: Error #2012: StaticText$ class cannot be instantiated.
 e.errorID: 2012
 Child: [object StaticText]

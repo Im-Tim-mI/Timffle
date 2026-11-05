@@ -9,3 +9,5 @@ pub mod tab_stop;
 pub mod text_block;
 pub mod text_element;
 pub mod text_line;
+// Timffle
+pub mod text_line_mirror_region;

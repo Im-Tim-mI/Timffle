@@ -24,24 +24,20 @@ package flash.net.drm {
     // null arguments. Flash Player 32 itself has the Adobe Access module (its
     // `isSupported` is true), so the events of a player without it could not be
     // measured; error 3344 comes from the runtime error list.
+    // `new DRMManager()` is #2012 before any constructor runs (Flash's stack trace
+    // shows only the caller), so the singleton is made natively.
     [API("667")]
+    [Ruffle(Abstract)]
     public final class DRMManager extends EventDispatcher {
         private static var _instance:DRMManager = null;
-        private static var _constructing:Boolean = false;
         private static var _networkIdleTimeout:Number = 0;
         private var _tokens:Object = {};
 
-        public function DRMManager() {
-            if (!DRMManager._constructing) {
-                throw new ArgumentError("Error #2012: DRMManager$ class cannot be instantiated.", 2012);
-            }
-        }
+        private static native function createInstance():DRMManager;
 
         public static function getDRMManager():DRMManager {
             if (DRMManager._instance == null) {
-                DRMManager._constructing = true;
-                DRMManager._instance = new DRMManager();
-                DRMManager._constructing = false;
+                DRMManager._instance = DRMManager.createInstance();
             }
             return DRMManager._instance;
         }

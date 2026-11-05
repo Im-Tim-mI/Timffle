@@ -160,7 +160,7 @@ package flash.text.engine {
                     current._bounds = current._bounds.union(bounds);
                     continue;
                 }
-                var region:TextLineMirrorRegion = new TextLineMirrorRegion();
+                var region:TextLineMirrorRegion = TextLineMirrorRegion.create();
                 region._bounds = bounds;
                 region._element = mirror;
                 region._mirror = mirror.eventMirror;

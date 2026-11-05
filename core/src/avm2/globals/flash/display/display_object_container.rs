@@ -232,29 +232,32 @@ pub fn remove_child<'gc>(
     Ok(Value::Null)
 }
 
-/// Implements `DisplayObjectContainer.numChildren`
-/// Timffle: implements the native half of `DisplayObjectContainer.textSnapshot`:
-/// points a fresh `TextSnapshot` at this container's static-text children.
-pub fn fill_text_snapshot<'gc>(
+/// Timffle: implements `DisplayObjectContainer.textSnapshot`: a fresh
+/// `TextSnapshot` over this container's static-text children. The class is
+/// abstract to ActionScript, so the object is made here.
+pub fn get_text_snapshot<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
-    args: FunctionArgs<'_, 'gc>,
+    _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
+
+    let class = activation.avm2().classes().textsnapshot;
+    let snapshot = crate::avm2::object::text_snapshot_allocator(class, activation)?;
+    class.call_init(snapshot.into(), FunctionArgs::empty(), activation)?;
 
     if let Some(container) = this
         .as_display_object()
         .and_then(|this| this.as_container())
-        && let Some(snapshot) = args
-            .try_get_object(0)
-            .and_then(|snapshot| snapshot.as_text_snapshot_object())
+        && let Some(snapshot) = snapshot.as_text_snapshot_object()
     {
         snapshot.set_target(activation, container);
     }
 
-    Ok(Value::Undefined)
+    Ok(snapshot.into())
 }
 
+/// Implements `DisplayObjectContainer.numChildren`
 pub fn get_num_children<'gc>(
     _activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,

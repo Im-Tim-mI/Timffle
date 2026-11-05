@@ -40,13 +40,7 @@ package flash.display {
         public native function areInaccessibleObjectsUnderPoint(point:Point):Boolean;
 
         // Timffle: a real snapshot of the static texts among this container's
-        // children (filled in natively, see display_object_container.rs).
-        public function get textSnapshot():TextSnapshot {
-            var snapshot:TextSnapshot = new TextSnapshot();
-            this.fillTextSnapshot(snapshot);
-            return snapshot;
-        }
-
-        private native function fillTextSnapshot(snapshot:TextSnapshot):void;
+        // children (made natively, see display_object_container.rs).
+        public native function get textSnapshot():TextSnapshot;
     }
 }
