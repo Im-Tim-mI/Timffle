@@ -1273,10 +1273,16 @@ pub fn render_base<'gc>(
         } else {
             base_transform.matrix
         };
+        // Timffle: `BitmapData.draw` does not scale filters by the stage's view scale.
+        let view_matrix = if context.in_bitmap_draw {
+            Matrix::IDENTITY
+        } else {
+            context.stage.view_matrix()
+        };
         let bounds: Rectangle<Twips> = this.render_bounds_with_transform(
             &render_matrix,
             false, // we want to do the filter growth for this object ourselves, to know the offsets
-            &context.stage.view_matrix(),
+            &view_matrix,
         );
         let name = this.name();
         let mut filters: Vec<Filter> = this.filters().to_owned();
@@ -1295,7 +1301,7 @@ pub fn render_base<'gc>(
                     y_min: Twips::ZERO,
                     y_max: Twips::from_pixels_i32(height as i32),
                 };
-                let stage_matrix = context.stage.view_matrix();
+                let stage_matrix = view_matrix; // Timffle
                 for filter in &mut filters {
                     // Scaling is done by *stage view matrix* only, nothing in-between
                     filter.scale(stage_matrix.a, stage_matrix.d);
@@ -1367,6 +1373,12 @@ pub fn render_base<'gc>(
             + Twips::from_pixels_i32(cache_info.draw_offset.y);
 
         if cache_info.dirty {
+            // Timffle: the picture is redrawn now, so the next change must invalidate it
+            // again. `pre_render` clears this flag for objects in a render list; an object
+            // drawn by `BitmapData.draw` as the source has no parent that does, and kept
+            // its old picture when its filters changed (a brush drawn twice with
+            // different blurs got the first blur).
+            this.base().clear_invalidate_flag();
             let mut transform_stack = TransformStack::new();
             transform_stack.push(&Transform {
                 color_transform: Default::default(),
@@ -1388,6 +1400,7 @@ pub fn render_base<'gc>(
                 transform_stack: &mut transform_stack,
                 is_offscreen: true,
                 use_bitmap_cache: true,
+                in_bitmap_draw: context.in_bitmap_draw, // Timffle
                 stage: context.stage,
             };
             render_self_with_scaling_grid(this, &mut offscreen_context); // Timffle: scale9Grid

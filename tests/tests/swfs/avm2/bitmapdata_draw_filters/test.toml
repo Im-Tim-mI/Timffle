@@ -1,9 +1,9 @@
 num_ticks = 1
 
 [image_comparisons.output]
-# FIXME Ruffle does not use CAB in BitmapData.draw
-known_failure = true
-
+# Timffle: BitmapData.draw applies the filters of the drawn object and its
+# children through their cacheAsBitmap pictures (was a known failure:
+# "Ruffle does not use CAB in BitmapData.draw").
 tolerance = 0
 
 [player_options]

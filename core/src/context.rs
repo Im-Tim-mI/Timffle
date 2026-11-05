@@ -606,6 +606,10 @@ pub struct RenderContext<'a, 'gc> {
     /// Whether to use cacheAsBitmap, vs drawing everything explicitly
     pub use_bitmap_cache: bool,
 
+    /// Timffle: rendering for `BitmapData.draw`. Filters and cacheAsBitmap pictures
+    /// then follow the draw's matrix only, not the stage's view scale.
+    pub in_bitmap_draw: bool,
+
     /// The current player's stage (including all loaded levels)
     pub stage: Stage<'gc>,
 }

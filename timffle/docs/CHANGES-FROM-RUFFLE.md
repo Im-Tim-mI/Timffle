@@ -403,6 +403,15 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 - **ShaderFilter**：`applyFilter` 照量到的規則重寫（見上面第 2 組）。`bitmapdata_applyfilter_shader` 改用有影像輸入的 `tintype.pbj`（原本的 `simple_shader.pbj` 沒有輸入，真 Flash 直接丟 #2167）。
 - **測試環境**：`driverInfo` 在回歸測試固定成 `Dummy Ruffle driver`（見已知差異表）。
 
+### 用真 Flash 重錄的影像黃金圖（2026-11-05）
+
+`avm2/stage3d_bitmap`、`avm2/away3d_advanced_shallow_water_demo`、`visual/definefont4` 的 `output.expected.png` 原本是上游 Ruffle 自己畫的，現在改成 Wine 下 Flash Player 32.0.0.465 的畫面（私有 Xvfb，從螢幕讀取，每張錄兩次相同）。測試裡會變的東西在錄製用的副本裡固定成測試框架的值：`Math.random` 回傳框架種子（`DeterministicLocaleBackend`）下 avmplus 的同一串數字、enterFrame 在 Ruffle 截圖的那一次之後停住、滑鼠用 XTest 在同一個 enterFrame 之前按下；`definefont4` 由一個設 `stage.quality = LOW` 的 Loader 外殼經 HTTP 載入。錄製時發現並改正的 Timffle 差異：
+
+- **Stage3D `mipnearest`**（`render/wgpu/src/bitmaps.rs`、`context3d/current_pipeline.rs`）：線性過濾配 `mipnearest` 改用 mip 過濾為 nearest 的取樣器（原本混合兩層）。
+- **`BitmapData.draw` 套用濾鏡**（`core/src/bitmap/operations.rs`、`render/src/backend.rs`、`render/wgpu/src/backend.rs`）：被畫物件自己與子物件的 `filters` 透過它們的 cacheAsBitmap 圖套用（新的 `render_offscreen_with_cache`：先畫並濾好快取圖，再畫命令；wgpu 與 `submit_frame` 共用 `draw_cache_entries`），影響範圍含濾鏡外擴，濾鏡不隨舞台縮放（`RenderContext::in_bitmap_draw`）。WebGL／canvas 後端沒有這個能力，照舊不套用。Flash 32 量到（`d66drawfilters`，測試 `bitmapdata_draw_filters_flash`）：模糊 quality 1／3、平移與縮放的矩陣、色彩矩陣、光暈、陰影，物件本身或子物件，位置與物件在畫面上相同，濾鏡不隨 draw 的矩陣縮放。上游的 `bitmapdata_draw_filters`（known failure「Ruffle does not use CAB in BitmapData.draw」）現在與 Flash 的黃金圖完全相同。
+- **快取圖失效旗標**（`core/src/display_object.rs`）：快取圖重畫時清掉 `CACHE_INVALIDATED`。只有在顯示清單裡的物件會在 `pre_render` 清，所以被 `draw` 當來源、不在舞台上的物件改了濾鏡之後還是用舊的圖（水面 demo 的筆刷用兩種模糊畫兩次，第二次拿到第一次的模糊）。
+- **TextLine 不裁切字形**（`edit_text.rs` `set_unclipped`、`text_line.rs`）。
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -461,7 +470,7 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | 項目 | 說明 |
 | `Context3D.driverInfo` 字串 | 格式仿 Flash 的 `OpenGL Vendor=… Version=… Renderer=…`，內容來自 wgpu 轉接器（例：`Vulkan (Direct Mode) Vendor=NVK Version=Mesa 25.2.8… Renderer=GeForce GT 720 (NVK GK208B)`）；Wine 下的 Flash 32 回 `DirectX11`。`dispose()` 後的 `"Disposed"` 已以 Flash 32 證實。回歸測試把它固定成上游的 `Dummy Ruffle driver`（`Descriptors::context3d_driver_info_override`），讓會印出它的影像黃金答案不隨機器改變。 |
 | `totalGPUMemory` 的程式大小 | 用 AGAL 位元組數代替驅動程式實際配置量。 |
-| Stage3D 測試 | 2026-11-05 在 GeForce GT 720（nouveau／NVK Vulkan，wgpu 直接用 Vulkan）跑過：`-- stage3d` 加 `--features imgtests,jpegxr` 41 支全過（只開 imgtests 時 4 支需要 jpegxr 的被略過、37 支過）。`stage3d_bitmap` 的黃金圖已用真 Flash 32（Wine）重錄（錄製用副本的 `Math.random` 回傳本測試框架種子下 avmplus 的同一串數字，第 49 次更新後停住），精靈位置完全相同；剩下的差異是標題的裝置字型（Wine 的 Arial 替代字型 vs Ruffle 預設字型）和兩個剛好在 `mipnearest` 換層邊界（細節層級 0.46／0.50）的精靈，用 tolerance 16／max_outliers 4500 容納。`away3d_advanced_shallow_water_demo` 同樣處理：它的黃金圖是 Ruffle 在 `generateFilterRect` 還是空殼、貼圖只有第 0 層時畫的；兩者都照真 Flash 32 改正後（暫時把兩者還原就與黃金圖相符，122 個離群像素，與 main 相同），畫面中央的擾動與倒影不同。 |
+| Stage3D 測試 | 2026-11-05 在 GeForce GT 720（nouveau／NVK Vulkan，wgpu 直接用 Vulkan）跑過：`-- stage3d` 加 `--features imgtests,jpegxr` 41 支全過（只開 imgtests 時 4 支需要 jpegxr 的被略過、37 支過）。`stage3d_bitmap` 的黃金圖已用真 Flash 32（Wine）重錄（錄製用副本的 `Math.random` 回傳本測試框架種子下 avmplus 的同一串數字，第 49 次更新後停住），精靈位置完全相同；剩下的差異是標題的裝置字型（Wine 的 Arial 替代字型 vs Ruffle 預設字型）和兩個剛好在 `mipnearest` 換層邊界（細節層級 0.46／0.50）的精靈，用 tolerance 16／max_outliers 4500 容納。`away3d_advanced_shallow_water_demo` 的黃金圖也已用真 Flash 32 重錄（Flash 的 Stage3D 在 Wine 下是 Software 繪圖：DirectX 11 路徑的 wined3d 轉不了水面的片段著色器，水面整個不畫）；錄製時改正了 `BitmapData.draw` 不套用濾鏡（見「用真 Flash 重錄的影像黃金圖」），剩下的差異是統計面板（裝置字型與實際數值）、以高畫質 draw 的署名圖（反鋸齒、約 1 px）與水滴倒影，tolerance 30／max_outliers 5400。 |
 | 項目 | 差異 |
 | ContentElement.textRotation／TextBlock.baselineZero／applyNonLinearFontScaling／textJustifier／baselineFont* | 值儲存、驗證並可讀回，但版面不旋轉個別字形、不換基線零點、不做 justification 與非線性縮放。（TextLine 的繪製原點已改成 roman 基線的起點，與 `getBaselinePosition` 一致，見下方 TextLine 一節。） |
 | TLF／FTE 的 OpenType 排版（連字、GPOS 字距） | Flash 32 依字型的 OpenType 功能排字：`visual/definefont4`（黃金圖已用 Flash 重錄）的 "fi" 是連字字形（i 沒有點），其後的字最多左移 1 px；Ruffle 的 FTE 逐字排版、沒有 GSUB／GPOS，所以這支仍是 known_failure（`output.ruffle.png` 是目前畫面，行位置、墨跡列與第一行字的欄都與 Flash 相同）。 |

@@ -54,6 +54,26 @@ pub trait RenderBackend: Any {
         bounds: PixelRegion,
     ) -> Option<Box<dyn SyncHandle>>;
 
+    /// Timffle: whether `render_offscreen_with_cache` draws the cacheAsBitmap pictures
+    /// (and so the filters) that `BitmapData.draw` of a filtered object needs. Backends
+    /// that do not keep drawing such objects without their filters.
+    fn supports_offscreen_bitmap_cache(&self) -> bool {
+        false
+    }
+
+    /// Timffle: `render_offscreen` after drawing (and filtering) the given
+    /// cacheAsBitmap pictures, which the commands may sample.
+    fn render_offscreen_with_cache(
+        &mut self,
+        handle: BitmapHandle,
+        commands: CommandList,
+        quality: StageQuality,
+        bounds: PixelRegion,
+        _cache_entries: Vec<BitmapCacheEntry>,
+    ) -> Option<Box<dyn SyncHandle>> {
+        self.render_offscreen(handle, commands, quality, bounds)
+    }
+
     /// Applies the given filter with a `BitmapHandle` source onto a destination `BitmapHandle`.
     /// The `destination_rect` must be calculated by the caller and is assumed to be correct.
     /// Both `source_rect` and `destination_rect` must be valid (`BoundingBox::valid`).

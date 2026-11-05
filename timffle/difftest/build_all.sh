@@ -60,3 +60,4 @@ for t in D21Matrix3DEdge:d21matrix3dedge D35Prec:d35prec D37Arith:d37arith D39Dr
 done
 # Loader-timing probes (lt*, Haxe main + AS3 children): src/loadtime/build.sh (needs Java and playerglobal_import.abc)
 ./build.sh D63Stage3D d63stage3d -swf-version 33
+./build.sh D66DrawFilters d66drawfilters
