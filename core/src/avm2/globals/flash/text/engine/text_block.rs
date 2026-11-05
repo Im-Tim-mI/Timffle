@@ -1,5 +1,6 @@
 use crate::avm2::Avm2;
 use crate::avm2::Avm2StrRepresentable;
+use crate::avm2::Object;
 use crate::avm2::activation::Activation;
 use crate::avm2::error::{
     Error, Error2004Type, Error2006Type, make_error_2004, make_error_2006, make_error_2008,
@@ -10,12 +11,16 @@ use crate::avm2::globals::flash::display::display_object::initialize_for_allocat
 use crate::avm2::object::{ContentElementObject, ElementData, VectorObject};
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
-use crate::display_object::{DisplayObject, EditText, LineBidi, TDisplayObject, TextLine};
+use crate::display_object::{
+    DisplayObject, EditText, LineBidi, TDisplayObject, TDisplayObjectContainer, TextLine,
+};
 use crate::fte::{
     TextBaselineValue, TextLineCreationResultValue, TextLineValidity, TextRotationValue,
 };
 use crate::html::{FormatSpans, TextFormat, TextSpan};
 use crate::string::{WStr, WString};
+use ruffle_render::blend::ExtendedBlendMode;
+use ruffle_render::matrix::Matrix;
 use swf::Twips;
 
 pub use crate::avm2::object::text_block_allocator;
@@ -613,10 +618,28 @@ pub fn do_create_text_line<'gc>(
     // and `TextBlock.createTextLine`. The former passes this method an existing
     // `TextLine` to reuse, while the latter expects this method to create a new
     // `TextLine`.
+    // Timffle: where the recreated line was (its block and neighbours), and
+    // whether it is recreated in its own place (it already follows
+    // `previousLine`, or is the block's first line when there is none).
+    let recreated = line_to_use.map(|line| {
+        let old_block = line.text_block();
+        let in_place = old_block.is_some_and(|b| Object::ptr_eq(b, block))
+            && match previous_text_line {
+                Some(previous) => previous
+                    .next_line()
+                    .is_some_and(|n| DisplayObject::ptr_eq(n, line)),
+                None => block
+                    .first_line()
+                    .is_some_and(|f| DisplayObject::ptr_eq(f, line)),
+            };
+        (old_block, line.previous_line(), line.next_line(), in_place)
+    });
+
     let text_line = if let Some(line) = line_to_use {
         // `TextLine.recreateTextLine` is the caller: completely reset the
         // properties of the passed line and use it.
         line.reset_properties(activation.gc());
+        reset_recreated_line_display(activation, line);
         // Timffle: the reused line breaks at the new `width`.
         line.fallback().set_width(activation.context, width);
         line
@@ -807,16 +830,82 @@ pub fn do_create_text_line<'gc>(
     text_line.set_end_index(line_end as u32);
     text_line.set_line_index(line_index);
 
-    if let Some(previous_line) = previous_text_line {
-        text_line.set_previous_line(Some(previous_line), activation.gc());
-        previous_line.set_next_line(Some(text_line), activation.gc());
-    } else {
-        // If there's no previous line, then this is the first line.
-        block.set_first_line(Some(text_line), activation.gc());
+    let mc = activation.gc();
+    // Timffle: `recreateTextLine` keeps the line list linked the way Flash
+    // Player 32 does (measured, `avm2/textblock_recreateline`):
+    // - recreated in its own place: the links stay, the lines after it become
+    //   invalid (their text may have moved);
+    // - otherwise the line leaves its old list (its neighbours are joined, the
+    //   line after it and all later ones become invalid, it stops being the
+    //   old block's first line) and takes the place after `previousLine`: the
+    //   line that was there is invalidated and unlinked (it keeps its
+    //   `textBlock`), the lines after that one stay valid and follow the
+    //   recreated line.
+    let new_next = match recreated {
+        Some((_, old_prev, old_next, true)) => {
+            text_line.set_previous_line(old_prev, mc);
+            for line in old_next
+                .into_iter()
+                .chain(old_next.into_iter().flat_map(|n| n.next_lines()))
+            {
+                line.set_validity(TextLineValidity::Invalid, mc);
+            }
+            old_next
+        }
+        Some((old_block, old_prev, old_next, false)) => {
+            if let Some(old_block) = old_block
+                && old_block
+                    .first_line()
+                    .is_some_and(|f| DisplayObject::ptr_eq(f, text_line))
+            {
+                old_block.set_first_line(old_next, mc);
+            }
+            if let Some(old_prev) = old_prev
+                && old_prev
+                    .next_line()
+                    .is_some_and(|n| DisplayObject::ptr_eq(n, text_line))
+            {
+                old_prev.set_next_line(old_next, mc);
+            }
+            if let Some(old_next) = old_next
+                && old_next
+                    .previous_line()
+                    .is_some_and(|p| DisplayObject::ptr_eq(p, text_line))
+            {
+                old_next.set_previous_line(old_prev, mc);
+                old_next.set_validity(TextLineValidity::Invalid, mc);
+                for line in old_next.next_lines() {
+                    line.set_validity(TextLineValidity::Invalid, mc);
+                }
+            }
+            let displaced = match previous_text_line {
+                Some(previous) => previous.next_line(),
+                None => block.first_line(),
+            };
+            displaced.and_then(|displaced| {
+                let after = displaced.next_line();
+                displaced.set_validity(TextLineValidity::Invalid, mc);
+                displaced.set_previous_line(None, mc);
+                displaced.set_next_line(None, mc);
+                after
+            })
+        }
+        None => None,
+    };
+    if recreated.is_some() {
+        text_line.set_next_line(new_next, mc);
+        if let Some(new_next) = new_next {
+            new_next.set_previous_line(Some(text_line), mc);
+        }
     }
 
-    // TODO correctly set the `validity`, `nextLine`, and `prevLine` properties
-    // of the lines coming after this line
+    if let Some(previous_line) = previous_text_line {
+        text_line.set_previous_line(Some(previous_line), mc);
+        previous_line.set_next_line(Some(text_line), mc);
+    } else {
+        // If there's no previous line, then this is the first line.
+        block.set_first_line(Some(text_line), mc);
+    }
 
     block.set_text_line_creation_result(Some(if emergency {
         TextLineCreationResultValue::Emergency
@@ -998,6 +1087,35 @@ fn resolve_bidi(text: &WStr, bidi_level: i32) -> ResolvedBidi {
             to_visual,
             levels,
         }
+    }
+}
+
+/// Timffle: `recreateTextLine` gives the reused line a new line's display
+/// state, as Flash Player 32 does (measured, `avm2/textblock_recreateline`):
+/// transform (x, y, z, scale, rotation, 3D), alpha, blend mode, mask,
+/// visibility, `cacheAsBitmap` and `opaqueBackground` are reset, its children
+/// are removed and its event listeners dropped. Its name and parent stay.
+fn reset_recreated_line_display<'gc>(activation: &mut Activation<'_, 'gc>, line: TextLine<'gc>) {
+    let mc = activation.gc();
+    line.set_matrix(Matrix::IDENTITY);
+    line.set_alpha(1.0);
+    line.set_blend_mode(ExtendedBlendMode::Normal);
+    line.set_mask(None, mc);
+    line.set_visible(activation.context, true);
+    line.set_bitmap_cached_preference(false);
+    line.set_opaque_background(None);
+    if let Some(mut container) = DisplayObject::from(line).as_container() {
+        let count = container.num_children();
+        container.remove_range(activation.context, 0..count);
+    }
+    if let Some(object) = line.object2() {
+        let object: Object<'gc> = object.into();
+        let _ = crate::avm2::object::TObject::set_slot(
+            object,
+            crate::avm2::globals::slots::flash_events_event_dispatcher::DISPATCH_LIST,
+            Value::Null,
+            activation,
+        );
     }
 }
 

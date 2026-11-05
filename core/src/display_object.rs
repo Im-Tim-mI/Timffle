@@ -3753,6 +3753,8 @@ pub trait TDisplayObject<'gc>:
             Self::LoaderDisplay(dobj) => Some(DisplayObjectContainer::LoaderDisplay(dobj)),
             Self::MovieClip(dobj) => Some(DisplayObjectContainer::MovieClip(dobj)),
             Self::Stage(dobj) => Some(DisplayObjectContainer::Stage(dobj)),
+            // Timffle: TextLine extends DisplayObjectContainer in Flash and keeps children.
+            Self::TextLine(dobj) => Some(DisplayObjectContainer::TextLine(dobj)),
             _ => None,
         }
     }

@@ -79,8 +79,14 @@ fn serialize_object_properties<'gc>(
     activation: &mut Activation<'_, 'gc>,
     object: Object<'gc>,
 ) -> Vec<Element> {
-    let mut w = Amf0Writer::default();
-    recursive_serialize(activation, object, &mut w);
+    // Timffle: on the wire Flash numbers AMF0 references like the specification's
+    // table (objects, arrays, dates and XML; the serialized object itself is
+    // number 0), not every value like a shared object (`avm1/amf0_serde_suite`:
+    // a self-reference after 12 nested objects, a date and an XML is 15).
+    let mut w = Amf0Writer::without_primitive_references(1);
+    // Timffle: on the wire (NetConnection, LocalConnection) Flash writes nested arrays
+    // that only have index properties as AMF0 strict arrays, like top-level ones.
+    recursive_serialize_inner(activation, object, &mut w, true);
     w.commit_lso("root").into_iter().collect()
 }
 
@@ -134,6 +140,7 @@ fn serialize_value_to_writer<'gc>(
     name: &str,
     elem: Value<'gc>,
     writer: &mut dyn ObjWriter<'_>,
+    wire: bool,
 ) {
     match elem {
         Value::Object(o) => {
@@ -141,11 +148,36 @@ fn serialize_value_to_writer<'gc>(
                 // Flash entirely skips functions during object serialization
             } else if o.as_display_object().is_some() {
                 writer.undefined(name)
+            } else if let NativeObject::Array(_) = o.native()
+                && wire
+                && let Some(length) = strict_array_length(activation, o)
+            {
+                // Timffle: a nested array whose properties are all indices below its
+                // `length` goes on the wire as a strict array, holes as `undefined`
+                // (Flash Player's NetConnection bytes, `avm1/amf_array_serialization`,
+                // `avm1/amf0_serde_suite`). Shared objects keep ECMA arrays, as Flash's .sol.
+                let (sw, token) = writer.strict_array(CacheKey::from_ptr(o.as_ptr()));
+                if let Some(mut sw) = sw {
+                    for i in 0..length {
+                        let key = AvmString::new_utf8(activation.gc(), i.to_string());
+                        let value = if !o.has_own_property(activation, key)
+                            || o.is_property_virtual(activation, key)
+                        {
+                            Value::Undefined
+                        } else {
+                            o.get(key, activation).unwrap_or(Value::Undefined)
+                        };
+                        serialize_value_to_writer(activation, "", value, &mut sw, wire);
+                    }
+                    sw.commit(name);
+                } else {
+                    writer.reference(name, token);
+                }
             } else if let NativeObject::Array(_) = o.native() {
                 let (aw, token) = writer.array(CacheKey::from_ptr(o.as_ptr()));
 
                 if let Some(mut aw) = aw {
-                    recursive_serialize(activation, o, &mut aw);
+                    recursive_serialize_inner(activation, o, &mut aw, wire);
 
                     // TODO: What happens if an exception is thrown here?
                     let length = o
@@ -170,7 +202,7 @@ fn serialize_value_to_writer<'gc>(
                 if let Some(class_name) = object_class_name(activation, o) {
                     let (ow, token) = writer.typed_object(&class_name, key);
                     if let Some(mut ow) = ow {
-                        recursive_serialize(activation, o, &mut ow);
+                        recursive_serialize_inner(activation, o, &mut ow, wire);
                         ow.commit(name);
                     } else {
                         writer.reference(name, token);
@@ -178,7 +210,7 @@ fn serialize_value_to_writer<'gc>(
                 } else {
                     let (ow, token) = writer.object(key);
                     if let Some(mut ow) = ow {
-                        recursive_serialize(activation, o, &mut ow);
+                        recursive_serialize_inner(activation, o, &mut ow, wire);
                         ow.commit(name);
                     } else {
                         writer.reference(name, token);
@@ -202,6 +234,33 @@ pub fn recursive_serialize<'gc>(
     obj: Object<'gc>,
     writer: &mut dyn ObjWriter<'_>,
 ) {
+    recursive_serialize_inner(activation, obj, writer, false)
+}
+
+/// Timffle: the length to write a nested array with as an AMF0 strict array, or
+/// `None` when it has a property that is not an index below its `length`.
+fn strict_array_length<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    array: Object<'gc>,
+) -> Option<usize> {
+    let length = array.length(activation).ok()?.max(0) as usize;
+    for key in array.get_keys(activation, false) {
+        let key = key.to_utf8_lossy();
+        let index = key.parse::<usize>().ok()?;
+        if index >= length || index.to_string() != key {
+            return None;
+        }
+    }
+    Some(length)
+}
+
+/// `recursive_serialize`; `wire` is set for NetConnection and LocalConnection data.
+fn recursive_serialize_inner<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    obj: Object<'gc>,
+    writer: &mut dyn ObjWriter<'_>,
+    wire: bool,
+) {
     // Reversed to match flash player ordering
     // Note that because get_keys can recurse, this may result in an OS stack overflow
     // This is still better than Flash's behavior, which results in a memory leak/crash
@@ -219,7 +278,7 @@ pub fn recursive_serialize<'gc>(
         };
 
         let name = element_name.to_utf8_lossy();
-        serialize_value_to_writer(activation, name.as_ref(), elem, writer);
+        serialize_value_to_writer(activation, name.as_ref(), elem, writer, wire);
     }
 }
 

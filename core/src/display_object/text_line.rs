@@ -5,6 +5,7 @@ use crate::avm2::StageObject as Avm2StageObject;
 use crate::avm2::object::TextBlockObject;
 use crate::backend::ui::MouseCursor;
 use crate::context::{RenderContext, UpdateContext};
+use crate::display_object::container::{ChildContainer, TDisplayObjectContainer};
 use crate::display_object::interactive::{InteractiveObjectBase, TInteractiveObject};
 use crate::display_object::{
     Avm2MousePick, BoundsMode, DisplayObjectBase, EditText, InteractiveObject,
@@ -21,7 +22,7 @@ use gc_arena::lock::{Lock, RefLock};
 use gc_arena::{Collect, Gc, Mutation};
 use ruffle_common::utils::HasPrefixField;
 use ruffle_render::transform::Transform;
-use std::cell::Cell;
+use std::cell::{Cell, Ref, RefMut};
 use swf::Twips;
 
 #[derive(Clone, Collect, Copy)]
@@ -67,6 +68,10 @@ pub struct TextLineData<'gc> {
     // `to_visual`.
     #[collect(require_static)]
     bidi: RefLock<LineBidi>,
+
+    // Timffle: a TextLine is a DisplayObjectContainer in Flash; scripts may add
+    // children to it (they are drawn above the text, and `recreateTextLine` removes them).
+    container: RefLock<ChildContainer<'gc>>,
 }
 
 /// Timffle: bidirectional resolution of one line (see `TextLineData::bidi`).
@@ -87,7 +92,7 @@ impl<'gc> TextLine<'gc> {
         fallback: EditText<'gc>,
     ) -> Self {
         fallback.set_unclipped(true); // Timffle: TextLines do not clip their glyphs.
-        TextLine(Gc::new(
+        let line = TextLine(Gc::new(
             context.gc(),
             TextLineData {
                 base: Default::default(),
@@ -105,8 +110,13 @@ impl<'gc> TextLine<'gc> {
                 previous_line: Lock::new(None),
                 next_line: Lock::new(None),
                 bidi: RefLock::new(LineBidi::default()),
+                container: RefLock::new(ChildContainer::new(&movie)),
             },
-        ))
+        ));
+        // Timffle: `TextLine.tabChildren` is always false in Flash (setting it throws #2181),
+        // so tab order never goes into a line's children.
+        line.set_tab_children(context, false);
+        line
     }
 
     // Timffle: the line's logical text (what `rawTextLength` and the atom
@@ -360,6 +370,7 @@ impl<'gc> TDisplayObject<'gc> for TextLine<'gc> {
         });
         self.0.fallback.render_self(context);
         context.transform_stack.pop();
+        self.render_children(context);
     }
 
     fn self_bounds(self, mode: BoundsMode) -> Rectangle<Twips> {
@@ -399,6 +410,34 @@ impl<'gc> TDisplayObject<'gc> for TextLine<'gc> {
         _run_frame: bool,
     ) {
         self.set_default_instance_name(context);
+    }
+
+    fn enter_frame(self, context: &mut UpdateContext<'gc>) {
+        let skip_frame = self.base().should_skip_next_enter_frame();
+        for child in self.iter_render_list() {
+            // See MovieClip::enter_frame for an explanation of this.
+            if skip_frame {
+                child.base().set_skip_next_enter_frame(true);
+            }
+            child.enter_frame(context);
+        }
+        self.base().set_skip_next_enter_frame(false);
+    }
+
+    fn construct_frame(self, context: &mut UpdateContext<'gc>) {
+        for child in self.iter_render_list() {
+            child.construct_frame(context);
+        }
+    }
+}
+
+impl<'gc> TDisplayObjectContainer<'gc> for TextLine<'gc> {
+    fn raw_container(&self) -> Ref<'_, ChildContainer<'gc>> {
+        self.0.container.borrow()
+    }
+
+    fn raw_container_mut(&self, gc_context: &Mutation<'gc>) -> RefMut<'_, ChildContainer<'gc>> {
+        unlock!(Gc::write(gc_context, self.0), TextLineData, container).borrow_mut()
     }
 }
 
