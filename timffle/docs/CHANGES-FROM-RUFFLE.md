@@ -275,7 +275,7 @@ Ruffle 上游只有 `Collator` 的骨架（大小寫折疊後比較碼位），�
   - `totalGPUMemory`：索引緩衝 = `numIndices × 2`；頂點緩衝 = `numVertices × data32PerVertex × 4`；貼圖 = 寬 × 高 × 每像素位元組（BGRA 4、BGRA_PACKED／BGR_PACKED 2、COMPRESSED ½、COMPRESSED_ALPHA 1、RGBA_HALF_FLOAT 8；`streamingLevels > 0` 算整條 mip 鏈；CubeTexture × 6）；程式 = 上傳的 AGAL 位元組數（編譯後大小無法得知）。`dispose()` 減回，context 本身 `dispose()` 歸 0。只算 Flash 文件列的四類，不含後緩衝。
   - `driverInfo`：新增 `Context3D::driver_info()` trait 方法（`render/src/backend.rs`），wgpu 實作用 `adapter.get_info()`：API 名（Vulkan／Metal／Direct3D12／OpenGL／WebGPU）、`DeviceType::Cpu` 時標 `Software` 否則 `Direct Mode`、`Vendor=driver`、`Version=driver_info`、`Renderer=name`。
   - `createVideoTexture()`：先做 #3694 檢查，再回 `null`（文件：「returns null if the system doesn't support this feature」）。
-  - `setSamplerStateAt`：anisotropic 的空殼標記移除（wgpu `current_pipeline.rs` 早已把 `Anisotropic2x…16x` 變成 `anisotropy_clamp`）；`mipfilter != "mipnone"` 仍是空殼（wgpu 端所有貼圖 `mip_level_count = 1`，需要 mip 鏈與 `miplevel` 上傳才能做）。
+  - `setSamplerStateAt`：anisotropic 的空殼標記移除（wgpu `current_pipeline.rs` 早已把 `Anisotropic2x…16x` 變成 `anisotropy_clamp`）；`mipfilter != "mipnone"` 當時仍是空殼（後來在「9 格縮放與 Stage3D mip 鏈」一節完成）（wgpu 端所有貼圖 `mip_level_count = 1`，需要 mip 鏈與 `miplevel` 上傳才能做）。
 - **IndexBuffer3D / VertexBuffer3D / Program3D / TextureBase**：`dispose()` 改成 native；物件的 handle 改成 `RefCell<Option<…>>`，`dispose()` 取走（Box／Rc 釋放 → wgpu 資源釋放；被 pipeline 綁定中的貼圖在解除綁定後釋放），並從 `totalGPUMemory` 扣除；`uploadFrom*`、`upload()`、`setVertexBufferAt`、`setProgram`、`drawTriangles`、`setTextureAt`、`setRenderToTexture` 對已 dispose 的物件丟 #3694。`new TextureBase()` 沒有 GPU 貼圖，`dispose()` 不做事。
 - **VideoTexture**：補 `attachCamera`／`attachNetStream`／`videoWidth`／`videoHeight`。沒有硬體影片轉貼圖 → `supportsVideoTexture` false、`createVideoTexture()` null，類別仍是 abstract（`new` 丟 #2012），所以永遠拿不到實例；成員以「未附加來源」行為實作（記錄來源、null 解除、寬高 0）。
 - **CubeTexture.uploadCompressedTextureFromByteArray(async)**：AS 端和 `Texture` 相同；native 改名 `…Internal`。
@@ -293,7 +293,7 @@ Ruffle 上游的 FTE 只有骨架：一個 TextLine 用一個 EditText 排整段
 - **FontDescription.isFontCompatible**：`library.get_embedded_font_by_name(name, EmbeddedCFF, bold, italic)` 有無；`isDeviceFontCompatible`：`get_or_load_device_font` 有無（後端解析不到時仍會退到內建預設字型，所以多半為 true，如同 Flash 在有系統預設字型的機器）。fontName null → #2007，weight／posture 不合法 → #2008。
 - **ElementFormat.getFontMetrics**：emBox = (0, -size×ascent 比例, size, size)，ascent 比例取該格式字型（內嵌 CFF → 裝置字型）的 `FontMetrics` ascent/(ascent+descent)，找不到用 0.8；其餘比例為 OS/2 慣例：strikethrough -0.26 em／0.075 em、underline 0.15 em／0.075 em、sub/superscript 0.15／-0.35 em、scale 0.65，lineGap 0。
 
-### 第 5 組：AuthorizedFeaturesLoader（leftovers 批；AMF0 參照見下面 mouse_amf0 節）（合併時捨棄了 AMF0 物件參照的 commit：它讓 `shared_object_self_ref_avm1` 與 `localconnection_cyclic_args` 失敗；`ByteArray.writeObject` 仍是空殼）
+### 第 5 組：AuthorizedFeaturesLoader（leftovers 批；這一批的 AMF0 物件參照 commit 因讓 `shared_object_self_ref_avm1` 與 `localconnection_cyclic_args` 失敗而捨棄，後來在「flash.ui.Mouse 自訂游標與 ByteArray.writeObject 的 AMF0 物件參照」一節重做完成）
 
 - **flash.utils.ByteArray.writeObject（AMF0 參照）**：`core/src/avm2/amf.rs` 的 `ObjectTable` 新增 `amf0_references`（物件 → u16 索引）。序列化走到 `Value::Object` 時，若編碼為 AMF0 且物件屬於 AMF0 的複合物件（`is_amf0_complex`：陣列，或非 Function / DisplayObject / Vector / Date / XML / ByteArray / Dictionary 的物件），第一次出現時在寫出子內容**之前**登記索引（父先於子，與 Flash 相同），之後再遇到（重複或循環）即回傳 `AmfValue::Reference(index)`；Date、XML 等每次都以完整值寫出，與 Flash 相同。AMF3 路徑不變（flash-lso 的 AMF3 編碼器本來就會把重複 ObjectId 轉成參照），所以 `get_or_create_value` 的 stub 整個移除。反序列化：`AmfValue::Reference(n)` 以 `ObjectId(AMF0_REFERENCE_ID_BASE + n)` 在 object_map 查回同一物件。vendored `flash-lso/src/amf0/read.rs`：參照表只收 Object / TypedObject / ECMAArray / StrictArray，在讀子內容前佔位（`claim_reference_id`）、讀完填入（`store_reference`），並以 `ObjectId(1<<32 + index)` 標記以免和內嵌 AMF3 的 id 相撞；`types/reference.rs` 的 `Reference` 欄位改為 `pub`。
 - **flash.system.AuthorizedFeaturesLoader**（新檔 `core/src/avm2/globals/flash/system/AuthorizedFeaturesLoader.as`，純 AS）：繼承 EventDispatcher。這個播放器不連 Adobe 授權服務，等同 Flash Player 連不到伺服器：`loadAuthorizedFeatures()` 與 `loadAuthorizedFeaturesFromData(data)` 都以 `setTimeout(…, 0)` 非同步派發 `ErrorEvent.ERROR`（text「Error #2032: Stream Error.」，bubbles/cancelable 皆 false），`authorizedFeatures` 永遠 null（`AuthorizedFeatures` 本來就假設沒有 token）；`loadAuthorizedFeaturesFromData(null)` 丟 `TypeError #2007`。成員：`authorizedFeatures`、`loadAuthorizedFeatures()`、`loadAuthorizedFeaturesFromData()`。airsdk.dev 該頁回 404，簽章依 api-report 規格；事件型別依記憶中的 Adobe 參考（`error` / `complete`），見 (c)。
@@ -446,8 +446,6 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | `getRawText`／`getXMLText`／`insertXMLText` | 未文件化；行為照名稱推定（見上），未在真 Flash 量過。 |
 | `Keyboard.capsLock`／`numLock` 的初值 | 真 Flash 直接問作業系統；Timffle 只能從按鍵事件推（開始時視為關，按過鎖定鍵、打過字母或數字鍵盤之後才正確）。網頁版可改用 `KeyboardEvent.getModifierState` 傳進來。 |
 | `ContextMenu.link` | 真 Flash 顯示連結選單（開啟連結／複製連結）；Timffle 只存值，原生選單不變。 |
-| `Mouse.registerCursor` | 自訂點陣游標仍是空殼（需要 `UiBackend` 新方法）。 |
-| `ByteArray.writeObject` 的重複物件（AMF0） | Flash 以 AMF0 參照（0x07）寫第二次出現的物件；Timffle 的 flash-lso AMF0 寫入器仍寫完整物件（讀回時身分不同）。AMF3 已正確。 |
 | `ByteArray.atomicCompareAndSwapLength` 負長度、自動化／遊戲輸入／列印的錯誤碼 | 文件只寫錯誤類別，碼是 Flash 通用碼的推測（`#2006`、`#2012`、`#2037`、`#2057`）。`GeolocationEvent.toString()` 的欄位順序未量到。 |
 | `flash.sampler.getSamples()` | 無取樣器時依 avmplus 回 undefined（回傳型別 Object 所以讀到 null；文件寫「迭代器」）；`getMemberNames` 回 Array（Flash 是只能迭代的內部物件）；Object 的 AS3 命名空間方法（hasOwnProperty 等）也列在裡面，Flash 是否列出未量到。 |
 | 共用 target 目錄 | 多個 worktree 同時建置時 `build_playerglobal` 的 `native_table.rs`（OUT_DIR）會被另一個 worktree 的 .as 覆蓋而編譯失敗；`touch core/src/avm2/globals/globals.as` 重跑即可（合併者注意，不是程式碼問題）。 |
@@ -465,16 +463,13 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | Stage3D 測試 | 本容器沒有 Vulkan ICD／EGL，wgpu 找不到轉接器：`stage3d_members` 只涵蓋不需要 context 的部分（`supportsVideoTexture`、`new VideoTexture()` #2012、`TextureBase.dispose()`、`stage3Ds`）；`dispose()`→#3694、`totalGPUMemory`、`backBuffer*`、`maxBackBuffer*` 的程式碼只經 `cargo check` 與人工閱讀，未在此機器執行。合併後請在有 GPU 的機器跑 `cargo test -p tests --test tests -- stage3d`。 |
 | 項目 | 差異 |
 | ContentElement.textRotation／TextBlock.baselineZero／applyNonLinearFontScaling／textJustifier／baselineFont* | 值儲存、驗證並可讀回，但版面不旋轉個別字形、不換基線零點、不做 justification 與非線性縮放；`getBaselinePosition` 以 roman 基線為 0 回報，而 TextLine 的繪製原點仍是 EditText 的左上角（上游既有差異）。 |
-| TextBlock.bidiLevel | 仍是空殼（沒有雙向排版）；`getAtomBidiLevel` 一律回 block 的 bidiLevel。 |
 | TextBlock.dump()／TextLine.dump() | Flash 的 XML 格式無文件，輸出為自訂格式。 |
 | GraphicElement 版面 | 佔一個 U+FDEF 字元而不是 elementWidth × elementHeight 的 inline box；`graphic` 不會被加成 TextLine 的子物件；totalAscent/Descent 不含圖形高度。 |
 | 同一元素放進第二個 TextBlock／GroupElement | 不丟 ArgumentError（既有 Flash 錄製測試顯示 content 可重複），由後者接管擁有權。 |
 | ElementFormat.getFontMetrics | underline／strikethrough／sub/superscript 不是從字型 OS/2 表讀，而是慣例比例。 |
-| createTextLine 的行切割 | 仍是上游行為：一段文字排在一個 TextLine 裡（不照 width 切成多行）、`fitSomething` 忽略；代理的切割版本讓 Flash 導出的測試失敗，合併時還原，兩個方法仍是空殼。 |
 | 類別/成員 | 差異 |
 | `AuthorizedFeaturesLoader` 事件 | 失敗時派發 `ErrorEvent.ERROR`、text「Error #2032: Stream Error.」；Adobe 參考頁已下線（404），實際事件型別/文字未能對照真 Flash 確認。 |
 | AMF0 `SharedObject` 參照表範圍 | 一個 `flush()` 共用一張參照表（跨頂層屬性）；真 Flash 的 .sol 是否每個頂層屬性重置參照表未驗證。 |
-| `shared_object_self_ref_avm1` | 此 AVM1 測試在本批次後輸出 `Foo.self: undefined`（期望值是 Flash 讀回一份複本：`[object Object]` / `eq foo: false`）；由於期望輸出本身不是「同一實例」，疑為既有失敗，但未能在基底重跑確認——merger 請在 PRO_bata 跑一次 `cargo test -p tests --test tests -- shared_object_self_ref_avm1` 對照。 |
 | `TextBlock.createTextLine` 的斷行機會 | 斷行機會沿用 EditText 的換行規則（空白／tab；U+200B 不是斷點，Flash 的 UAX #14 會在 ZWSP、連字號後、CJK 字之間等處斷行）；`emergency` 的判定是「斷在非空白之後」。`lineOffset` 仍當第一行縮排（前一批的做法），Flash 的 `lineOffset` 只影響 tab 原點。`insufficientWidth` 的判定是第一個字素的右緣超過 `width`，Flash 以第一個 atom 的 advance 判定（含字距時可能差一點）。 |
 | `TextBlock.bidiLevel` | 層級解析與 run 反轉照 UAX #9（`unicode-bidi`），但沒有阿拉伯文連寫字形、鏡像括號（`TextLineMirrorRegion` 以外的 glyph mirroring）與 RTL 段落的行原點對齊（Flash 在 `bidiLevel = 1` 時行從右邊的 `width` 起算、`textWidth` 以右為基準）；`getAtomBidiLevel` 的預期值取自 UAX #9，未用真 Flash 錄製。 |
 | 項目 | 狀況 |
