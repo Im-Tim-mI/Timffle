@@ -1,25 +1,36 @@
 package flash.globalization {
-    import __ruffle__.stub_constructor;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
+    import flash.globalization.LastOperationStatus;
 
+    // Timffle: implemented for real with full Unicode case mapping plus the
+    // Turkish/Azeri and Lithuanian special rules (string_tools.rs). The
+    // locale falls back as Flash documents it (`usingFallbackWarning` /
+    // `usingDefaultWarning`).
     [API("667")]
     public final class StringTools {
         private var _requestedLocaleIDName:String;
 
+        [Ruffle(NativeAccessible)]
+        private var _actualLocaleIDName:String;
+
+        [Ruffle(NativeAccessible)]
+        private var _lastOperationStatus:String = LastOperationStatus.NO_ERROR;
+
         public function StringTools(requestedLocaleIDName:String) {
-            stub_constructor("flash.globalization.StringTools");
+            if (requestedLocaleIDName == null) {
+                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+            }
             this._requestedLocaleIDName = requestedLocaleIDName;
+            this.init(requestedLocaleIDName);
         }
 
+        private native function init(requestedLocaleIDName:String):void;
+
         public function get actualLocaleIDName():String {
-            stub_getter("flash.globalization.StringTools", "actualLocaleIDName");
-            return "en-US";
+            return this._actualLocaleIDName;
         }
 
         public function get lastOperationStatus():String {
-            stub_getter("flash.globalization.StringTools", "lastOperationStatus");
-            return "noError";
+            return this._lastOperationStatus;
         }
 
         public function get requestedLocaleIDName():String {
@@ -27,18 +38,22 @@ package flash.globalization {
         }
 
         public function toLowerCase(s:String):String {
-            stub_method("flash.globalization.StringTools", "toLowerCase");
-            return s.toLowerCase();
+            if (s == null) {
+                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+            }
+            return this.nativeToLowerCase(s);
         }
 
         public function toUpperCase(s:String):String {
-            stub_method("flash.globalization.StringTools", "toUpperCase");
-            return s.toUpperCase();
+            if (s == null) {
+                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+            }
+            return this.nativeToUpperCase(s);
         }
 
-        public static function getAvailableLocaleIDNames():Vector.<String> {
-            stub_method("flash.globalization.StringTools", "getAvailableLocaleIDNames");
-            return new <String>["en-US"];
-        }
+        private native function nativeToLowerCase(s:String):String;
+        private native function nativeToUpperCase(s:String):String;
+
+        public static native function getAvailableLocaleIDNames():Vector.<String>;
     }
 }

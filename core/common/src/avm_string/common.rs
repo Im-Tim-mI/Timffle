@@ -393,6 +393,9 @@ ruffle_macros::define_common_strings! {
     "uri",
     "useDominantBaseline",
     "useHandCursor",
+    // Timffle: Collator.lastOperationStatus values.
+    "usingDefaultWarning",
+    "usingFallbackWarning",
     "valid",
     "value",
     "valueOf",

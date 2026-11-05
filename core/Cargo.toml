@@ -66,6 +66,8 @@ enum-map = { workspace = true }
 ttf-parser = "0.25"
 num-bigint = "0.4"
 unicode-segmentation = "1.13.3"
+# Timffle: NFKD decomposition for the `flash.globalization.Collator` collation.
+unicode-normalization = "0.1.24"
 id3 = "1.17.0"
 either = "1.16.0"
 chardetng = "0.1.17"
