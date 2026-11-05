@@ -222,6 +222,19 @@ pub struct Avm2<'gc> {
     /// Timffle: the player's one `IME` instance (`System.ime`), made on first use.
     pub system_ime: Option<Object<'gc>>,
 
+    /// Timffle: `Security.exactSettings` (default true) and whether the player has
+    /// already chosen settings with it (`SharedObject.getLocal`), after which it
+    /// may not change (`SecurityError #2054`).
+    pub security_exact_settings: bool,
+    pub security_exact_settings_used: bool,
+
+    /// Timffle: `Security.disableAVM1Loading`; read by the movie loader
+    /// (`loader.rs`), which then refuses AVM1 SWFs with `SecurityErrorEvent` #2111.
+    pub security_disable_avm1_loading: bool,
+
+    /// Timffle: the URLs given to `Security.loadPolicyFile`, each fetched once.
+    pub policy_files_requested: Vec<String>,
+
     /// Timffle: the formats on `Clipboard.generalClipboard`, in insertion order
     /// (see `globals::flash::desktop::clipboard`).
     pub clipboard: Vec<globals::flash::desktop::clipboard::ClipboardEntry<'gc>>,
@@ -306,6 +319,10 @@ impl<'gc> Avm2<'gc> {
             shared_object_default_encoding: 3,
             shared_object_prevent_backup: None,
             system_ime: None,
+            security_exact_settings: true,
+            security_exact_settings_used: false,
+            security_disable_avm1_loading: false,
+            policy_files_requested: Vec::new(),
             clipboard: Vec::new(),
             in_user_interaction: false,
             shader_jobs: Vec::new(),

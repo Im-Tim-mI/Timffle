@@ -2035,6 +2035,52 @@ impl<'gc> MovieLoader<'gc> {
             }
             ContentType::Unknown => SwfMovieData::error_movie(url.clone()),
         };
+        // Timffle: `Security.disableAVM1Loading`: an AS3 SWF that set it may not
+        // load ActionScript 1.0/2.0 content. Flash blocks the load once the file
+        // is known to be AVM1 and reports it on the LoaderInfo as `securityError`
+        // #2111 ("Security.disableAVM1Loading is true so the current load of the
+        // ActionScript 1.0/2.0 SWF file has been blocked."); the Loader ends up
+        // in its error state like any failed load.
+        if let MovieLoaderVMData::Avm2 { loader_info, .. } = vm_data
+            && sniffed_type == ContentType::Swf
+            && uc.avm2.security_disable_avm1_loading
+            && !movie.is_action_script_3()
+        {
+            if let Some(mc) = clip.as_movie_clip() {
+                MovieLoader::load_error_swf(mc, uc, url);
+            }
+            loader_info.set_errored(true);
+            let fake_movie = SwfMovie::new(
+                uc.gc(),
+                SwfMovieData::fake_with_compressed_len(uc.root_swf.version(), loader_url, length),
+            );
+            loader_info
+                .set_loader_stream(LoaderStream::NotYetLoaded(fake_movie, None, false), uc.gc());
+            let mut activation = Avm2Activation::from_nothing(uc);
+            let text = AvmString::new_utf8(
+                activation.gc(),
+                "Error #2111: Security.disableAVM1Loading is true so the current load of the ActionScript 1.0/2.0 SWF file has been blocked.",
+            );
+            let security_error_event_cls = activation.avm2().classes().securityerrorevent;
+            let event_type = AvmString::new_ascii_static(activation.gc(), b"securityError");
+            let security_error_evt = Avm2EventObject::from_class_and_args(
+                &mut activation,
+                security_error_event_cls,
+                &[
+                    event_type.into(),
+                    false.into(),
+                    false.into(),
+                    text.into(),
+                    2111.into(),
+                ],
+            );
+            Avm2::dispatch_event(activation.context, security_error_evt, loader_info.into());
+            if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
+                loader.loader_status = LoaderStatus::Failed;
+            }
+            return Ok(());
+        }
+
         let movie = SwfMovie::new(uc.gc(), movie);
 
         match uc.load_manager.get_loader_mut(handle) {

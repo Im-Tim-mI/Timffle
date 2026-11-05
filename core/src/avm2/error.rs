@@ -1114,6 +1114,8 @@ make_error_fn!(make_error_2041, 2041, illegal_operation_error);
 // Timffle: `Stage.mouseLock` set outside full-screen mode.
 make_error_fn!(make_error_3707, 3707, error);
 make_error_fn!(make_error_2052, 2052, argument_error);
+// Timffle: `Security.exactSettings` changed after the player used it.
+make_error_fn!(make_error_2054, 2054, security_error);
 make_error_fn!(make_error_2058, 2058, io_error);
 make_error_fn!(make_error_2067, 2067, error);
 make_error_fn!(make_error_2078, 2078, illegal_operation_error);

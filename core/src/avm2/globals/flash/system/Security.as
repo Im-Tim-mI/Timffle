@@ -4,6 +4,14 @@ package flash.system {
         public static native function get pageDomain():String;
         public static native function get sandboxType():String;
 
+        // Timffle: see security.rs for the four members below.
+        public static native function get exactSettings():Boolean;
+        public static native function set exactSettings(value:Boolean):void;
+        [API("667")]
+        public static native function get disableAVM1Loading():Boolean;
+        [API("667")]
+        public static native function set disableAVM1Loading(value:Boolean):void;
+
         public static native function allowDomain(...domains):void;
         public static native function allowInsecureDomain(...domains):void;
         public static native function loadPolicyFile(url:String):void;

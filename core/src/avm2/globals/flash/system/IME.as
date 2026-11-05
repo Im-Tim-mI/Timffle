@@ -1,29 +1,22 @@
 package flash.system {
-    import __ruffle__.stub_method;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-
     import flash.events.EventDispatcher;
 
+    // Timffle: this player has no input method editor to drive
+    // (`Capabilities.hasIME` false, `IME.isSupported` false): Chinese input
+    // reaches the focused text field through the browser's or OS's own
+    // composition, which the `IME` class does not control. The AS3 Reference
+    // says that without an active IME "calls to IME methods or properties,
+    // other than Capabilities.hasIME, will fail": every setter and method
+    // throws `Error #2063: Error attempting to execute IME command.` (the
+    // runtime error for a failed IME command), while the getters still
+    // answer — `enabled` false and `conversionMode`
+    // `IMEConversionMode.UNKNOWN`, the read-only value the Reference gives
+    // for a mode the player cannot determine. `System.ime` (system.rs)
+    // makes the one instance of this abstract class.
     [Ruffle(Abstract)]
     public final class IME extends EventDispatcher {
-        private static var _conversionMode:String = "ALPHANUMERIC_HALF";
-        private static var _enabled:Boolean;
-
-        public static function compositionAbandoned():void {
-            stub_method("flash.system.IME", "compositionAbandoned");
-        }
-
-        public static function compositionSelectionChanged(start:int, end:int):void {
-            stub_method("flash.system.IME", "compositionSelectionChanged");
-        }
-
-        public static function doConversion():void {
-            stub_method("flash.system.IME", "doConversion");
-        }
-
-        public static function setCompositionString(composition:String):void {
-            stub_method("flash.system.IME", "setCompositionString");
+        private static function imeError():Error {
+            return new Error("Error #2063: Error attempting to execute IME command.", 2063);
         }
 
         public static function get isSupported():Boolean {
@@ -31,23 +24,35 @@ package flash.system {
         }
 
         public static function get enabled():Boolean {
-            stub_getter("flash.system.IME", "enabled");
-            return _enabled;
+            return false;
         }
 
         public static function set enabled(value:Boolean):void {
-            stub_setter("flash.system.IME", "enabled");
-            _enabled = value;
+            throw imeError();
         }
 
         public static function get conversionMode():String {
-            stub_getter("flash.system.IME", "conversionMode");
-            return _conversionMode;
+            return IMEConversionMode.UNKNOWN;
         }
 
         public static function set conversionMode(value:String):void {
-            stub_setter("flash.system.IME", "conversionMode");
-            _conversionMode = value;
+            throw imeError();
+        }
+
+        public static function compositionAbandoned():void {
+            throw imeError();
+        }
+
+        public static function compositionSelectionChanged(start:int, end:int):void {
+            throw imeError();
+        }
+
+        public static function doConversion():void {
+            throw imeError();
+        }
+
+        public static function setCompositionString(composition:String):void {
+            throw imeError();
         }
     }
 }

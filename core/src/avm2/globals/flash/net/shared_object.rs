@@ -42,6 +42,19 @@ fn new_lso<'gc>(
     ))
 }
 
+/// Timffle: the Flash Player 6 "superdomain" of a host: the host without its
+/// first label when it has three or more (www.example.com -> example.com);
+/// shorter hosts and IP addresses stay as they are.
+fn superdomain(host: &str) -> String {
+    let labels: Vec<&str> = host.split('.').collect();
+    let is_ipv4 = labels.len() == 4 && labels.iter().all(|l| l.parse::<u8>().is_ok());
+    if labels.len() >= 3 && !is_ipv4 && !host.contains(':') {
+        labels[1..].join(".")
+    } else {
+        host.to_string()
+    }
+}
+
 pub fn get_local<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
@@ -52,6 +65,11 @@ pub fn get_local<'gc>(
 
     let name = args.get_string_non_null(activation, 0, "name")?;
     let name = name.to_utf8_lossy();
+
+    // Timffle: fetching a persistent shared object is one of the moments Flash
+    // chooses player settings for a domain, after which `Security.exactSettings`
+    // is fixed.
+    activation.avm2().security_exact_settings_used = true;
 
     const INVALID_CHARS: &str = "~%&\\;:\"',<>?# ";
     if name.contains(|c| INVALID_CHARS.contains(c)) {
@@ -90,10 +108,16 @@ pub fn get_local<'gc>(
         if let [_, b':', b'/', ..] = movie_path.as_bytes() {
             movie_path = &movie_path[3..];
         }
-        "localhost"
+        "localhost".to_string()
+    } else if activation.avm2().security_exact_settings {
+        movie_url.host_str().unwrap_or_default().to_string()
     } else {
-        movie_url.host_str().unwrap_or_default()
+        // Timffle: `Security.exactSettings = false` restores the Flash Player 6
+        // rule: settings and shared objects belong to the superdomain, so
+        // www.example.com and store.example.com share example.com's.
+        superdomain(movie_url.host_str().unwrap_or_default())
     };
+    let movie_host = movie_host.as_str();
 
     let local_path = &args.try_get_string(1);
     let local_path = if let Some(local_path) = local_path {
