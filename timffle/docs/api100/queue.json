@@ -147,7 +147,7 @@
     "generateFilterRect()"
    ],
    "status": "partial",
-   "note": "batch 7: generateFilterRect real (Flash rounding/clamp/per-filter growth, blur formula from D53/D54 probes); encode real for PNG/JPEG with Flash error codes. Remaining stubs: encode JPEGXREncoderOptions (needs jxrlib encoder FFI; crate only decodes) and applyFilter ShaderFilter with non-standard sourceRect (needs a real-Flash pixel golden). | 2026-11-05 round 2: encode(JPEGXREncoderOptions) BLOCKED (rule 9): no JPEG XR encoder exists in the Rust ecosystem (jpegxr crate decodes only), jxrlib would need a C FFI build for wasm too; writing a real JPEG XR encoder is a separate project. applyFilter(ShaderFilter sub-rect) assigned to the graphics2 agent."
+   "note": "batch 7: generateFilterRect real (Flash rounding/clamp/per-filter growth, blur formula from D53/D54 probes); encode real for PNG/JPEG with Flash error codes. Remaining stubs: encode JPEGXREncoderOptions (needs jxrlib encoder FFI; crate only decodes) and applyFilter ShaderFilter with non-standard sourceRect (needs a real-Flash pixel golden). | 2026-11-05 round 2: encode(JPEGXREncoderOptions) BLOCKED (rule 9): no JPEG XR encoder exists in the Rust ecosystem (jpegxr crate decodes only), jxrlib would need a C FFI build for wasm too; writing a real JPEG XR encoder is a separate project. applyFilter(ShaderFilter sub-rect) assigned to the graphics2 agent. | batch graphics2: applyFilter ShaderFilter with a sub-rect real (copy region to a temp bitmap, run, write at destPoint; edges not Flash-verified; GPU test bitmapdata_applyfilter_shader not executed here). Remaining stub: encode JPEGXR (needs a jxrlib encoder FFI)."
   },
   {
    "class": "flash.display.DisplayObject",
@@ -182,8 +182,8 @@
     "lineShaderStyle()",
     "readGraphicsData()"
    ],
-   "status": "partial",
-   "note": "batch 8: drawPath (fill groups + strokes never closed), drawTriangles (union, uvt affine+perspective, #2004 lengths), drawGraphicsData (GraphicsPath via drawPathObject->drawPath) real. Left: beginShaderFill, lineShaderStyle, readGraphicsData (Flash structure fully measured: see STATUS 2026-11-04 22:xx and difftest results/flash/d55graphics.txt, d56graphics2.txt, d57winding.txt)."
+   "status": "done",
+   "note": "batch 8: drawPath (fill groups + strokes never closed), drawTriangles (union, uvt affine+perspective, #2004 lengths), drawGraphicsData (GraphicsPath via drawPathObject->drawPath) real. Left: beginShaderFill, lineShaderStyle, readGraphicsData (Flash structure fully measured: see STATUS 2026-11-04 22:xx and difftest results/flash/d55graphics.txt, d56graphics2.txt, d57winding.txt). | batch graphics2: readGraphicsData real (Flash 32 structure per STATUS batch-8 facts; raw d55/d56/d57 result files are not in git), beginShaderFill/lineShaderStyle/GraphicsShaderFill real (shader evaluated once at first render over the fill bounds -> bitmap fill; #2007 null, #2004 no bytecode). 0 stubs left. GPU tests graphics_shader_fill not executed here."
   },
   {
    "class": "flash.display.InteractiveObject",
