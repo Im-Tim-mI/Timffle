@@ -132,9 +132,17 @@ package {
             tryCall("notify() owned", function():void { condition.notify(); });
             tryCall("notifyAll() owned", function():void { condition.notifyAll(); });
             tryCall("wait(-2)", function():void { condition.wait(-2); });
+            // A script timeout leaves the mutex released (Flash Player 32, measured):
+            // take it again (twice) before the next wait.
             tryCall("wait()", function():void { condition.wait(); });
+            mutex.lock();
+            mutex.lock();
             tryCall("wait(-1)", function():void { condition.wait(-1); });
+            mutex.lock();
+            mutex.lock();
             tryCall("wait(15000)", function():void { condition.wait(15000); });
+            mutex.lock();
+            mutex.lock();
             var start:int = getTimer();
             var elapsed:Boolean = condition.wait(5);
             trace("wait(5): " + elapsed + " took>=5ms: " + (getTimer() - start >= 5));

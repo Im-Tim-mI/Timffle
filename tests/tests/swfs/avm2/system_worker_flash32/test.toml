@@ -1,0 +1,5 @@
+# Expected output recorded from Flash Player 32.0.0.465 (release, standalone, Wine), identical on two runs.
+# Source: S4System.hx (Haxe; built without -D harness, -swf-version 32). See timffle/difftest.
+# Flash freezes ~15 s at each blocking wait; the "~" timing lines are left out.
+num_ticks = 150
+known_failure = true
