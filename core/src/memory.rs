@@ -99,9 +99,23 @@ fn page_size() -> usize {
     4096
 }
 
+/// Fixed figures set with [`pin_flash_memory_figures`].
+static PINNED: std::sync::OnceLock<(usize, usize, usize)> = std::sync::OnceLock::new();
+
+/// Makes [`flash_memory_figures`] return fixed values from now on. The
+/// regression tests use it so that image goldens which print the memory
+/// figures (for example a stats overlay) do not depend on how much memory
+/// the test process happens to use.
+pub fn pin_flash_memory_figures(total: usize, free: usize, private: usize) {
+    let _ = PINNED.set((total, free, private));
+}
+
 /// The three figures `flash.system.System` reports, in bytes, each a whole
 /// number of 4 KiB pages: (`totalMemory`, `freeMemory`, `privateMemory`).
 pub fn flash_memory_figures() -> (usize, usize, usize) {
+    if let Some(pinned) = PINNED.get() {
+        return *pinned;
+    }
     let round = |b: usize| b.div_ceil(PAGE) * PAGE;
     let private = round(process_private_bytes());
     let counted = allocated_bytes();

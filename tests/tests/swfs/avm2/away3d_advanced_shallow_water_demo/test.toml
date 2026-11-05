@@ -1,8 +1,21 @@
 num_ticks = 20
+# Timffle: known failure since two Flash-measured changes. The golden was
+# rendered by Ruffle when BitmapData.generateFilterRect returned the source
+# rectangle unchanged and Stage3D textures had only level 0. Now
+# generateFilterRect grows the rectangle for the blur as Flash Player 32 does
+# (probes timffle/difftest/src/D53BlurRect.hx, D54BlurRect2.hx; test
+# display_misc_members), so the demo's disturbance brush is larger and
+# softer, and the reflection textures are sampled through
+# their mip levels as in Flash Player 32 (difftest d63stage3d, test
+# stage3d_uploads_flash). With both reverted the picture matches the golden
+# again (122 outliers, as on main). The golden is kept unchanged until it is
+# re-recorded; output.ruffle.png is Ruffle's current picture. The stats
+# overlay prints System.totalMemory, which the test harness pins (90 MiB).
 
 [image_comparisons.output]
 tolerance = 30
 max_outliers = 400
+known_failure = true
 
 [player_options]
 with_renderer = { optional = false, quality = "low" }
