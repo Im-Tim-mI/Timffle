@@ -267,7 +267,7 @@ pub fn get_buffer_time<'gc>(
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     Ok(with_netstream(this, |ns| ns.buffer_time())
-        .unwrap_or(0.1)
+        .unwrap_or(0.0)
         .into())
 }
 
@@ -277,8 +277,6 @@ pub fn set_buffer_time<'gc>(
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let time = args.get_f64(0);
-    // A NaN or negative value is stored as 0: the buffer time stays >= 0.
-    let time = if time.is_nan() { 0.0 } else { time.max(0.0) };
     with_netstream(this, |ns| ns.set_buffer_time(time));
     Ok(Value::Undefined)
 }

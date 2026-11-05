@@ -403,6 +403,14 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 - **ShaderFilter**：`applyFilter` 照量到的規則重寫（見上面第 2 組）。`bitmapdata_applyfilter_shader` 改用有影像輸入的 `tintype.pbj`（原本的 `simple_shader.pbj` 沒有輸入，真 Flash 直接丟 #2167）。
 - **測試環境**：`driverInfo` 在回歸測試固定成 `Dummy Ruffle driver`（見已知差異表）。
 
+### 時序：下載結果送達的影格、同一幀到齊的 Loader、NetStream 預設值（第五輪 timing2，2026-11-05）
+
+全部用 Wine 下的 Flash Player 32 debugger 量（2 fps 探針，本機檔；本機 HTTP 只會更晚、不會更早），新測試的 `output.txt` 都是同一個 SWF 在真 Flash 錄兩次、相同的輸出。
+
+| 項目 | 內容 | 證據 |
+|---|---|---|
+| **NetStream 預設值**（`streams.rs`、`NetStream.as`、`net_stream.rs`、AVM1 `netstream.rs` 共用） | `bufferTime`：新串流讀 0；設定值小於 0.1（含負數）變 0.1、NaN／無限大變 4294967.295；`play()`（含 `play(null)`）把 0 變 0.1，`close()` 後仍是 0.1。實際緩衝門檻一樣是 0.1，所以 `Buffer.Full` 的時機沒有變（量到：bufferTime 0 播 FLV，`Play.Start` 時 `bufferLength` 0.104、`Buffer.Full` 在同一幀或下一幀、bufferLength 0.37；`Flush`／`Stop`／`Empty` 在 1.045 s）。`audioSampleAccess`／`videoSampleAccess` 讀寫丟 `ArgumentError #2154`（播放前後都一樣）；`multicast*` 六個讀回 0、設值無效；串流的 `farNonce`／`nearNonce` 空字串（NetConnection 的仍是 64 個 0）；`MicrophoneEnhancedOptions.autoGain` 讀 false、設值無效 | `avm2/timffle_netstream_defaults`、`avm1/timffle_netstream_buffertime`；`netstream_members`、`camera_microphone_members` 對應行改成 Flash 的值 |
+
 ## 已知與真 Flash 還不同的地方
 
 | 區域 | 差異 |
@@ -439,7 +447,7 @@ Ruffle 上游：`readGraphicsData` 永遠回空 Vector；`beginShaderFill`／`li
 | CurrencyFormatter.parse() | 規則照 Flash 32 量到的做（文字必須符合正／負貨幣版面、`-` 只在版面寫的位置、括號只在版面有括號時、數字旁一個空白屬於版面、空字串 `illegalArgumentError`、失敗時 `currencyString` 是 `""`）；量到的 41 個輸入全部一致。未量過的版面（`negativeCurrencyFormat` 1～7、9～15 的解析）照同一規則推定。 |
 | Collator | 近似 UCA，沒有 DUCET 全表。照 Flash 32 改了：連字號與撇號不計權重、其他相同時有它們的排後（Windows 的 word sort：`O'Brian` > `OBrian`、`a-b` > `ab`），`æ`＝`ae`、`ß`＝`ss`（sv-SE 也是）。仍不同（Wine 量測）：zh-CN 依拼音（`中` > `文`、`一` > `丁`），這裡是碼位；`ア` < `あ`，這裡相反；`numericComparison = true` 在 Wine 不改變結果（`version2` > `version10`），這裡真的數值比較——這兩項可能是 Wine 的 `CompareString` 與 Windows 不同，沒有改。`collator_compare_basic` 的 `output.txt` 是 Linux Flash 錄的，仍標 `known_failure`。 |
 | `NetStreamInfo` 的每秒速率 | 漸進下載時真 Flash 的位元組數與每秒速率（`currentBytesPerSecond`、`byteCount`、`maxBytesPerSecond`、音訊／視訊／資料各三項）全是 0，檔案下載完也一樣，只有 `playbackBytesPerSecond` 有值；Timffle 已照做。`playbackBytesPerSecond` 的算法沒有比對（Flash 對 14,567 位元組的測試檔回 13029.67），資料產生模式（`appendBytes`）下的值沒有量。 |
-| `NetStream` 的其他預設值（量到、未改） | 驗證時順便量到、不在這次範圍內的差異：`connect(null)` 的 NetStream 在真 Flash 上 `bufferTime` 是 0（Timffle 0.1，上游既有）、`audioSampleAccess`／`videoSampleAccess` 讀寫都丟 `ArgumentError #2154`、`multicast*` 六個設定讀回 0 且設值無效、`farNonce`／`nearNonce` 是空字串、還沒播放時 `audioCodec` 128／`videoCodec` 2048；`MicrophoneEnhancedOptions.autoGain` 與 `DRMDeviceGroup.name` 的設值在 Flash 上無效。Timffle 都還是舊值。 |
+| `NetStream` 的其他預設值 | `bufferTime`、`*SampleAccess`、`multicast*`、nonce、`autoGain` 已照 Flash（見「時序」一節）。還不同的：還沒播放時 Flash 的 `audioCodec` 128、`videoCodec` 2048（Timffle 0）；`bufferTimeMax` 在 `connect(null)` 的串流上 Flash 讀回 0、設值無效（Timffle 存下設的值）；`DRMDeviceGroup.name` 的設值在 Flash 上無效。 |
 | `DRMManager` 沒有模組時的事件細節 | 同步的參數檢查已與 Flash 相同（`av_drm_arguments`：`loadVoucher`／`loadPreviewVoucher`／`returnVoucher` 丟 errorID 0 的 `ArgumentError`，其他方法接受 null；`DRMContentData(bytes)` 不丟錯、`getVoucherAccessInfo()` null）。Flash Player 32 自己帶 Adobe Access 模組（`isSupported` true、`networkIdleTimeout` 預設 120000，連不到伺服器的 `authenticate` 反而送兩次 `authenticationComplete`），所以「沒有模組」時的事件量不到：錯誤碼 3344、`drmUpdateNeeded` true、`storeVoucher()` 送 `drmError` 仍是推定。 |
 | `Font.enumerateFonts(true)` | Flash 32 列出作業系統全部的裝置字型（Wine 下 20 個以上，不排序、有重複名稱、沒有 `_sans` 等內建名稱、`fontType` `device`、`hasGlyphs` false）；Timffle 只列已載入的與內建名稱的實作（主機沒有列舉 API）。 |
 | `TextSnapshot` 的字框 | 已照 Flash 32 改：`getTextRunInfo` 包含 `endIndex`（`(0,2)` 三個字、`(1,1)` 一個），`indexInRun` 是在該文字紀錄（一行）裡的位置；字型沒有版面資訊（DefineFont3 沒有 layout，測試用的 `static.swf` 就是）時四角全是 0、矩陣的 a–d 是 1/20（`[0.05 0 0 0.05 x y]`）、`hitTestTextNearPos` 一律 −1。仍不同：同一份 SWF 的 `getText(…, true)` 在 Flash 32（AVM2）回空字串，Timffle 回不含換行的文字（上游 AVM1 測試 `textsnapshot_gettext` 由 Flash 錄的結果是插入 `\n`，所以沒有改）；有版面資訊的字型的四角、高度沒有量過。 |

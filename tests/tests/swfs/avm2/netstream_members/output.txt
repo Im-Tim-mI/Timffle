@@ -1,7 +1,7 @@
 new NetStream(null): TypeError #2007
 new NetStream(unconnected): ArgumentError #2126
 // defaults
-bufferTime: 0.1
+bufferTime: 0
 bufferTimeMax: 0
 bufferLength: 0
 backBufferTime: 30
@@ -14,21 +14,21 @@ liveDelay: 0
 maxPauseBufferTime: 600
 objectEncoding: 3
 farID: ''
-farNonce: 0000000000000000000000000000000000000000000000000000000000000000
-nearNonce: 0000000000000000000000000000000000000000000000000000000000000000
+farNonce: 
+nearNonce: 
 peerStreams: 0
 audioReliable: true
 videoReliable: true
 dataReliable: true
-audioSampleAccess: false
-videoSampleAccess: false
+audioSampleAccess threw ArgumentError #2154
+videoSampleAccess threw ArgumentError #2154
 videoStreamSettings: null
 multicastAvailabilitySendToAll: false
-multicastAvailabilityUpdatePeriod: 0.1
-multicastFetchPeriod: 2.5
-multicastPushNeighborLimit: 4
-multicastRelayMarginDuration: 2
-multicastWindowDuration: 8
+multicastAvailabilityUpdatePeriod: 0
+multicastFetchPeriod: 0
+multicastPushNeighborLimit: 0
+multicastRelayMarginDuration: 0
+multicastWindowDuration: 0
 multicastInfo: null
 audioCodec: 0
 videoCodec: 0
@@ -39,8 +39,8 @@ info: currentBytesPerSecond=0 byteCount=0 maxBytesPerSecond=0 audioBytesPerSecon
 time: 0
 // setters
 bufferTime: 2
-bufferTime (-1): 0
-useJitterBuffer (bufferTime 0): true
+bufferTime (-1): 0.1
+useJitterBuffer (bufferTime 0): false
 useJitterBuffer (bufferTime 0.1): false
 bufferTimeMax: 5
 backBufferTime: 10
@@ -51,10 +51,10 @@ maxPauseBufferTime: 120
 audioReliable (set false): true
 videoReliable (set false): true
 dataReliable (set false): true
-audioSampleAccess: true
-videoSampleAccess: true
+audioSampleAccess = true threw ArgumentError #2154
+videoSampleAccess = true threw ArgumentError #2154
 videoStreamSettings same: true
-multicast: true 0.5 1 2 3 4
+multicast: false 0 0 0 0 0
 soundTransform: 0.5 0
 soundTransform is a copy: true
 soundTransform = null: TypeError #2007

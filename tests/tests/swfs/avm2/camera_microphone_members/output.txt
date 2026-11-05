@@ -19,7 +19,7 @@ isVoiceDetected = -1
 mode = fullDuplex
 nonLinearProcessing = true
 autoGain = false
-autoGain after set = true
+autoGain after set = false
 == AudioDeviceManager
 AudioDeviceManager.isSupported = false
 audioDeviceManager = [object AudioDeviceManager]

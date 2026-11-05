@@ -47,6 +47,7 @@
 - **合併後回歸修正：`Key.isToggled(Key.CAPSLOCK)`**：播放器自己看過某個鎖定鍵（Caps Lock／Num Lock）按下之後，只跟著那個鍵切換，打出來的字母大小寫不再覆寫它（真 Flash 錄的 `avm1/key_isToggled` 第 7 行又是 true）；還沒看過鎖定鍵時仍由字母／數字鍵盤推斷。
 - **`from_gnash/misc-ming.all/NetStream-SquareTest` 已知差異檔更新**：NetStream 的 `NetStream.Buffer.Full` 改成緩衝滿 `bufferTime` 才送（e3ab43250）之後，AVM1 這支測試的 `Buffer.Full` 移到 `Play.Start` 之後，和真 Flash 錄的 `output.txt` 一樣（之前在 `Play.Start` 前面）；`output.ruffle.txt` 只有這 3 行換位置。
 - **TextLine 的原點改成 roman 基線（真 Flash 32 量過）**：`getBaselinePosition` 改成真值之後，TLF 把行放在基線上，而 TextLine 還是從欄位左上角畫，`visual/definefont4` 的字整個低了一行；現在備援欄位往左上移動它的文字起點（2 px 邊距＋ascent）再畫，`getBounds`／atom 座標一起換算。真 Flash 在 Wine 下的畫面：墨跡列 31–71／84–117、欄 20–395，Ruffle 現在 31–69／84–117、20–394；上游由 Ruffle 畫的黃金圖是 33–73／87–120、22–396（低 2–3 px、右 2 px），所以這支改成 known failure（黃金圖不動，`output.ruffle.png` 是現在的畫面），等用 Flash 重錄。
+- **`NetStream` 的預設值照真 Flash 32（`connect(null)`）**：`bufferTime` 未設時讀 0、小於 0.1（含負數）變 0.1、NaN／無限大變 4294967.295、`play()` 把 0 變 0.1（AVM1 `setBufferTime` 同一套，緩衝實際仍是 0.1，`Buffer.Full` 時機不變）；`audioSampleAccess`／`videoSampleAccess` 讀寫丟 `ArgumentError #2154`；`multicast*` 六個設定讀回 0、設值無效；串流的 `farNonce`／`nearNonce` 是空字串；`MicrophoneEnhancedOptions.autoGain` 設值無效。新測試 `avm2/timffle_netstream_defaults`、`avm1/timffle_netstream_buffertime`（真 Flash 錄）。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 
