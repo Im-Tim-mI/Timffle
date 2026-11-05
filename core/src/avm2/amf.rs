@@ -9,10 +9,10 @@ use crate::avm2::class::Class;
 use crate::avm2::object::{ByteArrayObject, ClassObject, ScriptObject, TObject, VectorObject};
 use crate::avm2::vector::VectorStorage;
 use crate::avm2::{Activation, Error, FunctionArgs, Object, Value};
-use crate::avm2_stub_method;
 use crate::string::AvmString;
 use enumset::EnumSet;
-use flash_lso::types::{AMFVersion, Element, Lso, ObjectId};
+use flash_lso::amf0::read::AMF0_REFERENCE_ID_BASE;
+use flash_lso::types::{AMFVersion, Element, Lso, ObjectId, Reference};
 use flash_lso::types::{Attribute, ClassDefinition, Value as AmfValue};
 use fnv::FnvHashMap;
 
@@ -27,6 +27,11 @@ pub struct ObjectTable<'gc> {
     /// recursing forever.
     in_progress: FnvHashMap<Object<'gc>, ObjectId>,
     next_id: i64,
+    /// Timffle: the AMF0 reference table: every complex object (anonymous/typed object,
+    /// array) written so far, in order of occurrence, as the AMF0 specification (2.9)
+    /// indexes it; a later occurrence of the same object (repeated or cyclic) is written
+    /// as a `reference` marker (0x07) carrying this index, like Flash Player.
+    amf0_references: FnvHashMap<Object<'gc>, u16>,
     /// Timffle: the first error thrown by an `ObjectEncoding.dynamicPropertyWriter` while
     /// serializing; the serializer cannot return it itself, so the caller checks
     /// [`ObjectTable::take_error`] afterwards.
@@ -77,6 +82,21 @@ pub fn serialize_value<'gc>(
         Value::Integer(i) => AmfValue::Integer(i),
         Value::String(s) => AmfValue::String(s.to_string()),
         Value::Object(o) => {
+            // Timffle: AMF0 has no per-value ids; a repeated or cyclic complex object is a
+            // reference into the table of complex objects written so far. The object is
+            // entered before its children so that a cycle back to it finds it.
+            let amf0_index = if amf_version == AMFVersion::AMF0 && is_amf0_complex(o) {
+                if let Some(index) = object_table.amf0_references.get(&o) {
+                    return AmfValue::Reference(Reference(*index));
+                }
+                let index = u16::try_from(object_table.amf0_references.len()).ok();
+                if let Some(index) = index {
+                    object_table.amf0_references.insert(o, index);
+                }
+                index
+            } else {
+                None
+            };
             // A repeated (non-cyclic) object is written again in full, carrying the
             // same id so the deserializer can restore identity.
             if let Some(done) = object_table.done.get(&o) {
@@ -88,12 +108,32 @@ pub fn serialize_value<'gc>(
                 Ok(id) => id,
                 Err(reference) => return reference,
             };
+            // Timffle: an AMF0 complex object is identified by its reference-table index,
+            // the id a decoder gives it too, so a value tree handed over in memory (a
+            // `LocalConnection` call) resolves its references like one read from bytes.
+            let id = amf0_index.map_or(id, |index| {
+                ObjectId(AMF0_REFERENCE_ID_BASE + i64::from(index))
+            });
             let value = serialize_object(activation, o, id, amf_version, object_table);
             object_table.end(o);
             object_table.done.insert(o, Rc::new(value.clone()));
             value
         }
     }
+}
+
+/// Timffle: whether AMF0 writes `o` as a complex object that enters the reference table
+/// (an anonymous or typed object, or an array); dates, XML and byte arrays are written by
+/// value every time, and the AMF3-only kinds (vectors, dictionaries) never as AMF0.
+fn is_amf0_complex<'gc>(o: Object<'gc>) -> bool {
+    o.as_array_storage().is_some()
+        || !(o.as_function_object().is_some()
+            || o.as_display_object().is_some()
+            || o.as_vector_storage().is_some()
+            || o.as_date_object().is_some()
+            || o.as_xml_object().is_some()
+            || o.as_bytearray().is_some()
+            || o.as_dictionary_object().is_some())
 }
 
 fn serialize_object<'gc>(
@@ -266,6 +306,11 @@ fn serialize_object<'gc>(
                     // FIXME - implement this
                     static_properties,
                 })
+            } else if !name.is_empty() {
+                // Timffle: an instance of a class registered with `registerClassAlias`
+                // is an AMF0 typed object (0x10, with the alias), like Flash Player;
+                // only an unregistered class is an anonymous object.
+                Some(ClassDefinition::default_with_name(name))
             } else {
                 None
             },
@@ -464,25 +509,10 @@ fn get_or_create_value<'gc>(
     object_table: &mut ObjectTable<'gc>,
     amf_version: AMFVersion,
 ) -> Rc<AmfValue> {
-    if let Some(obj) = val.as_object() {
-        match object_table.done.get(&obj) {
-            Some(rc_val) => {
-                // Even though we'll clone the same 'Rc<AmfValue>' for each occurrence
-                // of 'Object', flash_lso doesn't serialize this correctly yet.
-                avm2_stub_method!(
-                    activation,
-                    "flash.utils.ByteArray",
-                    "writeObject",
-                    "with same Object used multiple times"
-                );
-                rc_val.clone()
-            }
-            // `serialize_value` records the object in `object_table.done` itself.
-            None => Rc::new(serialize_value(activation, val, amf_version, object_table)),
-        }
-    } else {
-        Rc::new(serialize_value(activation, val, amf_version, object_table))
-    }
+    // Timffle: `serialize_value` writes a repeated object as an AMF0 `reference`, or in
+    // AMF3 in full with the id the encoder's object reference table turns into a
+    // reference; nothing is left to stub.
+    Rc::new(serialize_value(activation, val, amf_version, object_table))
 }
 
 /// Deserialize a AmfValue to a Value
@@ -703,12 +733,15 @@ pub fn deserialize_value_impl<'gc>(
             tracing::error!("Deserialization not yet implemented for Custom: {:?}", val);
             Value::Undefined
         }
-        AmfValue::Reference(_) => {
-            tracing::error!(
-                "Deserialization not yet implemented for Reference: {:?}",
-                val
-            );
-            Value::Undefined
+        // Timffle: an AMF0 reference names the n-th complex object of the stream; the
+        // decoder (and the AMF0 serializer) mark those with `AMF0_REFERENCE_ID_BASE + n`.
+        AmfValue::Reference(r) => {
+            if let Some(o) = object_map.get(&ObjectId(AMF0_REFERENCE_ID_BASE + i64::from(r.0))) {
+                (*o).into()
+            } else {
+                tracing::error!("AMF0 deserializer got a reference {r:?} to an unknown object");
+                Value::Undefined
+            }
         }
         AmfValue::AMF3(val) => deserialize_value_impl(activation, val, object_map)?,
         AmfValue::Unsupported => Value::Undefined,
@@ -732,10 +765,14 @@ pub fn deserialize_lso<'gc>(
 ) -> Result<Object<'gc>, Error<'gc>> {
     let obj = ScriptObject::new_object(activation.context);
 
+    // Timffle: one object map for the whole file: a reference in one property to an
+    // object stored by an earlier one (AMF0 reference table, AMF3 object table) resolves
+    // to that same object.
+    let mut object_map = BTreeMap::new();
     for child in &lso.body {
         obj.set_dynamic_property(
             AvmString::new_utf8(activation.gc(), &child.name),
-            deserialize_value(activation, child.value())?,
+            deserialize_value_impl(activation, child.value(), &mut object_map)?,
             activation.gc(),
         );
     }

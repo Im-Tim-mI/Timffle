@@ -50,5 +50,5 @@ cas length same 4 4
 // writeObject with a repeated object
 amf3 bytes 29
 amf3 identity true true true 1
-amf0 bytes 94
-amf0 identity false false false 1
+amf0 bytes 55
+amf0 identity true true true 1

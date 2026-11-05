@@ -66,11 +66,27 @@ fn read_type_marker(i: &[u8]) -> AMFResult<'_, TypeMarker> {
     ))
 }
 
+/// Timffle: AMF0 complex objects (anonymous/typed objects, ECMA and strict arrays) read by
+/// [`AMF0Decoder`] carry `ObjectId(AMF0_REFERENCE_ID_BASE + index)`, where `index` is their
+/// position in the AMF0 reference table (complex objects only, in order of occurrence, as
+/// the AMF0 specification 2.9 defines it), so that a later `Value::Reference(index)` can be
+/// resolved by the consumer; the offset keeps them apart from AMF3 ids (which count from 0)
+/// when AMF3 values are embedded in AMF0.
+pub const AMF0_REFERENCE_ID_BASE: i64 = 1 << 32;
+
 /// Handles decoding AMF0
 #[derive(Default)]
 pub struct AMF0Decoder {
     /// Cache of previously read values, that can be referenced later
+    ///
+    /// Every value read enters this cache (primitives too): Flash Player's AVM1 shared
+    /// object writer numbers references that way (see `shared_object_self_ref`), and
+    /// [`AMF0Decoder::as_reference`] serves the AVM1 reader with the same numbering.
     cache: Vec<Rc<Value>>,
+
+    /// Timffle: the number of complex objects read so far, the AMF0 specification's
+    /// reference-table index of the next one (see [`AMF0_REFERENCE_ID_BASE`]).
+    complex_count: i64,
 
     #[cfg(feature = "amf3")]
     amf3_decoder: amf3::read::AMF3Decoder,
@@ -85,28 +101,23 @@ impl AMF0Decoder {
 
     fn parse_element_ecma_array<'a>(&mut self, i: &'a [u8]) -> AMFResult<'a, Rc<Value>> {
         let (i, array_length) = be_u32(i)?;
+        let id = self.claim_reference_id(); // Timffle
         map(
             |i| self.parse_array_element(i),
-            move |elms: Vec<Element>| {
-                Rc::new(Value::ECMAArray(
-                    ObjectId::INVALID,
-                    Vec::new(),
-                    elms,
-                    array_length,
-                ))
-            },
+            move |elms: Vec<Element>| Rc::new(Value::ECMAArray(id, Vec::new(), elms, array_length)),
         )
         .parse(i)
     }
 
     fn parse_element_typed_object<'a>(&mut self, i: &'a [u8]) -> AMFResult<'a, Rc<Value>> {
         let (i, name) = parse_string(i)?;
+        let id = self.claim_reference_id(); // Timffle
 
         map(
             |i| self.parse_array_element(i),
             move |elms: Vec<Element>| {
                 Rc::new(Value::Object(
-                    ObjectId::INVALID,
+                    id,
                     elms,
                     Some(ClassDefinition::default_with_name(name.to_string())),
                 ))
@@ -116,8 +127,19 @@ impl AMF0Decoder {
     }
 
     fn parse_element_object<'a>(&mut self, i: &'a [u8]) -> AMFResult<'a, Rc<Value>> {
+        let id = self.claim_reference_id(); // Timffle
         let (i, v) = self.parse_array_element(i)?;
-        Ok((i, Rc::new(Value::Object(ObjectId::INVALID, v, None))))
+        Ok((i, Rc::new(Value::Object(id, v, None))))
+    }
+
+    /// Timffle: takes the next AMF0 reference-table index for a complex object that is
+    /// about to be read (the table is indexed by order of occurrence, parents before their
+    /// children, so a self-reference inside the object resolves) and returns the
+    /// `ObjectId` that marks it.
+    fn claim_reference_id(&mut self) -> ObjectId {
+        let id = ObjectId(AMF0_REFERENCE_ID_BASE + self.complex_count);
+        self.complex_count += 1;
+        id
     }
 
     #[cfg(fuzzing)]
@@ -139,11 +161,12 @@ impl AMF0Decoder {
             return Err(Err::Error(make_error(i, ErrorKind::TooLarge)));
         }
 
+        let id = self.claim_reference_id(); // Timffle
         // This must parse length elements
         let (i, elements) =
             many_m_n(length_usize, length_usize, |i| self.parse_single_element(i)).parse(i)?;
 
-        Ok((i, Rc::new(Value::StrictArray(ObjectId::INVALID, elements))))
+        Ok((i, Rc::new(Value::StrictArray(id, elements))))
     }
 
     fn parse_array_element<'a>(&mut self, i: &'a [u8]) -> AMFResult<'a, Vec<Element>> {

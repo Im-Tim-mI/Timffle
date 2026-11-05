@@ -10,7 +10,6 @@ use flash_lso::types::Lso;
 use gc_arena::{Collect, Gc};
 use ruffle_macros::istr;
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 
 #[derive(Default, Clone, Collect)]
 #[collect(require_static)]
@@ -90,7 +89,7 @@ fn deserialize_lso<'gc>(
         Some(activation.prototypes().object),
     );
 
-    let mut reference_cache = BTreeMap::default();
+    let mut reference_cache = Default::default(); // Timffle: ReferenceCache
 
     for child in &lso.body {
         obj.define_value(

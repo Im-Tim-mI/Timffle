@@ -1,6 +1,6 @@
 use crate::avm1::{Activation, Attribute, NativeObject, Object, Value};
 use crate::string::AvmString;
-use flash_lso::amf0::read::AMF0Decoder;
+use flash_lso::amf0::read::{AMF0_REFERENCE_ID_BASE, AMF0Decoder};
 use flash_lso::amf0::writer::{Amf0Writer, CacheKey, ObjWriter};
 use flash_lso::types::{ClassDefinition, Element, ObjectId, Reference, Value as AmfValue};
 use ruffle_macros::istr;
@@ -223,12 +223,51 @@ pub fn recursive_serialize<'gc>(
     }
 }
 
+/// Timffle: the objects deserialized so far, for resolving AMF0 references.
+///
+/// `by_reference` is keyed by the decoder's own numbering of the values it read (every
+/// value counts, the way Flash Player's AVM1 shared object writer numbers them, see
+/// `shared_object_self_ref`); `by_id` is keyed by the `ObjectId` the value carries, which
+/// for AMF0 complex objects is their index in the specification's reference table (complex
+/// objects only), the numbering a value tree handed over in memory by the AVM2 serializer
+/// (a `LocalConnection` call from AVM2) uses.
+#[derive(Default)]
+pub struct ReferenceCache<'gc> {
+    by_reference: BTreeMap<Reference, Value<'gc>>,
+    by_id: BTreeMap<ObjectId, Value<'gc>>,
+}
+
+impl<'gc> ReferenceCache<'gc> {
+    fn insert(&mut self, lso: &AMF0Decoder, val: &AmfValue, v: Value<'gc>) {
+        if let Some(reference) = lso.as_reference(val) {
+            self.by_reference.insert(reference, v);
+        }
+        if let AmfValue::Object(id, ..)
+        | AmfValue::ECMAArray(id, ..)
+        | AmfValue::StrictArray(id, ..) = val
+            && *id != ObjectId::INVALID
+        {
+            self.by_id.insert(*id, v);
+        }
+    }
+
+    fn get(&self, reference: Reference) -> Option<Value<'gc>> {
+        self.by_reference
+            .get(&reference)
+            .or_else(|| {
+                self.by_id
+                    .get(&ObjectId(AMF0_REFERENCE_ID_BASE + i64::from(reference.0)))
+            })
+            .copied()
+    }
+}
+
 /// Deserialize a AmfValue to a Value
 pub fn deserialize_value<'gc>(
     activation: &mut Activation<'_, 'gc>,
     val: &AmfValue,
     lso: &AMF0Decoder,
-    reference_cache: &mut BTreeMap<Reference, Value<'gc>>,
+    reference_cache: &mut ReferenceCache<'gc>,
 ) -> Value<'gc> {
     match val {
         AmfValue::Null => Value::Null,
@@ -244,9 +283,7 @@ pub fn deserialize_value<'gc>(
                 let v: Value<'gc> = obj.into();
 
                 // This should always be valid, but lets be sure
-                if let Some(reference) = lso.as_reference(val) {
-                    reference_cache.insert(reference, v);
-                }
+                reference_cache.insert(lso, val, v);
 
                 for entry in associative {
                     let value = deserialize_value(activation, entry.value(), lso, reference_cache);
@@ -277,9 +314,7 @@ pub fn deserialize_value<'gc>(
                 .expect("AVM1 Array constructor should return an object");
 
             let v: Value<'gc> = obj.into();
-            if let Some(reference) = lso.as_reference(val) {
-                reference_cache.insert(reference, v);
-            }
+            reference_cache.insert(lso, val, v);
 
             for (i, item) in values.iter().enumerate() {
                 let value = deserialize_value(activation, item, lso, reference_cache);
@@ -299,9 +334,7 @@ pub fn deserialize_value<'gc>(
             let v: Value<'gc> = obj.into();
 
             // This should always be valid, but lets be sure
-            if let Some(reference) = lso.as_reference(val) {
-                reference_cache.insert(reference, v);
-            }
+            reference_cache.insert(lso, val, v);
 
             for entry in elements {
                 let value = deserialize_value(activation, entry.value(), lso, reference_cache);
@@ -335,8 +368,7 @@ pub fn deserialize_value<'gc>(
         AmfValue::Reference(x) => {
             // This should always be a valid reference, but a "bad" file could create an invalid one
             // In that case we will just assume undefined
-            let val = reference_cache.get(x).unwrap_or(&Value::Undefined);
-            *val
+            reference_cache.get(*x).unwrap_or(Value::Undefined)
         }
         _ => Value::Undefined,
     }

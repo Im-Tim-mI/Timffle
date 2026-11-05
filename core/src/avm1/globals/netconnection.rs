@@ -14,7 +14,6 @@ use gc_arena::{Collect, Gc};
 use ruffle_macros::istr;
 use ruffle_wstr::WStr;
 use std::cell::Cell;
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 #[derive(Clone, Debug, Collect)]
@@ -118,7 +117,7 @@ impl<'gc> NetConnection<'gc> {
             ResponderCallback::Status => istr!("onStatus"),
         };
         let reader = flash_lso::read::Reader::default();
-        let mut reference_cache = BTreeMap::default();
+        let mut reference_cache = Default::default(); // Timffle: ReferenceCache
         let value = deserialize_value(
             &mut activation,
             message,
