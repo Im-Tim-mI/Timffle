@@ -147,7 +147,7 @@
     "generateFilterRect()"
    ],
    "status": "partial",
-   "note": "batch 7: generateFilterRect real (Flash rounding/clamp/per-filter growth, blur formula from D53/D54 probes); encode real for PNG/JPEG with Flash error codes. Remaining stubs: encode JPEGXREncoderOptions (needs jxrlib encoder FFI; crate only decodes) and applyFilter ShaderFilter with non-standard sourceRect (needs a real-Flash pixel golden)."
+   "note": "batch 7: generateFilterRect real (Flash rounding/clamp/per-filter growth, blur formula from D53/D54 probes); encode real for PNG/JPEG with Flash error codes. Remaining stubs: encode JPEGXREncoderOptions (needs jxrlib encoder FFI; crate only decodes) and applyFilter ShaderFilter with non-standard sourceRect (needs a real-Flash pixel golden). | 2026-11-05 round 2: encode(JPEGXREncoderOptions) BLOCKED (rule 9): no JPEG XR encoder exists in the Rust ecosystem (jpegxr crate decodes only), jxrlib would need a C FFI build for wasm too; writing a real JPEG XR encoder is a separate project. applyFilter(ShaderFilter sub-rect) assigned to the graphics2 agent."
   },
   {
    "class": "flash.display.DisplayObject",
