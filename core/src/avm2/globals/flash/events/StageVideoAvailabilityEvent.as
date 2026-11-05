@@ -3,7 +3,11 @@ package flash.events {
     public class StageVideoAvailabilityEvent extends Event {
         public static const STAGE_VIDEO_AVAILABILITY:String = "stageVideoAvailability";
 
+        // Timffle: filled in natively by the Stage when it dispatches the
+        // event (null on an event made by ActionScript, as in Flash).
+        [Ruffle(NativeAccessible)]
         public const driver:String;
+        [Ruffle(NativeAccessible)]
         public const reason:String;
 
         private var _availability:String;

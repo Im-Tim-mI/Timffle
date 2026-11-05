@@ -5,6 +5,7 @@ use crate::avm2::activation::Activation;
 use crate::avm2::error::{make_error_2008, make_error_3707};
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::flash::system::capabilities::screen_resolution;
+use crate::avm2::globals::slots::flash_events_stage_video_availability_event as availability_slots; // Timffle
 use crate::avm2::globals::slots::flash_geom_rectangle as rectangle_slots;
 use crate::avm2::object::{ScriptObject, TObject, VectorObject};
 use crate::avm2::parameters::ParametersExt;
@@ -529,6 +530,20 @@ pub fn create_stage_videos<'gc>(
         .collect();
     let storage = VectorStorage::from_values(videos, false, Some(class.inner_class_definition()));
     Ok(VectorObject::from_vector(storage, activation).into())
+}
+
+/// Timffle: fill in the read-only `reason` and `driver` of a
+/// `StageVideoAvailabilityEvent` the stage is about to dispatch (its
+/// constructor only takes the availability, as in Flash).
+pub fn fill_stage_video_availability<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let event = args.get_object(activation, 0, "event")?;
+    event.set_slot(availability_slots::REASON, args.get_value(1), activation)?;
+    event.set_slot(availability_slots::DRIVER, args.get_value(2), activation)?;
+    Ok(Value::Undefined)
 }
 
 /// Implement `quality`'s getter

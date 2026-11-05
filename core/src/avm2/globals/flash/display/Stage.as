@@ -13,11 +13,15 @@ package flash.display {
     import flash.accessibility.AccessibilityProperties;
     import flash.errors.IllegalOperationError;
     import flash.events.Event;
+    import flash.events.StageVideoAvailabilityEvent;
     import flash.geom.Rectangle;
     import flash.geom.Transform;
     import flash.media.StageVideo;
+    import flash.media.StageVideoAvailability;
+    import flash.media.StageVideoAvailabilityReason;
     import flash.text.TextSnapshot;
     import flash.ui.ContextMenu;
+    import flash.utils.setTimeout;
 
     [Ruffle(Abstract)]
     public class Stage extends DisplayObjectContainer {
@@ -54,7 +58,26 @@ package flash.display {
             useWeakReference:Boolean = false
         ):void {
             super.addEventListener(type, listener, useCapture, priority, useWeakReference);
+            // Timffle: Flash Player reports the stage video availability to a
+            // newly registered listener on the following frame. This player
+            // has no hardware video surface, so the answer is always
+            // `unavailable` with reason `StageVideoAvailabilityReason.UNAVAILABLE`
+            // (no driver to name).
+            if (type == StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY) {
+                var self:Stage = this;
+                setTimeout(function():void {
+                    var event:StageVideoAvailabilityEvent = new StageVideoAvailabilityEvent(
+                        StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY, false, false,
+                        StageVideoAvailability.UNAVAILABLE
+                    );
+                    self.fillStageVideoAvailability(event, StageVideoAvailabilityReason.UNAVAILABLE, null);
+                    self.dispatchEvent(event);
+                }, 0);
+            }
         }
+
+        // Timffle: sets the event's read-only `reason` and `driver`.
+        private native function fillStageVideoAvailability(event:StageVideoAvailabilityEvent, reason:String, driver:String):void;
 
         override public function set alpha(value:Number):void {
             Error.throwError(IllegalOperationError, 2071);
