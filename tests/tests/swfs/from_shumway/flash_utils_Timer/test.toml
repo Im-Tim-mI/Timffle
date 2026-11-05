@@ -1,2 +1,6 @@
-num_ticks = 3
+# Timffle: timers run before the tick's frames (26335), so the first frame
+# (where the 200 ms Timer starts) runs at player time 83 ms; Timer counts
+# from start(), the frames are 83 ms apart, so it fires on the 4th tick
+# (249 ms after start), as the 3rd one did when timers ran after frames.
+num_ticks = 4
 sleep_to_meet_frame_rate = true

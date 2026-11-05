@@ -48,6 +48,7 @@
 - **`from_gnash/misc-ming.all/NetStream-SquareTest` 已知差異檔更新**：NetStream 的 `NetStream.Buffer.Full` 改成緩衝滿 `bufferTime` 才送（e3ab43250）之後，AVM1 這支測試的 `Buffer.Full` 移到 `Play.Start` 之後，和真 Flash 錄的 `output.txt` 一樣（之前在 `Play.Start` 前面）；`output.ruffle.txt` 只有這 3 行換位置。
 - **TextLine 的原點改成 roman 基線（真 Flash 32 量過）**：`getBaselinePosition` 改成真值之後，TLF 把行放在基線上，而 TextLine 還是從欄位左上角畫，`visual/definefont4` 的字整個低了一行；現在備援欄位往左上移動它的文字起點（2 px 邊距＋ascent）再畫，`getBounds`／atom 座標一起換算。真 Flash 在 Wine 下的畫面：墨跡列 31–71／84–117、欄 20–395，Ruffle 現在 31–69／84–117、20–394；上游由 Ruffle 畫的黃金圖是 33–73／87–120、22–396（低 2–3 px、右 2 px），所以這支改成 known failure（黃金圖不動，`output.ruffle.png` 是現在的畫面），等用 Flash 重錄。
 - **三支已知失敗測試現在與真 Flash 相同**：`avm2/matrix3d_recompose_edge_cases`、`from_shumway/…/matrix3d/TransformBasics`、`from_shumway/flash_net_classes` 的輸出已與 Flash 錄的 `output.txt` 逐行相同，取消 `known_failure` 並刪除 `output.ruffle.txt`。
+- **`from_shumway/flash_utils_Timer` 改跑 4 個 tick**：計時器在影格之前跑（26335）後，第一個影格在播放器時間 83 ms 才跑；`Timer` 本來就從 `start()` 起算（建立前的時間不算進去），200 ms 的計時器在 start 後 249 ms 的第 4 個 tick 觸發，與以前第 3 個 tick 的相對時間相同，Flash 的 `output.txt` 不變。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 
