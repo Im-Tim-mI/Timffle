@@ -1225,7 +1225,8 @@
     "useRedirectedUrl"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: load/loadManifest/loadWithBackgroundManifest and all timeline ops PLAYBACK_NOT_ENABLED without touching the network; queries null/0; config setters stored; null args #2007."
   },
   {
    "class": "flash.media.AVSource",
@@ -1234,7 +1235,8 @@
     "dispose()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: dispose() idempotent."
   },
   {
    "class": "flash.media.AVStream",
@@ -1271,7 +1273,8 @@
     "volume"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: no authorization: transport calls AVResult.PLAYBACK_NOT_ENABLED, resume false, playState UNINITIALIZED, counters 0, decoder/render undefined, settings stored, null source #2007. Codes inferred (reference pages gone)."
   },
   {
    "class": "flash.media.AVURLLoader",
@@ -1284,7 +1287,8 @@
     "stream"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: new class; load() #2037 like the measured un-enabled AVLoader.load(), cookieHeader stored, stream null, close/addEventListener as URLLoader."
   },
   {
    "class": "flash.media.AVURLStream",
@@ -1294,7 +1298,8 @@
     "load()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: new class; load() #2037, cookieHeader stored."
   },
   {
    "class": "flash.media.AudioDeviceManager",
@@ -1306,7 +1311,8 @@
     "static isSupported"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: new class; isSupported false, singleton, deviceNames [], selectedDeviceIndex -1, setter #2176 outside a user action (in_user_interaction)."
   },
   {
    "class": "flash.media.Camera",
@@ -1342,7 +1348,8 @@
     "static names",
     "width"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: no capture pipeline: isSupported false, names [], getCamera() null (Flash 32 measured), ctor #2012; instance members hold the reference defaults with clamping; position \"unknown\"; setCursor stored; copy methods validate (#2007/#2015) and never fake frames."
   },
   {
    "class": "flash.media.Microphone",
@@ -1373,7 +1380,8 @@
     "static names",
     "useEchoSuppression"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: isSupported false, names [], getMicrophone()/getEnhancedMicrophone() null, ctor #2012; defaults per reference (NellyMoser 8 kHz, gain 50, silence 10/2000, Speex 6/2/-30), codec #2008, rate snapped to supported, real SoundTransform."
   },
   {
    "class": "flash.media.MicrophoneEnhancedOptions",
@@ -1382,7 +1390,8 @@
     "autoGain"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: autoGain (false) plus the documented defaults."
   },
   {
    "class": "flash.media.StageVideo",
@@ -1400,7 +1409,8 @@
     "zoom"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch media: extends EventDispatcher; viewPort/zoom/pan/depth stored with reference validation (RangeError text, last valid kept), videoWidth/Height 0, colorSpaces empty, attachNetStream/attachAVStream -> renderState unavailable next frame, Stage sends stageVideoAvailability unavailable to new listeners next frame."
   },
   {
    "class": "flash.net.GroupSpecifier",
@@ -1731,7 +1741,7 @@
    ],
    "stubbed": [],
    "status": "partial",
-   "note": "batch 10: class added (ctor #2012 like Flash; enableAVLoader/enableDiskCache/enableHLSPlayback false: no authorization server). createApplicationInstaller/enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback need the ApplicationInstaller/AVURLLoader/AVURLStream/MediaPlayer classes (group 5)."
+   "note": "batch 10: class added (ctor #2012 like Flash; enableAVLoader/enableDiskCache/enableHLSPlayback false: no authorization server). createApplicationInstaller/enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback need the ApplicationInstaller/AVURLLoader/AVURLStream/MediaPlayer classes (group 5). | batch media: enableAVURLLoader/enableAVURLStream/enableMediaPlayerHLSPlayback false (MediaPlayer param typed Object: no public playerglobal defines MediaPlayer). createApplicationInstaller still needs ApplicationInstaller (group 5)."
   },
   {
    "class": "flash.system.AuthorizedFeaturesLoader",
