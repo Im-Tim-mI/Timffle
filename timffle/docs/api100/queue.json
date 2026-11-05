@@ -379,7 +379,8 @@
    "stubbed": [
     "sendToURL()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: sendToURL real (fire-and-forget fetch like URLLoader; #2007 null request/url, file: from a network SWF #2148, unknown scheme sends nothing, HTTP failures silent)."
   },
   {
    "class": "flash.net.FileReference",
@@ -390,7 +391,8 @@
     "download()",
     "upload()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: cancel (generation counter stops a running download/upload from reporting, no cancel event), download (save dialog -> select/cancel, then open/progress/complete or httpStatus+ioError #2032; #2007/#2041), upload (multipart/form-data POST in Flash layout: Filename, URLVariables fields, file part, Upload=Submit Query; open/progress/complete/uploadCompleteData or httpStatus+ioError #2038; error order #2007/#2007/#2085/#2037/#2007)."
   },
   {
    "class": "flash.net.FileReferenceList",
@@ -399,7 +401,8 @@
    "stubbed": [
     "browse()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: browse real multi-file dialog (fileList of FileReferences + select, or cancel; filters validated #2097, dialog already open #2041)."
   },
   {
    "class": "flash.net.NetConnection",
@@ -408,7 +411,8 @@
    "stubbed": [
     "connect()"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: connect with RTMP/RTMFP/unknown commands = Flash on an unreachable server (uri kept, RTMP family gets async NetConnection.Connect.Failed, unknown scheme/bare word silent, protocol/call #2126, empty command #2004)."
   },
   {
    "class": "flash.net.NetMonitor",
@@ -417,7 +421,8 @@
     "listStreams()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: new class; listStreams() = new non-fixed Vector of all live NetStreams (also closed/disposed), netStreamCreate (NetMonitorEvent) sent synchronously from the NetStream constructor to every live monitor."
   },
   {
    "class": "flash.net.ObjectEncoding",
@@ -426,7 +431,8 @@
    "stubbed": [
     "static dynamicPropertyWriter"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: dynamicPropertyWriter real (consulted by the AMF serializer for dynamic objects/dynamic class instances, not Arrays/sealed; new flash.net.DynamicPropertyOutput; writer order, duplicates kept, functions as undefined, late writes ignored, thrown errors abort writeObject/flush/send/call)."
   },
   {
    "class": "flash.net.SecureSocket",
@@ -439,7 +445,8 @@
     "static isSupported"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: new class, Flash-without-feature (no TLS stack behind Socket): isSupported false, constructor/connect/addBinaryChainBuildingCertificate IllegalOperationError #2014 (null/empty certificate #2004 first), serverCertificate null, serverCertificateStatus \"unknown\"."
   },
   {
    "class": "flash.net.SharedObject",
@@ -470,7 +477,8 @@
    "stubbed": [
     "bytesPending"
    ],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: bytesPending = unflushed write buffer (#2002 when not open)."
   },
   {
    "class": "flash.net.URLRequest",
@@ -479,7 +487,8 @@
     "useRedirectedURL()"
    ],
    "stubbed": [],
-   "status": "todo"
+   "status": "done",
+   "note": "batch 11: useRedirectedURL validates like Flash 32 (null url #2007, null source ignored, never-loaded source #2037, loaded source leaves url unchanged: the player records no redirected URL)."
   },
   {
    "class": "flash.profiler",
