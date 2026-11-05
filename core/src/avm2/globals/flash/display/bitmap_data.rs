@@ -1952,7 +1952,8 @@ fn new_rectangle_from_pixels<'gc>(
 /// JPEG drops the alpha channel; JPEG XR checks quantization (above 100: `RangeError #2006`),
 /// colorSpace (null: `TypeError #2007`, not one of the four constants: `ArgumentError #2004`) and
 /// trimFlexBits (above 15: `Error #3699`) in that order, after the rectangle, and writes 24bppBGR
-/// or, for a transparent bitmap, 32bppPBGRA with an alpha plane; the bytes go to the given
+/// or, for a transparent bitmap, 32bppPBGRA with an alpha plane, with chroma 4:4:4, 4:2:2 or
+/// 4:2:0 as colorSpace says (D66JpegXrSub.hx); the bytes go to the given
 /// ByteArray at its current position (the same object comes back, position at the end of the
 /// data) or to a new big-endian ByteArray.
 pub fn encode_internal<'gc>(
@@ -2001,15 +2002,17 @@ pub fn encode_internal<'gc>(
         let Some(color_space) = args.try_get_string(4) else {
             return Err(make_error_2007(activation, "colorSpace"));
         };
-        // "auto" is 4:4:4 in Flash. 4:2:0 and 4:2:2 are encoded as 4:4:4 too (the encoder has
-        // no chroma subsampling): valid files, bigger than Flash's, at least as good.
-        if !(&color_space == b"auto"
-            || &color_space == b"4:4:4"
-            || &color_space == b"4:2:2"
-            || &color_space == b"4:2:0")
-        {
+        // "auto" is 4:4:4 in Flash (D63JpegXr.hx); 4:2:0 and 4:2:2 subsample the chroma, even
+        // with quantization 0 (D66JpegXrSub.hx).
+        let chroma = if &color_space == b"auto" || &color_space == b"4:4:4" {
+            jpegxr_encode::ChromaFormat::Yuv444
+        } else if &color_space == b"4:2:2" {
+            jpegxr_encode::ChromaFormat::Yuv422
+        } else if &color_space == b"4:2:0" {
+            jpegxr_encode::ChromaFormat::Yuv420
+        } else {
             return Err(make_error_2004(activation, Error2004Type::ArgumentError));
-        }
+        };
         let trim_flex_bits = args.get_u32(5);
         if trim_flex_bits > 15 {
             return Err(make_error_3699(activation));
@@ -2032,6 +2035,7 @@ pub fn encode_internal<'gc>(
             transparent,
             jpegxr_encode::quantization_to_qp_index(param),
             trim_flex_bits as u8,
+            chroma,
         );
         return write_encoded(activation, &encoded, byte_array);
     }

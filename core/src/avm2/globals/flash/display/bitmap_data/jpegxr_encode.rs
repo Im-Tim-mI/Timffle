@@ -11,15 +11,20 @@
 //! - 24bppBGR for opaque bitmaps, 32bppPBGRA (premultiplied, the bitmap's own pixel values) with
 //!   an interleaved alpha plane for transparent ones;
 //! - codestream version 1.9, one tile, spatial order, no index table, no overlap filter, no
-//!   windowing, internal YUV 4:4:4 (Y_ONLY for the alpha plane), all subbands, frame-uniform
-//!   quantisation (QP index 0 = lossless);
+//!   windowing, internal YUV 4:4:4, 4:2:2 or 4:2:0 (`colorSpace`; Y_ONLY for the alpha plane),
+//!   all subbands, frame-uniform quantisation (QP index 0 = lossless for 4:4:4);
+//! - for 4:2:2 and 4:2:0 jxrlib's chroma downsampling filter (1 4 6 4 1)/16 with symmetric
+//!   edges, and always the scaled arithmetic, even for quantization 0 (D66JpegXrSub.hx: Flash
+//!   subsamples there too, so 4:2:0/4:2:2 are never lossless);
 //! - `trimFlexBits` as the codestream's TRIM_FLEXBITS, for opaque bitmaps only (Flash ignores it
 //!   when there is an alpha plane).
 //!
 //! The coding itself (colour conversion, the two-stage lapped transform without overlap,
 //! quantisation, DC/LP/AC prediction, CBP prediction, adaptive scan orders, adaptive VLC tables
 //! and the bit-plane (flexbit) refinement) follows the reference software semantics step by step,
-//! so jxrlib decodes it bit-exactly: QP index 0 round-trips every pixel.
+//! so jxrlib decodes it bit-exactly: QP index 0 round-trips every pixel in 4:4:4. Flash's
+//! encoder is jxrlib with these settings; the files are byte-identical to Flash's in all three
+//! chroma formats (except for the zero bytes Flash appends after the codestream).
 
 // The loops index several parallel tables the way the reference software does.
 #![allow(clippy::needless_range_loop)]
@@ -95,9 +100,23 @@ const IDX_CC: [[u8; 16]; 16] = [
         0xfc,
     ],
 ];
+/// Position of chroma pixel (row, column) of a 4:2:0 macroblock (8x8) in its 64-entry buffer.
+/// 4:2:2 chroma (8 wide, 16 high) uses `IDX_CC` columns 0..8 in a 128-entry buffer.
+const IDX_CC_420: [[u8; 8]; 8] = [
+    [0x00, 0x01, 0x05, 0x04, 0x20, 0x21, 0x25, 0x24],
+    [0x02, 0x03, 0x07, 0x06, 0x22, 0x23, 0x27, 0x26],
+    [0x0a, 0x0b, 0x0f, 0x0e, 0x2a, 0x2b, 0x2f, 0x2e],
+    [0x08, 0x09, 0x0d, 0x0c, 0x28, 0x29, 0x2d, 0x2c],
+    [0x10, 0x11, 0x15, 0x14, 0x30, 0x31, 0x35, 0x34],
+    [0x12, 0x13, 0x17, 0x16, 0x32, 0x33, 0x37, 0x36],
+    [0x1a, 0x1b, 0x1f, 0x1e, 0x3a, 0x3b, 0x3f, 0x3e],
+    [0x18, 0x19, 0x1d, 0x1c, 0x38, 0x39, 0x3d, 0x3c],
+];
 const BLK_OFFSET: [usize; 16] = [
     0, 64, 16, 80, 128, 192, 144, 208, 32, 96, 48, 112, 160, 224, 176, 240,
 ];
+const BLK_OFFSET_UV_420: [usize; 4] = [0, 32, 16, 48];
+const BLK_OFFSET_UV_422: [usize; 8] = [0, 64, 16, 80, 32, 96, 48, 112];
 const DCT_INDEX_AC: [usize; 16] = [0, 5, 1, 6, 10, 12, 8, 14, 2, 4, 3, 7, 9, 13, 11, 15];
 const DCT_INDEX_DC: [usize; 16] = [
     0, 128, 64, 208, 32, 240, 48, 224, 16, 192, 80, 144, 112, 176, 96, 160,
@@ -221,6 +240,15 @@ pub fn quantization_to_qp_index(quantization: u32) -> u8 {
     }
 }
 
+/// Internal chroma format of the image plane (`JPEGXREncoderOptions.colorSpace`; "auto" is
+/// 4:4:4 in Flash).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ChromaFormat {
+    Yuv420 = 1,
+    Yuv422 = 2,
+    Yuv444 = 3,
+}
+
 /// Encodes `width` x `height` pixels (row-major `[r, g, b, a]`, premultiplied when `alpha`) as a
 /// JPEG XR file. With `alpha` false the alpha bytes are ignored.
 pub fn encode(
@@ -230,9 +258,18 @@ pub fn encode(
     alpha: bool,
     qp_index: u8,
     trim_flex_bits: u8,
+    chroma: ChromaFormat,
 ) -> Vec<u8> {
     assert!(width > 0 && height > 0 && pixels.len() == (width * height) as usize);
-    let codestream = encode_codestream(width, height, pixels, alpha, qp_index, trim_flex_bits);
+    let codestream = encode_codestream(
+        width,
+        height,
+        pixels,
+        alpha,
+        qp_index,
+        trim_flex_bits,
+        chroma,
+    );
 
     // Container, laid out like Flash's: header, 5-entry IFD, pixel format GUID, codestream.
     const IFD_OFFSET: u32 = 8;
@@ -462,8 +499,10 @@ struct Model {
 }
 
 impl Model {
-    /// UpdateModelMB (4:4:4 and Y_ONLY).
-    fn update(&mut self, y_only: bool, channels: usize, mut mean: [i32; 2]) {
+    /// UpdateModelMB.
+    fn update(&mut self, y_only: bool, cf: ChromaFormat, channels: usize, mut mean: [i32; 2]) {
+        /// Chroma weights of 4:2:0 and 4:2:2 (DC, LP, AC).
+        const WEIGHT2: [[i32; 3]; 2] = [[120, 37, 2], [120, 18, 1]];
         const MODELWEIGHT: i32 = 70;
         const WEIGHT0: [i32; 3] = [240, 12, 1];
         const WEIGHT1: [[i32; 16]; 3] = [
@@ -475,9 +514,15 @@ impl Model {
         ];
         let band = self.band as usize;
         mean[0] *= WEIGHT0[band];
-        mean[1] *= WEIGHT1[band][channels - 1];
-        if self.band == Band::Ac {
-            mean[1] >>= 4;
+        match cf {
+            ChromaFormat::Yuv420 if !y_only => mean[1] *= WEIGHT2[0][band],
+            ChromaFormat::Yuv422 if !y_only => mean[1] *= WEIGHT2[1][band],
+            _ => {
+                mean[1] *= WEIGHT1[band][channels - 1];
+                if self.band == Band::Ac {
+                    mean[1] >>= 4;
+                }
+            }
         }
         for j in 0..2 {
             let mut ms = self.flc_state[j];
@@ -778,6 +823,34 @@ fn dct4x4_second_stage(p: &mut [i32]) {
     fwd_odd(p, 32, 48, 96, 112);
 }
 
+/// strDCT2x2dnEnc: the 2x2 DCT with pre-scaling (scaled arithmetic, subsampled chroma).
+fn dct2x2dn_enc(p: &mut [i32], ia: usize, ib: usize, ic: usize, id: usize) {
+    for i in [ia, ib, ic, id] {
+        p[i] >>= 1;
+    }
+    dct2x2dn(p, ia, ib, ic, id);
+}
+
+/// Both transform stages of a 4:2:0 (4 blocks) or 4:2:2 (8 blocks) chroma macroblock.
+fn transform_chroma_subsampled(p: &mut [i32; 256], cf: ChromaFormat, scaled: bool) {
+    let dct = if scaled { dct2x2dn_enc } else { dct2x2dn };
+    if cf == ChromaFormat::Yuv420 {
+        for block in 0..4 {
+            dct4x4_stage1(p, block * 16);
+        }
+        dct(p, 0, 32, 16, 48);
+    } else {
+        for block in 0..8 {
+            dct4x4_stage1(p, block * 16);
+        }
+        dct(p, 0, 64, 16, 80);
+        dct(p, 32, 96, 48, 112);
+        // 1D lossless Haar transform of the two DC values
+        p[32] -= p[0];
+        p[0] += (p[32] + 1) >> 1;
+    }
+}
+
 fn transform_macroblock(p: &mut [i32; 256], normalize_chroma: bool) {
     for block in 0..16 {
         dct4x4_stage1(p, block * 16);
@@ -1011,7 +1084,7 @@ fn adaptive_scan(
 }
 
 // --------------------------------------------------------------------------------------------
-// Image plane (primary YUV 4:4:4 or the interleaved Y_ONLY alpha plane)
+// Image plane (primary YUV 4:4:4, 4:2:2 or 4:2:0, or the interleaved Y_ONLY alpha plane)
 // --------------------------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Default)]
@@ -1031,6 +1104,8 @@ struct Position {
 
 struct Plane {
     y_only: bool,
+    /// Internal chroma format (4:4:4 for the alpha plane).
+    cf: ChromaFormat,
     channels: usize,
     scaled: bool,
     quant_dc: [Quantizer; 3],
@@ -1046,9 +1121,73 @@ struct Plane {
     orientation: i32,
 }
 
+/// PackCBP420 / PackCBP422: interleaves the chroma block patterns with the luma ones, one group
+/// per 8x8 luma quadrant.
+fn pack_cbp(cf: ChromaFormat, y: i32, u: i32, v: i32) -> u32 {
+    let (y, u, v) = (y as u32, u as u32, v as u32);
+    match cf {
+        ChromaFormat::Yuv420 => {
+            (y & 0xf)
+                + ((u & 1) << 4)
+                + ((v & 1) << 5)
+                + ((y & 0xf0) << 2)
+                + ((u & 2) << 9)
+                + ((v & 2) << 10)
+                + ((y & 0xf00) << 4)
+                + ((u & 4) << 14)
+                + ((v & 4) << 15)
+                + ((y & 0xf000) << 6)
+                + ((u & 8) << 19)
+                + ((v & 8) << 20)
+        }
+        ChromaFormat::Yuv422 => {
+            (y & 0xf)
+                + ((u & 1) << 4)
+                + ((u & 4) << 3)
+                + ((v & 1) << 6)
+                + ((v & 4) << 5)
+                + ((y & 0xf0) << 4)
+                + ((u & 2) << 11)
+                + ((u & 8) << 10)
+                + ((v & 2) << 13)
+                + ((v & 8) << 12)
+                + ((y & 0xf00) << 8)
+                + ((u & 16) << 16)
+                + ((u & 64) << 15)
+                + ((v & 16) << 18)
+                + ((v & 64) << 17)
+                + ((y & 0xf000) << 12)
+                + ((u & 32) << 23)
+                + ((u & 128) << 22)
+                + ((v & 32) << 25)
+                + ((v & 128) << 24)
+        }
+        ChromaFormat::Yuv444 => y,
+    }
+}
+
+fn saturate32(x: i32) -> i32 {
+    if (x + 16) as u32 >= 32 {
+        if x < 0 { -16 } else { 15 }
+    } else {
+        x
+    }
+}
+
 impl Plane {
-    fn new(y_only: bool, mb_width: usize, qp_index: u8, trim_flex_bits: i32) -> Self {
+    fn new(
+        y_only: bool,
+        cf: ChromaFormat,
+        mb_width: usize,
+        qp_index: u8,
+        trim_flex_bits: i32,
+    ) -> Self {
         let channels = if y_only { 1 } else { 3 };
+        // bScaledArith: only lossless without a change of chroma resolution is unscaled. The
+        // alpha plane follows the image plane here (D66JpegXrSub.hx: Flash's 4:2:x alpha plane
+        // with quantization 0 is scaled too).
+        let scaled = qp_index != 0 || cf != ChromaFormat::Yuv444;
+        let cf = if y_only { ChromaFormat::Yuv444 } else { cf };
         // DC and LP chroma quantisers use one bit less of shift (formatQuantizer bShiftedUV).
         let q = |ch: usize, uv_shifted: bool, dc: bool| {
             let shift = if ch > 0 && uv_shifted { 0 } else { 1 };
@@ -1056,8 +1195,9 @@ impl Plane {
         };
         Self {
             y_only,
+            cf,
             channels,
-            scaled: qp_index != 0,
+            scaled,
             quant_dc: [q(0, true, true), q(1, true, true), q(2, true, true)],
             quant_lp: [q(0, true, false), q(1, true, false), q(2, true, false)],
             quant_hp: [q(0, false, false), q(1, false, false), q(2, false, false)],
@@ -1072,8 +1212,23 @@ impl Plane {
         }
     }
 
+    /// 4:2:0 or 4:2:2 (chroma planes with 4 or 8 blocks).
+    fn subsampled(&self) -> bool {
+        self.cf != ChromaFormat::Yuv444
+    }
+
+    /// The 4x4 blocks of channel `ch` (offsets in its macroblock buffer).
+    fn block_offsets(&self, ch: usize) -> &'static [usize] {
+        match (ch > 0, self.cf) {
+            (true, ChromaFormat::Yuv420) => &BLK_OFFSET_UV_420,
+            (true, ChromaFormat::Yuv422) => &BLK_OFFSET_UV_422,
+            _ => &BLK_OFFSET,
+        }
+    }
+
     fn write_header(&self, w: &mut BitWriter, qp_index: u8) {
-        w.put(if self.y_only { 0 } else { 3 }, 3); // internal colour format
+        // internal colour format: Y_ONLY 0, YUV_420 1, YUV_422 2, YUV_444 3
+        w.put(if self.y_only { 0 } else { self.cf as u32 }, 3);
         w.put(self.scaled as u32, 1);
         w.put(0, 4); // all subbands
         if !self.y_only {
@@ -1108,7 +1263,11 @@ impl Plane {
 
     fn encode_macroblock(&mut self, w: &mut BitWriter, pos: Position) {
         for ch in 0..self.channels {
-            transform_macroblock(&mut self.mb[ch], self.scaled && ch > 0);
+            if ch > 0 && self.subsampled() {
+                transform_chroma_subsampled(&mut self.mb[ch], self.cf, self.scaled);
+            } else {
+                transform_macroblock(&mut self.mb[ch], self.scaled && ch > 0);
+            }
         }
         self.encode_dc(w, pos);
         self.encode_lowpass(w, pos);
@@ -1117,8 +1276,9 @@ impl Plane {
 
     fn quantize(&mut self) {
         for ch in 0..self.channels {
+            let offsets = self.block_offsets(ch);
             let p = &mut self.mb[ch];
-            for (j, &off) in BLK_OFFSET.iter().enumerate() {
+            for (j, &off) in offsets.iter().enumerate() {
                 p[off] = if j == 0 {
                     self.quant_dc[ch].quantize(p[off])
                 } else {
@@ -1128,8 +1288,14 @@ impl Plane {
                     p[off + i] = self.quant_hp[ch].quantize(p[off + i]);
                 }
             }
-            for i in 0..16 {
-                self.block_dc[ch][i] = p[DCT_INDEX_DC[i]];
+            if offsets.len() < 16 {
+                for (i, &off) in offsets.iter().enumerate() {
+                    self.block_dc[ch][i] = p[off];
+                }
+            } else {
+                for i in 0..16 {
+                    self.block_dc[ch][i] = p[DCT_INDEX_DC[i]];
+                }
             }
         }
     }
@@ -1157,7 +1323,15 @@ impl Plane {
                 };
                 let (uh, uv) = c(1);
                 let (vh, vv) = c(2);
-                ((tl - l).abs() * 2 + uh + vh, (tl - t).abs() * 2 + uv + vv)
+                let scale = match self.cf {
+                    ChromaFormat::Yuv420 => 8,
+                    ChromaFormat::Yuv422 => 4,
+                    ChromaFormat::Yuv444 => 2,
+                };
+                (
+                    (tl - l).abs() * scale + uh + vh,
+                    (tl - t).abs() * scale + uv + vv,
+                )
             };
             if str_h * 4 < str_v {
                 1
@@ -1184,7 +1358,14 @@ impl Plane {
             let u = &self.block_dc[1];
             let v = &self.block_dc[2];
             str_h += u[1].abs() + v[1].abs();
-            str_v += u[4].abs() + v[4].abs();
+            match self.cf {
+                ChromaFormat::Yuv420 => str_v += u[2].abs() + v[2].abs(),
+                ChromaFormat::Yuv422 => {
+                    str_v += u[2].abs() + v[2].abs() + u[6].abs() + v[6].abs();
+                    str_h += u[5].abs() + v[5].abs();
+                }
+                ChromaFormat::Yuv444 => str_v += u[4].abs() + v[4].abs(),
+            }
         }
         if str_h * 4 < str_v {
             1
@@ -1195,20 +1376,35 @@ impl Plane {
         }
     }
 
-    /// predMacroblockEnc (4:4:4 / Y_ONLY).
+    /// predMacroblockEnc.
     fn predict(&mut self, pos: Position) {
         let mbx = pos.mbx;
         let (dc_mode, ad_mode) = self.dcac_pred_mode(pos);
         let ac_mode = self.ac_pred_mode();
         self.orientation = 2 - ac_mode;
+        let full_planes = if self.subsampled() { 1 } else { self.channels };
         // updatePredInfo, before the prediction changes the values
-        for ch in 0..self.channels {
+        for ch in 0..full_planes {
             let p = &self.block_dc[ch];
             let info = &mut self.pred[ch][mbx];
             info.dc = p[0];
             info.ad = [p[1], p[2], p[3], p[4], p[8], p[12]];
         }
-        for ch in 0..self.channels {
+        if self.subsampled() {
+            for ch in 1..3 {
+                let p = &self.block_dc[ch];
+                let info = &mut self.pred[ch][mbx];
+                info.dc = p[0];
+                info.ad[0] = p[1];
+                info.ad[1] = p[2];
+                if self.cf == ChromaFormat::Yuv422 {
+                    info.ad[2] = p[5];
+                    info.ad[3] = p[6];
+                    info.ad[4] = p[4]; // AC of the 1D Haar transform
+                }
+            }
+        }
+        for ch in 0..full_planes {
             let org = &mut self.block_dc[ch];
             match dc_mode {
                 1 => org[0] -= self.pred_prev[ch][mbx].dc,
@@ -1242,6 +1438,72 @@ impl Plane {
                         p[k + j + 5] -= p[k + j + 5 - 64];
                         p[k + j + 1] -= p[k + j + 1 - 64];
                         p[k + j + 6] -= p[k + j + 6 - 64];
+                    }
+                }
+            }
+        }
+        if !self.subsampled() {
+            return;
+        }
+        for ch in 1..3 {
+            let top = self.pred_prev[ch][mbx];
+            let left = if mbx > 0 {
+                self.pred[ch][mbx - 1]
+            } else {
+                PredInfo::default()
+            };
+            let org = &mut self.block_dc[ch];
+            match dc_mode {
+                1 => org[0] -= top.dc,
+                0 => org[0] -= left.dc,
+                2 => org[0] -= (left.dc + top.dc + 1) >> 1,
+                _ => {}
+            }
+            let p = &mut self.mb[ch];
+            if self.cf == ChromaFormat::Yuv420 {
+                if ad_mode == 1 {
+                    org[2] -= top.ad[1];
+                } else if ad_mode == 0 {
+                    org[1] -= left.ad[0];
+                }
+                if ac_mode == 1 {
+                    for j in [16, 48] {
+                        p[j + 10] -= p[j + 10 - 16];
+                        p[j + 2] -= p[j + 2 - 16];
+                        p[j + 9] -= p[j + 9 - 16];
+                    }
+                } else if ac_mode == 0 {
+                    for j in [32, 48] {
+                        p[j + 5] -= p[j + 5 - 32];
+                        p[j + 1] -= p[j + 1 - 32];
+                        p[j + 6] -= p[j + 6 - 32];
+                    }
+                }
+            } else {
+                if ad_mode == 1 {
+                    org[4] -= top.ad[4];
+                    org[6] -= org[2];
+                    org[2] -= top.ad[3];
+                } else if ad_mode == 0 {
+                    org[4] -= left.ad[4];
+                    org[1] -= left.ad[0];
+                    org[5] -= left.ad[2];
+                } else if dc_mode == 1 {
+                    org[6] -= org[2];
+                }
+                if ac_mode == 1 {
+                    for j in [48, 32, 16] {
+                        for k in [0, 64] {
+                            p[j + k + 10] -= p[j + k + 10 - 16];
+                            p[j + k + 2] -= p[j + k + 2 - 16];
+                            p[j + k + 9] -= p[j + k + 9 - 16];
+                        }
+                    }
+                } else if ac_mode == 0 {
+                    for j in (64..=112).step_by(16) {
+                        p[j + 5] -= p[j + 5 - 64];
+                        p[j + 1] -= p[j + 1 - 64];
+                        p[j + 6] -= p[j + 6 - 64];
                     }
                 }
             }
@@ -1300,11 +1562,14 @@ impl Plane {
                 }
             }
         }
-        self.ctx.model_dc.update(self.y_only, self.channels, mean);
+        self.ctx
+            .model_dc
+            .update(self.y_only, self.cf, self.channels, mean);
     }
 
     fn encode_lowpass(&mut self, w: &mut BitWriter, pos: Position) {
         let channels = self.channels;
+        let subsampled = self.subsampled();
         if pos.mbx & 0xf == 0 {
             reset_scan_totals(&mut self.ctx.scan_lowpass);
         }
@@ -1312,7 +1577,7 @@ impl Plane {
         let mut residual = [[0i32; 16]; 3];
         let mut counts = [0usize; 3];
         let mut model_bits = self.ctx.model_lp.flc_bits[0];
-        for ch in 0..channels {
+        for ch in 0..if subsampled { 1 } else { channels } {
             counts[ch] = adaptive_scan(
                 &self.block_dc[ch],
                 &mut residual[ch],
@@ -1323,12 +1588,59 @@ impl Plane {
             );
             model_bits = self.ctx.model_lp.flc_bits[1];
         }
+        // 4:2:0 / 4:2:2: the chroma LP coefficients of U and V are coded as one interleaved run
+        // (in a fixed order, no adaptive scan), with the levels above the model bits.
+        let mut levels = [[0u32; 8]; 2];
+        let chroma_lp = if self.cf == ChromaFormat::Yuv420 {
+            4
+        } else {
+            8
+        };
+        if subsampled {
+            const REMAP: [usize; 7] = [4, 1, 2, 3, 5, 6, 7];
+            let (remap, count) = if self.cf == ChromaFormat::Yuv420 {
+                (&REMAP[1..], 6)
+            } else {
+                (&REMAP[..], 14)
+            };
+            let bits = self.ctx.model_lp.flc_bits[1];
+            let (mut run, mut n) = (0, 0);
+            for k in 0..count {
+                let index = remap[k >> 1];
+                let dc = self.block_dc[(k & 1) + 1][index];
+                let level = dc.unsigned_abs() >> bits;
+                levels[k & 1][index] = level;
+                if level != 0 {
+                    rl[1][n * 2] = run;
+                    rl[1][n * 2 + 1] = if dc < 0 {
+                        -(level as i32)
+                    } else {
+                        level as i32
+                    };
+                    n += 1;
+                    run = 0;
+                } else {
+                    run += 1;
+                }
+            }
+            counts[1] = n;
+        }
+        // Channels with a block pattern bit: Y, (U, V) or Y, UV.
+        let coded = if self.y_only {
+            1
+        } else if subsampled {
+            2
+        } else {
+            3
+        };
         if !self.y_only {
-            let max = 7; // (1 << channels) - 1
+            let max = coded as i32 * 4 - 5; // (1 << coded) - 1
             let mut count_max = self.ctx.cbp_count_max;
             let mut count_zero = self.ctx.cbp_count_zero;
-            let cbp =
-                (counts[0] > 0) as i32 + (counts[1] > 0) as i32 * 2 + (counts[2] > 0) as i32 * 4;
+            let mut cbp = (counts[0] > 0) as i32 + (counts[1] > 0) as i32 * 2;
+            if coded == 3 {
+                cbp += (counts[2] > 0) as i32 * 4;
+            }
             if count_zero <= 0 || count_max < 0 {
                 let mut val = cbp;
                 if count_max < count_zero {
@@ -1337,12 +1649,12 @@ impl Plane {
                 if val == 0 {
                     w.put(0, 1);
                 } else if val == 1 {
-                    w.put(4, 3); // (iFullChannels + 1) & 6 in iFullChannels bits
+                    w.put(((coded + 1) & 6) as u32, coded as u32); // 2 or 4
                 } else {
-                    w.put((val + max + 1) as u32, 4);
+                    w.put((val + max + 1) as u32, coded as u32 + 1);
                 }
             } else {
-                w.put(cbp as u32, 3);
+                w.put(cbp as u32, coded as u32);
             }
             count_max += 1 - 4 * (cbp == max) as i32;
             count_zero += 1 - 4 * (cbp == 0) as i32;
@@ -1354,21 +1666,49 @@ impl Plane {
         let mut mean = [0i32; 2];
         let mut mean_index = 0;
         model_bits = self.ctx.model_lp.flc_bits[0];
-        for ch in 0..channels {
+        for ch in 0..coded {
+            let interleaved = subsampled && ch == 1;
             if counts[ch] != 0 {
                 mean[mean_index] += counts[ch] as i32;
-                encode_block(ch > 0, &rl[ch], counts[ch], &mut self.ctx.expt, CTDC, w, 1);
+                let location = match (interleaved, self.cf) {
+                    (true, ChromaFormat::Yuv420) => 10,
+                    (true, _) => 2,
+                    _ => 1,
+                };
+                encode_block(
+                    ch > 0,
+                    &rl[ch],
+                    counts[ch],
+                    &mut self.ctx.expt,
+                    CTDC,
+                    w,
+                    location,
+                );
             }
             if model_bits != 0 {
-                for k in 1..16 {
-                    let r = residual[ch][k];
-                    w.put((r >> 1) as u32, (model_bits + (r & 1)) as u32);
+                if interleaved {
+                    for k in 1..chroma_lp {
+                        for c in 0..2 {
+                            let v = self.block_dc[c + 1][k];
+                            w.put(v.unsigned_abs(), model_bits as u32);
+                            if levels[c][k] == 0 && v != 0 {
+                                w.put((v < 0) as u32, 1);
+                            }
+                        }
+                    }
+                } else {
+                    for k in 1..16 {
+                        let r = residual[ch][k];
+                        w.put((r >> 1) as u32, (model_bits + (r & 1)) as u32);
+                    }
                 }
             }
             mean_index = 1;
             model_bits = self.ctx.model_lp.flc_bits[1];
         }
-        self.ctx.model_lp.update(self.y_only, channels, mean);
+        self.ctx
+            .model_lp
+            .update(self.y_only, self.cf, channels, mean);
         if pos.reset_context {
             self.ctx.adapt_lowpass();
         }
@@ -1382,7 +1722,7 @@ impl Plane {
             let threshold2 = (threshold * 2 + 1) as u32;
             let mut cbp = 0i32;
             let p = &self.mb[ch];
-            for (j, &off) in BLK_OFFSET.iter().enumerate() {
+            for (j, &off) in self.block_offsets(ch).iter().enumerate() {
                 if (1..16).any(|i| (p[off + i].wrapping_add(threshold) as u32) >= threshold2) {
                     cbp |= 1 << j;
                 }
@@ -1390,9 +1730,47 @@ impl Plane {
             self.cbp[ch] = cbp;
             self.pred[ch][mbx].cbp = cbp;
 
+            const N_DIFF: i32 = 3;
+            let subsampled = self.subsampled();
+            let m = &mut self.ctx.cbp_model;
+            if ch > 0 && subsampled {
+                // predCBPC420Enc / predCBPC422Enc
+                let is_420 = self.cf == ChromaFormat::Yuv420;
+                let n_orig = (cbp & 0xffff).count_ones() as i32 * if is_420 { 4 } else { 2 };
+                let mut pred = if pos.ctx_left {
+                    if pos.ctx_top {
+                        1
+                    } else {
+                        (self.pred_prev[ch][mbx].cbp >> if is_420 { 2 } else { 6 }) & 1
+                    }
+                } else {
+                    (self.pred[ch][mbx - 1].cbp >> 1) & 1
+                };
+                pred |= (cbp & 0x1) << 1;
+                pred |= (cbp & 0x3) << 2;
+                if !is_420 {
+                    pred |= (cbp & 0xc) << 2;
+                    pred |= (cbp & 0x30) << 2;
+                }
+                self.diff_cbp[ch] = match m.state[1] {
+                    0 => pred ^ cbp,
+                    1 => cbp,
+                    _ => cbp ^ if is_420 { 0xf } else { 0xff },
+                };
+                m.count0[1] = saturate32(m.count0[1] + n_orig - N_DIFF);
+                m.count1[1] = saturate32(m.count1[1] + 16 - n_orig - N_DIFF);
+                m.state[1] = if m.count0[1] < 0 {
+                    if m.count0[1] < m.count1[1] { 1 } else { 2 }
+                } else if m.count1[1] < 0 {
+                    2
+                } else {
+                    0
+                };
+                continue;
+            }
+
             // predCBPCEnc
             let n_orig = (cbp & 0xffff).count_ones() as i32;
-            const N_DIFF: i32 = 3;
             let mut pred = if pos.ctx_left {
                 if pos.ctx_top {
                     1
@@ -1408,21 +1786,13 @@ impl Plane {
             pred |= (cbp & 0x11) << 1;
             pred |= (cbp & 0x2) << 3;
             let c = (ch > 0) as usize;
-            let m = &mut self.ctx.cbp_model;
             self.diff_cbp[ch] = match m.state[c] {
                 0 => pred ^ cbp,
                 1 => cbp,
                 _ => cbp ^ 0xffff,
             };
-            let saturate = |x: i32| {
-                if (x + 16) as u32 >= 32 {
-                    if x < 0 { -16 } else { 15 }
-                } else {
-                    x
-                }
-            };
-            m.count0[c] = saturate(m.count0[c] + n_orig - N_DIFF);
-            m.count1[c] = saturate(m.count1[c] + 16 - n_orig - N_DIFF);
+            m.count0[c] = saturate32(m.count0[c] + n_orig - N_DIFF);
+            m.count1[c] = saturate32(m.count1[c] + 16 - n_orig - N_DIFF);
             m.state[c] = if m.count0[c] < 0 {
                 if m.count0[c] < m.count1[c] { 1 } else { 2 }
             } else if m.count1[c] < 0 {
@@ -1442,15 +1812,27 @@ impl Plane {
         const CODE0: [u32; 16] = [0, 0, 1, 0, 2, 0, 1, 0, 3, 2, 3, 1, 1, 2, 3, 0];
 
         self.predict_cbp(pos);
-        let mut dy = self.diff_cbp[0];
-        let mut du = if self.y_only { 0 } else { self.diff_cbp[1] };
-        let mut dv = if self.y_only { 0 } else { self.diff_cbp[2] };
+        let cf = self.cf;
+        let full = !self.y_only && cf == ChromaFormat::Yuv444;
+        let mut dy = if self.y_only {
+            self.diff_cbp[0] as u32
+        } else {
+            pack_cbp(cf, self.diff_cbp[0], self.diff_cbp[1], self.diff_cbp[2])
+        };
+        let mut du = if full { self.diff_cbp[1] as u32 } else { 0 };
+        let mut dv = if full { self.diff_cbp[2] as u32 } else { 0 };
+        // bits per 8x8 luma quadrant: 4 luma (+ 2 or 4 chroma when subsampled)
+        let (mask, shift) = match (self.y_only, cf) {
+            (false, ChromaFormat::Yuv420) => (0x3f, 6),
+            (false, ChromaFormat::Yuv422) => (0xff, 8),
+            _ => (0xf, 4),
+        };
 
         let mut pattern = 0usize;
         let mut d = dy | du | dv;
         for _ in 0..4 {
-            pattern |= ((d & 0xf) != 0) as usize * 0x10;
-            d >>= 4;
+            pattern |= ((d & mask) != 0) as usize * 0x10;
+            d >>= shift;
             pattern >>= 1;
         }
         let count = NUM_ONES[pattern];
@@ -1460,19 +1842,26 @@ impl Plane {
             w.put(TAB_CODE[pattern], TAB_LEN[pattern]);
         }
         for _ in 0..4 {
-            let mut code = dy & 0xf;
+            let mut code = dy & mask;
             let code_u = (du & 0xf) as usize;
             let code_v = (dv & 0xf) as usize;
-            code |= ((code_u != 0) as i32) << 4;
-            code |= ((code_v != 0) as i32) << 5;
-            dy >>= 4;
+            if full {
+                code |= ((code_u != 0) as u32) << 4;
+                code |= ((code_v != 0) as u32) << 5;
+            }
+            dy >>= shift;
             du >>= 4;
             dv >>= 4;
             if code == 0 {
                 continue;
             }
-            let chroma = code >> 4;
+            let mut chroma = (code >> 4) as i32;
             let code = (code & 0xf) as usize;
+            // 4:2:2: two chroma blocks of U and two of V in this quadrant
+            let (pair_u, pair_v) = (chroma & 3, (chroma >> 2) & 3);
+            if cf == ChromaFormat::Yuv422 {
+                chroma = (pair_u != 0) as i32 + 2 * (pair_v != 0) as i32;
+            }
             let val = if chroma != 0 {
                 if TAB0[code] > 2 { 8 } else { TAB0[code] + 5 }
             } else {
@@ -1497,7 +1886,7 @@ impl Plane {
             if FL0[code] != 0 {
                 w.put(CODE0[code], FL0[code]);
             }
-            if !self.y_only {
+            if full {
                 for p in [code_u, code_v] {
                     if p != 0 {
                         let c = NUM_ONES[p] - 1;
@@ -1505,6 +1894,14 @@ impl Plane {
                         if TAB_LEN[p] != 0 {
                             w.put(TAB_CODE[p], TAB_LEN[p]);
                         }
+                    }
+                }
+            } else if cf == ChromaFormat::Yuv422 && !self.y_only {
+                for p in [pair_u, pair_v] {
+                    if p == 1 {
+                        w.put(1, 1);
+                    } else if p != 0 {
+                        w.put((3 - p) as u32, 2);
                     }
                 }
             }
@@ -1527,13 +1924,37 @@ impl Plane {
         let mut mean_index = 0;
         let mut chroma = false;
         let vertical = self.orientation == 1;
-        for plane in 0..self.channels {
-            let mut pattern = self.cbp[plane];
+        let cf = self.cf;
+        let (planes, blocks) = match cf {
+            ChromaFormat::Yuv420 => (1, 6),
+            ChromaFormat::Yuv422 => (1, 8),
+            ChromaFormat::Yuv444 => (self.channels, 4),
+        };
+        for plane in 0..planes {
+            let mut pattern = self.cbp[plane] as u32;
+            match cf {
+                ChromaFormat::Yuv420 => {
+                    pattern += ((self.cbp[1] as u32) << 16) + ((self.cbp[2] as u32) << 20);
+                }
+                ChromaFormat::Yuv422 => {
+                    pattern += ((self.cbp[1] as u32) << 16) + ((self.cbp[2] as u32) << 24);
+                }
+                ChromaFormat::Yuv444 => {}
+            }
             let mut index = 0;
-            for block in 0..4 {
-                for _ in 0..4 {
-                    let off = BLK_OFFSET[index];
-                    let coefs: [i32; 16] = self.mb[plane][off..off + 16].try_into().unwrap();
+            for block in 0..blocks {
+                for sub in 0..4 {
+                    let (ch, off) = if block < 4 {
+                        (plane, BLK_OFFSET[index])
+                    } else if cf == ChromaFormat::Yuv420 {
+                        (block - 3, BLK_OFFSET_UV_420[sub])
+                    } else {
+                        (
+                            1 + ((block - 4) >> 1),
+                            BLK_OFFSET_UV_422[(block & 1) * 4 + sub],
+                        )
+                    };
+                    let coefs: [i32; 16] = self.mb[ch][off..off + 16].try_into().unwrap();
                     if pattern & 1 == 0 {
                         if flex != 0 {
                             for k in 1..16 {
@@ -1586,7 +2007,9 @@ impl Plane {
                 }
             }
         }
-        self.ctx.model_ac.update(self.y_only, self.channels, mean);
+        self.ctx
+            .model_ac
+            .update(self.y_only, self.cf, self.channels, mean);
     }
 
     fn encode_highpass(&mut self, w: &mut BitWriter, pos: Position) {
@@ -1606,6 +2029,23 @@ impl Plane {
 // Codestream
 // --------------------------------------------------------------------------------------------
 
+/// DF_ODD of jxrlib's downsampleUV.
+fn downsample_filter(d: [i32; 5]) -> i32 {
+    (((d[1] + d[2] + d[3]) << 2) + (d[2] << 1) + d[0] + d[4] + 8) >> 4
+}
+
+/// Mirrors an index into 0..n (the downsampling filter's symmetric extension).
+fn reflect(i: isize, n: usize) -> usize {
+    let n = n as isize;
+    (if i < 0 {
+        -i
+    } else if i >= n {
+        2 * (n - 1) - i
+    } else {
+        i
+    }) as usize
+}
+
 fn encode_codestream(
     width: u32,
     height: u32,
@@ -1613,6 +2053,7 @@ fn encode_codestream(
     alpha: bool,
     qp_index: u8,
     trim_flex_bits: u8,
+    chroma: ChromaFormat,
 ) -> Vec<u8> {
     let qp_index = if qp_index < 2 { 0 } else { qp_index };
     // With an alpha plane Flash writes no TRIM_FLEXBITS at all (bitmapdata_encode_jpegxr): the
@@ -1649,9 +2090,9 @@ fn encode_codestream(
     w.put(height - 1, size_bits);
     w.align();
 
-    let mut planes = vec![Plane::new(false, mb_width, qp_index, trim)];
+    let mut planes = vec![Plane::new(false, chroma, mb_width, qp_index, trim)];
     if alpha {
-        planes.push(Plane::new(true, mb_width, qp_index, trim));
+        planes.push(Plane::new(true, chroma, mb_width, qp_index, trim));
     }
     for plane in &planes {
         plane.write_header(&mut w, qp_index);
@@ -1663,29 +2104,110 @@ fn encode_codestream(
     w.put(255, 8);
     w.put(1, 16);
 
-    let shift = if qp_index != 0 { 3 } else { 0 };
+    // Each plane converts with its own arithmetic: scaled values are 3 bits finer.
+    let shift = if planes[0].scaled { 3 } else { 0 };
+    let alpha_shift = if planes.last().unwrap().scaled { 3 } else { 0 };
     let offset = 128 << shift;
+    let (width, height) = (width as usize, height as usize);
+    let (w16, h16) = (mb_width * 16, mb_height * 16);
+    // RGB -> YUV of a pixel of the padded image (edge pixels repeat up to the macroblock grid)
+    let yuv = |x: usize, y: usize| -> [i32; 3] {
+        let [r, g, b, _] = pixels[y.min(height - 1) * width + x.min(width - 1)];
+        let mut r = i32::from(r) << shift;
+        let mut g = i32::from(g) << shift;
+        let mut b = i32::from(b) << shift;
+        b -= r;
+        r += ((b + 1) >> 1) - g;
+        g += r >> 1;
+        [g - offset, -r, b]
+    };
+    // Downsampled chroma of the current macroblock row (U and V, `cw` values per row)
+    let cw = if chroma == ChromaFormat::Yuv444 {
+        0
+    } else {
+        w16 / 2
+    };
+    let crows = if chroma == ChromaFormat::Yuv420 {
+        8
+    } else {
+        16
+    };
+    let mut sub = [vec![0i32; cw * crows], vec![0i32; cw * crows]];
+    let mut full_row = [vec![0i32; w16], vec![0i32; w16]];
+    let mut half_rows = [vec![0i32; cw * 20], vec![0i32; cw * 20]];
     for mby in 0..mb_height {
+        if chroma != ChromaFormat::Yuv444 {
+            // downsampleUV: (1 4 6 4 1) / 16 at even positions, mirrored at the edges of the
+            // padded image, horizontally and (4:2:0) then vertically on the rounded results.
+            let rows: Vec<usize> = if chroma == ChromaFormat::Yuv422 {
+                (0..16).map(|r| mby * 16 + r).collect()
+            } else {
+                (0..20)
+                    .map(|r| reflect(mby as isize * 16 + r as isize - 2, h16))
+                    .collect()
+            };
+            for (i, &y) in rows.iter().enumerate() {
+                for x in 0..w16 {
+                    let [_, u, v] = yuv(x, y);
+                    full_row[0][x] = u;
+                    full_row[1][x] = v;
+                }
+                for c in 0..2 {
+                    let dst = if chroma == ChromaFormat::Yuv422 {
+                        &mut sub[c][i * cw..(i + 1) * cw]
+                    } else {
+                        &mut half_rows[c][i * cw..(i + 1) * cw]
+                    };
+                    let src = &full_row[c];
+                    for (k, out) in dst.iter_mut().enumerate() {
+                        let at = |d: isize| src[reflect(k as isize * 2 + d, w16)];
+                        *out = downsample_filter([at(-2), at(-1), at(0), at(1), at(2)]);
+                    }
+                }
+            }
+            if chroma == ChromaFormat::Yuv420 {
+                for c in 0..2 {
+                    for r in 0..8 {
+                        for k in 0..cw {
+                            let at = |d: usize| half_rows[c][(r * 2 + d) * cw + k];
+                            sub[c][r * cw + k] =
+                                downsample_filter([at(0), at(1), at(2), at(3), at(4)]);
+                        }
+                    }
+                }
+            }
+        }
         for mbx in 0..mb_width {
-            // Load the macroblock (edge pixels repeat beyond the image)
+            // Load the macroblock
             for row in 0..16 {
-                let y = (mby * 16 + row).min(height as usize - 1);
+                let y = mby * 16 + row;
                 for col in 0..16 {
-                    let x = (mbx * 16 + col).min(width as usize - 1);
-                    let [r, g, b, a] = pixels[y * width as usize + x];
+                    let x = mbx * 16 + col;
                     let i = IDX_CC[row][col] as usize;
-                    let mut r = i32::from(r) << shift;
-                    let mut g = i32::from(g) << shift;
-                    let mut b = i32::from(b) << shift;
-                    b -= r;
-                    r += ((b + 1) >> 1) - g;
-                    g += r >> 1;
+                    let [cy, cu, cv] = yuv(x, y);
                     let p = &mut planes[0];
-                    p.mb[0][i] = g - offset;
-                    p.mb[1][i] = -r;
-                    p.mb[2][i] = b;
+                    p.mb[0][i] = cy;
+                    if chroma == ChromaFormat::Yuv444 {
+                        p.mb[1][i] = cu;
+                        p.mb[2][i] = cv;
+                    }
                     if alpha {
-                        planes[1].mb[0][i] = (i32::from(a) - 128) << shift;
+                        let a = pixels[y.min(height - 1) * width + x.min(width - 1)][3];
+                        planes[1].mb[0][i] = (i32::from(a) - 128) << alpha_shift;
+                    }
+                }
+            }
+            if chroma != ChromaFormat::Yuv444 {
+                for row in 0..crows {
+                    for col in 0..8 {
+                        let i = if chroma == ChromaFormat::Yuv420 {
+                            IDX_CC_420[row][col]
+                        } else {
+                            IDX_CC[row][col]
+                        } as usize;
+                        for c in 0..2 {
+                            planes[0].mb[c + 1][i] = sub[c][row * cw + mbx * 8 + col];
+                        }
                     }
                 }
             }
@@ -1826,7 +2348,7 @@ mod tests {
                 ] {
                     {
                         let trim = 0;
-                        let data = encode(w, h, &img, alpha, 0, trim);
+                        let data = encode(w, h, &img, alpha, 0, trim, ChromaFormat::Yuv444);
                         let (dw, dh, px, dalpha) = decode(&data);
                         assert_eq!((dw, dh, dalpha), (w, h, alpha));
                         assert!(
@@ -1846,7 +2368,15 @@ mod tests {
                 let img = gradient_image(w, h, alpha);
                 for (q, min_psnr) in [(1, 38.0), (20, 33.0), (50, 26.0), (100, 12.0)] {
                     for trim in [0, 4, 15] {
-                        let data = encode(w, h, &img, alpha, quantization_to_qp_index(q), trim);
+                        let data = encode(
+                            w,
+                            h,
+                            &img,
+                            alpha,
+                            quantization_to_qp_index(q),
+                            trim,
+                            ChromaFormat::Yuv444,
+                        );
                         let (_, _, px, _) = decode(&data);
                         let p = psnr(&img, &px, if alpha { 4 } else { 3 });
                         assert!(
@@ -1856,7 +2386,15 @@ mod tests {
                     }
                 }
                 let noise = random_image(w, h, w * 31 + h, alpha);
-                let data = encode(w, h, &noise, alpha, quantization_to_qp_index(20), 0);
+                let data = encode(
+                    w,
+                    h,
+                    &noise,
+                    alpha,
+                    quantization_to_qp_index(20),
+                    0,
+                    ChromaFormat::Yuv444,
+                );
                 let (_, _, px, _) = decode(&data);
                 let p = psnr(&noise, &px, 3);
                 assert!(p > 30.0, "noise {w}x{h} alpha={alpha}: PSNR {p:.1}");
@@ -1922,6 +2460,7 @@ mod tests {
                 alpha,
                 quantization_to_qp_index(quantization),
                 0,
+                ChromaFormat::Yuv444,
             );
             // Container: everything but ImageByteCount (bytes 66..70) is the same
             assert_eq!(ours[..66], data[..66], "{name}: container");
@@ -1944,6 +2483,168 @@ mod tests {
                 data[ours.len()..].iter().all(|&b| b == 0),
                 "{name}: padding"
             );
+        }
+    }
+
+    /// The test pictures of D66JpegXrSub.hx ("g" gradient, "n" noise; "t" transparent), as the
+    /// bitmap stores them (premultiplied).
+    fn d66_image(name: &str) -> (u32, u32, bool, Vec<[u8; 4]>) {
+        let transparent = name.ends_with('t');
+        let dims = &name[1..name.len() - 1];
+        let (w, h) = match dims.split_once('x') {
+            Some((w, h)) => (w.parse().unwrap(), h.parse().unwrap()),
+            None => (dims.parse().unwrap(), dims.parse().unwrap()),
+        };
+        let mut seed = 12345u32;
+        let mut px = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let argb = if name.starts_with('g') {
+                    let r = x * 255 / (w - 1).max(1);
+                    let g = y * 255 / (h - 1).max(1);
+                    let b = (x * 37 + y * 91) & 255;
+                    let a = if !transparent || (x + y) & 1 == 0 {
+                        255
+                    } else {
+                        (x * 13 + y * 7) & 255
+                    };
+                    (a << 24) | (r << 16) | (g << 8) | b
+                } else {
+                    seed = seed.wrapping_mul(1103515245).wrapping_add(12345) & 0x7fffffff;
+                    let c = seed >> 7;
+                    if transparent { c } else { c | 0xff000000 }
+                };
+                let c = [
+                    (argb >> 16) as u8,
+                    (argb >> 8) as u8,
+                    argb as u8,
+                    (argb >> 24) as u8,
+                ];
+                px.push(if transparent { premultiply(c) } else { c });
+            }
+        }
+        (w, h, transparent, px)
+    }
+
+    fn fnv64(data: &[u8]) -> u64 {
+        data.iter().fold(0xcbf29ce484222325, |h, &b| {
+            (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
+        })
+    }
+
+    /// Flash Player 32 output for colorSpace 4:2:0 and 4:2:2 (D66JpegXrSub.hx): every file of
+    /// `jpegxr_samples/` (8x8, 17x13, 1x1, 5x3, 40x36; gradient and noise; opaque and
+    /// transparent; quantization 0, 20 and 50) must come out byte for byte, apart from Flash's
+    /// trailing zero bytes; the 300x200 files are checked by length and hash.
+    #[test]
+    fn flash_output_subsampled() {
+        const BIG: [(&str, usize, u64); 12] = [
+            ("g300x200o_q0_420", 106601, 0x5980c675016fd79f),
+            ("g300x200o_q0_422", 153719, 0x163d9818953b38d5),
+            ("g300x200o_q20_420", 25885, 0xc6d733c59f00791e),
+            ("g300x200o_q20_422", 48861, 0x2bd34c625040b03b),
+            ("g300x200o_q50_420", 7313, 0x58fac8d5ea41a1ac),
+            ("g300x200o_q50_422", 17823, 0x871d013befff909d),
+            ("g300x200t_q0_420", 196181, 0xcff751b7fd7789af),
+            ("g300x200t_q0_422", 242237, 0xf4ab745a1303572f),
+            ("g300x200t_q20_420", 66645, 0x80e8beb441f99e40),
+            ("g300x200t_q20_422", 87143, 0xe1f6e093c0fe6bf3),
+            ("g300x200t_q50_420", 26351, 0x99d6130c58243cc7),
+            ("g300x200t_q50_422", 35945, 0xa0eab94ef918e51a),
+        ];
+        let ours = |name: &str| {
+            let mut parts = name.split('_');
+            let (image, q, cs) = (
+                parts.next().unwrap(),
+                parts.next().unwrap()[1..].parse::<u32>().unwrap(),
+                parts.next().unwrap(),
+            );
+            let chroma = if cs == "420" {
+                ChromaFormat::Yuv420
+            } else {
+                ChromaFormat::Yuv422
+            };
+            let (w, h, alpha, px) = d66_image(image);
+            encode(w, h, &px, alpha, quantization_to_qp_index(q), 0, chroma)
+        };
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/avm2/globals/flash/display/bitmap_data/jpegxr_samples");
+        let mut checked = 0;
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
+            let flash = std::fs::read(&path).unwrap();
+            let ours = ours(&name);
+            assert_eq!(ours[..66], flash[..66], "{name}: container");
+            assert!(
+                flash.len() >= ours.len() && flash.len() <= ours.len() + 2,
+                "{name}: length {} vs Flash {}",
+                ours.len(),
+                flash.len()
+            );
+            assert!(
+                flash[70..ours.len()] == ours[70..],
+                "{name}: codestream differs from Flash's"
+            );
+            assert!(flash[ours.len()..].iter().all(|&b| b == 0), "{name}");
+            checked += 1;
+        }
+        assert_eq!(checked, 72);
+        for (name, flash_len, flash_hash) in BIG {
+            let mut ours = ours(name);
+            assert!(
+                ours.len() <= flash_len && ours.len() + 2 >= flash_len,
+                "{name}"
+            );
+            // Flash's ImageByteCount (bytes 66..70) may count its padding
+            let count = (flash_len - 90) as u32;
+            let mut padded = ours.clone();
+            padded.resize(flash_len, 0);
+            let matches = (0..=2).any(|pad| {
+                padded[66..70].copy_from_slice(&(count - pad).to_le_bytes());
+                fnv64(&padded) == flash_hash
+            });
+            assert!(matches, "{name}: differs from Flash's file");
+            ours.clear();
+        }
+    }
+
+    /// 4:2:0 and 4:2:2 decode (jxrlib) close to the source. Quantization 0 is not lossless (the
+    /// chroma is subsampled; the test gradient changes colour fast, so the PSNR stays near 30 dB);
+    /// the alpha plane of a transparent bitmap still is. Thresholds: the measured minimum over
+    /// the sizes of at least 16x16, less about 1 dB.
+    #[test]
+    fn subsampled_quality() {
+        for &(w, h) in SIZES.iter().filter(|s| s.0 >= 16 && s.1 >= 16) {
+            for alpha in [false, true] {
+                let img = gradient_image(w, h, alpha);
+                for (chroma, limits) in [
+                    (ChromaFormat::Yuv420, [27.0, 26.5, 24.5, 14.5]),
+                    (ChromaFormat::Yuv422, [30.5, 30.0, 26.0, 14.5]),
+                ] {
+                    for (q, min_psnr) in [0, 20, 50, 100].into_iter().zip(limits) {
+                        let data =
+                            encode(w, h, &img, alpha, quantization_to_qp_index(q), 0, chroma);
+                        let (dw, dh, px, dalpha) = decode(&data);
+                        assert_eq!((dw, dh, dalpha), (w, h, alpha));
+                        let p = psnr(&img, &px, if alpha { 4 } else { 3 });
+                        assert!(
+                            p >= min_psnr,
+                            "{w}x{h} alpha={alpha} {chroma:?} q={q}: PSNR {p:.1}"
+                        );
+                        if alpha && q == 0 {
+                            assert!(img.iter().zip(&px).all(|(a, b)| a[3] == b[3]));
+                        }
+                    }
+                }
+                let full = encode(w, h, &img, alpha, 38, 0, ChromaFormat::Yuv444);
+                let half = encode(w, h, &img, alpha, 38, 0, ChromaFormat::Yuv422);
+                let quarter = encode(w, h, &img, alpha, 38, 0, ChromaFormat::Yuv420);
+                assert!(
+                    quarter.len() < half.len() && half.len() < full.len(),
+                    "{w}x{h}"
+                );
+            }
         }
     }
 }
