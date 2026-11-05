@@ -14,8 +14,8 @@ import time
 import urllib.parse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-HTTP_PORT = 18765
-SOCK_PORT = 18766
+HTTP_PORT = int(os.environ.get("DIFFTEST_HTTP_PORT", "18765"))  # one port pair per worker
+SOCK_PORT = int(os.environ.get("DIFFTEST_SOCK_PORT", "18766"))
 POLICY = (b'<?xml version="1.0"?><cross-domain-policy>'
           b'<allow-access-from domain="*" to-ports="*"/></cross-domain-policy>\x00')
 

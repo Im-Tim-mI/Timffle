@@ -7,7 +7,8 @@ import flash.net.URLRequestMethod;
 
 /** Shared test helper: collects result lines and POSTs them to the harness server. */
 class H {
-	public static inline var BASE = "http://127.0.0.1:18765";
+	/** Harness base URL; override with -D harness_base=http://127.0.0.1:<port> (one port per worker). */
+	public static var BASE:String = #if harness_base haxe.macro.Compiler.getDefine("harness_base") #else "http://127.0.0.1:18765" #end;
 
 	static var lines:Array<String> = [];
 	static var test = "unknown";

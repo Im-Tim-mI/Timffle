@@ -46,6 +46,11 @@ RUFFLE_BIN=/path/to/ruffle ./run_all.sh               # 只跑 Ruffle，與 expe
 RUFFLE_BIN=/path/to/ruffle ./run_all.sh d19render3d   # 只跑一個
 RUFFLE_BIN=/path/to/ruffle ./run_all.sh --flash       # 也跑真 Flash（需要 FLASH_EXE 與 Wine）
 ./compare.py --bless 新測試                           # 確認 Flash 的輸出可信後，存成新的黃金答案
+
+# 幾個人同時量測時各用自己的埠：伺服器與 runner 讀 DIFFTEST_HTTP_PORT／DIFFTEST_SOCK_PORT，
+# SWF 編譯時加 -D harness_base=http://127.0.0.1:<埠>（H.BASE；沒給就是 18765）
+DIFFTEST_HTTP_PORT=18865 DIFFTEST_SOCK_PORT=18866 python3 server.py
+./build.sh S1Global s1global -D harness -D harness_base=http://127.0.0.1:18865 -swf-version 32
 python3 verify_flash_goldens.py                       # 只檢查最新一次 Flash 輸出是否仍等於黃金答案
 ```
 
