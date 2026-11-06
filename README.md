@@ -8,7 +8,7 @@
 
 <p align="center"><b>Play Flash online games in Chrome again.</b></p>
 
-<p align="center">Ruffle, plus the TCP socket support that Flash online games need.<br>Taomee Taiwan's games work out of the box: 摩爾莊園 ・ 賽爾號 ・ 小花仙 ・ 彈彈堂</p>
+<p align="center">Ruffle, plus the TCP socket support that Flash online games need.<br>No website gets a socket until you allow it: each one is asked the first time.</p>
 
 <p align="center">
   <a href="https://github.com/Im-Tim-mI/Timffle/releases/latest"><b>Download the latest release</b></a> ・
@@ -21,7 +21,7 @@
 <p align="center">Version <code>0.8.0.26343</code> (based on Ruffle nightly 2026-10-13) | licence MIT OR Apache-2.0, at your option</p>
 
 > [!IMPORTANT]
-> **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project, Ruffle LLC or Taomee.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
+> **Timffle is an unofficial fork of [Ruffle](https://ruffle.rs/). It is not affiliated with, endorsed by or sponsored by the Ruffle project or Ruffle LLC.** Almost all of the Flash emulation is the work of Ruffle and its [hundreds of contributors](https://github.com/ruffle-rs/ruffle/graphs/contributors); this repository keeps Ruffle's complete git history, authorship and licence files.
 > **Please report Timffle problems to [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues), never to Ruffle.** The name and logo "Ruffle" belong to the Ruffle project, so this fork uses its own name and artwork (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)). Ruffle's original README is kept as [`README.ruffle.md`](README.ruffle.md).
 
 ---
@@ -32,14 +32,14 @@ Flash reached end of life at the end of 2020 and browsers removed it. [Ruffle](h
 
 Timffle is a Ruffle fork made for these games. It adds:
 
-1. **TCP sockets.** A small connection helper (installed once, started by Chrome on demand) relays the game's socket to the game server, and the extension decides **which sites may use it**: the sites you allow, and the sites you approve the first time they ask.
+1. **TCP sockets.** A small connection helper (installed once, started by Chrome on demand) relays the game's socket to the game server, and the extension decides **which sites may use it**: only the sites you approve, the first time they ask or on your always-allowed list.
 2. **The compatibility fixes online games need**, found by running real online games and compared line by line with Adobe Flash Player 32: `LocalConnection`, `URLStream`, `Loader`/`URLLoader` cancellation, 3D perspective and `Matrix3D`, AMF3 reference cycles, …; otherwise a game hangs, ignores clicks or draws things in the wrong place.
 3. **Chinese text that shows up, and Chinese that can be typed.** Ruffle's built-in font has no Chinese glyphs; Timffle draws device-font text with the browser's fonts, positioned by the metrics of the Windows fonts the games ask for, and lets the browser's input method compose Chinese inside Flash text fields.
 4. **A renderer tuned for these games.** The web player draws with WebGPU first (WebGL2 where the browser has no WebGPU), resolves blend modes only where a blend needs it, and draws every picture at the end of a complete frame, as Flash does. Busy scenes run at full speed and the main thread stays free for the game's script.
 
 Everything ships as **one Chrome extension package**: download it, install it, open the game's address and log in.
 
-**Taomee Taiwan's games** (摩爾莊園, 賽爾號, 小花仙, 彈彈堂) are what Timffle was first made for and tested with, so their sites are allowed to use sockets by default and need no setup. They are the ready-made case, not the limit: another Flash online game can be allowed the same way when it asks (see [Supported games and platforms](#supported-games-and-platforms) for what has actually been tried).
+**No website is allowed to use sockets by default.** The first time a game's page tries to open a socket, Timffle asks you, and you decide: for this visit, always, or never (see [The first-use question](#the-first-use-question)). What has actually been tried is in [Supported games and platforms](#supported-games-and-platforms).
 
 > [!NOTE]
 > Timffle only lets the browser run Flash content. It does not change a game's content, rules or data, and it contains no game assets. It is not official software of any game or its operator; whether a third-party runtime is allowed by a game's terms of service is for you to check, at your own risk. Use your own account only.
@@ -47,7 +47,7 @@ Everything ships as **one Chrome extension package**: download it, install it, o
 ## Features
 
 - **Sockets for Flash online games**: the game opens its `flash.net.Socket` as it would in Flash, and Timffle relays it to the game server through the connection helper (Windows, macOS, Linux). No proxy to run, nothing else to start.
-- **You decide which sites get sockets**: a site must be on your always-allow list, or you answer the first-use question when it first tries (we recommend denying; only online games should be allowed). The toolbar popup allows or denies the current site in one click.
+- **You decide which sites get sockets**: no site is allowed by default. The first time a site tries, Timffle asks you (we recommend denying; only online games should be allowed), and "Always allow" or "Always deny" saves your answer. The toolbar popup allows or denies the current site in one click.
 - **Conservative security design**: the helper connects to public internet addresses only (one exception: a website you allowed that is itself served from a local-network IP address may connect back to that one address), listens on no port, does not stay running and records no traffic; only this extension's ID can call it.
 - **Real Flash as the reference**: every compatibility fix for Ruffle is compared line by line with the output of Adobe Flash Player 32 (30 golden files).
 - **WebGPU-first rendering**: the player tries WebGPU before WebGL2 and falls back by itself. Blend modes (Overlay, Hardlight, …) resolve the anti-aliased stage only where and when a blend needs it, and WebGPU's synchronous pixel readback and PixelBender shaders were made to work. On a Mac mini M2 a blend-heavy game screen went from 8.7 to 22.9 fps on a Retina display, with the main thread about 20 % busy instead of 99 %.
@@ -55,7 +55,6 @@ Everything ships as **one Chrome extension package**: download it, install it, o
 - **Show frame rate**: a switch in the popup and on the settings page puts a small translucent box in a corner of the game with the pictures drawn per second, the movie's own frame rate and the display's refresh rate; drag it to any corner.
 - **Chinese text shows up**: device-font text uses the browser's fonts, positioned by the metrics of the Windows fonts the games ask for (SimSun, Arial Black, Tahoma, …).
 - **36 interface languages, like Ruffle**: the pages follow the browser's language (English and Traditional Chinese are written by the author, the other 34 are machine translations; see [Languages](#languages)).
-- **Taomee Taiwan's games out of the box**: the four game sites are allowed to use sockets by default.
 - **One package**: [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) provides `timffle-chrome-<version>.zip` with the Chrome extension, the connection helper and the installers.
 - **Open source, upstream history kept**: Ruffle's complete git history, authorship and licences are preserved; Timffle's own parts are MIT OR Apache-2.0 at your option, like Ruffle.
 
@@ -64,7 +63,7 @@ Everything ships as **one Chrome extension package**: download it, install it, o
 1. Download `timffle-chrome-<version>.zip` (**the Chrome extension package**) from [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) and unzip it somewhere permanent.
 2. Install the connection helper **once**: run the installer in the `helper` folder (Windows `install-windows.cmd`, macOS `install-macos.command`, Linux `sh install-linux.sh`), or, after step 3, press **Download the installer** in the extension's toolbar popup, which downloads the right file for your system.
 3. Open `chrome://extensions` → turn on **Developer mode** → **Load unpacked** → pick the `extension` folder.
-4. Open a game site and log in. For Taomee Taiwan's games, for example https://mole.61.com.tw/ , press the player's play button and log in as usual. For any other Flash online game, open its page: the first time the game opens a socket, Timffle asks you (see [The first-use question](#the-first-use-question)), and you can allow online games you trust.
+4. Open the game's site, press the player's play button and log in as usual. The first time the game opens a socket, Timffle asks you (see [The first-use question](#the-first-use-question)): choose **Allow** or **Always allow** for an online game you trust, then try connecting again in the game.
 
 Details are in [Install](#install).
 
@@ -72,24 +71,17 @@ Details are in [Install](#install).
 
 ### Games
 
-Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs. Whether a particular game then works depends on how much of what it uses Ruffle supports; **Taomee Taiwan's 摩爾莊園 has been played with a real account**. Taomee Taiwan's four games have sockets allowed by default:
+Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs, and no site is allowed in advance. Whether a particular game then works depends on how much of what it uses Ruffle supports; **one Flash online game has been played with a real account** (logging in, entering the game world, walking, changing maps, taking a seat in a race).
 
-| Game | URL | Status |
-|---|---|---|
-| 摩爾莊園 | https://mole.61.com.tw/ | **Verified with a real account**. |
-| 賽爾號 | http://seer.61.com.tw/ | Sockets allowed by default. |
-| 小花仙 | http://hua.61.com.tw/ | Sockets allowed by default. |
-| 彈彈堂 | http://ddt.61.com.tw/main_index.php | Sockets allowed by default. |
+**Playing a Flash online game**: open the game's page and start it. The first time it tries to connect, Timffle's question window opens: choose **Allow** (this visit) or **Always allow** if you trust the game. By then the game has usually timed out, so try connecting again in the game. Details: [The first-use question](#the-first-use-question).
 
-**Playing another Flash online game**: open the game's page and start it. The first time it tries to connect, Timffle's question window opens: choose **Allow** (this visit) or **Always allow** if you trust the game. By then the game has usually timed out, so try connecting again in the game. Details: [The first-use question](#the-first-use-question).
-
-If another online game does not work, please open an issue with the game's address and the DevTools console output (see [Troubleshooting](#troubleshooting)).
+If an online game does not work, please open an issue with the game's address and the DevTools console output (see [Troubleshooting](#troubleshooting)).
 
 ### Platforms
 
 | Platform | How far it is verified |
 |---|---|
-| Linux x64 + Chrome 155 | **Real hardware**: install/uninstall, automatic start/stop, binary transfer, connection failures, 摩爾莊園 gameplay; the author also tested on Ubuntu (2026-10-26) |
+| Linux x64 + Chrome 155 | **Real hardware**: install/uninstall, automatic start/stop, binary transfer, connection failures, playing an online game with a real account; the author also tested on Ubuntu (2026-10-26) |
 | Windows 10/11 x64 | **Tested by the author on a real machine** (2026-10-26); the helper and installer also run in automated tests under Wine |
 | macOS | **Passed testing** |
 | Windows 32-bit and ARM64, Linux ARM64 | Cross-compiled only, **not tested on real machines** |
@@ -133,7 +125,7 @@ The installer registers the helper for **Google Chrome** (on Linux/macOS, Beta/D
 
 4. **Check the helper**: on the extension's options page, section "Socket 連線", the "連線小幫手" entry should read "Installed (version 1.4.1)". If it says the helper cannot be found, run the installer again and **fully quit Chrome** before starting it. You do not have to go looking for this: while the helper is missing, the toolbar popup says so, with a **Download the installer** button that downloads the installer for your system (a Chrome extension cannot start the installer itself, so running it stays your click); and a game that needs the helper but cannot reach it makes Timffle open a window right then, **Install the socket helper first** (with the same download button, once per page load; it shows how to run the installer on your system and **checks by itself** whether the helper is installed now: as soon as it is, the **Continue** button lights up, and pressing it reloads the game page so the connection starts again), and puts a red **!** on the Timffle icon of its tab. A website you denied, or one that is not allowed, never gets this window.
 
-5. **Play**: open a game site (for example https://mole.61.com.tw/ ), press the player's play button and log in as usual; no proxy needed. 賽爾號, 小花仙 and 彈彈堂 work the same way from their own sites; any other site is asked about the first time it wants a socket ([The first-use question](#the-first-use-question)). After loading the extension for the first time, reload any game page that was already open; if it still shows the "download Flash" message, wait a few seconds and reload once more.
+5. **Play**: open the game's site, press the player's play button and log in as usual; no proxy needed. The first time the game wants a socket, Timffle asks you ([The first-use question](#the-first-use-question)); after allowing, try connecting again in the game. After loading the extension for the first time, reload any game page that was already open; if it still shows the "download Flash" message, wait a few seconds and reload once more.
 
 ### Update
 
@@ -154,7 +146,8 @@ The extension's options page has a section "**Socket connections (game servers)*
 
 - **The helper's status** (under "Socket helper"): "Installed (version …)", or why it is not. When the helper is missing or does not match this extension, a **Download the installer** button next to it downloads the installer for your system (the same button the popup's notice has), and **Other systems and instructions** opens the install page with every installer.
 - **Connection method**: "Socket helper" is the default and recommended. Advanced users can switch to "Custom WebSocket proxy" and run the local WebSocket↔TCP proxy in [`timffle/relay/`](timffle/relay/) themselves (needs Node.js 22+; Chrome may ask for local network access).
-- **Always-allowed website origins (one per line)**: the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets directly, without being asked. The default is Taomee Taiwan's four game sites, `mole`, `seer`, `hua` and `ddt` `.61.com.tw`, each with `http://` and `https://`. You do **not have to type** other sites: use "The first-use question" or "Setting a site from the popup" below. **Allow only online games you trust**, because an allowed site can reach any TCP address on the public internet through the helper (a site that is itself served from a local-network IP address can also reach any port of that one computer).
+- **Always-allowed website origins (one per line)**: the listed origins (scheme + host + optional port; no `*`, no paths) may use sockets directly, without being asked. The list is **empty by default**: no website may use sockets until you allow it. You do **not have to type** sites: use "The first-use question" or "Setting a site from the popup" below. **Allow only online games you trust**, because an allowed site can reach any TCP address on the public internet through the helper (a site that is itself served from a local-network IP address can also reach any port of that one computer).
+- **Updating from an earlier version**: nothing changes for you. Earlier versions came with a few game sites already on the always-allowed list; after the update they stay on your list, together with everything you added or refused. You can remove them in the settings at any time. Only new installations start with an empty list.
 - **Always-denied website origins (one per line)**: these sites are never asked about and never get sockets (with either connection method). A site cannot be on both the allowed and the denied list (saving warns you; if it is in both anyway, refusing wins).
 - **Each connection method has its own always-allowed list**: switch to "Custom WebSocket proxy" and the box shows the proxy's own list; only the sites on that list are given the proxy URL and its token. So a site you allowed in Socket helper mode never gets the token just because you switched to a custom proxy later.
 - **While the settings page is open**, if you change something in the popup (for example set a site to "Always deny"), a form with no edits updates itself; a form with edits is stopped when you save and shows the latest settings, so it never changes that decision back.
@@ -215,18 +208,18 @@ Timffle's pages (settings, popup, install page, question window) follow the brow
 | The first click (play button or the game's "start") does nothing | Click again. In automated tests the first click occasionally had no effect; the cause was not found. |
 | Chinese text turns into boxes or disappears | Linux lacks CJK fonts: install a package such as `fonts-noto-cjk` and restart Chrome. Timffle draws device text with browser fonts by default. |
 | Windows/macOS blocks the installer or helper | Expected for unsigned programs; check where the file came from and follow the prompts. Do not turn off system protections for this. |
-| `Error #2030` in the console after login (from a Taomee game's login-gift module) | Known: a race inside the game; real Flash 32 throws the same error in a reproduction. |
+| `Error #2030` in the console after login (from one game's login-gift module) | Known: a race inside the game; real Flash 32 throws the same error in a reproduction. |
 | Reporting a problem | Open an issue in [Timffle's issues](https://github.com/Im-Tim-mI/Timffle/issues) with the game's address, your Chrome version, operating system and the DevTools console output (blank out account names, passwords and tokens first). **Never report Timffle problems to Ruffle.** If you suspect a security problem, do not post details; open an issue that only says you have a security problem to report privately. |
 
 ## How it works, and the security design
 
 ```
-game page  (for example https://mole.61.com.tw/)
+game page  (for example https://game.example/)
    │   Timffle (WebAssembly: Ruffle core + fixes) takes over the Flash element; the game calls flash.net.Socket
    ▼
 Chrome extension (Manifest V3)
    │   page bridge → content script → service worker
-   │   allow-listed origins only, other sites are asked first; one Native Messaging connection per socket
+   │   allowed origins only: nothing is allowed by default, other sites are asked first; one Native Messaging connection per socket
    ▼
 connection helper timffle-socket-helper (Go; started by Chrome on demand, exits afterwards)
    │   public addresses only: private, loopback, link-local, multicast and reserved addresses are refused (including IPv4-mapped IPv6)
@@ -245,7 +238,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 
 ## Known limitations
 
-- **Other Flash online games**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; only 摩爾莊園 has been played with a real account, and the other three Taomee Taiwan games merely have sockets allowed by default.
+- **Which games work**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; only one online game has been played with a real account.
 - **No socket policy files**: real Flash asked the destination server for a socket policy file before every socket connection. Timffle (like Ruffle) does not, so **the game server has no veto**: the allow list and your answer to the first-use question are the only gate. That is why you should allow only online games you trust.
 - **ActionScript 2 `XMLSocket`** goes through the same socket path as `flash.net.Socket`, but only `flash.net.Socket` has been tested.
 - **Platforms**: Windows, macOS and Ubuntu were tested by the author on real machines (2026-10-26); the automated tests run only in Chrome on Linux (headless) and under Wine. The helper is **not signed**: Windows shows a SmartScreen warning, and on macOS you allow it once in System Settings → Privacy & Security. Not tried in Firefox or Safari.
@@ -253,7 +246,7 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 - **WebGPU**: the WebGPU path was verified on a Mac mini M2 (real GPU) and in headless Chrome, and the fallback to WebGL2 on machines without WebGPU; it has not been fully verified on Windows machines with a real GPU or on Android devices. If something looks wrong, set the renderer to `wgpu-webgl` on the options page.
 - **3D**: nested "projection owners" differ from Flash; Flash bilinear-filters 3D pictures by about 1 px, Timffle's edges are crisper; perspective is implemented in the wgpu renderer only. `Matrix3D.determinant`/`invert` differ from Flash in the last significant digit.
 - **Hit testing**: Flash's `hitTestPoint(x, y, true)` works on whole pixels, Timffle on exact coordinates; edges occasionally differ by 1–2 cells.
-- **Recursion depth on the web**: the WebAssembly call stack is shallower than Flash's; the guard limit is 900 levels, and a few long kart-map paths are cut short.
+- **Recursion depth on the web**: the WebAssembly call stack is shallower than Flash's; the guard limit is 900 levels, and a few very deep call chains in one game are cut short.
 - **Text position**: Flash lays text out with the Windows font the game asks for. For the common ones (SimSun, Arial Black, Tahoma, …) Timffle uses Windows' line metrics even when the browser has to substitute another font, so text sits within about a pixel or two of Flash; other fonts use the browser's own metrics and can sit further off.
 - **Languages**: apart from English and Traditional Chinese, the texts Timffle added are machine translations that no native speaker has reviewed; the helper installer's messages are in Traditional Chinese and English only; Ruffle's own texts are as complete as Ruffle's translations are.
 - More known differences: the end of [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) and [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md).
@@ -264,21 +257,21 @@ Timffle is based on Ruffle `nightly-2026-10-13` (commit [`46fec3f`](https://gith
 
 | Commit subject | What it contains |
 |---|---|
-| `extension: Native socket helper bridge and socket settings` | The Chrome extension's socket bridge, talking to the helper, the "Socket 連線" settings page, the default allow list of the four Taomee Taiwan sites, unit tests |
+| `extension: Native socket helper bridge and socket settings` | The Chrome extension's socket bridge, talking to the helper, the "Socket 連線" settings page, a default allow list of game sites (removed again later), unit tests |
 | `web: WebSocket socket backend fixes and canvas generic fonts` | The web socket backend; generic device-font names (`_sans`, …) in canvas mode (Chinese text vanished without it) |
 | `avm2: Network, LocalConnection, URLStream and loader fixes` | `LocalConnection`, `URLStream`, `Loader`/`URLLoader` cancellation, AMF3 reference cycles, "parent first" application-domain lookup, a recursion-depth guard on the web |
 | `render: 3D transforms, Matrix3D semantics and perspective projection` | `z`, `rotationX/Y/Z`, `scaleZ`, `matrix3D`, `perspectiveProjection`, `Matrix3D`, `Utils3D`, and `getBounds`, hit testing and `BitmapData.draw` after projection |
 | `vendor: Add rust-flash-lso …` + `flash-lso: Fix AMF3 encoder reference indices` | [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso) as a subtree (with its history) and a fix in its AMF3 encoder |
 | `web: Rebrand the web extension and player UI as Timffle` | User-visible names, icons and links changed to Timffle (see [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)) |
 
-Later commits add the first-use question, the popup and the settings lists, the Windows font metrics for canvas text, input-method composition in text fields, the WebGPU-first renderer (on-demand blend resolves, synchronous readback, PixelBender on WebGPU), Flash's frame timing, the frame-rate box, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
+Later commits add the first-use question, the popup and the settings lists, an empty default allow list (no site allowed in advance), the Windows font metrics for canvas text, input-method composition in text fields, the WebGPU-first renderer (on-demand blend resolves, synchronous readback, PixelBender on WebGPU), Flash's frame timing and `Loader` timing, the frame-rate box, the Flash plugin version (32 first, 34 for pages that refuse 32), HTTPS for HTTP frames on HTTPS pages, and the releases (see [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)). Details and reasons for each fix: [`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md). The list of modified Ruffle files (the Apache-2.0 §4(b) notice): [`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md). Full diff: `git diff 46fec3f -- . ':!timffle'`.
 
 ### What Timffle patches in Ruffle
 
-<p align="center"><img src="timffle/docs/images/ruffle-patches.svg" width="100%" alt="What Timffle patches in Ruffle: AVM2 API from 82.1% to 82.6%; 3D APIs from 79.7% to 100%; four networking and LocalConnection classes from 75.4% to 89.5%; plus fixes an API count can't show, such as sockets, Chinese fonts and input, domain lookup, and the WebGPU-first renderer"></p>
+<p align="center"><img src="timffle/docs/images/ruffle-patches.svg" width="100%" alt="What Timffle patches in Ruffle: AVM2 API from 82.1% to 100% (an API count, not behaviour); 3D APIs from 79.7% to 100%; four networking and LocalConnection classes from 75.4% to 100%; plus fixes an API count can't show, such as sockets, Chinese fonts and input, domain lookup, and the WebGPU-first renderer"></p>
 
-- **How it is measured**: with the same tool as Ruffle's website ([`tools/stub-report`](tools/stub-report) and [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)), run once on Ruffle `46fec3f` and once on Timffle (`c181461b6`, 2026-11-04). Every Flash Player API counts as one item; stubs are drawn orange and do not count as implemented, the same scoring as on Ruffle's website. **It only shows whether an API is implemented, not that it behaves exactly like Flash**; behaviour is checked against real Flash Player 32 with the 30 golden files in [`timffle/difftest/expected/`](timffle/difftest/expected/) (3D 15, networking and LocalConnection 14, basic 1).
-- **The 24 APIs filled in**: `DisplayObject`'s `z`, `rotationX`/`rotationY`/`rotationZ`, `scaleZ`, `globalToLocal3D()`, `local3DToGlobal()`; `Transform`'s `matrix3D`, `perspectiveProjection`, `getRelativeMatrix3D()`; `PerspectiveProjection`'s `fieldOfView`, `focalLength`, `projectionCenter`; `Matrix3D`'s `pointAt()`, `recompose()`; `Utils3D.pointTowards()`; `URLStream`'s `stop()`, `position`, `length`, `objectEncoding`; `LocalConnection.isPerUser`; `Loader.close()`, `Loader.unloadAndStop()`, `URLLoader.close()`.
+- **How it is measured**: with the same tool as Ruffle's website ([`tools/stub-report`](tools/stub-report) and [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)), run once on Ruffle `46fec3f` and once on Timffle (`b7a800b55`, main after merging PRO_bata, 2026-11-06). Every Flash Player API counts as one item; stubs are drawn orange and do not count as implemented, the same scoring as on Ruffle's website. **It only shows whether an API is implemented, not that it behaves exactly like Flash**; behaviour is checked against real Flash Player 32 with the 47 golden files in [`timffle/difftest/expected/`](timffle/difftest/expected/) (3D 17, networking and LocalConnection 14, basic 1, other 15). In plain words: the tool reports 100% because every one of the 4,560 API items now has an implementation; it cannot tell whether an implementation is complete or behaves like Flash. Some APIs (camera, microphone, DRM, printing) run without the hardware or service a real Flash had, and other APIs still differ from Flash in details.
+- **The 799 APIs filled in** (440 stubs and 359 missing, in 127 classes): most are in `flash.media` (165), `flash.net` (140), `flash.system` (93), `flash.text.engine` (62), `flash.display` (56), `flash.globalization` (55) and `flash.net.drm` (42), including the 3D and networking members (`DisplayObject.z`/`rotationX`/`rotationY`/`rotationZ`/`scaleZ`, `Transform.matrix3D`, `Matrix3D.pointAt()`, `URLStream.stop()`, `Loader.unloadAndStop()`, …). The full list is the `fixed` array in the JSON file below.
 - **3D APIs** are `Vector3D`, `Matrix3D`, `Utils3D`, `PerspectiveProjection` and the 3D members of `DisplayObject` and `Transform` (79 items); **networking and LocalConnection** are the classes `URLStream`, `URLLoader`, `LocalConnection` and `Loader` (57 items). The picture and the numbers come from [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py); the numbers are in [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json).
 
 ## Logitech discount code
@@ -368,5 +361,5 @@ Bug reports, ideas and pull requests are welcome in [Timffle's issues](https://g
 - **rust-flash-lso**: Copyright (c) 2020 Callum Thomson, MIT ([`vendor/rust-flash-lso/LICENSE`](vendor/rust-flash-lso/LICENSE)).
 - **Timffle's modifications and original parts**: Copyright (c) 2026 Im-Tim-mI and Timffle contributors, **MIT OR Apache-2.0 at your option** ([`timffle/LICENSE-MIT`](timffle/LICENSE-MIT), [`timffle/LICENSE-APACHE`](timffle/LICENSE-APACHE)). Timffle's icon and logo are original works under the same licences.
 - Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in Timffle by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
-- **Trademarks**: "Ruffle" and its logo belong to the Ruffle project and are used here only descriptively ("a fork of Ruffle", "based on Ruffle"). The game names, "Taomee", "Flash", "Adobe", "Chrome" etc. belong to their owners.
+- **Trademarks**: "Ruffle" and its logo belong to the Ruffle project and are used here only descriptively ("a fork of Ruffle", "based on Ruffle"). Game names, "Flash", "Adobe", "Chrome" etc. belong to their owners.
 - **No game assets** are included (no game SWF/DLL/images, game code, server addresses, packet formats or cryptography), and game files are not modified. Use your own account and respect the games' terms of service. Full notice: [`NOTICE.md`](NOTICE.md). Where each behaviour comes from and how it was verified: [`timffle/docs/PROVENANCE.md`](timffle/docs/PROVENANCE.md) (Traditional Chinese with an English summary).

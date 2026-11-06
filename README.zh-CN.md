@@ -8,7 +8,7 @@
 
 <p align="center"><b>让 Flash 在线游戏，在 Chrome 里继续玩。</b></p>
 
-<p align="center">Ruffle，再加上 Flash 在线游戏需要的 TCP Socket 连接。<br>淘米台湾的游戏开箱即用：摩尔庄园 ・ 赛尔号 ・ 小花仙 ・ 弹弹堂</p>
+<p align="center">Ruffle，再加上 Flash 在线游戏需要的 TCP Socket 连接。<br>没有你的允许，任何网站都用不了 Socket：每个网站第一次要用时都会先问你。</p>
 
 <p align="center">
   <a href="https://github.com/Im-Tim-mI/Timffle/releases/latest"><b>下载最新版</b></a> ・
@@ -21,7 +21,7 @@
 <p align="center">版本 <code>0.8.0.26343</code>（基于 Ruffle nightly 2026-10-13）｜ 授权 MIT 或 Apache-2.0（任选其一）</p>
 
 > [!IMPORTANT]
-> **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，与 Ruffle 项目、Ruffle LLC、淘米网络（Taomee）没有隶属或合作关系，也没有得到它们的认可。** Flash 模拟内核几乎全部是 Ruffle 与其[数百位贡献者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 历史、作者记录与授权文件。
+> **Timffle 是 [Ruffle](https://ruffle.rs/) 的非官方分支，与 Ruffle 项目、Ruffle LLC 没有隶属或合作关系，也没有得到它们的认可。** Flash 模拟内核几乎全部是 Ruffle 与其[数百位贡献者](https://github.com/ruffle-rs/ruffle/graphs/contributors)的成果；本 repo 保留了 Ruffle 完整的 git 历史、作者记录与授权文件。
 > **Timffle 的问题请反馈到 [Timffle 的 Issues](https://github.com/Im-Tim-mI/Timffle/issues)，不要反馈给 Ruffle。** 「Ruffle」名称与标志属于 Ruffle 项目，所以本分支使用 Timffle 这个名字与自己的图标（见 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)）。Ruffle 原本的说明文档保留在 [`README.ruffle.md`](README.ruffle.md)。
 
 ---
@@ -32,14 +32,14 @@ Adobe 已在 2020 年底终止 Flash，浏览器也早已移除它。[Ruffle](ht
 
 Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 
-1. **TCP Socket 连接**。一个只需安装一次的连接助手（由 Chrome 按需启动）把游戏的 Socket 转接到游戏服务器，而扩展程序决定**哪些网站可以使用**：你允许的网站，以及第一次要求连接时经你同意的网站。
+1. **TCP Socket 连接**。一个只需安装一次的连接助手（由 Chrome 按需启动）把游戏的 Socket 转接到游戏服务器，而扩展程序决定**哪些网站可以使用**：只有经你同意的网站——第一次要求连接时你答应的，或你放进「一律允许」清单的。
 2. **在线游戏需要的兼容性修正**：用真实的在线游戏找出来，并与 Adobe Flash Player 32 逐行比对——`LocalConnection`、`URLStream`、`Loader`／`URLLoader` 的取消、3D 透视与 `Matrix3D`、AMF3 循环参照…；少了这些，游戏会卡住、点了没反应，或画面位置错误。
 3. **看得到、也打得出的中文**。Ruffle 内置的字体没有中文字；Timffle 用浏览器的字体绘制设备字体的文字，并依游戏指定的 Windows 字体的度量定位，也让浏览器的输入法能在 Flash 文本框里组字（注音等）。
 4. **为这些游戏调整过的绘图引擎**。网页播放器优先用 WebGPU 绘图（浏览器没有 WebGPU 时用 WebGL2），混合模式只在需要的地方才解析，而且和 Flash 一样在一个完整帧跑完后才画出画面。对象多的场景能跑满速，主线程留给游戏的程序。
 
 全部打包成**一个 Chrome 插件包**：下载、安装，打开游戏网址就能登录、玩。
 
-**淘米台湾的游戏**（摩尔庄园、赛尔号、小花仙、弹弹堂）是 Timffle 最初为之打造、也最先测试的对象，所以它们的网站默认就允许使用 Socket 连接，不需要任何设置。它们是现成的范例，不是范围的上限：其他 Flash 在线游戏在要求连接时，可以用同样的方式允许（实际试过哪些，见[支持的游戏与平台](#支持的游戏与平台)）。
+**默认不允许任何网站使用 Socket 连接。**游戏网页第一次尝试打开 Socket 时，Timffle 会询问你，由你决定：只允许这次、一律允许，或拒绝（见[第一次连接时的询问](#第一次连接时的询问)）。实际试过哪些，见[支持的游戏与平台](#支持的游戏与平台)。
 
 > [!NOTE]
 > Timffle 只是让浏览器能运行 Flash 内容，不修改游戏的内容、规则或数据，也不包含任何游戏素材。它不是任何游戏或其运营商的官方软件；使用第三方运行环境是否符合游戏的服务条款，请自行确认，风险由用户自负。请只使用自己的账号。
@@ -47,7 +47,7 @@ Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 ## 特色
 
 - **Flash 在线游戏的 Socket 连接**：游戏照 Flash 的方式打开 `flash.net.Socket`，Timffle 通过连接助手（Windows、macOS、Linux）把它转接到游戏服务器。不用架代理，也不需要另外开任何东西。
-- **由你决定哪些网站能用 Socket**：网站必须在你的「一律允许」清单里，或在它第一次尝试时由你回答询问（建议拒绝，只有在线游戏可以允许）。工具栏的弹出窗口可以一键允许或拒绝目前的网站。
+- **由你决定哪些网站能用 Socket**：默认不允许任何网站。网站第一次尝试时，Timffle 会询问你（建议拒绝，只有在线游戏可以允许），选「一律允许」或「一律拒绝」就会记住你的答案。工具栏的弹出窗口可以一键允许或拒绝目前的网站。
 - **保守的安全设计**：助手只连公开网络地址（唯一的例外：本身放在局域网 IP 上、你允许过的网站，可以连回它自己那个地址）、不监听任何连接端口、不常驻、不记录连接内容；只有这个扩展程序的 ID 能调用它。
 - **以真 Flash 为标准答案**：对 Ruffle 的兼容性修正，都用 Adobe Flash Player 32 的实际输出逐行比对（30 项黄金答案）。
 - **WebGPU 优先的绘图**：播放器先试 WebGPU、再退回 WebGL2，自动切换。混合模式（Overlay、Hardlight…）只在混合对象需要的地方、需要的时候才解析抗锯齿的舞台；WebGPU 的同步像素读回与 PixelBender 着色器也修到能用。Mac mini M2 上一个混合对象很多的游戏画面，在 Retina 屏幕从 8.7 帧变 22.9 帧，主线程从 99% 忙降到约 20%。
@@ -55,7 +55,6 @@ Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 - **显示帧数**：弹出窗口与设置页的开关，在游戏角落放一个半透明小方块，显示每秒画出的张数、游戏本身的帧率与屏幕更新率；可拖到任一角落。
 - **看得到中文**：设备字体的文字使用浏览器的字体，并依游戏指定的 Windows 字体（SimSun、Arial Black、Tahoma…）的度量定位。
 - **36 种界面语言，和 Ruffle 一样**：页面跟着浏览器的语言（英文与繁体中文由作者撰写，其余 34 种是机器翻译；见[语言](#语言)）。
-- **淘米台湾的游戏开箱即用**：默认允许四个游戏网站使用 Socket 连接。
 - **一个插件包**：[Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) 提供 `timffle-chrome-<版本>.zip`，内含 Chrome 插件、连接助手与安装程序。
 - **开源，并保留上游历史**：完整保留 Ruffle 的 git 历史、作者记录与授权；Timffle 自己的部分以 MIT 或 Apache-2.0（任选其一）授权，与 Ruffle 相同。
 
@@ -64,7 +63,7 @@ Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 1. 到 [Releases](https://github.com/Im-Tim-mI/Timffle/releases/latest) 下载最新版的 `timffle-chrome-<版本>.zip`（**Chrome 插件包**），解压缩到一个固定的位置。
 2. 安装连接助手，**只要一次**：运行 `helper` 文件夹里的安装程序（Windows `install-windows.cmd`、macOS `install-macos.command`、Linux `sh install-linux.sh`），或在第 3 步之后按插件工具栏弹出窗口的「直接下载安装程序」，它会替你的系统下载对的文件。
 3. 打开 `chrome://extensions` → 打开「开发者模式」→「加载已解压的扩展程序」→ 选择 `extension` 文件夹。
-4. 打开游戏网站并登录。淘米台湾的游戏，例如 https://mole.61.com.tw/ ，按播放器的播放键，照常登录即可。其他 Flash 在线游戏，打开它的网页：游戏第一次打开 Socket 连接时，Timffle 会询问你（见[第一次连接时的询问](#第一次连接时的询问)），你信任的在线游戏可以允许。
+4. 打开游戏网站，按播放器的播放键，照常登录。游戏第一次打开 Socket 连接时，Timffle 会询问你（见[第一次连接时的询问](#第一次连接时的询问)）：你信任的在线游戏，选「**允许**」或「**一律允许**」，再到游戏里重新连接一次。
 
 详细步骤与注意事项见[安装方法](#安装方法)。
 
@@ -72,24 +71,17 @@ Timffle 是专为这类游戏做的 Ruffle 分支，加上了：
 
 ### 游戏
 
-Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使用 Socket 连接，不管它跑的是哪个游戏。游戏能不能顺利运作，取决于 Ruffle 对它用到的功能支持多少；**淘米台湾的《摩尔庄园》有用真实账号实际玩过**。淘米台湾的四个游戏默认允许 Socket 连接：
+Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使用 Socket 连接，不管它跑的是哪个游戏，而且没有任何网站被事先允许。游戏能不能顺利运作，取决于 Ruffle 对它用到的功能支持多少；**有一款 Flash 在线游戏用真实账号实际玩过**（登录、进入游戏世界、走路、换地图、在赛车场入座）。
 
-| 游戏 | 网址 | 状态 |
-|---|---|---|
-| 摩尔庄园 | https://mole.61.com.tw/ | **已用真实账号验证**。 |
-| 赛尔号 | http://seer.61.com.tw/ | 默认放行 Socket 连接。 |
-| 小花仙 | http://hua.61.com.tw/ | 默认放行 Socket 连接。 |
-| 弹弹堂 | http://ddt.61.com.tw/main_index.php | 默认放行 Socket 连接。 |
+**玩 Flash 在线游戏**：打开游戏的网页并开始游戏。它第一次尝试连接时，Timffle 会跳出询问窗口：如果你信任这个游戏，选「允许」（这次访问）或「一律允许」。这时游戏通常已经超时，请在游戏里再连接一次。细节见[第一次连接时的询问](#第一次连接时的询问)。
 
-**玩其他 Flash 在线游戏**：打开游戏的网页并开始游戏。它第一次尝试连接时，Timffle 会跳出询问窗口：如果你信任这个游戏，选「允许」（这次访问）或「一律允许」。这时游戏通常已经超时，请在游戏里再连接一次。细节见[第一次连接时的询问](#第一次连接时的询问)。
-
-其他在线游戏如果不能玩，请到 Issues 反馈，附上游戏网址与开发者工具 Console 的输出（见[疑难排解](#疑难排解)）。
+在线游戏如果不能玩，请到 Issues 反馈，附上游戏网址与开发者工具 Console 的输出（见[疑难排解](#疑难排解)）。
 
 ### 平台
 
 | 平台 | 验证程度 |
 |---|---|
-| Linux x64＋Chrome 155 | **实机验证**：安装／移除、自动启停、二进制传输、连接失败处理、摩尔庄园游戏流程；作者也在 Ubuntu 实机测过（2026-10-26） |
+| Linux x64＋Chrome 155 | **实机验证**：安装／移除、自动启停、二进制传输、连接失败处理、用真实账号玩一款在线游戏；作者也在 Ubuntu 实机测过（2026-10-26） |
 | Windows 10／11 x64 | **作者实机测试**（2026-10-26）；助手与安装／移除程序另在 Wine 模拟环境自动测试 |
 | macOS | **已通过测试** |
 | Windows 32 位与 ARM64、Linux ARM64 | 只做了交叉编译，**未实机测试** |
@@ -133,7 +125,7 @@ Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使�
 
 4. **确认助手有装好**：在插件的「选项」页找到「Socket 连接」，「连接助手」旁应显示「已安装（版本 1.4.1）」。若显示找不到：重新运行安装程序，**完全关闭 Chrome 再开**。不必特地去找：助手还没装好的时候，工具栏的弹出窗口会直接说明，并有「直接下载安装程序」按钮，替你的系统下载安装程序（Chrome 扩展程序无法自己运行安装程序，所以运行安装程序那一下仍由你来按）；游戏需要助手却连不到时，Timffle 会立刻跳出「请先安装连接助手」的窗口（一样有下载按钮，每次加载页面只跳一次；窗口里写了你这个系统怎么运行安装程序，并**自己检测安装完成**，一检测到，「继续」按钮就亮起，按下去游戏页面会重新加载、连接重新开始），并在那个标签页的 Timffle 图标出现红色的「!」。按「拒绝」的网站、或本来就不允许的网站不会跳出这个窗口。
 
-5. **开始玩**：打开游戏网站（例如 https://mole.61.com.tw/ ），按播放器的播放键后照常登录，不用设置代理。赛尔号、小花仙、弹弹堂同样直接打开各自的网站；其他网站第一次想用 Socket 连接时会先询问你（[第一次连接时的询问](#第一次连接时的询问)）。首次加载插件后请刷新已打开的游戏页；若仍显示下载 Flash 的提示，等几秒再刷新一次。
+5. **开始玩**：打开游戏网站，按播放器的播放键后照常登录，不用设置代理。游戏第一次想用 Socket 连接时，Timffle 会先询问你（[第一次连接时的询问](#第一次连接时的询问)）；允许之后，到游戏里再连接一次。首次加载插件后请刷新已打开的游戏页；若仍显示下载 Flash 的提示，等几秒再刷新一次。
 
 ### 更新
 
@@ -154,7 +146,8 @@ Timffle 为**一般的 Flash 在线游戏**而做：你允许的网站就能使�
 
 - **助手的状态**（「连接助手」下方）：显示「已安装（版本 …）」，或没装好的原因。助手不在，或与这个插件不相符时，旁边会出现「直接下载安装程序」按钮，替你的系统下载安装程序（和弹出窗口的提示是同一颗按钮），「其他系统与安装说明」则打开列出所有安装文件的安装页。
 - **连接方式**：默认且建议「连接助手」；高级用户可改成「自定义 WebSocket 代理」，自己运行 [`timffle/relay/`](timffle/relay/) 里的本机 WebSocket↔TCP 代理（需要 Node.js 22+，Chrome 可能询问本机网络访问权限）。
-- **一律允许的网站来源（每行一个）**：清单内的网站来源（协议＋主机＋可选端口，不接受 `*` 或路径）可以直接使用 Socket 连接，不会询问。默认是淘米台湾四个游戏网站（摩尔庄园、赛尔号、小花仙、弹弹堂）的 `mole／seer／hua／ddt.61.com.tw`，各含 `http://` 与 `https://`。要加其他网站**不必自己输入**：用下面的「第一次连接时的询问」或「在弹出窗口直接设置」。**只允许你信任的在线游戏**，因为被允许的网站可以通过助手连到任何公开网络上的 TCP 地址（本身放在局域网 IP 上的网站，另外还能连到它自己那台电脑的任何连接端口）。
+- **一律允许的网站来源（每行一个）**：清单内的网站来源（协议＋主机＋可选端口，不接受 `*` 或路径）可以直接使用 Socket 连接，不会询问。清单**默认是空的**：在你允许之前，没有任何网站能使用 Socket 连接。要加网站**不必自己输入**：用下面的「第一次连接时的询问」或「在弹出窗口直接设置」。**只允许你信任的在线游戏**，因为被允许的网站可以通过助手连到任何公开网络上的 TCP 地址（本身放在局域网 IP 上的网站，另外还能连到它自己那台电脑的任何连接端口）。
+- **从旧版更新**：你的设置不会改变。旧版预先在「一律允许」清单放了几个游戏网站，更新后它们和你自己加的、拒绝的网站一样都保留着，想移除可以随时到设置里删掉。只有新安装的用户是从空的清单开始。
 - **一律拒绝的网站来源（每行一个）**：这些网站不会被询问，也不能使用 Socket 连接（两种连接方式都一样）。同一个网站不能同时在「允许」与「拒绝」清单里（保存时会提醒；若真的同时存在，拒绝优先）。
 - **两种连接方式各有自己的「一律允许」清单**：切到「自定义 WebSocket 代理」时，文本框会换成代理自己的清单，只有那份清单里的网站拿得到代理网址与 token。所以在连接助手模式按过「允许」的网站，不会因为你之后改用自定义代理就拿到 token。
 - **设置页开着的时候**，若你在弹出窗口改了设置（例如把某网站设成「一律拒绝」），没有编辑过的表单会自动更新；有编辑过的表单在保存时会被拦下并显示最新设置，不会把那边的决定改回去。
@@ -215,18 +208,18 @@ Timffle 的页面（设置页、弹出窗口、安装页、询问窗口）会跟
 | 第一次点击（播放键或游戏里的「开始」）没反应 | 再点一次。自动化测试中观察到第一次点击偶尔不起作用，原因没有查明。 |
 | 画面上的中文变成方框或消失 | Linux 缺少中日韩字体：安装 `fonts-noto-cjk` 之类的字体包后重开 Chrome。Timffle 默认使用浏览器的字体绘制设备字体的文字。 |
 | Windows／macOS 拦下安装程序或助手 | 未签名的预期行为，请确认文件来源后按提示运行；不要为此停用系统的安全保护。 |
-| 登录后控制台出现 `Error #2030`（来自淘米游戏的登录礼包模块） | 已知：游戏自己的竞态条件；重现实验中真 Flash 32 也丢同一个错误。 |
+| 登录后控制台出现 `Error #2030`（来自某款游戏的登录礼包模块） | 已知：游戏自己的竞态条件；重现实验中真 Flash 32 也丢同一个错误。 |
 | 想反馈问题 | 到 [Timffle Issues](https://github.com/Im-Tim-mI/Timffle/issues)，附上游戏网址、Chrome 版本、操作系统与开发者工具 Console 的输出（先隐去账号、密码与 token）。**请不要把 Timffle 的问题反馈给 Ruffle。** 怀疑是安全问题时，请不要公开贴出细节，先开一个只说明「有安全问题想私下反馈」的 Issue。 |
 
 ## 运作原理与安全设计
 
 ```
-游戏页面  （例如 https://mole.61.com.tw/）
+游戏页面  （例如 https://game.example/）
    │   Timffle（WebAssembly，Ruffle 内核＋修正）接管 Flash 组件；游戏调用 flash.net.Socket
    ▼
 Chrome 扩展程序（Manifest V3）
    │   page bridge → content script → service worker
-   │   只放行「允许的网站来源」，其他网站先询问用户；每个 Socket 对应一条 Native Messaging 连接
+   │   只放行「允许的网站来源」（默认一个也没有），其他网站先询问用户；每个 Socket 对应一条 Native Messaging 连接
    ▼
 连接助手 timffle-socket-helper（Go；由 Chrome 按需启动，用完退出）
    │   只连公开网络地址：拒绝私网、本机、链接本地、多播与保留地址（含 IPv4 映射 IPv6）
@@ -245,7 +238,7 @@ Chrome 扩展程序（Manifest V3）
 
 ## 已知限制
 
-- **其他 Flash 在线游戏**：你允许的网站都能使用 Socket 连接，但游戏能不能运作取决于 Ruffle 对它所用功能的支持；只有摩尔庄园用真实账号玩过，淘米台湾的另外三个游戏只是默认放行 Socket 连接。
+- **哪些游戏能玩**：你允许的网站都能使用 Socket 连接，但游戏能不能运作取决于 Ruffle 对它所用功能的支持；只有一款在线游戏用真实账号玩过。
 - **没有 Socket 策略文件（policy file）**：真正的 Flash 在每次 Socket 连接前，都会向目的地服务器索取 Socket 策略文件。Timffle（和 Ruffle 一样）不会，所以**游戏服务器没有否决权**：「一律允许」清单与你对第一次询问的回答，是唯一的把关。这就是为什么只该允许你信任的在线游戏。
 - **ActionScript 2 的 `XMLSocket`** 与 `flash.net.Socket` 走同一条 Socket 路径，但只测试过 `flash.net.Socket`。
 - **平台**：Windows、macOS、Ubuntu 已由作者实机测试（2026-10-26）；自动化测试只在 Linux 的 Chrome（无头模式）与 Wine 上跑。助手**未签名**：Windows 会出现 SmartScreen 警告，macOS 第一次要到「系统设置」→「隐私与安全性」允许。没有在 Firefox 与 Safari 上试过。
@@ -253,7 +246,7 @@ Chrome 扩展程序（Manifest V3）
 - **WebGPU**：WebGPU 路径在 Mac mini M2（真 GPU）与无头 Chrome 验证过，没有 WebGPU 的机器退回 WebGL2 也验证过；还没有在有真 GPU 的 Windows 电脑与 Android 实机上完整验证。画面若有异常，可在选项页把渲染器改成 `wgpu-webgl`。
 - **3D**：嵌套的「投影拥有者」与 Flash 不同；Flash 对 3D 图做约 1 像素的双线性滤波，Timffle 边缘较利落；透视只在 wgpu 渲染器实现。`Matrix3D.determinant`／`invert` 与 Flash 差在最后一位有效数字。
 - **命中测试**：Flash 的 `hitTestPoint(x, y, true)` 以整数像素判断，Timffle 用精确坐标；边缘偶有 1～2 格差异。
-- **网页版递归深度**：WebAssembly 调用堆栈比 Flash 浅，保护上限 900 层；赛车地图少数远距离寻路会被截断。
+- **网页版递归深度**：WebAssembly 调用堆栈比 Flash 浅，保护上限 900 层；某款游戏里少数很深的调用链会被截断。
 - **文字位置**：Flash 用游戏指定的 Windows 字体排版。对常见的字体（SimSun、Arial Black、Tahoma…），即使浏览器必须用别的字体顶替，Timffle 也采用 Windows 的行度量，所以文字与 Flash 相差约一两个像素以内；其他字体使用浏览器自己的度量，可能偏得更多。
 - **语言**：除了英文与繁体中文，Timffle 添加的文字都是机器翻译，没有请母语人士审阅；连接助手安装程序的消息只有繁体中文与英文；Ruffle 原有的文字与 Ruffle 的翻译一样完整。
 - 其他已知差异：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md) 末尾与 [`timffle/docs/FLASH-NOTES.md`](timffle/docs/FLASH-NOTES.md)。
@@ -264,21 +257,21 @@ Timffle 以 Ruffle `nightly-2026-10-13`（commit [`46fec3f`](https://github.com/
 
 | Commit 标题 | 内容 |
 |---|---|
-| `extension: Native socket helper bridge and socket settings` | Chrome 扩展程序的 Socket 桥接、与助手通信、「Socket 连接」设置页、淘米台湾四站的默认允许清单、单元测试 |
+| `extension: Native socket helper bridge and socket settings` | Chrome 扩展程序的 Socket 桥接、与助手通信、「Socket 连接」设置页、游戏网站的默认允许清单（之后已移除）、单元测试 |
 | `web: WebSocket socket backend fixes and canvas generic fonts` | 网页版 Socket 后端、canvas 设备字体的通用名称（`_sans` 等）修正（否则中文会消失） |
 | `avm2: Network, LocalConnection, URLStream and loader fixes` | `LocalConnection`、`URLStream`、`Loader`／`URLLoader` 取消、AMF3 循环参照、网域名称「先父网域」解析、网页版递归深度保护 |
 | `render: 3D transforms, Matrix3D semantics and perspective projection` | `z`／`rotationX/Y/Z`／`scaleZ`／`matrix3D`、`perspectiveProjection`、`Matrix3D`、`Utils3D`、投影后的 `getBounds`／命中测试／`BitmapData.draw` |
 | `vendor: Add rust-flash-lso …` ＋ `flash-lso: Fix AMF3 encoder reference indices` | 以 subtree 收录 [rust-flash-lso](https://github.com/ruffle-rs/rust-flash-lso)（含其完整历史）并修正 AMF3 编码器 |
 | `web: Rebrand the web extension and player UI as Timffle` | 用户看得到的名称、图标与链接改成 Timffle（见 [`timffle/docs/BRANDING.md`](timffle/docs/BRANDING.md)） |
 
-之后的 commit 加上了第一次连接时的询问、弹出窗口与设置清单、canvas 文字的 Windows 字体度量、文本框里的输入法组字、WebGPU 优先的绘图引擎（按需解析混合对象、同步读回、WebGPU 上的 PixelBender）、Flash 的帧时序、帧数显示，以及各个发行版（见 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每项修正的细节与原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改过的 Ruffle 文件清单（Apache-2.0 第 4(b) 条的「修改声明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差异：`git diff 46fec3f -- . ':!timffle'`。
+之后的 commit 加上了第一次连接时的询问、弹出窗口与设置清单、空的默认允许清单（不事先允许任何网站）、canvas 文字的 Windows 字体度量、文本框里的输入法组字、WebGPU 优先的绘图引擎（按需解析混合对象、同步读回、WebGPU 上的 PixelBender）、Flash 的帧时序与 `Loader` 的加载时序、帧数显示、Flash 插件版本（先报 32，网站不收再改报 34）、HTTPS 网页里 HTTP 框架改用 HTTPS，以及各个发行版（见 [`timffle/CHANGELOG.md`](timffle/CHANGELOG.md)）。每项修正的细节与原因：[`timffle/docs/CHANGES-FROM-RUFFLE.md`](timffle/docs/CHANGES-FROM-RUFFLE.md)。所有被修改过的 Ruffle 文件清单（Apache-2.0 第 4(b) 条的「修改声明」）：[`timffle/MODIFIED-FILES.md`](timffle/MODIFIED-FILES.md)。要看完整差异：`git diff 46fec3f -- . ':!timffle'`。
 
 ### Timffle 对 Ruffle 的修补
 
-<p align="center"><img src="timffle/docs/images/zh-CN/ruffle-patches.svg" width="100%" alt="Timffle 对 Ruffle 的修补：AVM2 API 从 82.1% 到 82.6%；3D API 从 79.7% 到 100%；网络与 LocalConnection 的 4 个类别从 75.4% 到 89.5%；另有 Socket 连接、中文字型与输入、网域查找、WebGPU 优先的绘图引擎等 API 统计看不到的修补"></p>
+<p align="center"><img src="timffle/docs/images/zh-CN/ruffle-patches.svg" width="100%" alt="Timffle 对 Ruffle 的修补：AVM2 API 从 82.1% 到 100%（只算 API 数量，不代表行为）；3D API 从 79.7% 到 100%；网络与 LocalConnection 的 4 个类别从 75.4% 到 100%；另有 Socket 连接、中文字型与输入、网域查找、WebGPU 优先的绘图引擎等 API 统计看不到的修补"></p>
 
-- **怎么算的**：用 Ruffle 官网同一套统计工具（[`tools/stub-report`](tools/stub-report) 加 [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)），各跑一次 Ruffle `46fec3f` 与 Timffle（2026-11-04 的 `c181461b6`）。每个 Flash Player API 算一项，空壳（stub）画成橘色、不算实现，算法和 Ruffle 官网相同。**这只看 API 有没有实现，不代表行为完全相同**；行为以真 Flash Player 32 的实测为准，见 [`timffle/difftest/expected/`](timffle/difftest/expected/) 的 30 份黄金答案（3D 15 份、网络与 LocalConnection 14 份、基本 1 份）。
-- **补齐的 24 个 API**：`DisplayObject` 的 `z`、`rotationX`／`rotationY`／`rotationZ`、`scaleZ`、`globalToLocal3D()`、`local3DToGlobal()`；`Transform` 的 `matrix3D`、`perspectiveProjection`、`getRelativeMatrix3D()`；`PerspectiveProjection` 的 `fieldOfView`、`focalLength`、`projectionCenter`；`Matrix3D` 的 `pointAt()`、`recompose()`；`Utils3D.pointTowards()`；`URLStream` 的 `stop()`、`position`、`length`、`objectEncoding`；`LocalConnection.isPerUser`；`Loader.close()`、`Loader.unloadAndStop()`、`URLLoader.close()`。
+- **怎么算的**：用 Ruffle 官网同一套统计工具（[`tools/stub-report`](tools/stub-report) 加 [`ruffle-rs/api-report`](https://github.com/ruffle-rs/api-report)），各跑一次 Ruffle `46fec3f` 与 Timffle（2026-11-06 的 `b7a800b55`，并入 PRO_bata 后的 main）。每个 Flash Player API 算一项，空壳（stub）画成橘色、不算实现，算法和 Ruffle 官网相同。**这只看 API 有没有实现，不代表行为完全相同**；行为以真 Flash Player 32 的实测为准，见 [`timffle/difftest/expected/`](timffle/difftest/expected/) 的 47 份黄金答案（3D 17 份、网络与 LocalConnection 14 份、基本 1 份、其他 15 份）。白话说：工具显示 100%，是因为 4,560 个 API 项目现在每一项都有实现；它看不出实现是否完整、行为是否和 Flash 一样。有些 API（摄影机、麦克风、DRM、打印）没有真 Flash 的硬件或服务也能运行，其他 API 的细节也仍和 Flash 有差异。
+- **补齐的 799 个 API**（440 个空壳、359 个缺少，分布在 127 个类别）：最多的是 `flash.media`（165）、`flash.net`（140）、`flash.system`（93）、`flash.text.engine`（62）、`flash.display`（56）、`flash.globalization`（55）、`flash.net.drm`（42），其中包括 3D 与网络成员（`DisplayObject.z`／`rotationX`／`rotationY`／`rotationZ`／`scaleZ`、`Transform.matrix3D`、`Matrix3D.pointAt()`、`URLStream.stop()`、`Loader.unloadAndStop()` 等）。完整清单是下方 JSON 档里的 `fixed` 数组。
 - **3D API** 指 `Vector3D`、`Matrix3D`、`Utils3D`、`PerspectiveProjection`，加上 `DisplayObject` 与 `Transform` 的 3D 成员（共 79 项）；**网络与 LocalConnection** 指 `URLStream`、`URLLoader`、`LocalConnection`、`Loader` 四个类别（共 57 项）。图与数字由 [`timffle/scripts/ruffle_patches.py`](timffle/scripts/ruffle_patches.py) 产生，数字存在 [`timffle/docs/data/ruffle-patches.json`](timffle/docs/data/ruffle-patches.json)。
 
 ## 罗技优惠码
@@ -368,5 +361,5 @@ timffle/scripts/list-modified-files.sh > timffle/MODIFIED-FILES.md
 - **rust-flash-lso**：Copyright (c) 2020 Callum Thomson，MIT，见 [`vendor/rust-flash-lso/LICENSE`](vendor/rust-flash-lso/LICENSE)。
 - **Timffle 的修改与原创部分**：Copyright (c) 2026 Im-Tim-mI 与 Timffle 贡献者，**MIT 或 Apache-2.0，任选其一**：[`timffle/LICENSE-MIT`](timffle/LICENSE-MIT)、[`timffle/LICENSE-APACHE`](timffle/LICENSE-APACHE)。Timffle 的图标与标志是原创作品，同样适用上述授权。
 - 除非你明确另外声明，你有意提交到本项目的任何贡献，依 Apache-2.0 对「贡献」的定义，都以上述双授权提供，不附加任何额外条款。
-- **商标**：「Ruffle」名称与标志属于 Ruffle 项目；Timffle 只以描述方式提及（例如「Ruffle 的分支」「基于 Ruffle」）。「摩尔庄园」「赛尔号」「小花仙」「弹弹堂」「淘米」「Flash」「Adobe」「Chrome」等属于各自的权利人。
+- **商标**：「Ruffle」名称与标志属于 Ruffle 项目；Timffle 只以描述方式提及（例如「Ruffle 的分支」「基于 Ruffle」）。游戏名称、「Flash」「Adobe」「Chrome」等属于各自的权利人。
 - **本 repo 不包含任何游戏素材**（游戏的 SWF、DLL、图片、游戏代码、服务器地址、数据包格式与加解密），也不修改游戏文件。请遵守游戏的服务条款，只用自己的账号。完整声明见 [`NOTICE.md`](NOTICE.md)。行为的来源与验证方式记在 [`timffle/docs/PROVENANCE.md`](timffle/docs/PROVENANCE.md)。
