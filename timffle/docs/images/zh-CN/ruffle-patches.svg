@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="926" viewBox="0 0 1200 926" role="img" aria-label="Timffle 对 Ruffle 的修补" font-family="&apos;PingFang SC&apos;, &apos;Microsoft YaHei&apos;, &apos;Noto Sans CJK SC&apos;, &apos;Noto Sans SC&apos;, &apos;Segoe UI&apos;, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="978" viewBox="0 0 1200 978" role="img" aria-label="Timffle 对 Ruffle 的修补" font-family="&apos;PingFang SC&apos;, &apos;Microsoft YaHei&apos;, &apos;Noto Sans CJK SC&apos;, &apos;Noto Sans SC&apos;, &apos;Segoe UI&apos;, sans-serif">
 <title>Timffle 对 Ruffle 的修补</title>
 <defs><pattern id="pg" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#58A55C"/><rect width="6" height="12" fill="#4A9150"/></pattern><pattern id="py" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#FFD038"/><rect width="6" height="12" fill="#F0BC18"/></pattern><pattern id="po" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#F28C3A"/><rect width="6" height="12" fill="#DD7A2C"/></pattern></defs>
-<rect width="1200" height="926" rx="18" fill="#163A61"/>
+<rect width="1200" height="978" rx="18" fill="#163A61"/>
 <text x="28.0" y="52.0" font-size="32" fill="#FFD038" font-weight="bold" text-anchor="start">Timffle 对 Ruffle 的修补</text>
-<text x="28.0" y="84.0" font-size="15" fill="#A9C6E6" font-weight="normal" text-anchor="start">基底：Ruffle nightly-2026-10-13（46fec3f）　统计日期：2026-11-04</text>
+<text x="28.0" y="84.0" font-size="15" fill="#A9C6E6" font-weight="normal" text-anchor="start">基底：Ruffle nightly-2026-10-13（46fec3f）　统计日期：2026-11-06</text>
 <rect x="28" y="112" width="560" height="260" rx="14" fill="#1F4A78"/>
 <rect x="459.9" y="132" width="106.1" height="28" rx="7" fill="#2E5A8C"/>
 <text x="513.0" y="151.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">stub-report</text>
@@ -40,7 +40,7 @@
 <rect x="816.0" y="328" width="330.0" height="16" rx="8" fill="#DCE7F3"/>
 <rect x="816.00" y="328" width="263.16" height="16" fill="url(#pg)" clip-path="url(#bzh-CN10)"/>
 <rect x="1079.16" y="328" width="66.84" height="16" fill="url(#py)" clip-path="url(#bzh-CN10)"/>
-<rect x="28" y="396" width="560" height="428" rx="14" fill="#1F4A78"/>
+<rect x="28" y="396" width="560" height="480" rx="14" fill="#1F4A78"/>
 <rect x="504.2" y="416" width="61.8" height="28" rx="7" fill="#2E5A8C"/>
 <text x="535.1" y="435.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">0003</text>
 <text x="54.0" y="438.0" font-size="25" fill="#FFD038" font-weight="bold" text-anchor="start">网络、加载与 LocalConnection</text>
@@ -59,7 +59,7 @@
 <rect x="232.00" y="612" width="248.95" height="16" fill="url(#pg)" clip-path="url(#bzh-CN12)"/>
 <rect x="480.95" y="612" width="46.32" height="16" fill="url(#py)" clip-path="url(#bzh-CN12)"/>
 <rect x="527.26" y="612" width="23.16" height="16" fill="url(#po)" clip-path="url(#bzh-CN12)"/>
-<rect x="612" y="396" width="560" height="428" rx="14" fill="#1F4A78"/>
+<rect x="612" y="396" width="560" height="480" rx="14" fill="#1F4A78"/>
 <rect x="988.5" y="416" width="161.5" height="28" rx="7" fill="#2E5A8C"/>
 <text x="1069.2" y="435.0" font-size="14" fill="#E9F2FB" font-weight="normal" text-anchor="middle">0001・0002・0005</text>
 <text x="638.0" y="438.0" font-size="25" fill="#FFD038" font-weight="bold" text-anchor="start">API 统计看不到的修补</text>
@@ -85,15 +85,19 @@
 <text x="662.0" y="708.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">事件先于游戏帧执行：画面是帧结束时的状态</text>
 <text x="638.0" y="734.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
 <text x="662.0" y="734.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Flash 文本框里的输入法组字（中文）</text>
-<text x="638.0" y="766.0" font-size="14" fill="#A9C6E6" font-weight="normal" text-anchor="start">Ruffle 引擎：113 个文件，+10,291／−1,220 行</text>
-<text x="638.0" y="788.0" font-size="14" fill="#A9C6E6" font-weight="normal" text-anchor="start">Chrome 扩展程序：111 个文件，+28,164／−507 行</text>
-<rect x="28" y="849" width="30" height="14" rx="7" fill="url(#pg)"/>
-<text x="68.0" y="862.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Ruffle 原本就有</text>
-<rect x="204.66" y="849" width="30" height="14" rx="7" fill="url(#py)"/>
-<text x="244.7" y="862.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Timffle 修补</text>
-<rect x="357.25" y="849" width="30" height="14" rx="7" fill="url(#po)"/>
-<text x="397.2" y="862.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">空壳（部分实现）</text>
-<rect x="547.25" y="849" width="30" height="14" rx="7" fill="#DCE7F3"/>
-<text x="587.2" y="862.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">缺少</text>
-<text x="28.0" y="892.0" font-size="13.5" fill="#A9C6E6" font-weight="normal" text-anchor="start">API 统计只看有没有实现、是不是空壳，不代表行为完全相同；行为以真 Flash Player 32 的 30 份黄金答案验证。</text>
+<text x="638.0" y="760.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="760.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Loader 加载的内容在下一帧才构建，时序同 Flash</text>
+<text x="638.0" y="786.0" font-size="16" fill="#7BD389" font-weight="bold" text-anchor="start">✓</text>
+<text x="662.0" y="786.0" font-size="15.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">插件先报 Flash 32，网站不收就自动改报 34</text>
+<text x="638.0" y="818.0" font-size="14" fill="#A9C6E6" font-weight="normal" text-anchor="start">Ruffle 引擎：115 个文件，+10,438／−1,247 行</text>
+<text x="638.0" y="840.0" font-size="14" fill="#A9C6E6" font-weight="normal" text-anchor="start">Chrome 扩展程序：113 个文件，+28,430／−509 行</text>
+<rect x="28" y="901" width="30" height="14" rx="7" fill="url(#pg)"/>
+<text x="68.0" y="914.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Ruffle 原本就有</text>
+<rect x="204.66" y="901" width="30" height="14" rx="7" fill="url(#py)"/>
+<text x="244.7" y="914.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">Timffle 修补</text>
+<rect x="357.25" y="901" width="30" height="14" rx="7" fill="url(#po)"/>
+<text x="397.2" y="914.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">空壳（部分实现）</text>
+<rect x="547.25" y="901" width="30" height="14" rx="7" fill="#DCE7F3"/>
+<text x="587.2" y="914.0" font-size="14.5" fill="#EAF2FB" font-weight="normal" text-anchor="start">缺少</text>
+<text x="28.0" y="944.0" font-size="13.5" fill="#A9C6E6" font-weight="normal" text-anchor="start">API 统计只看有没有实现、是不是空壳，不代表行为完全相同；行为以真 Flash Player 32 的 30 份黄金答案验证。</text>
 </svg>

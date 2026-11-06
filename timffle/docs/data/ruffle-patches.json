@@ -1,11 +1,11 @@
 {
- "measured": "2026-11-04",
+ "measured": "2026-11-06",
  "ruffle": {
   "commit": "46fec3f",
   "label": "nightly-2026-10-13"
  },
  "timffle": {
-  "commit": "c181461b6"
+  "commit": "41f125b52"
  },
  "overall": {
   "ruffle": {
@@ -175,14 +175,14 @@
  },
  "changes": {
   "engine": {
-   "files": 113,
-   "insertions": 10291,
-   "deletions": 1220
+   "files": 115,
+   "insertions": 10438,
+   "deletions": 1247
   },
   "extension": {
-   "files": 111,
-   "insertions": 28164,
-   "deletions": 507
+   "files": 113,
+   "insertions": 28430,
+   "deletions": 509
   }
  }
 }
