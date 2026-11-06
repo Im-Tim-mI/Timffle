@@ -83,9 +83,11 @@ def summarize(args):
             fixed.append({"class": name, "member": member, "was": "missing"})
         for member in sorted(set(r["stubbed"]) - set(t["stubbed"]) - set(t["missing"])):
             fixed.append({"class": name, "member": member, "was": "stub"})
-    goldens = {"3d": 0, "net": 0, "basic": 0}
+    goldens = {"3d": 0, "net": 0, "basic": 0, "other": 0}
     for f in sorted((ROOT / "timffle/difftest/expected").glob("*.txt")):
-        goldens["3d" if f.name.startswith("d") else "basic" if f.name.startswith("t0") else "net"] += 1
+        n = f.name
+        goldens["3d" if n.startswith("d") else "basic" if n.startswith("t0")
+                else "net" if re.match(r"(r\d|t[123])", n) else "other"] += 1
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short=9", "HEAD"],
                           capture_output=True, text=True, check=True).stdout.strip()
     data = {
@@ -120,8 +122,9 @@ def texts(lang, d):
             "subtitle": f"Base: Ruffle {d['ruffle']['label']} ({d['ruffle']['commit']}) · Measured: {d['measured']}",
             "cards": [
                 ("AVM2 API (ActionScript 3)", "stub-report",
-                 f"Measured with the same tool as Ruffle's website. Timffle turns {n_fixed} Flash Player APIs that "
-                 "were stubs or missing into full implementations, mostly in 3D and networking.",
+                 f"Measured with the same tool as Ruffle's website. Timffle gives all {n_fixed} Flash Player APIs that were "
+                 "stubs or missing an implementation, so the tool now finds none missing and no stubs. "
+                 "That counts APIs, not behaviour: some run without the hardware (camera, DRM) a real Flash had.",
                  f"Scope: all AVM2 APIs ({num(o['ruffle']['points'])} items)", o),
                 ("3D and Matrix3D", "0004",
                  "Such as the 3D carousel on a game's login page. Fills in Flash's 3D model: z, rotationX/Y/Z, "
@@ -147,7 +150,8 @@ def texts(lang, d):
                 "Synchronous GPU readback and PixelBender on browser WebGPU",
                 "Events run before the frame: pictures show end-of-frame state",
                 "Input-method composition (Chinese) in Flash text fields",
-                "Loader content is built at the next frame, as in Flash",
+                "Loader content is built after the enterFrame event, as in Flash",
+                "JPEG XR encoder, byte-identical to Flash 32",
                 "The plugin reports Flash 32; a page that refuses it gets 34",
             ],
             "stats": [f"Ruffle engine: {num(eng['files'])} files, +{num(eng['insertions'])}/−{num(eng['deletions'])} lines",
@@ -164,8 +168,8 @@ def texts(lang, d):
             "subtitle": f"基底：Ruffle {d['ruffle']['label']}（{d['ruffle']['commit']}）　統計日期：{d['measured']}",
             "cards": [
                 ("AVM2 API（ActionScript 3）", "stub-report",
-                 f"用 Ruffle 官網同一套工具統計 Flash Player API 的實作程度。Timffle 把 {n_fixed} 個原本是空殼或缺少的 "
-                 "API 補成完整實作，集中在 3D 與網路。",
+                 f"用 Ruffle 官網同一套工具統計 Flash Player API 的實作程度。Timffle 替原本是空殼或缺少的 {n_fixed} 個 "
+                 "API 全部補上實作，工具現在找不到缺少或空殼。這只算 API，不算行為：有些 API 沒有真 Flash 的硬體（攝影機、DRM）也能執行。",
                  f"統計範圍：全部 AVM2 API（{num(o['ruffle']['points'])} 項）", o),
                 ("3D 與 Matrix3D", "0004",
                  "遊戲登入畫面的 3D 轉盤等。補齊 Flash 的 3D 模型：z、rotationX/Y/Z、scaleZ、matrix3D、透視投影、"
@@ -190,7 +194,8 @@ def texts(lang, d):
                 "瀏覽器 WebGPU 的同步讀回與 PixelBender",
                 "事件先於遊戲幀執行：畫面是幀結束時的狀態",
                 "Flash 文字框裡的輸入法組字（中文）",
-                "Loader 載入的內容在下一幀才建構，時序同 Flash",
+                "Loader 載入的內容在 enterFrame 事件之後才建立，和 Flash 一致",
+                "JPEG XR 編碼器，輸出與 Flash 32 逐位元組相同",
                 "外掛先報 Flash 32，網站不收就自動改報 34",
             ],
             "stats": [f"Ruffle 引擎：{num(eng['files'])} 個檔案，+{num(eng['insertions'])}／−{num(eng['deletions'])} 行",
@@ -206,8 +211,8 @@ def texts(lang, d):
             "subtitle": f"基底：Ruffle {d['ruffle']['label']}（{d['ruffle']['commit']}）　统计日期：{d['measured']}",
             "cards": [
                 ("AVM2 API（ActionScript 3）", "stub-report",
-                 f"用 Ruffle 官网同一套工具统计 Flash Player API 的实现程度。Timffle 把 {n_fixed} 个原本是空壳或缺少的 "
-                 "API 补成完整实现，集中在 3D 与网络。",
+                 f"用 Ruffle 官网同一套工具统计 Flash Player API 的实现程度。Timffle 替原本是空壳或缺少的 {n_fixed} 个 "
+                 "API 全部补上实现，工具现在找不到缺少或空壳。这只算 API，不算行为：有些 API 没有真 Flash 的硬件（摄像头、DRM）也能运行。",
                  f"统计范围：全部 AVM2 API（{num(o['ruffle']['points'])} 项）", o),
                 ("3D 与 Matrix3D", "0004",
                  "游戏登录画面的 3D 转盘等。补齐 Flash 的 3D 模型：z、rotationX/Y/Z、scaleZ、matrix3D、透视投影、"
@@ -232,7 +237,8 @@ def texts(lang, d):
                 "浏览器 WebGPU 的同步读回与 PixelBender",
                 "事件先于游戏帧执行：画面是帧结束时的状态",
                 "Flash 文本框里的输入法组字（中文）",
-                "Loader 加载的内容在下一帧才构建，时序同 Flash",
+                "Loader 加载的内容在 enterFrame 事件之后才创建，和 Flash 一致",
+                "JPEG XR 编码器，输出与 Flash 32 逐字节相同",
                 "插件先报 Flash 32，网站不收就自动改报 34",
             ],
             "stats": [f"Ruffle 引擎：{num(eng['files'])} 个文件，+{num(eng['insertions'])}／−{num(eng['deletions'])} 行",
