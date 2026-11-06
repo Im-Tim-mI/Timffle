@@ -47,6 +47,9 @@ struct MainWindow {
     time: Instant,
     next_frame_time: Option<Instant>,
     event_loop_proxy: EventLoopProxy<RuffleEvent>,
+    /// Timffle: wheel notches vs. smooth scrolling (see `ruffle_core::wheel`).
+    wheel: ruffle_core::wheel::WheelAccumulator,
+    wheel_epoch: Instant,
 }
 
 impl MainWindow {
@@ -193,22 +196,23 @@ impl MainWindow {
                     return;
                 }
 
-                use ruffle_core::events::MouseWheelDelta;
+                use ruffle_core::wheel::WheelInput;
                 use winit::event::MouseScrollDelta;
                 // Timffle: winit's line delta counts wheel notches (one per notch on
                 // every platform; X11 sent two before the vendored winit fix). Flash
                 // Player reports a notch as the system's lines per notch, 3 by default on
                 // Windows (`MouseEvent.delta` 3 and a TextField scrolls 3 lines, measured
-                // on Flash Player 32), so a notch is 3 lines here.
-                const LINES_PER_NOTCH: f64 = 3.0;
-                let delta = match delta {
-                    MouseScrollDelta::LineDelta(_, dy) => {
-                        MouseWheelDelta::Lines(f64::from(dy) * LINES_PER_NOTCH)
-                    }
-                    MouseScrollDelta::PixelDelta(pos) => MouseWheelDelta::Pixels(pos.y),
+                // on Flash Player 32). Pixel deltas (macOS trackpads, Wayland touchpads)
+                // add up to whole lines first instead of sending fractions.
+                let input = match delta {
+                    MouseScrollDelta::LineDelta(_, dy) => WheelInput::Notches(f64::from(dy)),
+                    MouseScrollDelta::PixelDelta(pos) => WheelInput::Pixels(pos.y),
                 };
-                let event = PlayerEvent::MouseWheel { delta };
-                self.player.handle_event(event);
+                let time = self.wheel_epoch.elapsed().as_secs_f64() * 1000.0;
+                if let Some(delta) = self.wheel.push(input, time) {
+                    let event = PlayerEvent::MouseWheel { delta };
+                    self.player.handle_event(event);
+                }
                 self.check_redraw();
             }
             WindowEvent::CursorEntered { .. } => {
@@ -621,6 +625,8 @@ impl ApplicationHandler<RuffleEvent> for App {
                 time: Instant::now(),
                 next_frame_time: None,
                 event_loop_proxy,
+                wheel: ruffle_core::wheel::WheelAccumulator::new(),
+                wheel_epoch: Instant::now(),
             });
         }
     }

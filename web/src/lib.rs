@@ -25,7 +25,7 @@ use ruffle_core::context::UpdateContext;
 use ruffle_core::context_menu::ContextMenuCallback;
 use ruffle_core::events::{
     GamepadButton, ImeCursorArea, ImeEvent, ImeNotification, ImePurpose, MouseButton,
-    MouseWheelDelta, PlayerNotification, TextControlCode,
+    PlayerNotification, TextControlCode,
 };
 use ruffle_core::swf::{Rectangle, Twips};
 use ruffle_core::tag_utils::SwfMovieData;
@@ -162,6 +162,8 @@ struct RuffleInstance {
     notification_receiver: async_channel::Receiver<PlayerNotification>,
     /// Timffle: frame-rate statistics for the fps overlay.
     fps: fps::FrameStats,
+    /// Timffle: wheel notches vs. smooth scrolling (see `ruffle_core::wheel`).
+    wheel: RefCell<ruffle_core::wheel::WheelAccumulator>,
 }
 
 #[wasm_bindgen(raw_module = "./internal/player/inner.js")]
@@ -649,6 +651,7 @@ impl RuffleHandle {
             background_tick_mode: false,
             render_pending: false,
             fps: fps::FrameStats::new(),
+            wheel: RefCell::new(ruffle_core::wheel::WheelAccumulator::new()),
             mouse_move_callback: None,
             mouse_enter_callback: None,
             mouse_leave_callback: None,
@@ -837,18 +840,46 @@ impl RuffleHandle {
                 false,
                 move |js_event: WheelEvent| {
                     let _ = ruffle.with_instance(|instance| {
-                        let delta = match js_event.delta_mode() {
-                            WheelEvent::DOM_DELTA_LINE => {
-                                MouseWheelDelta::Lines(-js_event.delta_y())
-                            }
-                            WheelEvent::DOM_DELTA_PIXEL => {
-                                MouseWheelDelta::Pixels(-js_event.delta_y())
-                            }
-                            _ => return,
+                        // Timffle: wheel notches become 3 lines each like Flash;
+                        // trackpad pixels add up to whole lines first (see
+                        // `ruffle_core::wheel`). The wheel state is borrowed only
+                        // briefly: the movie's handler may call back into the page.
+                        use ruffle_core::wheel::WheelInput;
+                        let time = js_event.time_stamp();
+                        // `deltaMode` must be read before `deltaY`, or Firefox
+                        // converts line deltas to pixels.
+                        let mode = js_event.delta_mode();
+                        let delta_y = js_event.delta_y();
+                        let delta = {
+                            let mut wheel = instance.wheel.borrow_mut();
+                            let input = match mode {
+                                WheelEvent::DOM_DELTA_LINE => WheelInput::Lines(-delta_y),
+                                WheelEvent::DOM_DELTA_PIXEL => {
+                                    let legacy = js_sys::Reflect::get(
+                                        &js_event,
+                                        &JsValue::from_str("wheelDeltaY"),
+                                    )
+                                    .ok()
+                                    .and_then(|value| value.as_f64());
+                                    wheel.classify_pixels(-delta_y, legacy, time)
+                                }
+                                WheelEvent::DOM_DELTA_PAGE => WheelInput::Notches(-delta_y),
+                                _ => return,
+                            };
+                            wheel.push(input, time)
                         };
                         let _ = instance.with_core_mut(|core| {
-                            let scroll_handled =
-                                core.handle_event(PlayerEvent::MouseWheel { delta });
+                            let scroll_handled = match delta {
+                                Some(delta) => {
+                                    let handled =
+                                        core.handle_event(PlayerEvent::MouseWheel { delta });
+                                    instance.wheel.borrow_mut().set_handled(handled);
+                                    handled
+                                }
+                                // Not a whole line yet: keep the page still if the
+                                // movie took the gesture's previous event.
+                                None => instance.wheel.borrow().gesture_handled(time),
+                            };
                             match config.scrolling_behavior {
                                 ScrollingBehavior::Always => {
                                     // Do not prevent scrolling

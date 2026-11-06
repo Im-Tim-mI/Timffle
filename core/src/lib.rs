@@ -38,6 +38,8 @@ mod local_connection;
 pub mod memory;
 mod net_connection;
 mod orphan_manager;
+/// Timffle: wheel notches and smooth scrolling → Flash `MouseEvent.delta`.
+pub mod wheel;
 pub mod pixel_bender;
 mod player;
 mod prelude;
