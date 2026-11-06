@@ -3,7 +3,10 @@ use crate::font::{FontMetrics, Glyph};
 use crate::prelude::*;
 use ruffle_render::shape_utils::{DrawCommand, FillRule};
 
-use std::cell::OnceCell;
+use crate::font::shaping::{OpenTypeFeatures, ShapedChar};
+use crate::string::{WStr, WString};
+use std::cell::{OnceCell, RefCell};
+use std::collections::HashMap;
 use std::sync::Arc;
 use swf::FillStyle;
 
@@ -96,7 +99,17 @@ pub struct FontFace {
     leading: i16,
     scale: f32,
     might_have_kerning: bool,
+
+    /// Timffle: shaped FTE text (in font units, so independent of the size), so that
+    /// rendering a laid-out line does not shape it again every frame.
+    shaped: RefCell<ShapedCache>,
 }
+
+/// Timffle: shaped texts by text and features (`None`: laid out per character).
+type ShapedCache = HashMap<(WString, OpenTypeFeatures), Option<Vec<ShapedChar>>>;
+
+/// Timffle: the shaping cache is cleared when it grows past this many texts.
+const SHAPED_CACHE_LIMIT: usize = 512;
 
 impl FontFace {
     pub fn new(data: FontFileData, font_index: u32) -> Result<Self, ttf_parser::FaceParsingError> {
@@ -132,6 +145,7 @@ impl FontFace {
             leading,
             scale,
             might_have_kerning,
+            shaped: Default::default(),
         })
     }
 
@@ -155,33 +169,65 @@ impl FontFace {
     pub fn get_glyph(&self, character: char) -> Option<&Glyph> {
         let face = ttf_parser::Face::parse(&self.data, self.font_index)
             .expect("Font was already checked to be valid");
-        if let Some(glyph_id) = face.glyph_index(character) {
-            return self.glyphs[glyph_id.0 as usize]
-                .get_or_init(|| {
-                    let mut drawing = Drawing::new();
-                    // TTF uses NonZero
-                    drawing.new_fill(
-                        Some(FillStyle::Color(Color::WHITE)),
-                        Some(FillRule::NonZero),
+        let glyph_id = face.glyph_index(character)?;
+        self.glyph_by_id(&face, glyph_id, character)
+    }
+
+    /// Timffle: the glyph with a glyph ID (shaped text draws ligature glyphs, which no
+    /// character maps to); `character` is the first character it stands for.
+    pub fn get_glyph_by_id(&self, glyph_id: u16, character: char) -> Option<&Glyph> {
+        let face = ttf_parser::Face::parse(&self.data, self.font_index)
+            .expect("Font was already checked to be valid");
+        self.glyph_by_id(&face, ttf_parser::GlyphId(glyph_id), character)
+    }
+
+    fn glyph_by_id(
+        &self,
+        face: &ttf_parser::Face<'_>,
+        glyph_id: ttf_parser::GlyphId,
+        character: char,
+    ) -> Option<&Glyph> {
+        self.glyphs
+            .get(glyph_id.0 as usize)?
+            .get_or_init(|| {
+                let mut drawing = Drawing::new();
+                // TTF uses NonZero
+                drawing.new_fill(
+                    Some(FillStyle::Color(Color::WHITE)),
+                    Some(FillRule::NonZero),
+                );
+                if face
+                    .outline_glyph(glyph_id, &mut GlyphToDrawing(&mut drawing))
+                    .is_some()
+                {
+                    let advance = face.glyph_hor_advance(glyph_id).map_or_else(
+                        || drawing.self_bounds(true).width(),
+                        |a| Twips::new(a as i32),
                     );
-                    if face
-                        .outline_glyph(glyph_id, &mut GlyphToDrawing(&mut drawing))
-                        .is_some()
-                    {
-                        let advance = face.glyph_hor_advance(glyph_id).map_or_else(
-                            || drawing.self_bounds(true).width(),
-                            |a| Twips::new(a as i32),
-                        );
-                        Some(Glyph::from_drawing(character, advance, drawing))
-                    } else {
-                        let advance = Twips::new(face.glyph_hor_advance(glyph_id)? as i32);
-                        // If we have advance, then this is either an image, SVG or simply missing (ie whitespace)
-                        Some(Glyph::whitespace(character, advance))
-                    }
-                })
-                .as_ref();
+                    Some(Glyph::from_drawing(character, advance, drawing))
+                } else {
+                    let advance = Twips::new(face.glyph_hor_advance(glyph_id)? as i32);
+                    // If we have advance, then this is either an image, SVG or simply missing (ie whitespace)
+                    Some(Glyph::whitespace(character, advance))
+                }
+            })
+            .as_ref()
+    }
+
+    /// Timffle: `text` shaped with the font's OpenType tables (see `font::shaping`), or
+    /// `None` when it has to be laid out character by character.
+    pub fn shape(&self, text: &WStr, features: OpenTypeFeatures) -> Option<Vec<ShapedChar>> {
+        let key = (text.to_owned(), features);
+        if let Some(shaped) = self.shaped.borrow().get(&key) {
+            return shaped.clone();
         }
-        None
+        let shaped = crate::font::shaping::shape(&self.data, self.font_index, text, features);
+        let mut cache = self.shaped.borrow_mut();
+        if cache.len() >= SHAPED_CACHE_LIMIT {
+            cache.clear();
+        }
+        cache.insert(key, shaped.clone());
+        shaped
     }
 
     pub fn has_kerning_info(&self) -> bool {
