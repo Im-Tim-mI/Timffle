@@ -12,6 +12,8 @@ pub mod geom;
 pub mod globalization;
 pub mod media;
 pub mod net;
+// Timffle: `flash.printing` package natives
+pub mod printing;
 // Timffle: `flash.sampler` package natives
 pub mod sampler;
 pub mod system;

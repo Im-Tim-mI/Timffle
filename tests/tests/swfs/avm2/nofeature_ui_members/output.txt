@@ -18,7 +18,7 @@ captureSource bogus THREW ArgumentError 2008
 capture bogus no error
 captureBitmapData null
 // PrintJob
-isSupported false
+isSupported true
 orientation 0
 orientation set THREW ReferenceError 1074
 sizes 0 0 0 0

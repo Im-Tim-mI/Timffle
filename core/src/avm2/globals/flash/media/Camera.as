@@ -4,13 +4,13 @@ package flash.media {
     import flash.geom.Rectangle;
     import flash.utils.ByteArray;
 
-    // Timffle: Flash Player on a machine without a camera. This player has
-    // no video capture pipeline on any platform, so `isSupported` is false,
-    // `names` is empty and `getCamera()` is null (the AS3 reference: "If no
-    // cameras are available or installed, the method returns null"; Flash
-    // Player 32 under Wine answers null too). Flash Player 32 reports
-    // `isSupported` true on a desktop even without a camera; this player keeps
-    // false (see CHANGES-FROM-RUFFLE.md).
+    // Timffle: Flash Player on a desktop without a camera. This player has
+    // no video capture pipeline on any platform, so `names` is empty and
+    // `getCamera()` is null (the AS3 reference: "If no cameras are available
+    // or installed, the method returns null"; Flash Player 32 under Wine
+    // answers null too). `isSupported` describes the platform, not the
+    // devices: Flash Player 32 reports true on a desktop without a camera
+    // (measured), and so does this player.
     //
     // `new Camera()` does not throw in Flash Player 32: it makes a Camera that
     // is attached to no device. Such an object answers 0, false or null from
@@ -31,7 +31,7 @@ package flash.media {
 
         [API("667")]
         public static function get isSupported():Boolean {
-            return false;
+            return true;
         }
 
         public static function get names():Array {

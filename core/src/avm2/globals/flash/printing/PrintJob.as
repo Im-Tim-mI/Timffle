@@ -1,28 +1,42 @@
 package flash.printing {
     import flash.display.Sprite;
+    import flash.errors.IllegalOperationError;
     import flash.events.EventDispatcher;
     import flash.geom.Rectangle;
 
-    // Timffle: Flash Player on a platform without printing (the reference's "mobile devices
-    // or AIR for TV" case; `Capabilities.hasPrinting` is false here too). `isSupported` is
-    // false, `start()` returns false ("the user cancels or an error occurs") and no job is
-    // ever active, so the members documented as "available only after a call to start()"
-    // (pageWidth/pageHeight/paperWidth/paperHeight) stay 0, `addPage()` throws the
-    // documented Error (#2057, the page could not be added) and `send()` "does not succeed"
-    // silently. `orientation` is the page orientation of the started job: Flash Player 32
-    // reads "0" before `start()` (measured). The setter exists only in AIR; in Flash Player
-    // the property is read-only (assigning is ReferenceError #1074, measured), so there is
-    // no setter here (an AIR-only setter next to a public getter would not be hidden).
+    // Timffle: Flash Player 32 on a desktop, where the user cancels every print dialog.
+    // `isSupported` and `Capabilities.hasPrinting` are true (as on a desktop without a
+    // printer, measured), but this player has no printing, so `start()` returns false
+    // without showing anything -- what Flash Player 32 answers when the dialog is
+    // cancelled (measured under Wine). Measured rules of the job slot: only one PrintJob
+    // may be in use at a time -- constructing another one while a job that was neither
+    // sent nor failed to start is still alive throws IllegalOperationError #2141;
+    // a failed `start()` and `send()` free the slot. The page members
+    // (pageWidth/pageHeight/paperWidth/paperHeight) read 0 before and after a failed
+    // `start()` (no error); `orientation` reads "0" before `start()` and null after a
+    // failed `start()` or a `send()`.
+    // `addPage()` throws Error #2057 and `send()` does nothing without a started job.
+    // The `orientation` setter exists only in AIR (assigning is ReferenceError #1074 in
+    // Flash Player, measured), so there is none here.
     public class PrintJob extends EventDispatcher {
         private var _orientation:String = "0";
 
+        private var _startTried:Boolean = false;
+
+        // The player-wide job slot (a weak reference: a job that is collected frees it).
+        private static native function claimSlot(job:PrintJob):Boolean;
+        private static native function releaseSlot(job:PrintJob):void;
+
         public function PrintJob() {
             super();
+            if (!PrintJob.claimSlot(this)) {
+                throw new IllegalOperationError("Error #2141: Only one PrintJob may be in use at a time.", 2141);
+            }
         }
 
         [API("667")]
         public static function get isSupported():Boolean {
-            return false;
+            return true;
         }
 
         public function get orientation():String {
@@ -46,7 +60,13 @@ package flash.printing {
         }
 
         public function start():Boolean {
-            // No printer and no print dialog: the job cannot start.
+            // As if the user cancelled the print dialog: the job does not start and
+            // frees the slot.
+            if (!this._startTried) {
+                this._startTried = true;
+                this._orientation = null;
+                PrintJob.releaseSlot(this);
+            }
             return false;
         }
 
@@ -56,7 +76,10 @@ package flash.printing {
         }
 
         public function send():void {
-            // Nothing was started: the documented "does not succeed" case, no exception.
+            // Nothing was started: the documented "does not succeed" case, no exception;
+            // the job is finished (orientation null, measured) and frees the slot.
+            this._orientation = null;
+            PrintJob.releaseSlot(this);
         }
     }
 }
