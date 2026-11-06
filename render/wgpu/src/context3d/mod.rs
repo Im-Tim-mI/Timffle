@@ -1461,31 +1461,31 @@ impl Context3D for WgpuContext3D {
         }
     }
 
-    // Timffle: Flash reports e.g. "OpenGL Vendor=NVIDIA Corporation Version=4.6.0 Renderer=...
-    // GLSL=..." or "Direct3D11 (Direct Mode) Vendor=... Renderer=...". We follow the same
-    // "API Vendor=... Version=... Renderer=..." shape using the wgpu adapter's data.
+    // Timffle: only the graphics API, the way Flash Player names it ("DirectX11",
+    // "DirectX9", "OpenGL"; "Software Hw_disabled=<reason>" when Stage3D falls back to
+    // software). Flash Player's own string never carries the GPU vendor, model or driver
+    // version, and this player does not either: those would let any SWF fingerprint the
+    // user's machine. The API is the wgpu backend in use; a CPU adapter (lavapipe, WARP,
+    // SwiftShader) is the "hardware graphics initialization failure" case.
     fn driver_info(&self) -> String {
         if let Some(fixed) = &self.descriptors.context3d_driver_info_override {
             return fixed.clone();
         }
         let info = self.descriptors.adapter.get_info();
-        let api = match info.backend {
+        if matches!(info.device_type, wgpu::DeviceType::Cpu) {
+            return "Software Hw_disabled=unavailable".to_string();
+        }
+        match info.backend {
             wgpu::Backend::Vulkan => "Vulkan",
             wgpu::Backend::Metal => "Metal",
-            wgpu::Backend::Dx12 => "Direct3D12",
+            wgpu::Backend::Dx12 => "DirectX12",
+            // wgpu's GL backend is WebGL 2 in a browser.
+            wgpu::Backend::Gl if cfg!(target_family = "wasm") => "WebGL",
             wgpu::Backend::Gl => "OpenGL",
             wgpu::Backend::BrowserWebGpu => "WebGPU",
-            wgpu::Backend::Noop => "Software",
-        };
-        let mode = if matches!(info.device_type, wgpu::DeviceType::Cpu) {
-            "Software"
-        } else {
-            "Direct Mode"
-        };
-        format!(
-            "{api} ({mode}) Vendor={} Version={} Renderer={}",
-            info.driver, info.driver_info, info.name
-        )
+            wgpu::Backend::Noop => "Software Hw_disabled=unavailable",
+        }
+        .to_string()
     }
 
     #[instrument(level = "debug", skip_all)]
