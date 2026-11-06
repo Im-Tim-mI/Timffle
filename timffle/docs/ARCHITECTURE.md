@@ -63,7 +63,7 @@
 
 **兩種連線方式各有自己的「一律允許」清單**：`allowedOrigins` 是連線小幫手的清單（詢問視窗與彈出視窗的「允許」寫在這裡），`proxyOrigins` 是自訂代理的清單——只有這份清單裡的網站會拿到代理網址與 token。兩份分開，是為了讓「在小幫手模式按過允許的網站」不會因為使用者之後切到自訂代理，就悄悄拿到 token（審查發現的問題）。「一律拒絕」是共用的，兩種方式都優先。切換方式時設定頁換顯示該方式的清單；彈出視窗與詢問視窗只改目前方式的清單（「拒絕」例外，兩份都移除）。舊版（沒有 `proxyOrigins`）存的設定，兩種方式沿用同一份清單，行為與以前完全相同——包括預設清單的升級（見下段）。
 
-**預設清單是空的**：沒有任何網站被事先允許，連線小幫手模式下每個網站第一次要連線都會詢問，自訂代理模式下要使用者自己加入。舊版曾經預設允許幾個遊戲網站（最早一版兩個來源，後來一版八個）；設定裡存的清單如果還和其中一份**完全一樣**、而且是在目前的預設版本（`defaultsVersion` 3）之前存的，就表示使用者從沒選過它，更新時清空一次（`upgradeLegacyDefaults`），那些網站之後和其他網站一樣先詢問。`allowedOrigins` 與 `proxyOrigins` 各自判斷；內容有任何不同的清單（使用者加過或刪過網站）原樣保留；「一律拒絕」清單不動。
+**新安裝的預設清單是空的**：沒有任何網站被事先允許，連線小幫手模式下每個網站第一次要連線都會詢問，自訂代理模式下要使用者自己加入。**已安裝的使用者不受影響**：舊版曾經預設允許幾個遊戲網站（最早一版兩個來源，後來一版八個，`LEGACY_DEFAULT_ORIGINS`）。存過的設定永遠原樣使用，只有沒有 `defaultsVersion`、而且還是最早那份兩個來源的清單，會像以前一樣補成八個（`upgradeLegacyDefaults`）。從沒存過設定的舊安裝，靠的是當時程式裡的預設清單：`runtime.onInstalled` 的 `update` 時，如果 storage 裡既沒有設定、也沒有新安裝標記 `timffleInstalledDefaultsVersion`，就把八個來源的清單存下來（`applyInstalledDefaults`／`installedDefaultsAction`）；`install` 時只寫標記，所以之後的更新不會再補。`allowedOrigins` 與 `proxyOrigins` 各自判斷；「一律拒絕」清單不動。
 
 **頁面端**：`ask` 的網站也會收到保留網址的 `socketProxy`（沒有任何機密），好讓第一次連線能走到背景服務的檢查；內容腳本照樣建立橋接通道，但把 port 以 `lazy` 標記交給頁面端 `ruffle.ts` 暫存，**直到 Ruffle 第一次讀 `config.socketProxy`（電影要載入之前）才安裝 `WebSocket` 轉接**（`socket-bridge-arm.ts`：在設定物件的 `socketProxy` 上放一個 getter，只觸發一次）。所以沒有 Flash 內容的網頁看到的仍是原生 `WebSocket`；已允許的網站維持原本的行為（立刻安裝）。
 
