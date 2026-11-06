@@ -3,11 +3,11 @@ use crate::avm2::activation::Activation;
 use crate::avm2::object::font_description_object::FontDescriptionObject;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, Object, TObject};
-use crate::font::OpenTypeFeatures;
+use crate::font::{FteGlyphGrid, OpenTypeFeatures};
 use crate::fte::{
     BreakOpportunityValue, DigitCaseValue, DigitWidthValue, FontLookupValue, FontPostureValue,
-    FontWeightValue, KerningValue, LigatureLevelValue, TextBaselineValue, TextRotationValue,
-    TypographicCaseValue,
+    FontWeightValue, KerningValue, LigatureLevelValue, RenderingModeValue, TextBaselineValue,
+    TextRotationValue, TypographicCaseValue,
 };
 use crate::html::TextFormat;
 use crate::string::AvmString;
@@ -270,6 +270,12 @@ impl<'gc> ElementFormatObject<'gc> {
             bold: Some(bold),
             italic: Some(italic),
             opentype: Some(self.opentype_features()),
+            fte_grid: (fd.font_lookup() == FontLookupValue::EmbeddedCFF).then_some(
+                match fd.rendering_mode() {
+                    RenderingModeValue::Normal => FteGlyphGrid::WholePixel,
+                    RenderingModeValue::Cff => FteGlyphGrid::QuarterPixel,
+                },
+            ),
             ..TextFormat::default()
         }
     }

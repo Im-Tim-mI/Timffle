@@ -11,7 +11,7 @@ mod text_render_settings;
 pub use atlas::{FontAtlas, FontAtlasGlyph, FontAtlases};
 pub use font_descriptor::FontDescriptor;
 pub use font_face::{FontFace, FontFileData};
-pub use font_like::{EvalParameters, FontLike, GlyphResolution};
+pub use font_like::{EvalParameters, FontLike, FteGlyphGrid, GlyphResolution};
 pub use font_renderer::FontRenderer;
 pub use font_renderer::FontRendererGlyphSource;
 pub use font_set::FontSet;

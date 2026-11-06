@@ -1,0 +1,8 @@
+# Timffle: output.txt was recorded with Flash Player 32.0.0.465 (standalone, Wine,
+# 2026-11-06, twice, identical). test.swf is Test.as compiled with asc plus the DefineFont4
+# tag "Exo 2" (see LICENSE-fonts.txt). The same output is the difftest golden
+# timffle/difftest/expected/fte_glyph_pixel_grid.txt.
+num_frames = 1
+
+[player_options]
+with_renderer = { optional = false, quality = "low" }

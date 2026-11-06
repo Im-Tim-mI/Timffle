@@ -210,6 +210,7 @@ mod tests {
             kerning,
             color: swf::Color::BLACK,
             opentype: None,
+            fte_grid: None,
         }
     }
 

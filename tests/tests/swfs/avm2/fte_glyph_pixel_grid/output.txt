@@ -1,0 +1,165 @@
+normal x=10: 14-17/18
+normal x=10.05: 14-17/18
+normal x=10.1: 14-17/18
+normal x=10.15: 14-17/18
+normal x=10.2: 14-17/18
+normal x=10.25: 14-17/18
+normal x=10.3: 14-17/18
+normal x=10.35: 14-17/18
+normal x=10.4: 14-17/18
+normal x=10.45: 14-17/18
+normal x=10.5: 14-17/18
+normal x=10.55: 15-18/18
+normal x=10.6: 15-18/18
+normal x=10.65: 15-18/18
+normal x=10.7: 15-18/18
+normal x=10.75: 15-18/18
+normal x=10.8: 15-18/18
+normal x=10.85: 15-18/18
+normal x=10.9: 15-18/18
+normal x=10.95: 15-18/18
+normal y=50: 14-17/18
+normal y=50.05: 14-17/18
+normal y=50.1: 14-17/18
+normal y=50.15: 14-17/18
+normal y=50.2: 14-17/18
+normal y=50.25: 14-17/18
+normal y=50.3: 14-17/18
+normal y=50.35: 14-17/18
+normal y=50.4: 14-17/18
+normal y=50.45: 14-17/18
+normal y=50.5: 14-17/18
+normal y=50.55: 14-17/19
+normal y=50.6: 14-17/19
+normal y=50.65: 14-17/19
+normal y=50.7: 14-17/19
+normal y=50.75: 14-17/19
+normal y=50.8: 14-17/19
+normal y=50.85: 14-17/19
+normal y=50.9: 14-17/19
+normal y=50.95: 14-17/19
+normal parent x=10 line x=0.25: 14-17/18
+normal parent y=50 line y=0.25: 14-17/18
+normal parent x=10 line x=0.3: 14-17/18
+normal parent y=50 line y=0.3: 14-17/18
+normal parent x=10 line x=0.45: 14-17/18
+normal parent y=50 line y=0.45: 14-17/18
+normal parent x=10 line x=0.55: 15-18/18
+normal parent y=50 line y=0.55: 14-17/19
+normal parent x=10 line x=0.6: 15-18/18
+normal parent y=50 line y=0.6: 14-17/19
+normal parent x=10.3 line x=0.25: 14-17/18
+normal parent y=50.3 line y=0.25: 14-17/18
+normal parent x=10.3 line x=0.3: 14-17/18
+normal parent y=50.3 line y=0.3: 14-17/18
+normal parent x=10.3 line x=0.45: 14-17/18
+normal parent y=50.3 line y=0.45: 14-17/18
+normal parent x=10.3 line x=0.55: 15-18/18
+normal parent y=50.3 line y=0.55: 14-17/19
+normal parent x=10.3 line x=0.6: 15-18/18
+normal parent y=50.3 line y=0.6: 14-17/19
+normal parent x=10.45 line x=0.25: 14-17/18
+normal parent y=50.45 line y=0.25: 14-17/18
+normal parent x=10.45 line x=0.3: 14-17/18
+normal parent y=50.45 line y=0.3: 14-17/18
+normal parent x=10.45 line x=0.45: 14-17/18
+normal parent y=50.45 line y=0.45: 14-17/18
+normal parent x=10.45 line x=0.55: 15-18/18
+normal parent y=50.45 line y=0.55: 14-17/19
+normal parent x=10.45 line x=0.6: 15-18/18
+normal parent y=50.45 line y=0.6: 14-17/19
+normal parent x=10.6 line x=0.25: 15-18/18
+normal parent y=50.6 line y=0.25: 14-17/19
+normal parent x=10.6 line x=0.3: 15-18/18
+normal parent y=50.6 line y=0.3: 14-17/19
+normal parent x=10.6 line x=0.45: 15-18/18
+normal parent y=50.6 line y=0.45: 14-17/19
+normal parent x=10.6 line x=0.55: 16-19/18
+normal parent y=50.6 line y=0.55: 14-17/20
+normal parent x=10.6 line x=0.6: 16-19/18
+normal parent y=50.6 line y=0.6: 14-17/20
+normal line x=10: 14-17/18 38-41/18 61-64/18 85-88/18 109-112/18 132-135/18 156-159/18 180-183/18 203-206/18 227-230/18 250-253/18 274-277/18 298-301/18 321-324/18 345-348/18 369-372/18 392-395/18 416-419/18 440-443/18 463-466/18
+normal line x=10.3: 14-17/18 38-41/18 61-64/18 85-88/18 109-112/18 132-135/18 156-159/18 180-183/18 203-206/18 227-230/18 250-253/18 274-277/18 298-301/18 321-324/18 345-348/18 369-372/18 392-395/18 416-419/18 440-443/18 463-466/18
+normal line x=10.5: 14-17/18 38-41/18 61-64/18 85-88/18 109-112/18 132-135/18 156-159/18 180-183/18 203-206/18 227-230/18 250-253/18 274-277/18 298-301/18 321-324/18 345-348/18 369-372/18 392-395/18 416-419/18 440-443/18 463-466/18
+normal line x=10.7: 15-18/18 39-42/18 62-65/18 86-89/18 110-113/18 133-136/18 157-160/18 181-184/18 204-207/18 228-231/18 251-254/18 275-278/18 299-302/18 322-325/18 346-349/18 370-373/18 393-396/18 417-420/18 441-444/18 464-467/18
+normal line x=5.3 in parent scale 2: 19-26/-1 66-73/-1 114-121/-1 161-168/-1 208-215/-1 255-262/-1 303-310/-1 350-357/-1 397-404/-1 445-452/-1
+cff x=10: 14-17/18
+cff x=10.05: 14-17/18
+cff x=10.1: 14-17/18
+cff x=10.15: 14-17/18
+cff x=10.2: 14-17/18
+cff x=10.25: 14-17/18
+cff x=10.3: 14-17/18
+cff x=10.35: 14-17/18
+cff x=10.4: 14-17/18
+cff x=10.45: 14-17/18
+cff x=10.5: 14-17/18
+cff x=10.55: 15-18/18
+cff x=10.6: 15-18/18
+cff x=10.65: 15-18/18
+cff x=10.7: 15-18/18
+cff x=10.75: 15-18/18
+cff x=10.8: 15-18/18
+cff x=10.85: 15-18/18
+cff x=10.9: 15-18/18
+cff x=10.95: 15-18/18
+cff y=50: 14-17/18
+cff y=50.05: 14-17/18
+cff y=50.1: 14-17/18
+cff y=50.15: 14-17/18
+cff y=50.2: 14-17/18
+cff y=50.25: 14-17/18
+cff y=50.3: 14-17/18
+cff y=50.35: 14-17/18
+cff y=50.4: 14-17/18
+cff y=50.45: 14-17/18
+cff y=50.5: 14-17/18
+cff y=50.55: 14-17/19
+cff y=50.6: 14-17/19
+cff y=50.65: 14-17/19
+cff y=50.7: 14-17/19
+cff y=50.75: 14-17/19
+cff y=50.8: 14-17/19
+cff y=50.85: 14-17/19
+cff y=50.9: 14-17/19
+cff y=50.95: 14-17/19
+cff parent x=10 line x=0.25: 14-17/18
+cff parent y=50 line y=0.25: 14-17/18
+cff parent x=10 line x=0.3: 14-17/18
+cff parent y=50 line y=0.3: 14-17/18
+cff parent x=10 line x=0.45: 14-17/18
+cff parent y=50 line y=0.45: 14-17/18
+cff parent x=10 line x=0.55: 15-18/18
+cff parent y=50 line y=0.55: 14-17/19
+cff parent x=10 line x=0.6: 15-18/18
+cff parent y=50 line y=0.6: 14-17/19
+cff parent x=10.3 line x=0.25: 14-17/18
+cff parent y=50.3 line y=0.25: 14-17/18
+cff parent x=10.3 line x=0.3: 14-17/18
+cff parent y=50.3 line y=0.3: 14-17/18
+cff parent x=10.3 line x=0.45: 14-17/18
+cff parent y=50.3 line y=0.45: 14-17/18
+cff parent x=10.3 line x=0.55: 15-18/18
+cff parent y=50.3 line y=0.55: 14-17/19
+cff parent x=10.3 line x=0.6: 15-18/18
+cff parent y=50.3 line y=0.6: 14-17/19
+cff parent x=10.45 line x=0.25: 14-17/18
+cff parent y=50.45 line y=0.25: 14-17/18
+cff parent x=10.45 line x=0.3: 14-17/18
+cff parent y=50.45 line y=0.3: 14-17/18
+cff parent x=10.45 line x=0.45: 14-17/18
+cff parent y=50.45 line y=0.45: 14-17/18
+cff parent x=10.45 line x=0.55: 15-18/18
+cff parent y=50.45 line y=0.55: 14-17/19
+cff parent x=10.45 line x=0.6: 15-18/18
+cff parent y=50.45 line y=0.6: 14-17/19
+cff parent x=10.6 line x=0.25: 15-18/18
+cff parent y=50.6 line y=0.25: 14-17/19
+cff parent x=10.6 line x=0.3: 15-18/18
+cff parent y=50.6 line y=0.3: 14-17/19
+cff parent x=10.6 line x=0.45: 15-18/18
+cff parent y=50.6 line y=0.45: 14-17/19
+cff parent x=10.6 line x=0.55: 16-19/18
+cff parent y=50.6 line y=0.55: 14-17/20
+cff parent x=10.6 line x=0.6: 16-19/18
+cff parent y=50.6 line y=0.6: 14-17/20

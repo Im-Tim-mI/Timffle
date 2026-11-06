@@ -19,7 +19,7 @@ use crate::events::{
     ClipEvent, ClipEventResult, ImeCursorArea, ImeEvent, ImeNotification, ImePurpose,
     PlayerNotification, TextControlCode,
 };
-use crate::font::{FontLike, FontType, TextRenderSettings};
+use crate::font::{FontLike, FontType, FteGlyphGrid, TextRenderSettings};
 use crate::html;
 use crate::html::StyleSheet;
 use crate::html::{
@@ -196,6 +196,10 @@ pub struct EditTextData<'gc> {
     /// See <https://docs.ruffle.rs/en_US/FlashPlatform/reference/actionscript/3/flash/text/engine/package-detail.html>
     /// See <https://docs.ruffle.rs/en_US/as3/dev/WS9dd7ed846a005b294b857bfa122bd808ea6-8000.html>
     is_fte: Cell<bool>,
+
+    /// Timffle: the device matrix and the snapped device origin of the TextLine that is
+    /// drawing this (FTE) field right now, set by `render_in_text_line` (see `FteGlyphGrid`).
+    fte_line_matrix: Cell<Option<FteLine>>,
 }
 
 impl EditTextData<'_> {
@@ -345,6 +349,7 @@ impl<'gc> EditText<'gc> {
                 max_chars: Cell::new(swf_tag.max_length().unwrap_or_default() as i32),
                 mouse_wheel_enabled: Cell::new(true),
                 is_fte: Cell::new(false),
+                fte_line_matrix: Cell::new(None),
                 restrict: RefCell::new(EditTextRestrict::allow_all()),
                 last_click: Cell::new(None),
                 layout_debug_boxes_flags: Cell::new(LayoutDebugBoxesFlag::empty()),
@@ -761,6 +766,20 @@ impl<'gc> EditText<'gc> {
     /// visual/definefont4 the first line's "g" reaches row 71 (descender -202/1000 em
     /// below the baseline at y 62.95), while the fallback field, only as tall as its
     /// text and drawn moved up by its 2 px gutter, cut it off at row 69.
+    /// Timffle: draws this FTE field for a TextLine with the device matrix `line` and the
+    /// whole-pixel device origin `origin`, so that the glyphs snap to Flash's pixel grid
+    /// (see `FteGlyphGrid`).
+    pub fn render_in_text_line(
+        self,
+        context: &mut RenderContext<'_, 'gc>,
+        line: Matrix,
+        origin: (Twips, Twips),
+    ) {
+        self.0.fte_line_matrix.set(Some(FteLine { line, origin }));
+        self.render_self(context);
+        self.0.fte_line_matrix.set(None);
+    }
+
     pub fn set_unclipped(self, unclipped: bool) {
         self.set_flag(EditTextFlag::UNCLIPPED, unclipped);
     }
@@ -1457,11 +1476,21 @@ impl<'gc> EditText<'gc> {
             let descent = metrics.descent(params.height());
             let caret_height = ascent + descent;
             let mut caret_x = Twips::ZERO;
+            let fte_line = render_state.fte_line;
             font.evaluate(
                 text,
                 params,
                 |pos, transform, glyph, advance, x| {
                     if glyph.renderable(context) {
+                        // Timffle: FTE glyphs land on Flash's pixel grid (see `FteGlyphGrid`).
+                        let snapped;
+                        let transform = match (params.fte_grid, fte_line) {
+                            (Some(grid), Some(line)) => {
+                                snapped = Self::snap_fte_glyph(context, grid, line, transform);
+                                &snapped
+                            }
+                            _ => transform,
+                        };
                         // If it's highlighted, override the color.
                         if matches!(visible_selection, Some(visible_selection) if visible_selection.contains(start + pos)) {
                             // Set text color to white
@@ -1510,6 +1539,40 @@ impl<'gc> EditText<'gc> {
         }
 
         context.transform_stack.pop();
+    }
+
+    /// Timffle: `transform` (a glyph's transform inside the current layout box) moved so
+    /// that the glyph's device origin lands where Flash Player 32 draws it on a TextLine whose
+    /// device matrix and origin are `fte_line` (see `FteGlyphGrid`). Only for unrotated, unskewed,
+    /// unmirrored 2D lines, the only ones measured.
+    fn snap_fte_glyph(
+        context: &mut RenderContext<'_, 'gc>,
+        grid: FteGlyphGrid,
+        fte_line: FteLine,
+        transform: &Transform,
+    ) -> Transform {
+        let line = fte_line.line;
+        let top = context.transform_stack.transform();
+        let m = top.matrix;
+        if top.matrix3d.is_some()
+            || top.perspective_projection.is_some()
+            || transform.matrix3d.is_some()
+            || m.b != 0.0
+            || m.c != 0.0
+            || m.a <= 0.0
+            || m.d <= 0.0
+            || line.b != 0.0
+            || line.c != 0.0
+        {
+            return transform.clone();
+        }
+        let device = m * transform.matrix;
+        let x = grid.snap(line.tx, fte_line.origin.0, device.tx);
+        let y = FteGlyphGrid::WholePixel.snap(line.ty, fte_line.origin.1, device.ty);
+        let mut snapped = transform.clone();
+        snapped.matrix.tx += Twips::new(((x - device.tx).get() as f32 / m.a).round() as i32);
+        snapped.matrix.ty += Twips::new(((y - device.ty).get() as f32 / m.d).round() as i32);
+        snapped
     }
 
     fn render_caret(
@@ -2975,7 +3038,10 @@ impl<'gc> TDisplayObject<'gc> for EditText<'gc> {
             ..Default::default()
         });
 
-        let mut render_state = Default::default();
+        let mut render_state = EditTextRenderState {
+            fte_line: self.0.fte_line_matrix.take(),
+            ..Default::default()
+        };
         self.render_text(context, &mut render_state);
 
         self.render_debug_boxes(
@@ -3905,4 +3971,14 @@ struct EditTextRenderState {
     /// Used for delaying rendering the caret, so that it's
     /// rendered outside of the text mask.
     draw_caret_command: Option<RenderCommand>,
+
+    /// Timffle: the TextLine this field draws (FTE text only).
+    fte_line: Option<FteLine>,
+}
+
+/// Timffle: a TextLine's device matrix and its device origin rounded the way Flash does.
+#[derive(Clone, Copy, Debug)]
+struct FteLine {
+    line: Matrix,
+    origin: (Twips, Twips),
 }

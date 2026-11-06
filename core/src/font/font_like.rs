@@ -28,6 +28,40 @@ pub struct EvalParameters {
     /// Timffle: the OpenType features to shape the text with (`flash.text.engine` text
     /// only; `None` lays it out character by character, as TextFields do).
     pub opentype: Option<OpenTypeFeatures>,
+
+    /// Timffle: how the glyphs snap to the device pixel grid (`flash.text.engine` text in
+    /// an embedded CFF font only; `None` draws them where the layout puts them).
+    pub fte_grid: Option<FteGlyphGrid>,
+}
+
+/// Timffle: how Flash Player 32 puts the glyphs of a `flash.text.engine` line set in an
+/// embedded CFF font (DefineFont4) on the device pixel grid, measured with real Flash
+/// (stage quality low, `tests/tests/swfs/avm2/fte_glyph_pixel_grid`): the TextLine's
+/// device origin is rounded to a whole pixel (x.5 rounds down, on both axes; the parent's
+/// origin and the line's offset in it round separately, see `TextLine::render_self`), and
+/// each glyph's pen offset from the unrounded origin
+/// is rounded to a whole pixel (`renderingMode` "normal") or to a quarter pixel ("cff",
+/// the default). The glyph shapes themselves are not snapped.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FteGlyphGrid {
+    /// `RenderingMode.NORMAL`: glyphs at whole device pixels.
+    WholePixel,
+    /// `RenderingMode.CFF`: glyph pens at quarter device pixels.
+    QuarterPixel,
+}
+
+impl FteGlyphGrid {
+    /// The device position (twips) of a glyph origin at `glyph` on a line whose device
+    /// origin is `line`, rounded to `snapped_line` (a whole pixel; see `TextLine`).
+    pub fn snap(self, line: Twips, snapped_line: Twips, glyph: Twips) -> Twips {
+        let steps = match self {
+            FteGlyphGrid::WholePixel => 1.0,
+            FteGlyphGrid::QuarterPixel => 4.0,
+        };
+        let pen = (glyph - line).to_pixels();
+        let pen = (pen * steps + 0.5).floor() / steps;
+        snapped_line + Twips::from_pixels(pen)
+    }
 }
 
 impl EvalParameters {
@@ -41,6 +75,7 @@ impl EvalParameters {
             kerning: span.font.kerning,
             color,
             opentype: span.font.opentype,
+            fte_grid: span.font.fte_grid,
         }
     }
 
@@ -129,7 +164,14 @@ pub trait FontLike<'gc> {
                     Some((font.get_glyph_by_id(id, c.character)?, pen, y_offset))
                 });
                 if let Some((glyph, pen, y_offset)) = glyph {
-                    transform.matrix.tx = to_twips(pen) + spacing;
+                    // Timffle: glyphs that snap to the pixel grid keep the pen truncated
+                    // to twips, so a pen just below x.5 pixels does not round up to the
+                    // x.5 tie (see `FteGlyphGrid`).
+                    transform.matrix.tx = if params.fte_grid.is_some() {
+                        Twips::new((pen * scale).floor() as i32)
+                    } else {
+                        to_twips(pen)
+                    } + spacing;
                     transform.matrix.ty = if glyph.rendered_at_baseline() {
                         baseline
                     } else {

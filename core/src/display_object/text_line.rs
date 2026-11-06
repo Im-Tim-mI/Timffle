@@ -364,11 +364,26 @@ impl<'gc> TDisplayObject<'gc> for TextLine<'gc> {
     // low. Measured in Flash Player 32 on visual/definefont4: line origins y 47.95 / 102.4,
     // glyphs end on the origin's row, the text starts one pixel right of `line.x`.
     fn render_self(self, context: &mut RenderContext<'_, 'gc>) {
+        let line = context.transform_stack.transform().matrix;
+        let mut origin = (line.tx, line.ty);
+        // Timffle: Flash rounds the parent's device origin and the line's own offset in it
+        // to whole pixels separately (x.5 down; measured with parents at 10.3/10.45/10.6 and
+        // lines at 0.25-0.6 on both axes), so the line origin is snapped here already.
+        let local = self.base().matrix();
+        if local.b == 0.0 && local.c == 0.0 && local.a != 0.0 && local.d != 0.0 {
+            let round = |v: f64| Twips::from_pixels((v - 0.5).ceil());
+            let off_x = Twips::new((line.a / local.a * local.tx.get() as f32).round() as i32);
+            let off_y = Twips::new((line.d / local.d * local.ty.get() as f32).round() as i32);
+            origin = (
+                round((line.tx - off_x).to_pixels()) + round(off_x.to_pixels()),
+                round((line.ty - off_y).to_pixels()) + round(off_y.to_pixels()),
+            );
+        }
         context.transform_stack.push(&Transform {
             matrix: self.fallback_to_local_matrix(),
             ..Default::default()
         });
-        self.0.fallback.render_self(context);
+        self.0.fallback.render_in_text_line(context, line, origin);
         context.transform_stack.pop();
         self.render_children(context);
     }
