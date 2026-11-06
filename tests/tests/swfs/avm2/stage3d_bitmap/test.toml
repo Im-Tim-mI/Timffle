@@ -2,20 +2,25 @@
 # It performs Stage3D bitmap rendering, and uses multiple different VertexBuffers in the same pipeline
 num_frames = 50
 # Timffle: output.expected.png was recorded with Flash Player 32.0.0.465
-# (standalone, Wine 11.19 on Xvfb; Context3D.driverInfo "DirectX11", wined3d
-# OpenGL renderer on llvmpipe) from a copy of test.swf whose Math.random() returns avmplus's
-# sequence for the seed this harness uses (DeterministicLocaleBackend, the
-# same numbers Ruffle draws here) and whose enterFrame handlers stop after the
-# 49th sprite update, i.e. the state Ruffle shows after 50 frames; the stage
-# was read from the screen (twice, identical). Sprite positions match exactly.
-# Outliers (colour channels > 16, GT 720 / NVK): 3,660 in the title text
-# (device font _sans: Wine's Arial substitute in Flash, Ruffle's default font
-# here) and 489 in two sprites whose size sits at the mipnearest
-# switch point (level of detail 0.46 / 0.50, where GPUs round differently).
+# (standalone, Wine 11.19 on Xvfb, 2026-11-06; Context3D.driverInfo
+# "DirectX11", wined3d OpenGL renderer on llvmpipe) from a copy of test.swf
+# whose Math.random() returns avmplus's sequence for the seed this harness
+# uses (DeterministicLocaleBackend, the same numbers Ruffle draws here) and
+# whose enterFrame handlers stop after the 49th sprite update, i.e. the state
+# Ruffle shows after 50 frames; the stage was read from the screen (twice,
+# identical). The Wine prefix had the harness's device font installed with
+# timffle/difftest/install_test_fonts.sh (Ruffle's Noto Sans subset, with
+# _sans/Arial/... substituted to it), so the title is laid out with the same
+# glyphs and advances here and in Flash. Sprite positions match exactly.
+# Outliers (colour channels > 16, GT 720 / NVK), 2,163: 1,674 in the title
+# (rasterisation only: Flash draws device text with hinted, anti-aliased
+# glyphs, at any stage quality; Ruffle draws the outlines aliased at quality
+# low) and 489 in two sprites whose size sits at the mipnearest switch point
+# (level of detail 0.46 / 0.50, where GPUs round differently).
 
 [image_comparisons.output]
 tolerance = 16
-max_outliers = 4500
+max_outliers = 2400
 
 [player_options]
 with_renderer = { optional = false, quality = "low" }
