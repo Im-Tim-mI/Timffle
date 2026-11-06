@@ -8,7 +8,7 @@
 
 - **預設清單改成空的**：連線小幫手與自訂 WebSocket 代理兩種方式的「一律允許」清單，預設都不再有摩爾莊園、賽爾號、小花仙、彈彈堂（`mole`／`seer`／`hua`／`ddt.61.com.tw`，各含 http 與 https）。連線小幫手模式下，每個網站第一次要開 Socket 時都會跳出詢問視窗（拒絕（建議）／允許／一律拒絕／一律允許）；自訂代理模式不詢問，要使用者自己把網站加進代理的清單。
 - **舊使用者更新時**：存的清單如果還和舊版的某一份預設清單**完全一樣**（只有摩爾莊園的兩個來源，或四個遊戲的八個來源），更新後清空一次，那些網站下次連線時會先詢問；內容有任何不同的清單（自己加過或刪過網站）原樣保留，「一律拒絕」清單不動。兩種連線方式的清單各自判斷。
-- **文字與說明**：設定頁「一律允許」清單下的說明改成「預設清單是空的」（`timffle_options_allowed_help`，36 種語言）；`README.md`、`README.zh-TW.md`、`README.zh-CN.md` 拿掉「淘米台灣的遊戲開箱即用」的標語、功能條目、快速開始的官網步驟與各遊戲的支援表，改寫成一般的 Flash 線上遊戲工具（打開遊戲網站 → 第一次連線時 Timffle 詢問 → 由你選擇），並補上舊版更新的規則；發行包裡的 `helper/README.zh-TW.txt`、`timffle/relay/README.zh-TW.md`（啟動腳本改成帶網站來源參數，例如 `start.sh https://game.example`）、`timffle/docs/ARCHITECTURE.md` 與 `timffle/locales/README.md` 同步更新。
+- **文字與說明**：設定頁「一律允許」清單下的說明改成「預設清單是空的」（`timffle_options_allowed_help`，36 種語言）；`README.md`、`README.zh-TW.md`、`README.zh-CN.md` 拿掉「淘米台灣的遊戲開箱即用」的標語、功能條目、快速開始的官網步驟與各遊戲的支援表，改寫成一般的 Flash 線上遊戲工具（打開遊戲網站 → 第一次連線時 Timffle 詢問 → 由你選擇），並補上舊版更新的規則；發行包裡的 `helper/README.zh-TW.txt`、`timffle/relay/README.zh-TW.md`（啟動腳本改成帶網站來源參數，例如 `start-relay.sh https://game.example`，原本的 `start-mole.*` 改名為 `start-relay.*`）、`timffle/docs/ARCHITECTURE.md` 與 `timffle/locales/README.md` 同步更新。
 - **驗證**：`sync_locales.py --check` 通過；擴充功能單元測試待程式改動一起跑。
 
 ## 0.8.0.26344 — 2026-11-05（main）

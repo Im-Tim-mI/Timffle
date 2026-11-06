@@ -6,8 +6,8 @@
 
 代理只接受你在啟動時指定的網站來源（遊戲網站的協定＋主機＋選用連接埠，例如 `https://game.example`），沒有預設的網站。
 
-- Linux／macOS：在此目錄開終端機執行 `sh start.sh https://game.example`。macOS 也可以在終端機執行 `./start.command https://game.example`；第一次若被系統擋下，在 Finder 對它按右鍵 →「打開」。
-- Windows：在此目錄開命令提示字元執行 `start.cmd https://game.example`。
+- Linux／macOS：在此目錄開終端機執行 `sh start-relay.sh https://game.example`。macOS 也可以在終端機執行 `./start-relay.command https://game.example`；第一次若被系統擋下，在 Finder 對它按右鍵 →「打開」。不帶網址直接雙擊 `start-relay.command` 或 `start-relay.cmd` 時，會先問要允許的網站來源。
+- Windows：在此目錄開命令提示字元執行 `start-relay.cmd https://game.example`。
 - 手動：
 
 ```sh
