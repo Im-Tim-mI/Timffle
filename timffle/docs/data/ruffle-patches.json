@@ -1,11 +1,11 @@
 {
- "measured": "2026-11-04",
+ "measured": "2026-11-06",
  "ruffle": {
   "commit": "46fec3f",
   "label": "nightly-2026-10-13"
  },
  "timffle": {
-  "commit": "c181461b6"
+  "commit": "376eac1e7"
  },
  "overall": {
   "ruffle": {
@@ -15,8 +15,8 @@
   },
   "timffle": {
    "points": 4560,
-   "implemented": 4187,
-   "stubbed": 421
+   "implemented": 4560,
+   "stubbed": 0
   }
  },
  "groups": {
@@ -40,12 +40,237 @@
    },
    "timffle": {
     "points": 57,
-    "implemented": 55,
-    "stubbed": 4
+    "implemented": 57,
+    "stubbed": 0
    }
   }
  },
  "fixed": [
+  {
+   "class": "XML",
+   "member": "hasOwnProperty()",
+   "was": "missing"
+  },
+  {
+   "class": "XML",
+   "member": "propertyIsEnumerable()",
+   "was": "missing"
+  },
+  {
+   "class": "XML",
+   "member": "prototype.hasOwnProperty()",
+   "was": "missing"
+  },
+  {
+   "class": "XML",
+   "member": "prototype.propertyIsEnumerable()",
+   "was": "missing"
+  },
+  {
+   "class": "XML",
+   "member": "prototype.valueOf",
+   "was": "missing"
+  },
+  {
+   "class": "XML",
+   "member": "setNotification()",
+   "was": "stub"
+  },
+  {
+   "class": "XMLList",
+   "member": "hasOwnProperty()",
+   "was": "missing"
+  },
+  {
+   "class": "XMLList",
+   "member": "propertyIsEnumerable()",
+   "was": "missing"
+  },
+  {
+   "class": "XMLList",
+   "member": "prototype.hasOwnProperty()",
+   "was": "missing"
+  },
+  {
+   "class": "XMLList",
+   "member": "prototype.propertyIsEnumerable()",
+   "was": "missing"
+  },
+  {
+   "class": "XMLList",
+   "member": "prototype.valueOf",
+   "was": "missing"
+  },
+  {
+   "class": "flash.accessibility.Accessibility",
+   "member": "static sendEvent()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.accessibility.Accessibility",
+   "member": "static updateProperties()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.automation.ActionGenerator",
+   "member": "generateAction()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.ActionGenerator",
+   "member": "generateActions()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.Configuration",
+   "member": "static deviceConfiguration",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.Configuration",
+   "member": "static testAutomationConfiguration",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "cancel()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "capture()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "captureBitmapData()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "capturePTS",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "captureSource",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "clipRect",
+   "was": "missing"
+  },
+  {
+   "class": "flash.automation.StageCapture",
+   "member": "fileNameBase",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Condition",
+   "member": "mutex",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Condition",
+   "member": "notify()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Condition",
+   "member": "notifyAll()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Condition",
+   "member": "wait()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Mutex",
+   "member": "lock()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Mutex",
+   "member": "tryLock()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.concurrent.Mutex",
+   "member": "unlock()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.debugger",
+   "member": "enterDebugger()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "clear()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "clearData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "formats",
+   "was": "stub"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "getData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "hasFormat()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "setData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.desktop.Clipboard",
+   "member": "setDataHandler()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.AVLoader",
+   "member": "load()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.AVM1Movie",
+   "member": "addCallback()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.AVM1Movie",
+   "member": "call()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.BitmapData",
+   "member": "applyFilter()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.BitmapData",
+   "member": "encode()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.BitmapData",
+   "member": "generateFilterRect()",
+   "was": "stub"
+  },
   {
    "class": "flash.display.DisplayObject",
    "member": "globalToLocal3D()",
@@ -73,6 +298,11 @@
   },
   {
    "class": "flash.display.DisplayObject",
+   "member": "scale9Grid",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObject",
    "member": "scaleZ",
    "was": "stub"
   },
@@ -82,14 +312,414 @@
    "was": "stub"
   },
   {
+   "class": "flash.display.DisplayObjectContainer",
+   "member": "areInaccessibleObjectsUnderPoint()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.DisplayObjectContainer",
+   "member": "getObjectsUnderPoint()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Graphics",
+   "member": "beginShaderFill()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Graphics",
+   "member": "drawGraphicsData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Graphics",
+   "member": "drawPath()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Graphics",
+   "member": "drawTriangles()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Graphics",
+   "member": "lineShaderStyle()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Graphics",
+   "member": "readGraphicsData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.InteractiveObject",
+   "member": "accessibilityImplementation",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.InteractiveObject",
+   "member": "needsSoftKeyboard",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.InteractiveObject",
+   "member": "requestSoftKeyboard()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.InteractiveObject",
+   "member": "softKeyboardInputAreaOfInterest",
+   "was": "stub"
+  },
+  {
    "class": "flash.display.Loader",
    "member": "close()",
    "was": "stub"
   },
   {
    "class": "flash.display.Loader",
+   "member": "load()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Loader",
+   "member": "loadBytes()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Loader",
    "member": "unloadAndStop()",
    "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "childAllowsParent",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "childSandboxBridge",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "isURLInaccessible",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "parentAllowsChild",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "parentSandboxBridge",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "sameDomain",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.LoaderInfo",
+   "member": "static getLoaderInfoByDefinition()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.MovieClip",
+   "member": "trackAsMenu",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Shader",
+   "member": "precisionHint",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.ShaderJob",
+   "member": "start()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Sprite",
+   "member": "startTouchDrag()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Sprite",
+   "member": "stopTouchDrag()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "allowsFullScreen",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "allowsFullScreenInteractive",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "colorCorrection",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "colorCorrectionSupport",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "constructor",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "displayContextInfo",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "fullScreenHeight",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "fullScreenSourceRect",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "fullScreenWidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "isFocusInaccessible()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "mouseLock",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "softKeyboardRect",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "stageVideos",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display.Stage",
+   "member": "wmodeGPU",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "totalGPUMemory",
+   "was": "missing"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "backBufferHeight",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "backBufferWidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "configureBackBuffer()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "createTexture()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "createVideoTexture()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "dispose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "drawToBitmapData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "driverInfo",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "maxBackBufferHeight",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "maxBackBufferWidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "setRenderToTexture()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Context3D",
+   "member": "setSamplerStateAt()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.IndexBuffer3D",
+   "member": "dispose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.Program3D",
+   "member": "dispose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.VertexBuffer3D",
+   "member": "dispose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.CubeTexture",
+   "member": "uploadCompressedTextureFromByteArray()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.CubeTexture",
+   "member": "uploadFromBitmapData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.CubeTexture",
+   "member": "uploadFromByteArray()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.Texture",
+   "member": "uploadCompressedTextureFromByteArray()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.Texture",
+   "member": "uploadFromBitmapData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.Texture",
+   "member": "uploadFromByteArray()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.TextureBase",
+   "member": "dispose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.display3D.textures.VideoTexture",
+   "member": "attachCamera()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.display3D.textures.VideoTexture",
+   "member": "attachNetStream()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.display3D.textures.VideoTexture",
+   "member": "videoHeight",
+   "was": "missing"
+  },
+  {
+   "class": "flash.display3D.textures.VideoTexture",
+   "member": "videoWidth",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "altitude",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "clone()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "heading",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "horizontalAccuracy",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "latitude",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "longitude",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "speed",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "static UPDATE",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "timestamp",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "toString()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.GeolocationEvent",
+   "member": "verticalAccuracy",
+   "was": "missing"
+  },
+  {
+   "class": "flash.events.TransformGestureEvent",
+   "member": "static GESTURE_DIRECTIONAL_TAP",
+   "was": "missing"
+  },
+  {
+   "class": "flash.external.ExternalInterface",
+   "member": "static marshallExceptions",
+   "was": "missing"
   },
   {
    "class": "flash.geom.Matrix3D",
@@ -118,6 +748,11 @@
   },
   {
    "class": "flash.geom.Transform",
+   "member": "concatenatedColorTransform",
+   "was": "stub"
+  },
+  {
+   "class": "flash.geom.Transform",
    "member": "getRelativeMatrix3D()",
    "was": "stub"
   },
@@ -137,14 +772,1799 @@
    "was": "missing"
   },
   {
+   "class": "flash.globalization.Collator",
+   "member": "actualLocaleIDName",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.Collator",
+   "member": "compare()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.Collator",
+   "member": "equals()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.Collator",
+   "member": "static getAvailableLocaleIDNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "actualLocaleIDName",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "currencyISOCode",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "currencySymbol",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "decimalSeparator",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "digitsType",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "format()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "formattingWithCurrencySymbolIsSafe()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "fractionalDigits",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "groupingPattern",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "groupingSeparator",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "lastOperationStatus",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "leadingZero",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "negativeCurrencyFormat",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "negativeSymbol",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "parse()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "positiveCurrencyFormat",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "setCurrency()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "static getAvailableLocaleIDNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "trailingZeros",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.CurrencyFormatter",
+   "member": "useGrouping",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "actualLocaleIDName",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "format()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "formatUTC()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "getFirstWeekday()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "getMonthNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "getWeekdayNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "lastOperationStatus",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "setDateTimePattern()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "setDateTimeStyles()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.DateTimeFormatter",
+   "member": "static getAvailableLocaleIDNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "getKeysAndValues()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "getLanguage()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "getRegion()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "getScript()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "getVariant()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "isRightToLeft()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "lastOperationStatus",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.LocaleID",
+   "member": "static determinePreferredLocales()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "actualLocaleIDName",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "formatInt()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "formatNumber()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "formatUint()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "lastOperationStatus",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "parse()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "parseNumber()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.NumberFormatter",
+   "member": "static getAvailableLocaleIDNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.StringTools",
+   "member": "actualLocaleIDName",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.StringTools",
+   "member": "lastOperationStatus",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.StringTools",
+   "member": "static getAvailableLocaleIDNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.StringTools",
+   "member": "toLowerCase()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.globalization.StringTools",
+   "member": "toUpperCase()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media",
+   "member": "avSendToURL()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media",
+   "member": "scanHardware()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "addCustomHeader()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "clearPauseAtPeriodEnd()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "cookieHeader",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getABRProfileCount()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getABRProfileInfoAtIndex()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getBackgroundPeriodInfo()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getBackgroundTimeline()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getCuePoint()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getMediaPreferredStartTime()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getPerceivedBandwidth()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getPeriodInfo()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getPeriodInfoWithTagsAcrossIndexes()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getSubscribedTag()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getSubscribedTagForBackgroundManifest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getTimeline()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getTimelineSubscribedTag()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getTimelineSubscribedTagForBackgroundManifest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getTrackCount()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "getTrackInfo()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "insertByLocalTime()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "insertByVirtualTime()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "load()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "loadManifest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "loadWithBackgroundManifest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "masterUpdateInterval",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "networkingParams",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "releaseManifest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "removeByLocalTime()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "removeByVirtualTime()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "removeByVirtualTimeWithReplacement()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "selectTrack()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "selectTrackString()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setABRParameters()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setBandwidth()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setCuePointTags()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setHoldAt()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setPauseAtPeriodEnd()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setSubscribedTags()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "setSubscribedTagsForBackgroundManifest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSegmentedSource",
+   "member": "useRedirectedUrl",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVSource",
+   "member": "dispose()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "backBufferLength",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "backBufferTime",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "bufferLength",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "bufferTime",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "captionStyle",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "captionsEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "clientLivePoint",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "currentFPS",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "decoderType",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "dispose()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "droppedFrames",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "fastForward()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "frameTime",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "initialBufferTime",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "pause()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "play()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "playState",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "renderType",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "resume()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "rewind()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "seek()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "seekToKeyFrame()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "seekToLivePoint()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "seekToLocalTime()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "setPlaySpeed()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "step()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "time",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "useHardwareDecoder",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVStream",
+   "member": "volume",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLLoader",
+   "member": "addEventListener()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLLoader",
+   "member": "close()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLLoader",
+   "member": "cookieHeader",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLLoader",
+   "member": "load()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLLoader",
+   "member": "stream",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLStream",
+   "member": "cookieHeader",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AVURLStream",
+   "member": "load()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AudioDeviceManager",
+   "member": "deviceNames",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AudioDeviceManager",
+   "member": "selectedDeviceIndex",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AudioDeviceManager",
+   "member": "static audioDeviceManager",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.AudioDeviceManager",
+   "member": "static isSupported",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "position",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "setCursor()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "activityLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "bandwidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "copyToByteArray()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "copyToVector()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "currentFPS",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "drawToBitmapData()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "fps",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "height",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "index",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "keyFrameInterval",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "loopback",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "motionLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "motionTimeout",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "muted",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "name",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "quality",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "setKeyFrameInterval()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "setLoopback()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "setMode()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "setMotionLevel()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "setQuality()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "static getCamera()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "static isSupported",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "static names",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Camera",
+   "member": "width",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.H264VideoStreamSettings",
+   "member": "codec",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.H264VideoStreamSettings",
+   "member": "level",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.H264VideoStreamSettings",
+   "member": "profile",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.H264VideoStreamSettings",
+   "member": "setProfileLevel()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "activityLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "codec",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "enableVAD",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "encodeQuality",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "enhancedOptions",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "framesPerPacket",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "gain",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "index",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "muted",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "name",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "noiseSuppressionLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "rate",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "setLoopBack()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "setSilenceLevel()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "setUseEchoSuppression()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "silenceLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "silenceTimeout",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "soundTransform",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "static getEnhancedMicrophone()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "static getMicrophone()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "static isSupported",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "static names",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Microphone",
+   "member": "useEchoSuppression",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.MicrophoneEnhancedOptions",
+   "member": "autoGain",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "bytesLoaded",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "close()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "extract()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "isBuffering",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "isURLInaccessible",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "load()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "loadPCMFromByteArray()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Sound",
+   "member": "url",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.SoundMixer",
+   "member": "static audioPlaybackMode",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.SoundMixer",
+   "member": "static useSpeakerphoneForVoice",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "attachAVStream()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "attachCamera()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "attachNetStream()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "colorSpaces",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "depth",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "pan",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "videoHeight",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "videoWidth",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "viewPort",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.StageVideo",
+   "member": "zoom",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Video",
+   "member": "attachCamera()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.media.Video",
+   "member": "attachNetStream()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Video",
+   "member": "clear()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Video",
+   "member": "videoHeight",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.Video",
+   "member": "videoWidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.VideoStreamSettings",
+   "member": "quality",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.VideoStreamSettings",
+   "member": "setKeyFrameInterval()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.VideoStreamSettings",
+   "member": "setMode()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.media.VideoStreamSettings",
+   "member": "setQuality()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net",
+   "member": "sendToURL()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.FileReference",
+   "member": "cancel()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.FileReference",
+   "member": "download()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.FileReference",
+   "member": "upload()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.FileReferenceList",
+   "member": "browse()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "addBootstrapPeer()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "addIPMulticastAddress()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "authorizations()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "groupspecWithAuthorizations()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "groupspecWithoutAuthorizations()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "ipMulticastMemberUpdatesEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "makeUnique()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "minGroupspecVersion",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "multicastEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "objectReplicationEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "peerToPeerDisabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "postingEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "routingEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "serverChannelEnabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "setPostingPassword()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "setPublishPassword()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "static encodeBootstrapPeerIDSpec()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "static encodeIPMulticastAddressSpec()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "static encodePostingAuthorization()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "static encodePublishAuthorization()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "static maxSupportedGroupspecVersion",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.GroupSpecifier",
+   "member": "toString()",
+   "was": "missing"
+  },
+  {
    "class": "flash.net.LocalConnection",
    "member": "isPerUser",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.LocalConnection",
+   "member": "allowDomain()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.LocalConnection",
+   "member": "allowInsecureDomain()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetConnection",
+   "member": "connect()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "addHaveObjects()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "addMemberHint()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "addNeighbor()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "addWantObjects()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "close()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "convertPeerIDToGroupAddress()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "denyRequestedObject()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "estimatedMemberCount",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "info",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "localCoverageFrom",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "localCoverageTo",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "neighborCount",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "post()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "receiveMode",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "removeHaveObjects()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "removeWantObjects()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "replicationStrategy",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "sendToAllNeighbors()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "sendToNearest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "sendToNeighbor()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroup",
+   "member": "writeRequestedObject()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "objectReplicationReceiveBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "objectReplicationSendBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "postingReceiveControlBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "postingReceiveDataBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "postingSendControlBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "postingSendDataBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "routingReceiveBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "routingSendBytesPerSecond",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetGroupInfo",
+   "member": "toString()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetMonitor",
+   "member": "listStreams()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "audioCodec",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "decodedFrames",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "onPeerConnect()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "videoCodec",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "appendBytes()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "appendBytesAction()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "attach()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "attachAudio()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "attachCamera()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "audioReliable",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "audioSampleAccess",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "backBufferLength",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "backBufferTime",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "bufferLength",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "bufferTime",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "bufferTimeMax",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "checkPolicyFile",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "close()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "currentFPS",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "dataReliable",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "dispose()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "farID",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "farNonce",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "inBufferSeek",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "info",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "liveDelay",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "maxPauseBufferTime",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastAvailabilitySendToAll",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastAvailabilityUpdatePeriod",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastFetchPeriod",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastInfo",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastPushNeighborLimit",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastRelayMarginDuration",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "multicastWindowDuration",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "nearNonce",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "objectEncoding",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "peerStreams",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "play2()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "publish()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "receiveAudio()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "receiveVideo()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "receiveVideoFPS()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "send()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "soundTransform",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "static resetDRMVouchers()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "step()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "useHardwareDecoder",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "useJitterBuffer",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "videoReliable",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "videoSampleAccess",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStream",
+   "member": "videoStreamSettings",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.NetStreamMulticastInfo",
+   "member": "toString()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.ObjectEncoding",
+   "member": "static dynamicPropertyWriter",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.SecureSocket",
+   "member": "addBinaryChainBuildingCertificate()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SecureSocket",
+   "member": "connect()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SecureSocket",
+   "member": "serverCertificate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SecureSocket",
+   "member": "serverCertificateStatus",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SecureSocket",
+   "member": "static isSupported",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "client",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "connect()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "fps",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "send()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "setDirty()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "static defaultObjectEncoding",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "static deleteAll()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "static getDiskUsage()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "static getRemote()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "static preventBackup",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "close()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.SharedObject",
+   "member": "objectEncoding",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.Socket",
+   "member": "bytesPending",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.URLLoader",
+   "member": "addEventListener()",
    "was": "missing"
   },
   {
    "class": "flash.net.URLLoader",
    "member": "close()",
    "was": "stub"
+  },
+  {
+   "class": "flash.net.URLRequest",
+   "member": "useRedirectedURL()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.URLStream",
+   "member": "diskCacheEnabled",
+   "was": "missing"
   },
   {
    "class": "flash.net.URLStream",
@@ -165,19 +2585,1475 @@
    "class": "flash.net.URLStream",
    "member": "objectEncoding",
    "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.AddToDeviceGroupSetting",
+   "member": "static ALLOW_SERVER",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.AddToDeviceGroupSetting",
+   "member": "static FORCE_REFRESH",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.AddToDeviceGroupSetting",
+   "member": "static LOCAL_ONLY",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMContentData",
+   "member": "authenticationMethod",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMContentData",
+   "member": "domain",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMContentData",
+   "member": "getVoucherAccessInfo()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMContentData",
+   "member": "licenseID",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMContentData",
+   "member": "serverURL",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMDeviceGroup",
+   "member": "authenticationMethod",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMDeviceGroup",
+   "member": "domain",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMDeviceGroup",
+   "member": "name",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMDeviceGroup",
+   "member": "serverURL",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "addToDeviceGroup()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "authenticate()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "loadPreviewVoucher()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "loadVoucher()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "removeFromDeviceGroup()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "resetDRMVouchers()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "returnVoucher()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "setAuthenticationToken()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "static getDRMManager()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "static isSupported",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "static networkIdleTimeout",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMManager",
+   "member": "storeVoucher()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMPlaybackTimeWindow",
+   "member": "endDate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMPlaybackTimeWindow",
+   "member": "period",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMPlaybackTimeWindow",
+   "member": "startDate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "licenseID",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "offlineLeaseEndDate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "offlineLeaseStartDate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "playbackTimeWindow",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "policies",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "policyID",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "serverURL",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "toByteArray()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "voucherEndDate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.DRMVoucher",
+   "member": "voucherStartDate",
+   "was": "missing"
+  },
+  {
+   "class": "flash.net.drm.VoucherAccessInfo",
+   "member": "authenticationMethod",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.VoucherAccessInfo",
+   "member": "deviceGroup",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.VoucherAccessInfo",
+   "member": "displayName",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.VoucherAccessInfo",
+   "member": "domain",
+   "was": "stub"
+  },
+  {
+   "class": "flash.net.drm.VoucherAccessInfo",
+   "member": "policyID",
+   "was": "stub"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "addPage()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "orientation",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "pageHeight",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "pageWidth",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "paperHeight",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "paperWidth",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "send()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "start()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.printing.PrintJob",
+   "member": "static isSupported",
+   "was": "missing"
+  },
+  {
+   "class": "flash.profiler",
+   "member": "profile()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.profiler",
+   "member": "showRedrawRegions()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "clearSamples()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getGetterInvocationCount()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getInvocationCount()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getLexicalScopes()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getMasterString()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getMemberNames()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getSampleCount()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getSamples()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getSavedThis()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getSetterInvocationCount()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "getSize()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "isGetterSetter()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "pauseSampling()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "sampleInternalAllocs()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "setSamplerCallback()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "startSampling()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler",
+   "member": "stopSampling()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler.NewObjectSample",
+   "member": "object",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sampler.NewObjectSample",
+   "member": "size",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sensors.Accelerometer",
+   "member": "muted",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sensors.Accelerometer",
+   "member": "setRequestedUpdateInterval()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sensors.Geolocation",
+   "member": "muted",
+   "was": "stub"
+  },
+  {
+   "class": "flash.sensors.Geolocation",
+   "member": "setRequestedUpdateInterval()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.ApplicationInstaller",
+   "member": "install()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.ApplicationInstaller",
+   "member": "isInstalled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.ApplicationInstaller",
+   "member": "static iconDigest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.ApplicationInstaller",
+   "member": "static stringsDigest()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.ApplicationInstallerMode",
+   "member": "static INSTALL_ONLY",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.ApplicationInstallerMode",
+   "member": "static INSTALL_WITH_SHORTCUTS",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.ApplicationInstallerMode",
+   "member": "static SHORTCUTS_ONLY",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "createApplicationInstaller()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "enableAVLoader()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "enableAVURLLoader()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "enableAVURLStream()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "enableDiskCache()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "enableHLSPlayback()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeatures",
+   "member": "enableMediaPlayerHLSPlayback()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeaturesLoader",
+   "member": "authorizedFeatures",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeaturesLoader",
+   "member": "loadAuthorizedFeatures()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.AuthorizedFeaturesLoader",
+   "member": "loadAuthorizedFeaturesFromData()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static _internal",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static cpuAddressSize",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static avHardwareDisable",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static cpuArchitecture",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasAccessibility",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasAudio",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasAudioEncoder",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasEmbeddedVideo",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasIME",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasMP3",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasMultiChannelAudio()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasPrinting",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasScreenBroadcast",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasScreenPlayback",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasStreamingAudio",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasStreamingVideo",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasTLS",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static hasVideoEncoder",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static isDebugger",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static isEmbeddedInAcrobat",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static localFileReadDisable",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static manufacturer",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static maxLevelIDC",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static screenColor",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static serverString",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static supports32BitProcesses",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static supports64BitProcesses",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Capabilities",
+   "member": "static touchscreenType",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.IME",
+   "member": "static compositionAbandoned()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.IME",
+   "member": "static compositionSelectionChanged()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.IME",
+   "member": "static conversionMode",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.IME",
+   "member": "static doConversion()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.IME",
+   "member": "static enabled",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.IME",
+   "member": "static setCompositionString()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "addEventListener()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "close()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "messageAvailable",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "receive()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "removeEventListener()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "toString()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "send()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.MessageChannel",
+   "member": "state",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Security",
+   "member": "static disableAVM1Loading",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Security",
+   "member": "static exactSettings",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Security",
+   "member": "static allowDomain()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Security",
+   "member": "static allowInsecureDomain()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Security",
+   "member": "static loadPolicyFile()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Security",
+   "member": "static showSettings()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.SecurityDomain",
+   "member": "domainID",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static ime",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static pause()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static processCPUUsage",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static resume()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static useCodePage",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static vmVersion",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static disposeXML()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static exit()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static freeMemory",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static pauseForGCIfCollectionImminent()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static privateMemory",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.System",
+   "member": "static totalMemoryNumber",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.SystemUpdater",
+   "member": "cancel()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.SystemUpdater",
+   "member": "update()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "addEventListener()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "isPrimordial",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "removeEventListener()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "state",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "terminate()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "createMessageChannel()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "getSharedProperty()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "setSharedProperty()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "start()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.Worker",
+   "member": "static current",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.WorkerDomain",
+   "member": "listWorkers()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.system.WorkerDomain",
+   "member": "createWorker()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.system.WorkerDomain",
+   "member": "static current",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.Font",
+   "member": "static enumerateFonts()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "getRawText()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "getXMLText()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "getImageReference()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "insertXMLText()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "mouseWheelEnabled",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "static isFontCompatible()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "textInteractionMode",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextField",
+   "member": "useRichTextClipboard",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextRenderer",
+   "member": "static antiAliasType",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.TextRenderer",
+   "member": "static displayMode",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextRenderer",
+   "member": "static maxLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextRenderer",
+   "member": "static setAdvancedAntiAliasingTable()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "charCount",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "findText()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "getSelected()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "getSelectedText()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "getText()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "getTextRunInfo()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "hitTestTextNearPos()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "setSelectColor()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.TextSnapshot",
+   "member": "setSelected()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "member": "eventMirror",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "member": "groupElement",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "member": "rawText",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "member": "textBlock",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "member": "textBlockBeginIndex",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ContentElement",
+   "member": "textRotation",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.ElementFormat",
+   "member": "getFontMetrics()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.FontDescription",
+   "member": "static isDeviceFontCompatible()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.FontDescription",
+   "member": "static isFontCompatible()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.GraphicElement",
+   "member": "elementHeight",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.GraphicElement",
+   "member": "elementWidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.GraphicElement",
+   "member": "graphic",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.GroupElement",
+   "member": "getElementAtCharIndex()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.GroupElement",
+   "member": "groupElements()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.GroupElement",
+   "member": "mergeTextElements()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.GroupElement",
+   "member": "ungroupElements()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "dump()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "findNextAtomBoundary()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "findNextWordBoundary()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "findPreviousAtomBoundary()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "findPreviousWordBoundary()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "getTextLineAtCharIndex()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "releaseLineCreationData()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "applyNonLinearFontScaling",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "baselineFontDescription",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "baselineFontSize",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "baselineZero",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "bidiLevel",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "createTextLine()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "firstInvalidLine",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "lastLine",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "lineRotation",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "recreateTextLine()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "tabStops",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextBlock",
+   "member": "textJustifier",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextJustifier",
+   "member": "static getJustifierForLocale()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "dump()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getMirrorRegion()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "mirrorRegions",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "totalHeight",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "atomCount",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomBidiLevel()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomBounds()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomCenter()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomGraphic()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomIndexAtCharIndex()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomIndexAtPoint()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomTextBlockBeginIndex()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomTextBlockEndIndex()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomTextRotation()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getAtomWordBoundaryOnLeft()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "getBaselinePosition()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "hasGraphicElement",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "totalAscent",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "totalDescent",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLine",
+   "member": "unjustifiedTextWidth",
+   "was": "stub"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "member": "bounds",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "member": "element",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "member": "mirror",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "member": "nextRegion",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "member": "previousRegion",
+   "was": "missing"
+  },
+  {
+   "class": "flash.text.engine.TextLineMirrorRegion",
+   "member": "textLine",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.ContextMenu",
+   "member": "clone()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.ContextMenu",
+   "member": "link",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.ContextMenu",
+   "member": "static isSupported",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.GameInputControl",
+   "member": "device",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputControl",
+   "member": "id",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputControl",
+   "member": "maxValue",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputControl",
+   "member": "minValue",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputControl",
+   "member": "value",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "enabled",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "getCachedSamples()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "getControlAt()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "id",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "name",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "numControls",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "sampleInterval",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "startCachingSamples()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.GameInputDevice",
+   "member": "stopCachingSamples()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.Keyboard",
+   "member": "static capsLock",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Keyboard",
+   "member": "static hasVirtualKeyboard",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Keyboard",
+   "member": "static numLock",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Keyboard",
+   "member": "static physicalKeyboardType",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Mouse",
+   "member": "static registerCursor()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Mouse",
+   "member": "static supportsCursor",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Mouse",
+   "member": "static supportsNativeCursor",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Mouse",
+   "member": "static unregisterCursor()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.MouseCursorData",
+   "member": "data",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.MouseCursorData",
+   "member": "frameRate",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.MouseCursorData",
+   "member": "hotSpot",
+   "was": "stub"
+  },
+  {
+   "class": "flash.ui.Multitouch",
+   "member": "static mapTouchToMouse",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.Multitouch",
+   "member": "static maxTouchPoints",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.Multitouch",
+   "member": "static supportedGestures",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.Multitouch",
+   "member": "static supportsGestureEvents",
+   "was": "missing"
+  },
+  {
+   "class": "flash.ui.Multitouch",
+   "member": "static supportsTouchEvents",
+   "was": "missing"
+  },
+  {
+   "class": "flash.utils.ByteArray",
+   "member": "atomicCompareAndSwapIntAt()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.utils.ByteArray",
+   "member": "atomicCompareAndSwapLength()",
+   "was": "missing"
+  },
+  {
+   "class": "flash.utils.ByteArray",
+   "member": "shareable",
+   "was": "stub"
+  },
+  {
+   "class": "flash.utils.ByteArray",
+   "member": "writeObject()",
+   "was": "stub"
+  },
+  {
+   "class": "flash.xml.XMLDocument",
+   "member": "toString()",
+   "was": "stub"
   }
  ],
  "goldens": {
-  "3d": 15,
+  "3d": 17,
   "net": 14,
   "basic": 1,
-  "total": 30
+  "other": 14,
+  "total": 46
  },
  "changes": {
   "engine": {
-   "files": 113,
-   "insertions": 10291,
-   "deletions": 1220
+   "files": 439,
+   "insertions": 39915,
+   "deletions": 4949
   },
   "extension": {
    "files": 111,
