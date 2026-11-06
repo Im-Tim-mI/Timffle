@@ -1,6 +1,7 @@
 //! Classes that store formatting options
 
 use crate::context::UpdateContext;
+use crate::font::OpenTypeFeatures;
 use crate::html::iterators::TextSpanIter;
 use crate::string::{Integer, SwfStrExt as _, Units, WStr, WString};
 use crate::tag_utils::SwfMovie;
@@ -152,6 +153,9 @@ pub struct TextFormat {
     pub url: Option<WString>,
     pub target: Option<WString>,
     pub display: Option<TextDisplay>,
+    /// Timffle: OpenType features of `flash.text.engine` text (from its
+    /// `ElementFormat`); TextFields never set them.
+    pub opentype: Option<OpenTypeFeatures>,
 }
 
 impl Default for TextFormat {
@@ -185,6 +189,7 @@ impl TextFormat {
             url: None,
             target: None,
             display: None,
+            opentype: None,
         }
     }
 
@@ -263,6 +268,7 @@ impl TextFormat {
             bullet: Some(false),
             url: Some(WString::new()),
             target: Some(WString::new()),
+            opentype: None,
         }
     }
 
@@ -361,6 +367,11 @@ impl TextFormat {
             } else {
                 None
             },
+            opentype: if self.opentype == rhs.opentype {
+                self.opentype
+            } else {
+                None
+            },
         }
     }
 
@@ -389,6 +400,7 @@ impl TextFormat {
             url: self.url.or(rhs.url),
             target: self.target.or(rhs.target),
             display: self.display.or(rhs.display),
+            opentype: self.opentype.or(rhs.opentype),
         }
     }
 }
@@ -433,6 +445,8 @@ pub struct TextSpanFont {
     pub color: swf::Color,
     pub letter_spacing: f64,
     pub kerning: bool,
+    /// Timffle: see `TextFormat::opentype`.
+    pub opentype: Option<OpenTypeFeatures>,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -477,6 +491,7 @@ impl Default for TextSpanFont {
             },
             kerning: false,
             letter_spacing: 0.0,
+            opentype: None,
         }
     }
 }
@@ -507,6 +522,10 @@ impl TextSpanFont {
 
         if let Some(letter_spacing) = &tf.letter_spacing {
             self.letter_spacing = *letter_spacing;
+        }
+
+        if let Some(opentype) = tf.opentype {
+            self.opentype = Some(opentype);
         }
     }
 }
@@ -638,6 +657,7 @@ impl TextSpan {
             url: Some(self.url.clone()),
             target: Some(self.target.clone()),
             display: Some(self.display),
+            opentype: self.font.opentype,
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::font::glyph::GlyphRef;
-use crate::font::{Font, FontMetrics, FontType, Glyph};
+use crate::font::{Font, FontMetrics, FontType, Glyph, OpenTypeFeatures};
 use crate::html::TextSpan;
 use crate::prelude::*;
 use crate::string::WStr;
@@ -24,6 +24,10 @@ pub struct EvalParameters {
 
     /// The color to render the font with.
     pub color: swf::Color,
+
+    /// Timffle: the OpenType features to shape the text with (`flash.text.engine` text
+    /// only; `None` lays it out character by character, as TextFields do).
+    pub opentype: Option<OpenTypeFeatures>,
 }
 
 impl EvalParameters {
@@ -36,6 +40,7 @@ impl EvalParameters {
             letter_spacing: Twips::from_pixels(span.font.letter_spacing),
             kerning: span.font.kerning,
             color,
+            opentype: span.font.opentype,
         }
     }
 
@@ -77,6 +82,10 @@ pub trait FontLike<'gc> {
 
     fn font_type(&self) -> FontType;
 
+    /// Timffle: the font that shapes FTE text with OpenType features (the main font, when
+    /// it is a DefineFont4 font).
+    fn opentype_font(&self) -> Option<&Font<'gc>>;
+
     /// Evaluate this font against a particular string on a glyph-by-glyph
     /// basis.
     ///
@@ -98,6 +107,50 @@ pub trait FontLike<'gc> {
         transform.color_transform.set_mult_color(params.color);
 
         let baseline = self.metrics().ascent(params.height);
+
+        // Timffle: FTE text in a DefineFont4 font is shaped (ligatures, kerning, ...);
+        // see `font::shaping` for the atom rules measured in Flash Player 32.
+        if let Some(features) = params.opentype
+            && let Some(font) = self.opentype_font()
+            && let Some(shaped) = font.shape(text, features)
+            && shaped
+                .iter()
+                .all(|c| c.glyph_or_ligature || self.resolve_glyph(c.character).is_none())
+        {
+            let scale = params.height.get() as f64 / f64::from(font.scale());
+            let to_twips = |v: f64| Twips::new((v * scale).round() as i32);
+            transform.matrix.a = scale as f32;
+            transform.matrix.d = scale as f32;
+            let mut spacing = Twips::ZERO;
+            for c in shaped {
+                let x = to_twips(c.x) + spacing;
+                let advance = to_twips(c.end) + spacing - x + params.letter_spacing;
+                let glyph = c.glyph.and_then(|(id, pen, y_offset)| {
+                    Some((font.get_glyph_by_id(id, c.character)?, pen, y_offset))
+                });
+                if let Some((glyph, pen, y_offset)) = glyph {
+                    transform.matrix.tx = to_twips(pen) + spacing;
+                    transform.matrix.ty = if glyph.rendered_at_baseline() {
+                        baseline
+                    } else {
+                        Twips::ZERO
+                    } - to_twips(y_offset);
+                    glyph_func(c.pos, &transform, glyph, advance, x);
+                } else {
+                    // The later characters of a ligature, and characters the font has
+                    // no glyph for: nothing to draw.
+                    glyph_func(
+                        c.pos,
+                        &transform,
+                        Glyph::empty(c.character).as_ref(),
+                        advance,
+                        x,
+                    );
+                }
+                spacing += params.letter_spacing;
+            }
+            return;
+        }
 
         // TODO [KJ] I'm not sure whether we should iterate over characters here or over code units.
         //   I suspect Flash Player does not support full UTF-16 when displaying and laying out text.

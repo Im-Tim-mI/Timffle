@@ -66,6 +66,8 @@ jpegxr = { workspace = true, optional = true }
 image = { workspace = true, features = ["tiff", "png", "jpeg"] }
 enum-map = { workspace = true }
 ttf-parser = "0.25"
+# Timffle: OpenType shaping (GSUB ligatures, GPOS kerning) of DefineFont4 text in flash.text.engine.
+rustybuzz = { version = "0.20.1", default-features = false, features = ["std"] }
 num-bigint = "0.4"
 unicode-segmentation = "1.13.3"
 # Timffle: bidirectional ordering for flash.text.engine.TextBlock.bidiLevel.

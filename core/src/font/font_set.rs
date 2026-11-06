@@ -93,4 +93,8 @@ impl<'gc> FontLike<'gc> for FontSet<'gc> {
     fn font_type(&self) -> FontType {
         self.0.main_font.font_type()
     }
+
+    fn opentype_font(&self) -> Option<&Font<'gc>> {
+        self.0.main_font.opentype_font()
+    }
 }

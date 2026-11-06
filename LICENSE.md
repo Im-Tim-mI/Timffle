@@ -509,6 +509,7 @@ Ruffle depends on third-party libraries with compatible licenses.
 | [rustfft](https://github.com/ejmahler/RustFFT) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2015 The RustFFT Developers  |
 | [rustls](https://github.com/ctz/rustls) | [Apache-2.0](#Apache-20)/[ISC](#ISC)/[MIT](#MIT) | Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>  |
 | [rusttype](https://gitlab.redox-os.org/redox-os/rusttype) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2016 Dylan Ede  |
+| [rustybuzz](https://github.com/harfbuzz/rustybuzz) | [MIT](#MIT) | Copyright (c) HarfBuzz developers (Timffle: added for flash.text.engine OpenType shaping) |
 | [ryu](https://github.com/dtolnay/ryu) | [Apache-2.0](#Apache-20)/BSL-1.0 | Copyright (c) David Tolnay <dtolnay@gmail.com> |
 | [same-file](https://github.com/BurntSushi/same-file) | [MIT](#MIT)/[Unlicense](#Unlicense) | Copyright (c) 2017 Andrew Gallant  |
 | [schannel](https://github.com/steffengy/schannel-rs) | [MIT](#MIT) | Copyright (c) 2015 steffengy  |
@@ -572,7 +573,11 @@ Ruffle depends on third-party libraries with compatible licenses.
 | [ttf-parser](https://github.com/RazrFalcon/ttf-parser) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2018 Evgeniy Reizner  |
 | [typed-arena](https://github.com/SimonSapin/rust-typed-arena) | [MIT](#MIT) | Copyright (c) 2018 The typed-arena developers  |
 | [unicode-bidi](https://github.com/servo/unicode-bidi) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2015 The Rust Project Developers  |
+| [unicode-bidi-mirroring](https://github.com/RazrFalcon/unicode-bidi-mirroring) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2020 Yevhenii Reizner (Timffle: dependency of rustybuzz) |
+| [unicode-ccc](https://github.com/RazrFalcon/unicode-ccc) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2020 Yevhenii Reizner (Timffle: dependency of rustybuzz) |
 | [unicode-normalization](https://github.com/unicode-rs/unicode-normalization) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2015 The Rust Project Developers  |
+| [unicode-properties](https://github.com/unicode-rs/unicode-properties) | ([Apache-2.0](#Apache-20)/[MIT](#MIT)) and [Unicode-3.0](#Unicode-30) | Copyright (c) 2015 The Rust Project Developers (Timffle: dependency of rustybuzz) |
+| [unicode-script](https://github.com/unicode-rs/unicode-script) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2019 Manish Goregaokar (Timffle: dependency of rustybuzz) |
 | [unicode-segmentation](https://github.com/unicode-rs/unicode-segmentation) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2015 The Rust Project Developers  |
 | [unicode-width](https://github.com/unicode-rs/unicode-width) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2015 The Rust Project Developers  |
 | [unicode-xid](https://github.com/unicode-rs/unicode-xid) | [Apache-2.0](#Apache-20)/[MIT](#MIT) | Copyright (c) 2015 The Rust Project Developers  |
@@ -1371,6 +1376,50 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
+```
+
+## Unicode-3.0
+
+```
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright © 1991-2026 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
 ```
 
 ## Unlicense

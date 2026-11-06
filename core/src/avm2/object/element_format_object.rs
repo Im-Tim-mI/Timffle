@@ -3,6 +3,7 @@ use crate::avm2::activation::Activation;
 use crate::avm2::object::font_description_object::FontDescriptionObject;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, Object, TObject};
+use crate::font::OpenTypeFeatures;
 use crate::fte::{
     BreakOpportunityValue, DigitCaseValue, DigitWidthValue, FontLookupValue, FontPostureValue,
     FontWeightValue, KerningValue, LigatureLevelValue, TextBaselineValue, TextRotationValue,
@@ -268,8 +269,47 @@ impl<'gc> ElementFormatObject<'gc> {
             font: Some(font),
             bold: Some(bold),
             italic: Some(italic),
+            opentype: Some(self.opentype_features()),
             ..TextFormat::default()
         }
+    }
+
+    /// Timffle: the OpenType features this format shapes DefineFont4 text with, as Flash
+    /// Player 32 applies them (measured; see `font::shaping`).
+    pub fn opentype_features(self) -> OpenTypeFeatures {
+        let mut features = OpenTypeFeatures::empty();
+        match self.ligature_level() {
+            LigatureLevelValue::None => {}
+            LigatureLevelValue::Minimum => features |= OpenTypeFeatures::REQUIRED_LIGATURES,
+            LigatureLevelValue::Common => {
+                features |= OpenTypeFeatures::REQUIRED_LIGATURES | OpenTypeFeatures::LIGATURES
+            }
+            LigatureLevelValue::Uncommon | LigatureLevelValue::Exotic => {
+                features |= OpenTypeFeatures::REQUIRED_LIGATURES
+                    | OpenTypeFeatures::LIGATURES
+                    | OpenTypeFeatures::DISCRETIONARY_LIGATURES
+            }
+        }
+        // `auto` kerns Latin text like `on` (measured).
+        if self.kerning() != KerningValue::Off {
+            features |= OpenTypeFeatures::KERNING;
+        }
+        match self.digit_case() {
+            DigitCaseValue::Default => {}
+            DigitCaseValue::Lining => features |= OpenTypeFeatures::LINING_FIGURES,
+            DigitCaseValue::OldStyle => features |= OpenTypeFeatures::OLD_STYLE_FIGURES,
+        }
+        match self.digit_width() {
+            DigitWidthValue::Default => {}
+            DigitWidthValue::Proportional => features |= OpenTypeFeatures::PROPORTIONAL_FIGURES,
+            DigitWidthValue::Tabular => features |= OpenTypeFeatures::TABULAR_FIGURES,
+        }
+        match self.typographic_case() {
+            TypographicCaseValue::SmallCaps => features |= OpenTypeFeatures::CAPS_TO_SMALL_CAPS,
+            TypographicCaseValue::CapsAndSmallCaps => features |= OpenTypeFeatures::SMALL_CAPS,
+            _ => {}
+        }
+        features
     }
 }
 

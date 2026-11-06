@@ -1,0 +1,195 @@
+Exo 2 [fi] ligatureLevel=none atoms=2 textWidth=25.1 | 0-1@0..15.2 1-2@15.2..25.1
+Exo 2 [fi] ligatureLevel=minimum atoms=2 textWidth=25.1 | 0-1@0..15.2 1-2@15.2..25.1
+Exo 2 [fi] ligatureLevel=common atoms=2 textWidth=24.25 | 0-1@0..12.1 1-2@12.1..24.25
+Exo 2 [fi] ligatureLevel=uncommon atoms=2 textWidth=24.25 | 0-1@0..12.1 1-2@12.1..24.25
+Exo 2 [fi] ligatureLevel=exotic atoms=2 textWidth=24.25 | 0-1@0..12.1 1-2@12.1..24.25
+Exo 2 [fi] kerning=on atoms=2 textWidth=24.25 | 0-1@0..12.1 1-2@12.1..24.25
+Exo 2 [fi] kerning=off atoms=2 textWidth=24.25 | 0-1@0..12.1 1-2@12.1..24.25
+Exo 2 [fi] kerning=auto atoms=2 textWidth=24.25 | 0-1@0..12.1 1-2@12.1..24.25
+Exo 2 [fl] ligatureLevel=none atoms=2 textWidth=27.1 | 0-1@0..15.2 1-2@15.2..27.1
+Exo 2 [fl] ligatureLevel=minimum atoms=2 textWidth=27.1 | 0-1@0..15.2 1-2@15.2..27.1
+Exo 2 [fl] ligatureLevel=common atoms=2 textWidth=26.7 | 0-1@0..13.35 1-2@13.35..26.7
+Exo 2 [fl] ligatureLevel=uncommon atoms=2 textWidth=26.7 | 0-1@0..13.35 1-2@13.35..26.7
+Exo 2 [fl] ligatureLevel=exotic atoms=2 textWidth=26.7 | 0-1@0..13.35 1-2@13.35..26.7
+Exo 2 [fl] kerning=on atoms=2 textWidth=26.7 | 0-1@0..13.35 1-2@13.35..26.7
+Exo 2 [fl] kerning=off atoms=2 textWidth=26.7 | 0-1@0..13.35 1-2@13.35..26.7
+Exo 2 [fl] kerning=auto atoms=2 textWidth=26.7 | 0-1@0..13.35 1-2@13.35..26.7
+Exo 2 [ffi] ligatureLevel=none atoms=3 textWidth=40.3 | 0-1@0..15.2 1-2@15.2..30.4 2-3@30.4..40.3
+Exo 2 [ffi] ligatureLevel=minimum atoms=3 textWidth=40.3 | 0-1@0..15.2 1-2@15.2..30.4 2-3@30.4..40.3
+Exo 2 [ffi] ligatureLevel=common atoms=3 textWidth=37.15 | 0-1@0..12.4 1-2@12.4..24.75 2-3@24.75..37.15
+Exo 2 [ffi] ligatureLevel=uncommon atoms=3 textWidth=37.15 | 0-1@0..12.4 1-2@12.4..24.75 2-3@24.75..37.15
+Exo 2 [ffi] ligatureLevel=exotic atoms=3 textWidth=37.15 | 0-1@0..12.4 1-2@12.4..24.75 2-3@24.75..37.15
+Exo 2 [ffi] kerning=on atoms=3 textWidth=37.15 | 0-1@0..12.4 1-2@12.4..24.75 2-3@24.75..37.15
+Exo 2 [ffi] kerning=off atoms=3 textWidth=37.15 | 0-1@0..12.4 1-2@12.4..24.75 2-3@24.75..37.15
+Exo 2 [ffi] kerning=auto atoms=3 textWidth=37.15 | 0-1@0..12.4 1-2@12.4..24.75 2-3@24.75..37.15
+Exo 2 [ff] ligatureLevel=none atoms=2 textWidth=30.4 | 0-1@0..15.2 1-2@15.2..30.4
+Exo 2 [ff] ligatureLevel=minimum atoms=2 textWidth=30.4 | 0-1@0..15.2 1-2@15.2..30.4
+Exo 2 [ff] ligatureLevel=common atoms=2 textWidth=28.45 | 0-1@0..14.2 1-2@14.2..28.45
+Exo 2 [ff] ligatureLevel=uncommon atoms=2 textWidth=28.45 | 0-1@0..14.2 1-2@14.2..28.45
+Exo 2 [ff] ligatureLevel=exotic atoms=2 textWidth=28.45 | 0-1@0..14.2 1-2@14.2..28.45
+Exo 2 [ff] kerning=on atoms=2 textWidth=28.45 | 0-1@0..14.2 1-2@14.2..28.45
+Exo 2 [ff] kerning=off atoms=2 textWidth=28.45 | 0-1@0..14.2 1-2@14.2..28.45
+Exo 2 [ff] kerning=auto atoms=2 textWidth=28.45 | 0-1@0..14.2 1-2@14.2..28.45
+Exo 2 [ft] ligatureLevel=none atoms=2 textWidth=30.45 | 0-1@0..15.2 1-2@15.2..30.45
+Exo 2 [ft] ligatureLevel=minimum atoms=2 textWidth=30.45 | 0-1@0..15.2 1-2@15.2..30.45
+Exo 2 [ft] ligatureLevel=common atoms=2 textWidth=30.45 | 0-1@0..15.2 1-2@15.2..30.45
+Exo 2 [ft] ligatureLevel=uncommon atoms=2 textWidth=28.6 | 0-1@0..14.3 1-2@14.3..28.6
+Exo 2 [ft] ligatureLevel=exotic atoms=2 textWidth=28.6 | 0-1@0..14.3 1-2@14.3..28.6
+Exo 2 [ft] kerning=on atoms=2 textWidth=30.45 | 0-1@0..15.2 1-2@15.2..30.45
+Exo 2 [ft] kerning=off atoms=2 textWidth=30.45 | 0-1@0..15.2 1-2@15.2..30.45
+Exo 2 [ft] kerning=auto atoms=2 textWidth=30.45 | 0-1@0..15.2 1-2@15.2..30.45
+Exo 2 [fft] ligatureLevel=none atoms=3 textWidth=45.65 | 0-1@0..15.2 1-2@15.2..30.4 2-3@30.4..45.65
+Exo 2 [fft] ligatureLevel=minimum atoms=3 textWidth=45.65 | 0-1@0..15.2 1-2@15.2..30.4 2-3@30.4..45.65
+Exo 2 [fft] ligatureLevel=common atoms=3 textWidth=43.7 | 0-1@0..14.2 1-2@14.2..28.45 2-3@28.45..43.7
+Exo 2 [fft] ligatureLevel=uncommon atoms=3 textWidth=43.8 | 0-1@0..15.2 1-2@15.2..29.5 2-3@29.5..43.8
+Exo 2 [fft] ligatureLevel=exotic atoms=3 textWidth=43.8 | 0-1@0..15.2 1-2@15.2..29.5 2-3@29.5..43.8
+Exo 2 [fft] kerning=on atoms=3 textWidth=43.7 | 0-1@0..14.2 1-2@14.2..28.45 2-3@28.45..43.7
+Exo 2 [fft] kerning=off atoms=3 textWidth=43.7 | 0-1@0..14.2 1-2@14.2..28.45 2-3@28.45..43.7
+Exo 2 [fft] kerning=auto atoms=3 textWidth=43.7 | 0-1@0..14.2 1-2@14.2..28.45 2-3@28.45..43.7
+Exo 2 [To] ligatureLevel=none atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] ligatureLevel=minimum atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] ligatureLevel=common atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] ligatureLevel=uncommon atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] ligatureLevel=exotic atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] kerning=on atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] kerning=off atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [To] kerning=auto atoms=2 textWidth=45.95 | 0-1@0..23.25 1-2@23.25..45.95
+Exo 2 [Ta] ligatureLevel=none atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] ligatureLevel=minimum atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] ligatureLevel=common atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] ligatureLevel=uncommon atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] ligatureLevel=exotic atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] kerning=on atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] kerning=off atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Ta] kerning=auto atoms=2 textWidth=45.2 | 0-1@0..23.25 1-2@23.25..45.2
+Exo 2 [Tefi] ligatureLevel=none atoms=4 textWidth=69.85 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..59.9 3-4@59.9..69.85
+Exo 2 [Tefi] ligatureLevel=minimum atoms=4 textWidth=69.85 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..59.9 3-4@59.9..69.85
+Exo 2 [Tefi] ligatureLevel=common atoms=4 textWidth=68.95 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..56.85 3-4@56.85..68.95
+Exo 2 [Tefi] ligatureLevel=uncommon atoms=4 textWidth=68.95 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..56.85 3-4@56.85..68.95
+Exo 2 [Tefi] ligatureLevel=exotic atoms=4 textWidth=68.95 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..56.85 3-4@56.85..68.95
+Exo 2 [Tefi] kerning=on atoms=4 textWidth=68.95 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..56.85 3-4@56.85..68.95
+Exo 2 [Tefi] kerning=off atoms=4 textWidth=68.95 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..56.85 3-4@56.85..68.95
+Exo 2 [Tefi] kerning=auto atoms=4 textWidth=68.95 | 0-1@0..23.25 1-2@23.25..44.7 2-3@44.7..56.85 3-4@56.85..68.95
+Exo 2 [DefineFont4.] ligatureLevel=none atoms=12 textWidth=234.4 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..63.25 3-4@63.25..73.15 4-5@73.15..96.4 5-6@96.4..117.9 6-7@117.9..139.45 7-8@139.45..162.15 8-9@162.15..185.4 9-10@185.4..200.65 10-11@200.65..225.25 11-12@225.25..234.4
+Exo 2 [DefineFont4.] ligatureLevel=minimum atoms=12 textWidth=234.4 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..63.25 3-4@63.25..73.15 4-5@73.15..96.4 5-6@96.4..117.9 6-7@117.9..139.45 7-8@139.45..162.15 8-9@162.15..185.4 9-10@185.4..200.65 10-11@200.65..225.25 11-12@225.25..234.4
+Exo 2 [DefineFont4.] ligatureLevel=common atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [DefineFont4.] ligatureLevel=uncommon atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [DefineFont4.] ligatureLevel=exotic atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [DefineFont4.] kerning=on atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [DefineFont4.] kerning=off atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [DefineFont4.] kerning=auto atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+LigaTestSans [fi] ligatureLevel=none atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] ligatureLevel=minimum atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] ligatureLevel=common atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] ligatureLevel=uncommon atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] ligatureLevel=exotic atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] kerning=on atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] kerning=off atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fi] kerning=auto atoms=2 textWidth=21.5 | 0-1@0..11.7 1-2@11.7..21.5
+LigaTestSans [fl] ligatureLevel=none atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] ligatureLevel=minimum atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] ligatureLevel=common atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] ligatureLevel=uncommon atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] ligatureLevel=exotic atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] kerning=on atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] kerning=off atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [fl] kerning=auto atoms=2 textWidth=21.9 | 0-1@0..11.7 1-2@11.7..21.9
+LigaTestSans [ffi] ligatureLevel=none atoms=3 textWidth=33.2 | 0-1@0..11.7 1-2@11.7..23.35 2-3@23.35..33.2
+LigaTestSans [ffi] ligatureLevel=minimum atoms=3 textWidth=33.2 | 0-1@0..11.7 1-2@11.7..23.35 2-3@23.35..33.2
+LigaTestSans [ffi] ligatureLevel=common atoms=3 textWidth=32.9 | 0-1@0..11.55 1-2@11.55..23.1 2-3@23.1..32.9
+LigaTestSans [ffi] ligatureLevel=uncommon atoms=3 textWidth=32.9 | 0-1@0..11.55 1-2@11.55..23.1 2-3@23.1..32.9
+LigaTestSans [ffi] ligatureLevel=exotic atoms=3 textWidth=32.9 | 0-1@0..11.55 1-2@11.55..23.1 2-3@23.1..32.9
+LigaTestSans [ffi] kerning=on atoms=3 textWidth=32.9 | 0-1@0..11.55 1-2@11.55..23.1 2-3@23.1..32.9
+LigaTestSans [ffi] kerning=off atoms=3 textWidth=32.9 | 0-1@0..11.55 1-2@11.55..23.1 2-3@23.1..32.9
+LigaTestSans [ffi] kerning=auto atoms=3 textWidth=32.9 | 0-1@0..11.55 1-2@11.55..23.1 2-3@23.1..32.9
+LigaTestSans [ff] ligatureLevel=none atoms=2 textWidth=23.35 | 0-1@0..11.7 1-2@11.7..23.35
+LigaTestSans [ff] ligatureLevel=minimum atoms=2 textWidth=23.35 | 0-1@0..11.7 1-2@11.7..23.35
+LigaTestSans [ff] ligatureLevel=common atoms=2 textWidth=23.1 | 0-1@0..11.55 1-2@11.55..23.1
+LigaTestSans [ff] ligatureLevel=uncommon atoms=2 textWidth=23.1 | 0-1@0..11.55 1-2@11.55..23.1
+LigaTestSans [ff] ligatureLevel=exotic atoms=2 textWidth=23.1 | 0-1@0..11.55 1-2@11.55..23.1
+LigaTestSans [ff] kerning=on atoms=2 textWidth=23.1 | 0-1@0..11.55 1-2@11.55..23.1
+LigaTestSans [ff] kerning=off atoms=2 textWidth=23.1 | 0-1@0..11.55 1-2@11.55..23.1
+LigaTestSans [ff] kerning=auto atoms=2 textWidth=23.1 | 0-1@0..11.55 1-2@11.55..23.1
+LigaTestSans [ft] ligatureLevel=none atoms=2 textWidth=25.2 | 0-1@0..11.7 1-2@11.7..25.2
+LigaTestSans [ft] ligatureLevel=minimum atoms=2 textWidth=25.2 | 0-1@0..11.7 1-2@11.7..25.2
+LigaTestSans [ft] ligatureLevel=common atoms=2 textWidth=23.75 | 0-1@0..11.9 1-2@11.9..23.75
+LigaTestSans [ft] ligatureLevel=uncommon atoms=2 textWidth=23.75 | 0-1@0..11.9 1-2@11.9..23.75
+LigaTestSans [ft] ligatureLevel=exotic atoms=2 textWidth=23.75 | 0-1@0..11.9 1-2@11.9..23.75
+LigaTestSans [ft] kerning=on atoms=2 textWidth=23.75 | 0-1@0..11.9 1-2@11.9..23.75
+LigaTestSans [ft] kerning=off atoms=2 textWidth=23.75 | 0-1@0..11.9 1-2@11.9..23.75
+LigaTestSans [ft] kerning=auto atoms=2 textWidth=23.75 | 0-1@0..11.9 1-2@11.9..23.75
+LigaTestSans [fft] ligatureLevel=none atoms=3 textWidth=36.9 | 0-1@0..11.7 1-2@11.7..23.35 2-3@23.35..36.9
+LigaTestSans [fft] ligatureLevel=minimum atoms=3 textWidth=36.9 | 0-1@0..11.7 1-2@11.7..23.35 2-3@23.35..36.9
+LigaTestSans [fft] ligatureLevel=common atoms=3 textWidth=35.15 | 0-1@0..11.7 1-2@11.7..23.45 2-3@23.45..35.15
+LigaTestSans [fft] ligatureLevel=uncommon atoms=3 textWidth=35.15 | 0-1@0..11.7 1-2@11.7..23.45 2-3@23.45..35.15
+LigaTestSans [fft] ligatureLevel=exotic atoms=3 textWidth=35.15 | 0-1@0..11.7 1-2@11.7..23.45 2-3@23.45..35.15
+LigaTestSans [fft] kerning=on atoms=3 textWidth=35.15 | 0-1@0..11.7 1-2@11.7..23.45 2-3@23.45..35.15
+LigaTestSans [fft] kerning=off atoms=3 textWidth=35.15 | 0-1@0..11.7 1-2@11.7..23.45 2-3@23.45..35.15
+LigaTestSans [fft] kerning=auto atoms=3 textWidth=35.15 | 0-1@0..11.7 1-2@11.7..23.45 2-3@23.45..35.15
+LigaTestSans [AV] ligatureLevel=none atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [AV] ligatureLevel=minimum atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [AV] ligatureLevel=common atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [AV] ligatureLevel=uncommon atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [AV] ligatureLevel=exotic atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [AV] kerning=on atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [AV] kerning=off atoms=2 textWidth=42.35 | 0-1@0..21.75 1-2@21.75..42.35
+LigaTestSans [AV] kerning=auto atoms=2 textWidth=41.8 | 0-1@0..21.5 1-2@21.5..41.8
+LigaTestSans [To] ligatureLevel=none atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [To] ligatureLevel=minimum atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [To] ligatureLevel=common atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [To] ligatureLevel=uncommon atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [To] ligatureLevel=exotic atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [To] kerning=on atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [To] kerning=off atoms=2 textWidth=43.1 | 0-1@0..21.45 1-2@21.45..43.1
+LigaTestSans [To] kerning=auto atoms=2 textWidth=40.5 | 0-1@0..20.1 1-2@20.1..40.5
+LigaTestSans [Ta] ligatureLevel=none atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [Ta] ligatureLevel=minimum atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [Ta] ligatureLevel=common atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [Ta] ligatureLevel=uncommon atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [Ta] ligatureLevel=exotic atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [Ta] kerning=on atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [Ta] kerning=off atoms=2 textWidth=41.6 | 0-1@0..21.45 1-2@21.45..41.6
+LigaTestSans [Ta] kerning=auto atoms=2 textWidth=38.7 | 0-1@0..20 1-2@20..38.7
+LigaTestSans [they] ligatureLevel=none atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [they] ligatureLevel=minimum atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [they] ligatureLevel=common atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [they] ligatureLevel=uncommon atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [they] ligatureLevel=exotic atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [they] kerning=on atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [they] kerning=off atoms=4 textWidth=73.8 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.1 3-4@55.1..73.8
+LigaTestSans [they] kerning=auto atoms=4 textWidth=74 | 0-1@0..13.5 1-2@13.5..35.3 2-3@35.3..55.2 3-4@55.2..74
+LigaTestSans [Tefi] ligatureLevel=none atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [Tefi] ligatureLevel=minimum atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [Tefi] ligatureLevel=common atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [Tefi] ligatureLevel=uncommon atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [Tefi] ligatureLevel=exotic atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [Tefi] kerning=on atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [Tefi] kerning=off atoms=4 textWidth=62.8 | 0-1@0..21.45 1-2@21.45..41.3 2-3@41.3..52.95 3-4@52.95..62.8
+LigaTestSans [Tefi] kerning=auto atoms=4 textWidth=60.15 | 0-1@0..20.1 1-2@20.1..38.65 2-3@38.65..50.3 3-4@50.3..60.15
+LigaTestSans [DefineFont4.] ligatureLevel=none atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans [DefineFont4.] ligatureLevel=minimum atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans [DefineFont4.] ligatureLevel=common atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans [DefineFont4.] ligatureLevel=uncommon atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans [DefineFont4.] ligatureLevel=exotic atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans [DefineFont4.] kerning=on atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans [DefineFont4.] kerning=off atoms=12 textWidth=214.35 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.45 7-8@127.45..149.1 8-9@149.1..171 9-10@171..184.5 10-11@184.5..204.4 11-12@204.4..214.35
+LigaTestSans [DefineFont4.] kerning=auto atoms=12 textWidth=213.8 | 0-1@0..24.6 1-2@24.6..44.45 2-3@44.45..56.1 3-4@56.1..65.95 4-5@65.95..87.85 5-6@87.85..107.7 6-7@107.7..127.15 7-8@127.15..148.55 8-9@148.55..170.45 9-10@170.45..183.95 10-11@183.95..203.85 11-12@203.85..213.8
+LigaTestSans typographicCase=default [Hello World] atoms=11 textWidth=195.4 | 0-1@0..26.1 1-2@26.1..45.9 2-3@45.9..56.1 3-4@56.1..66.3 4-5@66.3..88 5-6@88..96 6-7@96..127.45 7-8@127.45..149.1 8-9@149.1..163 9-10@163..173.2 10-11@173.2..195.4
+LigaTestSans typographicCase=smallCaps [Hello World] atoms=11 textWidth=189 | 0-1@0..23.75 1-2@23.75..43.6 2-3@43.6..53.8 3-4@53.8..64 4-5@64..85.7 5-6@85.7..93.7 6-7@93.7..121.05 7-8@121.05..142.7 8-9@142.7..156.6 9-10@156.6..166.8 10-11@166.8..189
+LigaTestSans typographicCase=capsAndSmallCaps [Hello World] atoms=11 textWidth=226.7 | 0-1@0..26.1 1-2@26.1..45.1 2-3@45.1..62.55 3-4@62.55..79.7 4-5@79.7..102.9 5-6@102.9..110.9 6-7@110.9..142.45 7-8@142.45..166.1 8-9@166.1..187.05 9-10@187.05..204.5 10-11@204.5..226.7
+LigaTestSans digitCase=default digitWidth=default [0123456789 1101] atoms=15 textWidth=286.3 | 0-1@0..19.9 1-2@19.9..39.75 2-3@39.75..59.65 3-4@59.65..79.5 4-5@79.5..99.4 5-6@99.4..119.3 6-7@119.3..139.15 7-8@139.15..159.05 8-9@159.05..178.9 9-10@178.9..198.8 10-11@198.8..206.8 11-12@206.8..226.7 12-13@226.7..246.55 13-14@246.55..266.45 14-15@266.45..286.3
+LigaTestSans digitCase=default digitWidth=proportional [0123456789 1101] atoms=15 textWidth=268.15 | 0-1@0..21.3 1-2@21.3..35.9 2-3@35.9..55.7 3-4@55.7..75.4 4-5@75.4..95.95 5-6@95.95..115.6 6-7@115.6..136.1 7-8@136.1..154.6 8-9@154.6..174.5 9-10@174.5..195.05 10-11@195.05..203.05 11-12@203.05..217.65 12-13@217.65..232.3 13-14@232.3..253.6 14-15@253.6..268.15
+LigaTestSans digitCase=default digitWidth=tabular [0123456789 1101] atoms=15 textWidth=286.3 | 0-1@0..19.9 1-2@19.9..39.75 2-3@39.75..59.65 3-4@59.65..79.5 4-5@79.5..99.4 5-6@99.4..119.3 6-7@119.3..139.15 7-8@139.15..159.05 8-9@159.05..178.9 9-10@178.9..198.8 10-11@198.8..206.8 11-12@206.8..226.7 12-13@226.7..246.55 13-14@246.55..266.45 14-15@266.45..286.3
+LigaTestSans digitCase=lining digitWidth=default [0123456789 1101] atoms=15 textWidth=286.3 | 0-1@0..19.9 1-2@19.9..39.75 2-3@39.75..59.65 3-4@59.65..79.5 4-5@79.5..99.4 5-6@99.4..119.3 6-7@119.3..139.15 7-8@139.15..159.05 8-9@159.05..178.9 9-10@178.9..198.8 10-11@198.8..206.8 11-12@206.8..226.7 12-13@226.7..246.55 13-14@246.55..266.45 14-15@266.45..286.3
+LigaTestSans digitCase=lining digitWidth=proportional [0123456789 1101] atoms=15 textWidth=268.15 | 0-1@0..21.3 1-2@21.3..35.9 2-3@35.9..55.7 3-4@55.7..75.4 4-5@75.4..95.95 5-6@95.95..115.6 6-7@115.6..136.1 7-8@136.1..154.6 8-9@154.6..174.5 9-10@174.5..195.05 10-11@195.05..203.05 11-12@203.05..217.65 12-13@217.65..232.3 13-14@232.3..253.6 14-15@253.6..268.15
+LigaTestSans digitCase=lining digitWidth=tabular [0123456789 1101] atoms=15 textWidth=286.3 | 0-1@0..19.9 1-2@19.9..39.75 2-3@39.75..59.65 3-4@59.65..79.5 4-5@79.5..99.4 5-6@99.4..119.3 6-7@119.3..139.15 7-8@139.15..159.05 8-9@159.05..178.9 9-10@178.9..198.8 10-11@198.8..206.8 11-12@206.8..226.7 12-13@226.7..246.55 13-14@246.55..266.45 14-15@266.45..286.3
+LigaTestSans digitCase=oldStyle digitWidth=default [0123456789 1101] atoms=15 textWidth=286.3 | 0-1@0..19.9 1-2@19.9..39.75 2-3@39.75..59.65 3-4@59.65..79.5 4-5@79.5..99.4 5-6@99.4..119.3 6-7@119.3..139.15 7-8@139.15..159.05 8-9@159.05..178.9 9-10@178.9..198.8 10-11@198.8..206.8 11-12@206.8..226.7 12-13@226.7..246.55 13-14@246.55..266.45 14-15@266.45..286.3
+LigaTestSans digitCase=oldStyle digitWidth=proportional [0123456789 1101] atoms=15 textWidth=265.45 | 0-1@0..20.45 1-2@20.45..34.95 2-3@34.95..54.5 3-4@54.5..74 4-5@74..94.35 5-6@94.35..113.9 6-7@113.9..133.9 7-8@133.9..152.55 8-9@152.55..172.8 9-10@172.8..193.25 10-11@193.25..201.25 11-12@201.25..215.85 12-13@215.85..230.5 13-14@230.5..250.95 14-15@250.95..265.45
+LigaTestSans digitCase=oldStyle digitWidth=tabular [0123456789 1101] atoms=15 textWidth=286.3 | 0-1@0..19.9 1-2@19.9..39.75 2-3@39.75..59.65 3-4@59.65..79.5 4-5@79.5..99.4 5-6@99.4..119.3 6-7@119.3..139.15 7-8@139.15..159.05 8-9@159.05..178.9 9-10@178.9..198.8 10-11@198.8..206.8 11-12@206.8..226.7 12-13@226.7..246.55 13-14@246.55..266.45 14-15@266.45..286.3
+Exo 2 fontSize=12 [DefineFont4.] atoms=12 textWidth=70.05 | 0-1@0..7.95 1-2@7.95..14.4 2-3@14.4..18.05 3-4@18.05..21.7 4-5@21.7..28.65 5-6@28.65..35.1 6-7@35.1..41.55 7-8@41.55..48.4 8-9@48.4..55.35 9-10@55.35..59.95 10-11@59.95..67.3 11-12@67.3..70.05
+Exo 2 fontSize=20 [DefineFont4.] atoms=12 textWidth=116.75 | 0-1@0..13.3 1-2@13.3..24 2-3@24..30.1 3-4@30.1..36.15 4-5@36.15..47.75 5-6@47.75..58.5 6-7@58.5..69.3 7-8@69.3..80.65 8-9@80.65..92.25 9-10@92.25..99.9 10-11@99.9..112.2 11-12@112.2..116.75
+Exo 2 fontSize=30 [DefineFont4.] atoms=12 textWidth=175.15 | 0-1@0..19.9 1-2@19.9..36.05 2-3@36.05..45.1 3-4@45.1..54.2 4-5@54.2..71.65 5-6@71.65..87.75 6-7@87.75..103.9 7-8@103.9..120.95 8-9@120.95..138.4 9-10@138.4..149.8 10-11@149.8..168.25 11-12@168.25..175.15
+Exo 2 fontSize=72 [DefineFont4.] atoms=12 textWidth=420.35 | 0-1@0..47.8 1-2@47.8..86.45 2-3@86.45..108.3 3-4@108.3..130.1 4-5@130.1..171.95 5-6@171.95..210.6 6-7@210.6..249.4 7-8@249.4..290.3 8-9@290.3..332.15 9-10@332.15..359.55 10-11@359.55..403.85 11-12@403.85..420.35
+Exo 2 [Def|ineFont4.] color=0 atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [Def|ineFont4.] color=ff0000 atoms=12 textWidth=233.5 | 0-1@0..26.55 1-2@26.55..48.05 2-3@48.05..60.15 3-4@60.15..72.3 4-5@72.3..95.5 5-6@95.5..117 6-7@117..138.55 7-8@138.55..161.3 8-9@161.3..184.5 9-10@184.5..199.75 10-11@199.75..224.35 11-12@224.35..233.5
+Exo 2 [DefineFont4.] getAtomIndexAtCharIndex 0 1 2 3 4 5 6 7 8 9 10 11
