@@ -3,5 +3,5 @@ list.fileList: null
 list.fileList: 
 // select event
 event.target: [object FileReferenceList]
-list.fileList: [object FileReference]
-list.fileList[0].name: test.txt
+list.fileList: [object FileReference],[object FileReference],[object FileReference]
+list.fileList[0].name: test1.txt

@@ -1,7 +1,25 @@
 num_frames = 5
 
+# Timffle: output.expected.png was recorded with Flash Player 32.0.0.465
+# (standalone, Wine 11.19 on Xvfb, 2026-11-05, twice, identical): test.swf
+# loaded over HTTP by a Loader in a 443x150 wrapper SWF that sets
+# stage.quality = LOW (the quality this test runs Ruffle at; opened as a local
+# file the SWF draws nothing), read from the screen after the text settled.
+# Still a known failure, for the rasterization of the glyph edges, not their content or
+# placement: the text is shaped with the font's OpenType tables like Flash's TLF ("fi" is
+# the ligature glyph), and the glyphs snap to Flash's pixel grid (this TLF text uses
+# renderingMode "normal": whole-pixel line origin and glyph pens, measured in
+# avm2/fte_glyph_pixel_grid; with "normal" a plain FTE copy of both lines draws exactly
+# Flash's picture of this SWF). What is left is Flash's low-quality rasterizer itself on
+# curve edges (it also differs from an exact pixel-centre fill of the same outline drawn
+# with Graphics.drawPath, and Flash's own BitmapData.draw of this SWF differs from its
+# screen picture by 31 pixels). output.ruffle.png is Ruffle's current picture
+# (GT 720 / NVK; 1,263 colour channels = 421 pixels differ from Flash, 3,546 before the
+# shaping, 2,238 before the pixel grid).
+
 [image_comparisons.output]
 tolerance = 1
+known_failure = true
 
 [player_options]
 with_renderer = { optional = false, quality = "low" }

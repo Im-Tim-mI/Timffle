@@ -7,7 +7,6 @@ use crate::avm2::object::FontObject;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{ArrayObject, Error};
-use crate::avm2_stub_method;
 use crate::string::AvmString;
 
 pub use crate::avm2::object::font_allocator;
@@ -99,13 +98,18 @@ pub fn enumerate_fonts<'gc>(
     let mut fonts: Vec<Font<'gc>> = Vec::new();
 
     if args.get_bool(0) {
-        // We could include the ones we know about, but what to do for the ones that weren't eagerly loaded?
-        avm2_stub_method!(
-            activation,
-            "flash.text.Font",
-            "enumerateFonts",
-            "with device fonts"
-        );
+        // Timffle: the device fonts this player knows: every one a movie has
+        // already asked the host for, plus the host's implementations of the
+        // built-in names (`_sans`, `_serif`, `_typewriter`, the three Japanese
+        // ones), loaded now if they were not yet. The host backends have no
+        // "list every installed font" call, so fonts never asked for are not
+        // listed (Flash lists everything the OS has).
+        let context = &mut *activation.context;
+        fonts.append(&mut context.library.known_device_fonts(
+            context.ui,
+            context.renderer,
+            context.gc_context,
+        ));
     }
 
     fonts.append(&mut activation.context.library.global_fonts());

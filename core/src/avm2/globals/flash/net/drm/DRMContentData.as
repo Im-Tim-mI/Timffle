@@ -1,42 +1,40 @@
 package flash.net.drm {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
-
     import flash.utils.ByteArray;
 
+    // Timffle: the DRM metadata of a protected file. Parsing the metadata is done by
+    // the Adobe Access module, which this player does not have, so no metadata is
+    // ever read: like Flash Player 32 with bytes that are not DRM metadata, the
+    // constructor accepts any ByteArray (or none), every property is null and
+    // `getVoucherAccessInfo()` is null (measured, tests/tests/swfs/avm2/av_drm_arguments).
     [API("667")]
     public class DRMContentData {
+        private var _serverURL:String = null;
+        private var _authenticationMethod:String = null;
+        private var _licenseID:String = null;
+        private var _domain:String = null;
+
+        [API("667")]
         public function DRMContentData(rawData:ByteArray = null) {
-            super();
         }
 
         public function get serverURL():String {
-            stub_getter("flash.net.drm.DRMContentData", "serverURL");
-
-            return null;
+            return this._serverURL;
         }
 
         public function get authenticationMethod():String {
-            stub_getter("flash.net.drm.DRMContentData", "authenticationMethod");
-
-            return null;
+            return this._authenticationMethod;
         }
 
         public function get licenseID():String {
-            stub_getter("flash.net.drm.DRMContentData", "licenseID");
-
-            return null;
+            return this._licenseID;
         }
 
         public function get domain():String {
-            stub_getter("flash.net.drm.DRMContentData", "domain");
-
-            return null;
+            return this._domain;
         }
 
+        [API("667")]
         public function getVoucherAccessInfo():Vector.<VoucherAccessInfo> {
-            stub_method("flash.net.drm.DRMContentData", "getVoucherAccessInfo");
-
             return null;
         }
     }

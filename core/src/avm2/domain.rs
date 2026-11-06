@@ -218,6 +218,16 @@ impl<'gc> Domain<'gc> {
         if let Some(parent) = self.0.parent
             && let Some(found) = parent.get_defining_script(multiname)
         {
+            // Timffle: a name this domain itself defined before an ancestor got a
+            // definition of the same name (a later load into the parent domain)
+            // keeps resolving to this domain's own definition, as in Flash Player
+            // (`avm2/loader_duplicate_class`: the child domain's `getDefinition`
+            // still returns its own class). An ancestor only wins for the same
+            // name when it had it first, and then `export_definition` never put
+            // the name into this domain.
+            if let Some(own) = self.cell().defs.get(found.0) {
+                return Some((found.0, *own));
+            }
             return Some(found);
         }
 
@@ -236,6 +246,13 @@ impl<'gc> Domain<'gc> {
         if let Some(parent) = self.0.parent
             && let Some(class) = parent.get_class_inner(multiname)
         {
+            // Timffle: this domain's own class of the same name wins, see
+            // `get_defining_script`.
+            if let Some(own) = self.cell().classes.get_for_multiname(multiname)
+                && own.name() == class.name()
+            {
+                return Some(*own);
+            }
             return Some(class);
         }
 

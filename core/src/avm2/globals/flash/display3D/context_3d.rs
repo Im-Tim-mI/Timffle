@@ -3,16 +3,19 @@ use crate::avm2::Error;
 use crate::avm2::TObject as _;
 use crate::avm2::Value;
 use crate::avm2::error::{
-    make_error_2008, make_error_3669, make_error_3670, make_error_3671, make_error_3771,
-    make_error_3772, make_error_3773, make_error_3780, make_error_3781,
+    make_error_2008, make_error_3669, make_error_3670, make_error_3671, make_error_3761,
+    make_error_3770, make_error_3771, make_error_3772, make_error_3773, make_error_3779,
+    make_error_3780, make_error_3781,
 };
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::slots::flash_geom_rectangle as rectangle_slots;
 use crate::avm2::parameters::ParametersExt;
-use crate::avm2_stub_method;
+use crate::bitmap::operations;
 use ruffle_macros::istr;
 use ruffle_render::backend::BufferUsage;
-use ruffle_render::backend::{Context3DProfile, Context3DTextureFilter};
+use ruffle_render::backend::Context3DProfile;
+use ruffle_render::backend::Context3DTextureFormat;
+use ruffle_render::bitmap::PixelRegion;
 use swf::{Rectangle, Twips};
 
 pub fn create_index_buffer<'gc>(
@@ -23,6 +26,7 @@ pub fn create_index_buffer<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // FIXME - get bufferUsage and pass it through
         let num_indices = args.get_u32(0);
 
@@ -43,6 +47,7 @@ pub fn create_vertex_buffer<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // FIXME - get bufferUsage and pass it through
         let num_vertices = args.get_u32(0);
         let data_32_per_vertex = args.get_u32(1);
@@ -71,6 +76,7 @@ pub fn configure_back_buffer<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let width = args.get_u32(0);
         let height = args.get_u32(1);
         let anti_alias = args.get_u32(2);
@@ -98,25 +104,37 @@ pub fn configure_back_buffer<'gc>(
             });
         }
 
+        // Timffle: the back buffer may not exceed maxBackBufferWidth/Height
+        // ("The maximum size of the back buffer ... can also be set by the user
+        // through the properties maxBackBufferWidth and maxBackBufferHeight").
+        let (max_w, max_h) = context.max_back_buffer();
+        if width > max_w {
+            return Err(if old_swf {
+                make_error_3669(activation)
+            } else {
+                make_error_3780(activation)
+            });
+        }
+        if height > max_h {
+            return Err(if old_swf {
+                make_error_3669(activation)
+            } else {
+                make_error_3781(activation)
+            });
+        }
+
         let wants_best_resolution = args.get_bool(4);
         let wants_best_resolution_on_browser_zoom = args.get_bool(5);
 
-        if wants_best_resolution {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "configureBackBuffer",
-                "wantsBestResolution"
-            );
-        }
-        if wants_best_resolution_on_browser_zoom {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "configureBackBuffer",
-                "wantsBestResolutionOnBrowserZoom"
-            );
-        }
+        // Timffle: wantsBestResolution / wantsBestResolutionOnBrowserZoom are
+        // real — the back buffer is allocated in device pixels (viewport scale
+        // factor, i.e. Stage.contentsScaleFactor) and presented into the
+        // logical width×height area; see `Context3DObject::configure_back_buffer`.
+        let scale_factor = activation
+            .context
+            .renderer
+            .viewport_dimensions()
+            .scale_factor;
 
         context.configure_back_buffer(
             width,
@@ -125,6 +143,55 @@ pub fn configure_back_buffer<'gc>(
             enable_depth_and_stencil,
             wants_best_resolution,
             wants_best_resolution_on_browser_zoom,
+            scale_factor,
+        );
+    }
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `Context3D.drawToBitmapData(destination)`.
+///
+/// "Draws the current render buffer to a bitmap" — the *back* buffer, "not the
+/// front buffer shown on stage", so the pixels drawn since the last `present()`
+/// (call it right before `present()` to capture a frame). The whole back buffer
+/// is copied to (0, 0) of the bitmap; "the image is not scaled to fit the
+/// bitmap", what does not fit is clipped. (AIR 25 adds `srcRect`/`destPoint`,
+/// whose out-of-range values are Error #3802; Flash Player has neither.) A disposed
+/// context throws Error #3694 and a disposed bitmap Error #2015. The copy is a
+/// GPU texture copy that the BitmapData syncs back to the CPU on its next read,
+/// like `BitmapData.draw()`; the colours are taken as premultiplied ("The
+/// rendering context does not check the format").
+pub fn draw_to_bitmap_data<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let context = this.as_context_3d().unwrap();
+    context.check_disposed(activation)?;
+
+    let destination = args
+        .get_object(activation, 0, "destination")?
+        .as_bitmap_data()
+        .expect("destination is typed BitmapData");
+    destination.check_valid(activation)?;
+
+    let (buffer_width, buffer_height) = context.back_buffer_size();
+    let Some(source) = context.back_buffer_handle() else {
+        // Nothing has been rendered yet (no configureBackBuffer()).
+        return Ok(Value::Undefined);
+    };
+
+    // Flash Player declares only `destination`: the whole back buffer goes to
+    // (0, 0) of the bitmap (AIR 25's srcRect/destPoint cannot be passed).
+    let region = PixelRegion::for_region(0, 0, buffer_width, buffer_height);
+    if region.width() == 0 || region.height() == 0 {
+        return Ok(Value::Undefined);
+    }
+
+    if !operations::copy_stage3d(activation.context, destination, source, region, (0, 0)) {
+        tracing::warn!(
+            "Context3D.drawToBitmapData: the render backend could not copy the back buffer"
         );
     }
     Ok(Value::Undefined)
@@ -138,6 +205,7 @@ pub fn set_vertex_buffer_at<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let index = args.get_u32(0);
         let buffer = args.try_get_object(1);
 
@@ -148,7 +216,9 @@ pub fn set_vertex_buffer_at<'gc>(
                 .parse()
                 .map_err(|_| make_error_2008(activation, "vertexStreamFormat"))?;
 
-            Some((buffer.as_vertex_buffer().unwrap(), format))
+            let buffer = buffer.as_vertex_buffer().unwrap();
+            buffer.check_disposed(activation)?; // Timffle
+            Some((buffer, format))
         } else {
             None
         };
@@ -168,20 +238,25 @@ pub fn create_program<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         return Ok(context.create_program(activation));
     }
     Ok(Value::Undefined)
 }
 
 pub fn set_program<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let program = args.try_get_object(0).map(|p| p.as_program_3d().unwrap());
+        if let Some(program) = program {
+            program.check_disposed(activation)?; // Timffle
+        }
         context.set_program(program);
     }
     Ok(Value::Undefined)
@@ -195,10 +270,12 @@ pub fn draw_triangles<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let index_buffer = args
             .get_object(activation, 0, "indexBuffer")?
             .as_index_buffer()
             .unwrap();
+        index_buffer.check_disposed(activation)?; // Timffle
 
         let first_index = args.get_u32(1);
         let num_triangles = args.get_u32(2) as i32;
@@ -209,13 +286,14 @@ pub fn draw_triangles<'gc>(
 }
 
 pub fn present<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         context.present();
     }
     Ok(Value::Undefined)
@@ -229,6 +307,7 @@ pub fn get_profile<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let profile = match context.with_context_3d(|context| context.profile()) {
             Context3DProfile::Baseline => istr!("baseline"),
             Context3DProfile::BaselineConstrained => istr!("baselineConstrained"),
@@ -251,6 +330,7 @@ pub fn set_culling<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let culling = args
             .get_string_non_null(activation, 0, "triangleFaceToCull")?
             .parse()
@@ -269,6 +349,7 @@ pub fn set_program_constants_from_matrix<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let program_type = args
             .get_string_non_null(activation, 0, "programType")?
             .parse()
@@ -314,6 +395,7 @@ pub fn set_program_constants_from_vector<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let program_type = args
             .get_string_non_null(activation, 0, "programType")?
             .parse()
@@ -357,6 +439,7 @@ pub fn set_program_constants_from_byte_array<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let program_type = args
             .get_string_non_null(activation, 0, "programType")?
             .parse()
@@ -396,13 +479,14 @@ pub fn set_program_constants_from_byte_array<'gc>(
 }
 
 pub fn clear<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let red = args.get_f64(0);
         let green = args.get_f64(1);
@@ -425,6 +509,7 @@ pub fn create_texture<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let width = args.get_i32(0) as u32;
         let height = args.get_i32(1) as u32;
@@ -458,6 +543,7 @@ pub fn create_rectangle_texture<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let width = args.get_i32(0) as u32;
         let height = args.get_i32(1) as u32;
@@ -490,6 +576,7 @@ pub fn create_cube_texture<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let size = args.get_i32(0) as u32;
         let format = args
@@ -518,6 +605,7 @@ pub fn set_texture_at<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let sampler = args.get_i32(0) as u32;
         let mut cube = false;
@@ -531,7 +619,9 @@ pub fn set_texture_at<'gc>(
                     .inner_class_definition(),
             );
 
-            Some(texture_object.as_texture().unwrap().handle())
+            let texture = texture_object.as_texture().unwrap();
+            texture.check_disposed(activation)?; // Timffle
+            Some(texture.handle())
         } else {
             None
         };
@@ -542,13 +632,14 @@ pub fn set_texture_at<'gc>(
 }
 
 pub fn set_color_mask<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let red = args.get_bool(0);
         let green = args.get_bool(1);
@@ -568,6 +659,7 @@ pub fn set_depth_test<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let depth_mask = args.get_bool(0);
         let pass_compare_mode = args
@@ -588,6 +680,7 @@ pub fn set_blend_factors<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let source_factor = args
             .get_string_non_null(activation, 0, "sourceFactor")?
@@ -612,10 +705,12 @@ pub fn set_render_to_texture<'gc>(
     let this = this.as_object().unwrap();
 
     let context = this.as_context_3d().unwrap();
+    context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
     let texture = args
         .get_object(activation, 0, "texture")?
         .as_texture()
         .unwrap();
+    texture.check_disposed(activation)?; // Timffle
     let enable_depth_and_stencil = args.get_bool(1);
     let anti_alias = args.get_u32(2);
     let surface_selector = args.get_u32(3);
@@ -636,29 +731,52 @@ pub fn set_render_to_texture<'gc>(
         }
     }
 
-    if anti_alias != 0 {
-        avm2_stub_method!(
-            activation,
-            "flash.display3D.Context3D",
-            "setRenderToTexture",
-            "antiAlias != 0"
-        );
-    }
+    // Timffle: antiAlias is real — the wgpu backend renders into a multisampled
+    // texture of the requested sample count and resolves it into the target.
 
+    // Timffle: colorOutputIndex 1..3 bind extra colour outputs (multiple
+    // render targets, written by the fragment program as `oc1`..`oc3`):
+    // "must be in the range [0..3]" (ArgumentError #3770), "must be 0 in
+    // constrained or baseline mode" ("requires a Context3D that is created
+    // with the standard profile or above", ArgumentError #3779), and every
+    // output must have the bit depth of output 0 ("The bit depth of all
+    // textures used for render to texture must be exactly the same",
+    // ArgumentError #3761) — the same error is used when the sizes differ,
+    // since a render pass needs equally sized attachments.
+    if color_output_index > 3 {
+        return Err(make_error_3770(activation));
+    }
+    let format = texture.original_format();
     if color_output_index != 0 {
-        avm2_stub_method!(
-            activation,
-            "flash.display3D.Context3D",
-            "setRenderToTexture",
-            "colorOutputIndex != 0"
-        );
+        let profile = context.with_context_3d(|context| context.profile());
+        if matches!(
+            profile,
+            Context3DProfile::Baseline
+                | Context3DProfile::BaselineConstrained
+                | Context3DProfile::BaselineExtended
+        ) {
+            return Err(make_error_3779(activation));
+        }
+        let (size_0, format_0) = match context.render_target_0() {
+            Some((target, format)) => ((target.width(), target.height()), format),
+            None => (context.back_buffer_size(), Context3DTextureFormat::Bgra),
+        };
+        let handle = texture.handle();
+        let bit_depth = |format: Context3DTextureFormat| {
+            matches!(format, Context3DTextureFormat::RgbaHalfFloat)
+        };
+        if (handle.width(), handle.height()) != size_0 || bit_depth(format) != bit_depth(format_0) {
+            return Err(make_error_3761(activation));
+        }
     }
 
     context.set_render_to_texture(
         texture.handle(),
+        format,
         enable_depth_and_stencil,
         anti_alias,
         surface_selector,
+        color_output_index,
     );
     Ok(Value::Undefined)
 }
@@ -671,6 +789,7 @@ pub fn set_stencil_actions<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let triangle_face = args
             .get_string_non_null(activation, 0, "triangleFace")?
             .parse()
@@ -709,13 +828,14 @@ pub fn set_stencil_actions<'gc>(
 }
 
 pub fn set_render_to_back_buffer<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     let context = this.as_context_3d().unwrap();
+    context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
     context.set_render_to_back_buffer();
     Ok(Value::Undefined)
 }
@@ -723,13 +843,14 @@ pub fn set_render_to_back_buffer<'gc>(
 // TODO: Add visual tests for setStencilReferenceValue edge cases
 // (e.g. values > 255 for reference/masks on an 8-bit stencil buffer).
 pub fn set_stencil_reference_value<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         let reference_value = args.get_u32(0);
         let read_mask = args.get_u32(1);
         let write_mask = args.get_u32(2);
@@ -748,6 +869,7 @@ pub fn set_sampler_state_at<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(context) = this.as_context_3d() {
+        context.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
         // This is a native method, so all of the arguments have been checked and coerced for us
         let sampler = args.get_i32(0) as u32;
 
@@ -761,45 +883,28 @@ pub fn set_sampler_state_at<'gc>(
             .parse()
             .map_err(|_| make_error_2008(activation, "filter"))?;
 
-        let mip_filter = args.get_string_non_null(activation, 3, "mipfilter")?;
+        // Timffle: anisotropic filters are applied by the wgpu backend
+        // (SamplerDescriptor::anisotropy_clamp) and mip filters select the
+        // texture's mip chain, so neither is stubbed any more.
+        let mip_filter = args
+            .get_string_non_null(activation, 3, "mipfilter")?
+            .parse()
+            .map_err(|_| make_error_2008(activation, "mipfilter"))?;
 
-        if matches!(
-            filter,
-            Context3DTextureFilter::Anisotropic2X
-                | Context3DTextureFilter::Anisotropic4X
-                | Context3DTextureFilter::Anisotropic8X
-                | Context3DTextureFilter::Anisotropic16X
-        ) {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "setSamplerStateAt",
-                "filter == 'anisotropic'"
-            );
-        }
-
-        if &*mip_filter != b"mipnone" {
-            avm2_stub_method!(
-                activation,
-                "flash.display3D.Context3D",
-                "setSamplerStateAt",
-                "mipFilter != 'none'"
-            );
-        }
-
-        context.set_sampler_state_at(sampler, wrap, filter);
+        context.set_sampler_state_at(sampler, wrap, filter, mip_filter);
     }
     Ok(Value::Undefined)
 }
 
 pub fn set_scissor_rectangle<'gc>(
-    _activation: &mut Activation<'_, 'gc>,
+    activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
     let context3d = this.as_context_3d().unwrap();
+    context3d.check_disposed(activation)?; // Timffle: Error #3694 after dispose()
     let rectangle = args.try_get_object(0);
     let rectangle = if let Some(rectangle) = rectangle {
         let x = rectangle.get_slot(rectangle_slots::X).as_f64();
@@ -821,17 +926,142 @@ pub fn set_scissor_rectangle<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: Context3D.dispose(recreate): "Frees all resources and internal storage
+// associated with this Context3D". The renderer-side context (and every wgpu buffer,
+// texture and pipeline it owns) is dropped, Stage3D.context3D becomes null, and any
+// later method call on this object throws Error #3694 ("The object was disposed by an
+// earlier call of dispose() on it"). With recreate == true (the default) a new
+// Context3D is requested with the same profile and `context3DCreate` is dispatched
+// again at the end of the frame, like Flash.
 pub fn dispose<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let context = this.as_context_3d().unwrap();
+    let recreate = args.get_bool(0);
+
+    if context.is_disposed() {
+        return Ok(Value::Undefined);
+    }
+
+    let profile = context.with_context_3d(|ctx| ctx.profile());
+    let stage3d = context.stage3d();
+    context.dispose();
+    stage3d.clear_context3d(activation.gc());
+    if recreate {
+        stage3d.set_requesting_context3d(activation.gc(), profile);
+    }
+    Ok(Value::Undefined)
+}
+
+// Timffle: `backBufferWidth`/`backBufferHeight` — size set by the last successful
+// configureBackBuffer() call (0 before any call).
+pub fn get_back_buffer_width<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    Ok((context.back_buffer_size().0 as i32).into())
+}
+
+pub fn get_back_buffer_height<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    Ok((context.back_buffer_size().1 as i32).into())
+}
+
+// Timffle: `maxBackBufferWidth`/`maxBackBufferHeight` — "The initial value is the
+// system limit in the platform" (16384, the same limit configureBackBuffer enforces);
+// "can be set to a value smaller than or equal to, but not greater than, the system
+// limit"; "the minimum limit is a constant value, 32, when the back buffer is not
+// configured", otherwise the width/height of the last successful configureBackBuffer.
+// Values outside that range are clamped to it. configureBackBuffer() then rejects
+// sizes above the current maximum.
+pub fn get_max_back_buffer_width<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    Ok((context.max_back_buffer().0 as i32).into())
+}
+
+pub fn get_max_back_buffer_height<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    Ok((context.max_back_buffer().1 as i32).into())
+}
+
+pub fn set_max_back_buffer_width<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    let min = context.back_buffer_size().0.max(32);
+    let value = (args.get_i32(0).max(0) as u32).clamp(min, 16384);
+    let (_, h) = context.max_back_buffer();
+    context.set_max_back_buffer((value, h));
+    Ok(Value::Undefined)
+}
+
+pub fn set_max_back_buffer_height<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    let min = context.back_buffer_size().1.max(32);
+    let value = (args.get_i32(0).max(0) as u32).clamp(min, 16384);
+    let (w, _) = context.max_back_buffer();
+    context.set_max_back_buffer((w, value));
+    Ok(Value::Undefined)
+}
+
+// Timffle: `totalGPUMemory` — "the total GPU memory allocated by Stage3D data
+// structures" (index buffers, vertex buffers, textures and programs) of this
+// context, in bytes; 0 for a fresh or disposed context.
+pub fn get_total_gpu_memory<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    Ok((context.total_gpu_memory().min(i32::MAX as u64) as i32).into())
+}
+
+// Timffle: `driverInfo` — the graphics API the renderer uses, as Flash names it
+// ("Vulkan", "DirectX12", "WebGPU", ...; "Software Hw_disabled=unavailable" on a
+// CPU adapter), never the GPU model; "Disposed" once dispose() was called, like Flash.
+pub fn get_driver_info<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    let this = this.as_object().unwrap();
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    let info = context.driver_info();
+    Ok(crate::string::AvmString::new_utf8(activation.gc(), info).into())
+}
 
-    avm2_stub_method!(activation, "flash.display3D.Context3D", "dispose");
-    this.as_context_3d()
-        .unwrap()
-        .stage3d()
-        .clear_context3d(activation.gc());
-    Ok(Value::Undefined)
+// Timffle: `createVideoTexture()` — this player has no hardware video-to-texture
+// path, so `Context3D.supportsVideoTexture` is false and, as documented, "this
+// method returns null if the system doesn't support this feature". A disposed
+// context still throws Error #3694 first ("Object Disposed").
+pub fn create_video_texture<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let context = this.as_object().unwrap().as_context_3d().unwrap();
+    context.check_disposed(activation)?;
+    Ok(Value::Null)
 }

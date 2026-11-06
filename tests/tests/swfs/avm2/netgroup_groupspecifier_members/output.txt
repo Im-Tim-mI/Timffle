@@ -1,0 +1,37 @@
+// GroupSpecifier
+new GroupSpecifier(null): ArgumentError #0
+new GroupSpecifier(''): ArgumentError #0
+maxSupportedGroupspecVersion: 2
+minGroupspecVersion: 2
+flags: false false false false false false false
+toString: G:027f02050e7465737400
+groupspecWithoutAuthorizations: G:027f02050e7465737400
+groupspecWithAuthorizations: G:027f02050e7465737400
+authorizations: ''
+flags: true true true true true true true
+all flags: G:027f020100010101020103010c010d050e74657374011b00
+version 2: G:027f020100010101020103010c010d050e74657374011b00
+encodeBootstrapPeerIDSpec: 210b0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef
+encodeIPMulticastAddressSpec(a:p): 070ae00000fe7530
+encodeIPMulticastAddressSpec(a, p): 070ae00000fe7530
+encodeIPMulticastAddressSpec(a, p, s): 0b0ae00000fe75300a000001
+encodeIPMulticastAddressSpec(v6): 130aff0200000000000000000000000000017530
+encodeIPMulticastAddressSpec(no port): ArgumentError #0
+encodeIPMulticastAddressSpec(null): ArgumentError #0
+encodePublishAuthorization: 03157077
+encodePostingAuthorization: 03177077
+encodePublishAuthorization(null): TypeError #2007
+without: G:027f02250573616c7421baed949b716c49cbf7d8fe79412f1dc104745650a32081ae0be0b967aeb7f3210772231043bc1807e6f740b235eb7511ecb33255a6a375435631196de8a9750d4b050e7465737400070ae00000fe7530210b0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef
+authorizations: 031570770517706f7374
+with == without + authorizations: true
+passwords cleared: G:027f02050e7465737400070ae00000fe7530210b0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef
+makeUnique adds 36 hex digits: false, starts the same: false
+makeUnique again differs: true
+// NetGroupInfo
+postingSendDataBytesPerSecond=0 postingSendControlBytesPerSecond=0 postingReceiveDataBytesPerSecond=0 postingReceiveControlBytesPerSecond=0 routingSendBytesPerSecond=0 routingReceiveBytesPerSecond=0 objectReplicationSendBytesPerSecond=0 objectReplicationReceiveBytesPerSecond=0
+// NetGroup
+new NetGroup(null): TypeError #2007
+new NetGroup(nc, null): TypeError #2007
+new NetGroup(unconnected): ArgumentError #2126
+protocol: rtmp
+new NetGroup(local): ArgumentError #2129

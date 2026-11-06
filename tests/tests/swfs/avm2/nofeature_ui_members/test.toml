@@ -1,0 +1,12 @@
+num_ticks = 1
+
+# AIR runtime so that the AIR-only classes (flash.sensors.Geolocation, GeolocationEvent) are visible.
+[player_options]
+runtime = "AIR"
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32

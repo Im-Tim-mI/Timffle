@@ -1,0 +1,12 @@
+# Timffle: needs a Context3D (GPU); ignored on machines without a renderer.
+num_ticks = 3
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as", "AGALMiniAssembler.as"]
+swf_version = 32
+
+[player_options]
+with_renderer = { optional = false, quality = "low" }

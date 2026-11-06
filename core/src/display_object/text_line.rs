@@ -5,6 +5,7 @@ use crate::avm2::StageObject as Avm2StageObject;
 use crate::avm2::object::TextBlockObject;
 use crate::backend::ui::MouseCursor;
 use crate::context::{RenderContext, UpdateContext};
+use crate::display_object::container::{ChildContainer, TDisplayObjectContainer};
 use crate::display_object::interactive::{InteractiveObjectBase, TInteractiveObject};
 use crate::display_object::{
     Avm2MousePick, BoundsMode, DisplayObjectBase, EditText, InteractiveObject,
@@ -12,14 +13,16 @@ use crate::display_object::{
 use crate::events::{ClipEvent, ClipEventResult};
 use crate::fte::TextLineValidity;
 use crate::prelude::*;
+use crate::string::WString;
 use crate::tag_utils::SwfMovie;
 use crate::vminterface::Instantiator;
 use core::fmt;
 use gc_arena::barrier::unlock;
-use gc_arena::lock::Lock;
+use gc_arena::lock::{Lock, RefLock};
 use gc_arena::{Collect, Gc, Mutation};
 use ruffle_common::utils::HasPrefixField;
-use std::cell::Cell;
+use ruffle_render::transform::Transform;
+use std::cell::{Cell, Ref, RefMut};
 use swf::Twips;
 
 #[derive(Clone, Collect, Copy)]
@@ -58,6 +61,28 @@ pub struct TextLineData<'gc> {
 
     previous_line: Lock<Option<TextLine<'gc>>>,
     next_line: Lock<Option<TextLine<'gc>>>,
+
+    // Timffle: the line's text in logical order plus its bidirectional
+    // resolution (UAX #9). The fallback EditText holds the text in visual
+    // order; atom queries work on the logical text and map through
+    // `to_visual`.
+    #[collect(require_static)]
+    bidi: RefLock<LineBidi>,
+
+    // Timffle: a TextLine is a DisplayObjectContainer in Flash; scripts may add
+    // children to it (they are drawn above the text, and `recreateTextLine` removes them).
+    container: RefLock<ChildContainer<'gc>>,
+}
+
+/// Timffle: bidirectional resolution of one line (see `TextLineData::bidi`).
+#[derive(Default, Clone, Debug)]
+pub struct LineBidi {
+    /// The line's text in logical order.
+    pub logical: WString,
+    /// Logical UTF-16 unit index -> index into the visual (fallback) text.
+    pub to_visual: Vec<usize>,
+    /// Resolved embedding level of every logical UTF-16 unit.
+    pub levels: Vec<u8>,
 }
 
 impl<'gc> TextLine<'gc> {
@@ -66,7 +91,8 @@ impl<'gc> TextLine<'gc> {
         movie: SwfMovie<'gc>,
         fallback: EditText<'gc>,
     ) -> Self {
-        TextLine(Gc::new(
+        fallback.set_unclipped(true); // Timffle: TextLines do not clip their glyphs.
+        let line = TextLine(Gc::new(
             context.gc(),
             TextLineData {
                 base: Default::default(),
@@ -83,8 +109,41 @@ impl<'gc> TextLine<'gc> {
                 line_index: Cell::new(0),
                 previous_line: Lock::new(None),
                 next_line: Lock::new(None),
+                bidi: RefLock::new(LineBidi::default()),
+                container: RefLock::new(ChildContainer::new(&movie)),
             },
-        ))
+        ));
+        // Timffle: `TextLine.tabChildren` is always false in Flash (setting it throws #2181),
+        // so tab order never goes into a line's children.
+        line.set_tab_children(context, false);
+        line
+    }
+
+    // Timffle: the line's logical text (what `rawTextLength` and the atom
+    // indices refer to).
+    pub fn logical_text(self) -> WString {
+        self.0.bidi.borrow().logical.clone()
+    }
+
+    /// Maps a logical UTF-16 unit index of the line to the unit's index in
+    /// the fallback's (visual order) text.
+    pub fn logical_to_visual(self, index: usize) -> usize {
+        self.0
+            .bidi
+            .borrow()
+            .to_visual
+            .get(index)
+            .copied()
+            .unwrap_or(index)
+    }
+
+    /// The resolved bidirectional level of a logical UTF-16 unit.
+    pub fn bidi_level_at(self, index: usize) -> u8 {
+        self.0.bidi.borrow().levels.get(index).copied().unwrap_or(0)
+    }
+
+    pub fn set_bidi(self, bidi: LineBidi, mc: &Mutation<'gc>) {
+        *unlock!(Gc::write(mc, self.0), TextLineData, bidi).borrow_mut() = bidi;
     }
 
     pub fn reset_properties(self, mc: &Mutation<'gc>) {
@@ -107,6 +166,7 @@ impl<'gc> TextLine<'gc> {
 
         self.set_previous_line(None, mc);
         self.set_next_line(None, mc);
+        self.set_bidi(LineBidi::default(), mc);
     }
 
     /// Release this line from its siblings and the block it's in.
@@ -169,6 +229,13 @@ impl<'gc> TextLine<'gc> {
 
     pub fn fallback(self) -> EditText<'gc> {
         self.0.fallback
+    }
+
+    /// Timffle: maps the fallback field's local coordinates to this line's, whose origin
+    /// is the start of the line's roman baseline (see `render_self`).
+    pub fn fallback_to_local_matrix(self) -> Matrix {
+        let (x, y) = self.0.fallback.first_baseline_origin();
+        Matrix::translate(-x, -y)
     }
 
     pub fn validity(self) -> TextLineValidity<'gc> {
@@ -289,12 +356,40 @@ impl<'gc> TDisplayObject<'gc> for TextLine<'gc> {
 
     fn replace_with(self, _context: &mut UpdateContext<'gc>, _id: CharacterId) {}
 
+    // Timffle: a TextLine's origin is the start of its roman baseline, as in Flash Player
+    // (text above the line has negative y, `getBaselinePosition(TextBaseline.ROMAN)` is 0,
+    // `getAtomBounds(0)` starts at x = 0, y = -ascent), so the fallback field is drawn moved
+    // by its text origin. Ruffle drew the field's top left corner (2 px gutter) at the
+    // origin, which put TLF text, which places `line.y` on the baseline, one ascent too
+    // low. Measured in Flash Player 32 on visual/definefont4: line origins y 47.95 / 102.4,
+    // glyphs end on the origin's row, the text starts one pixel right of `line.x`.
     fn render_self(self, context: &mut RenderContext<'_, 'gc>) {
-        self.0.fallback.render_self(context);
+        let line = context.transform_stack.transform().matrix;
+        let mut origin = (line.tx, line.ty);
+        // Timffle: Flash rounds the parent's device origin and the line's own offset in it
+        // to whole pixels separately (x.5 down; measured with parents at 10.3/10.45/10.6 and
+        // lines at 0.25-0.6 on both axes), so the line origin is snapped here already.
+        let local = self.base().matrix();
+        if local.b == 0.0 && local.c == 0.0 && local.a != 0.0 && local.d != 0.0 {
+            let round = |v: f64| Twips::from_pixels((v - 0.5).ceil());
+            let off_x = Twips::new((line.a / local.a * local.tx.get() as f32).round() as i32);
+            let off_y = Twips::new((line.d / local.d * local.ty.get() as f32).round() as i32);
+            origin = (
+                round((line.tx - off_x).to_pixels()) + round(off_x.to_pixels()),
+                round((line.ty - off_y).to_pixels()) + round(off_y.to_pixels()),
+            );
+        }
+        context.transform_stack.push(&Transform {
+            matrix: self.fallback_to_local_matrix(),
+            ..Default::default()
+        });
+        self.0.fallback.render_in_text_line(context, line, origin);
+        context.transform_stack.pop();
+        self.render_children(context);
     }
 
     fn self_bounds(self, mode: BoundsMode) -> Rectangle<Twips> {
-        self.0.fallback.self_bounds(mode)
+        self.fallback_to_local_matrix() * self.0.fallback.self_bounds(mode)
     }
 
     fn hit_test_shape(
@@ -330,6 +425,34 @@ impl<'gc> TDisplayObject<'gc> for TextLine<'gc> {
         _run_frame: bool,
     ) {
         self.set_default_instance_name(context);
+    }
+
+    fn enter_frame(self, context: &mut UpdateContext<'gc>) {
+        let skip_frame = self.base().should_skip_next_enter_frame();
+        for child in self.iter_render_list() {
+            // See MovieClip::enter_frame for an explanation of this.
+            if skip_frame {
+                child.base().set_skip_next_enter_frame(true);
+            }
+            child.enter_frame(context);
+        }
+        self.base().set_skip_next_enter_frame(false);
+    }
+
+    fn construct_frame(self, context: &mut UpdateContext<'gc>) {
+        for child in self.iter_render_list() {
+            child.construct_frame(context);
+        }
+    }
+}
+
+impl<'gc> TDisplayObjectContainer<'gc> for TextLine<'gc> {
+    fn raw_container(&self) -> Ref<'_, ChildContainer<'gc>> {
+        self.0.container.borrow()
+    }
+
+    fn raw_container_mut(&self, gc_context: &Mutation<'gc>) -> RefMut<'_, ChildContainer<'gc>> {
+        unlock!(Gc::write(gc_context, self.0), TextLineData, container).borrow_mut()
     }
 }
 

@@ -12,6 +12,8 @@ pub fn upload_from_byte_array<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(vertex_buffer) = this.as_vertex_buffer() {
+        vertex_buffer.check_disposed(activation)?; // Timffle
+        vertex_buffer.context3d().check_disposed(activation)?;
         let byte_array = args.get_object(activation, 0, "data")?;
 
         let byte_array = byte_array
@@ -47,6 +49,8 @@ pub fn upload_from_vector<'gc>(
     let this = this.as_object().unwrap();
 
     if let Some(vertex_buffer) = this.as_vertex_buffer() {
+        vertex_buffer.check_disposed(activation)?; // Timffle
+        vertex_buffer.context3d().check_disposed(activation)?;
         let vector = args.get_object(activation, 0, "data")?;
 
         let vector = vector
@@ -70,6 +74,20 @@ pub fn upload_from_vector<'gc>(
             start_vertex as usize,
             vertex_buffer.data32_per_vertex(),
         );
+    }
+    Ok(Value::Undefined)
+}
+
+// Timffle: dispose() releases the GPU resource; using the object afterwards
+// throws Error #3694 ("The object was disposed by an earlier call of dispose() on it").
+pub fn dispose<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    if let Some(obj) = this.as_vertex_buffer() {
+        obj.dispose();
     }
     Ok(Value::Undefined)
 }

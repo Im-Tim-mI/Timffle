@@ -1,8 +1,4 @@
 package flash.display3D {
-    import __ruffle__.stub_method;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-
     import flash.display.BitmapData;
     import flash.events.EventDispatcher;
     import flash.geom.Matrix3D;
@@ -87,21 +83,25 @@ package flash.display3D {
             optimizeForRenderToTexture:Boolean
         ):RectangleTexture;
 
+        // Timffle: no hardware video-to-texture path in this player, so
+        // supportsVideoTexture is false and createVideoTexture() returns null
+        // ("returns null if the system doesn't support this feature"), after the
+        // Error #3694 disposed check.
         [API("706")]
-        public function createVideoTexture():VideoTexture {
-            stub_method("flash.display3D.Context3D", "createVideoTexture");
-            return null;
-        }
+        public native function createVideoTexture():VideoTexture;
 
         [API("706")]
         public static function get supportsVideoTexture():Boolean {
             return false;
         }
 
-        public function get driverInfo():String {
-            stub_getter("flash.display3D.Context3D", "driverInfo");
-            return "Dummy Ruffle driver";
-        }
+        // Timffle: real adapter string from the renderer ("Disposed" after dispose()).
+        public native function get driverInfo():String;
+
+        // Timffle: bytes held by this context's buffers, textures and programs.
+        // Flash Player 22 / AIR 22 (SWF 33): API mark 660 + ApiVersion::SWF_33.
+        [API("714")]
+        public native function get totalGPUMemory():int;
 
         private var _enableErrorChecking:Boolean = false;
         public function get enableErrorChecking():Boolean {
@@ -150,37 +150,22 @@ package flash.display3D {
         [API("692")]
         public native function get profile():String;
 
+        // Timffle: real values, see context_3d.rs.
         [API("700")]
-        public function get backBufferWidth():int {
-            stub_getter("flash.display3D.Context3D", "backBufferWidth");
-            return 2048;
-        }
+        public native function get backBufferWidth():int;
 
         [API("700")]
-        public function get backBufferHeight():int {
-            stub_getter("flash.display3D.Context3D", "backBufferHeight");
-            return 2048;
-        }
+        public native function get backBufferHeight():int;
 
         [API("700")]
-        public function get maxBackBufferWidth():int {
-            stub_getter("flash.display3D.Context3D", "maxBackBufferWidth");
-            return 2048;
-        }
+        public native function get maxBackBufferWidth():int;
         [API("700")]
-        public function set maxBackBufferWidth(value:int):void {
-            stub_setter("flash.display3D.Context3D", "maxBackBufferWidth");
-        }
+        public native function set maxBackBufferWidth(value:int):void;
 
         [API("700")]
-        public function get maxBackBufferHeight():int {
-            stub_getter("flash.display3D.Context3D", "maxBackBufferHeight");
-            return 2048;
-        }
+        public native function get maxBackBufferHeight():int;
         [API("700")]
-        public function set maxBackBufferHeight(value:int):void {
-            stub_setter("flash.display3D.Context3D", "maxBackBufferHeight");
-        }
+        public native function set maxBackBufferHeight(value:int):void;
 
         public native function setStencilReferenceValue(referenceValue:uint, readMask:uint = 255, writeMask:uint = 255):void;
 
@@ -203,9 +188,11 @@ package flash.display3D {
             actionOnDepthPassStencilFail:String = "keep"
         ):void;
 
-        public function drawToBitmapData(destination:BitmapData):void {
-            stub_method("flash.display3D.Context3D", "drawToBitmapData");
-        }
+        // Timffle: real back-buffer readback (GPU copy + the BitmapData sync
+        // path). See context_3d.rs. Flash Player 32 declares only `destination`
+        // (playerglobal 32.0, avm2/all_classes/display3D); srcRect/destPoint are
+        // the AIR 25 additions and cannot be passed here (#1063, as in Flash).
+        public native function drawToBitmapData(destination:BitmapData):void;
 
         public native function dispose(recreate:Boolean = true):void;
     }

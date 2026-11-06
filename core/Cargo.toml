@@ -39,6 +39,8 @@ chrono = { workspace = true, features = ["clock"] }
 web-time = "1.1.0"
 encoding_rs = { workspace = true }
 rand = { workspace = true, features = ["std", "sys_rng"] }
+# Timffle: GroupSpecifier password hashes / NetGroup group addresses.
+sha2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["preserve_order"] }
 nellymoser-rs = { git = "https://github.com/ruffle-rs/nellymoser", rev = "073eb48d907201f46dea0c8feb4e8d9a1d92208c", optional = true }
@@ -60,11 +62,18 @@ png = { workspace = true, optional = true }
 flv-rs = { path = "../flv" }
 async-channel = { workspace = true }
 jpegxr = { workspace = true, optional = true }
-image = { workspace = true, features = ["tiff"] }
+# Timffle: `png` and `jpeg` for `BitmapData.encode()`.
+image = { workspace = true, features = ["tiff", "png", "jpeg"] }
 enum-map = { workspace = true }
 ttf-parser = "0.25"
+# Timffle: OpenType shaping (GSUB ligatures, GPOS kerning) of DefineFont4 text in flash.text.engine.
+rustybuzz = { version = "0.20.1", default-features = false, features = ["std"] }
 num-bigint = "0.4"
 unicode-segmentation = "1.13.3"
+# Timffle: bidirectional ordering for flash.text.engine.TextBlock.bidiLevel.
+unicode-bidi = "0.3.18"
+# Timffle: NFKD decomposition for the `flash.globalization.Collator` collation.
+unicode-normalization = "0.1.24"
 id3 = "1.17.0"
 either = "1.16.0"
 chardetng = "0.1.17"

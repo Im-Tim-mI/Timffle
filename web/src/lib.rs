@@ -13,6 +13,11 @@ mod ui;
 mod zip;
 
 use crate::builder::RuffleInstanceBuilder;
+
+// Timffle: count allocated bytes for `System.totalMemory`/`freeMemory`.
+#[global_allocator]
+static GLOBAL: ruffle_core::memory::CountingAllocator<std::alloc::System> =
+    ruffle_core::memory::CountingAllocator(std::alloc::System);
 use external_interface::{external_to_js_value, js_to_external_value};
 use input::{web_input_to_ruffle_key_descriptor, web_to_ruffle_text_control};
 use js_sys::{Error as JsError, Uint8Array};
@@ -20,7 +25,7 @@ use ruffle_core::context::UpdateContext;
 use ruffle_core::context_menu::ContextMenuCallback;
 use ruffle_core::events::{
     GamepadButton, ImeCursorArea, ImeEvent, ImeNotification, ImePurpose, MouseButton,
-    MouseWheelDelta, PlayerNotification, TextControlCode,
+    PlayerNotification, TextControlCode,
 };
 use ruffle_core::swf::{Rectangle, Twips};
 use ruffle_core::tag_utils::SwfMovieData;
@@ -157,6 +162,8 @@ struct RuffleInstance {
     notification_receiver: async_channel::Receiver<PlayerNotification>,
     /// Timffle: frame-rate statistics for the fps overlay.
     fps: fps::FrameStats,
+    /// Timffle: wheel notches vs. smooth scrolling (see `ruffle_core::wheel`).
+    wheel: RefCell<ruffle_core::wheel::WheelAccumulator>,
 }
 
 #[wasm_bindgen(raw_module = "./internal/player/inner.js")]
@@ -195,6 +202,11 @@ unsafe extern "C" {
 
     #[wasm_bindgen(catch, method, js_name = "setFullscreen")]
     fn set_fullscreen(this: &JavascriptPlayer, is_full: bool) -> Result<(), JsValue>;
+
+    // Timffle: `Stage.mouseLock` (Pointer Lock API); returns whether the
+    // request was made.
+    #[wasm_bindgen(method, js_name = "setMouseLock")]
+    fn set_mouse_lock(this: &JavascriptPlayer, lock: bool) -> bool;
 
     #[wasm_bindgen(method, js_name = "setMetadata")]
     fn set_metadata(this: &JavascriptPlayer, metadata: JsValue);
@@ -526,6 +538,12 @@ impl RuffleHandle {
         let _ = self.with_core_mut(|core| core.set_fullscreen(is_fullscreen));
     }
 
+    /// Timffle: the page reports that the pointer lock changed (the user
+    /// pressed Escape, or the browser granted/refused the request).
+    pub fn set_mouse_lock(&self, locked: bool) {
+        let _ = self.with_core_mut(|core| core.set_mouse_lock(locked));
+    }
+
     pub fn clear_custom_menu_items(&self) {
         let _ = self.with_core_mut(Player::clear_custom_menu_items);
     }
@@ -536,13 +554,16 @@ impl RuffleHandle {
         // Instance is dropped at this point.
     }
 
+    /// Timffle: throws in JavaScript when the ActionScript callback threw and
+    /// `ExternalInterface.marshallExceptions` is true.
     pub fn call_exposed_callback(
         &self,
         name: &str,
         #[expect(clippy::boxed_local)] // for js_bind
         args: Box<[JsValue]>,
-    ) -> JsValue {
+    ) -> Result<JsValue, JsValue> {
         let args = args.iter().map(js_to_external_value);
+        let throw = |message: String| JsValue::from(js_sys::Error::new(&message));
 
         // Re-entrant callbacks need to return through the hole that was punched through for them
         // We record the context of external functions, and then if we get an internal callback
@@ -551,13 +572,19 @@ impl RuffleHandle {
         if let Some(context) = CURRENT_CONTEXT.with(|v| *v.borrow()) {
             unsafe {
                 if let Some(callback) = (*context).external_interface.get_callback(name) {
-                    return external_to_js_value(callback.call(&mut *context, name, args));
+                    return callback
+                        .call_checked(&mut *context, name, args)
+                        .map(external_to_js_value)
+                        .map_err(throw);
                 }
             }
         }
 
-        self.with_core_mut(|core| external_to_js_value(core.call_internal_interface(name, args)))
-            .unwrap_or(JsValue::UNDEFINED)
+        match self.with_core_mut(|core| core.call_internal_interface_checked(name, args)) {
+            Ok(Ok(value)) => Ok(external_to_js_value(value)),
+            Ok(Err(message)) => Err(throw(message)),
+            Err(_) => Ok(JsValue::UNDEFINED),
+        }
     }
 
     pub fn set_trace_observer(&self, observer: JsValue) {
@@ -624,6 +651,7 @@ impl RuffleHandle {
             background_tick_mode: false,
             render_pending: false,
             fps: fps::FrameStats::new(),
+            wheel: RefCell::new(ruffle_core::wheel::WheelAccumulator::new()),
             mouse_move_callback: None,
             mouse_enter_callback: None,
             mouse_leave_callback: None,
@@ -676,11 +704,23 @@ impl RuffleHandle {
                 false,
                 move |js_event: PointerEvent| {
                     let _ = ruffle.with_instance(move |instance| {
-                        let event = PlayerEvent::MouseMove {
-                            x: js_event.offset_x() * instance.device_pixel_ratio,
-                            y: js_event.offset_y() * instance.device_pixel_ratio,
-                        };
+                        let dpr = instance.device_pixel_ratio;
                         let _ = instance.with_core_mut(|core| {
+                            // Timffle: under Pointer Lock (`Stage.mouseLock`) the
+                            // position is frozen and only `movementX/Y` change; Flash
+                            // reports that motion in screen pixels, the browser in
+                            // CSS pixels.
+                            let event = if core.mouse_lock() {
+                                PlayerEvent::MouseMoveRelative {
+                                    dx: f64::from(js_event.movement_x()) * dpr,
+                                    dy: f64::from(js_event.movement_y()) * dpr,
+                                }
+                            } else {
+                                PlayerEvent::MouseMove {
+                                    x: js_event.offset_x() * dpr,
+                                    y: js_event.offset_y() * dpr,
+                                }
+                            };
                             core.handle_event(event);
                         });
                         if instance.has_focus {
@@ -800,18 +840,46 @@ impl RuffleHandle {
                 false,
                 move |js_event: WheelEvent| {
                     let _ = ruffle.with_instance(|instance| {
-                        let delta = match js_event.delta_mode() {
-                            WheelEvent::DOM_DELTA_LINE => {
-                                MouseWheelDelta::Lines(-js_event.delta_y())
-                            }
-                            WheelEvent::DOM_DELTA_PIXEL => {
-                                MouseWheelDelta::Pixels(-js_event.delta_y())
-                            }
-                            _ => return,
+                        // Timffle: wheel notches become 3 lines each like Flash;
+                        // trackpad pixels add up to whole lines first (see
+                        // `ruffle_core::wheel`). The wheel state is borrowed only
+                        // briefly: the movie's handler may call back into the page.
+                        use ruffle_core::wheel::WheelInput;
+                        let time = js_event.time_stamp();
+                        // `deltaMode` must be read before `deltaY`, or Firefox
+                        // converts line deltas to pixels.
+                        let mode = js_event.delta_mode();
+                        let delta_y = js_event.delta_y();
+                        let delta = {
+                            let mut wheel = instance.wheel.borrow_mut();
+                            let input = match mode {
+                                WheelEvent::DOM_DELTA_LINE => WheelInput::Lines(-delta_y),
+                                WheelEvent::DOM_DELTA_PIXEL => {
+                                    let legacy = js_sys::Reflect::get(
+                                        &js_event,
+                                        &JsValue::from_str("wheelDeltaY"),
+                                    )
+                                    .ok()
+                                    .and_then(|value| value.as_f64());
+                                    wheel.classify_pixels(-delta_y, legacy, time)
+                                }
+                                WheelEvent::DOM_DELTA_PAGE => WheelInput::Notches(-delta_y),
+                                _ => return,
+                            };
+                            wheel.push(input, time)
                         };
                         let _ = instance.with_core_mut(|core| {
-                            let scroll_handled =
-                                core.handle_event(PlayerEvent::MouseWheel { delta });
+                            let scroll_handled = match delta {
+                                Some(delta) => {
+                                    let handled =
+                                        core.handle_event(PlayerEvent::MouseWheel { delta });
+                                    instance.wheel.borrow_mut().set_handled(handled);
+                                    handled
+                                }
+                                // Not a whole line yet: keep the page still if the
+                                // movie took the gesture's previous event.
+                                None => instance.wheel.borrow().gesture_handled(time),
+                            };
                             match config.scrolling_behavior {
                                 ScrollingBehavior::Always => {
                                     // Do not prevent scrolling

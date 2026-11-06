@@ -1,0 +1,49 @@
+widths consistent: true true
+-- fits: two words
+line 0: rawTextLength=10 textBlockBeginIndex=0 atomCount=10 success
+line 1: rawTextLength=4 textBlockBeginIndex=10 atomCount=4 success
+done: null complete
+-- fits: one word
+line 0: rawTextLength=5 textBlockBeginIndex=0 atomCount=5 success
+line 1: rawTextLength=5 textBlockBeginIndex=5 atomCount=5 success
+line 2: rawTextLength=4 textBlockBeginIndex=10 atomCount=4 success
+done: null complete
+-- exact width of a word
+line 0: rawTextLength=5 textBlockBeginIndex=0 atomCount=5 success
+line 1: rawTextLength=4 textBlockBeginIndex=5 atomCount=4 success
+done: null complete
+-- emergency break inside a word
+line 0: rawTextLength=4 textBlockBeginIndex=0 atomCount=4 emergency
+line 1: rawTextLength=4 textBlockBeginIndex=4 atomCount=4 success
+done: null complete
+-- nothing fits
+done: null insufficientWidth
+-- nothing fits, fitSomething
+line 0: rawTextLength=1 textBlockBeginIndex=0 atomCount=1 emergency
+line 1: rawTextLength=1 textBlockBeginIndex=1 atomCount=1 emergency
+line 2: rawTextLength=1 textBlockBeginIndex=2 atomCount=1 emergency
+line 3: rawTextLength=1 textBlockBeginIndex=3 atomCount=1 success
+done: null complete
+-- explicit line breaks keep their line
+line 0: rawTextLength=3 textBlockBeginIndex=0 atomCount=3 success
+line 1: rawTextLength=3 textBlockBeginIndex=3 atomCount=3 success
+line 2: rawTextLength=4 textBlockBeginIndex=6 atomCount=3 success
+line 3: rawTextLength=2 textBlockBeginIndex=10 atomCount=2 success
+done: null complete
+-- splitting with a group of elements
+line 0: rawTextLength=5 textBlockBeginIndex=0 atomCount=5 success
+line 1: rawTextLength=5 textBlockBeginIndex=5 atomCount=5 success
+line 2: rawTextLength=4 textBlockBeginIndex=10 atomCount=4 success
+done: null complete
+-- recreateTextLine re-breaks
+created: rawTextLength=14 success
+recreated: same=true rawTextLength=5 textBlockBeginIndex=0 success
+next: rawTextLength=5 textBlockBeginIndex=5 previousLine=true
+recreate insufficient: null insufficientWidth
+-- bidiLevel
+"abc" bidiLevel=0: levels=0,0,0 firstAtomLeftOfLast=true rawTextLength=3
+"abc" bidiLevel=1: levels=2,2,2 firstAtomLeftOfLast=true rawTextLength=3
+"ab 12" bidiLevel=1: levels=2,2,2,2,2 firstAtomLeftOfLast=true rawTextLength=5
+"12 34" bidiLevel=1: levels=2,2,1,2,2 firstAtomLeftOfLast=false rawTextLength=5
+bidiLevel = -1: ArgumentError: Error #2004: One of the parameters is invalid.
+after bidiLevel change: invalid firstInvalidLine=true

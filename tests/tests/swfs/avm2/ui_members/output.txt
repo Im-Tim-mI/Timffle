@@ -1,0 +1,54 @@
+// ContextMenu
+isSupported true
+link default null
+link url http://example.com/
+clone class flash.ui::ContextMenu
+clone is new true true
+clone items 2 true
+clone item 0 One true false true
+clone item 1 Two
+clone builtIn true false true
+clone clipboard true false false
+clone clipboardMenu true
+clone link true
+original untouched One
+// Keyboard
+capsLock false
+numLock false
+hasVirtualKeyboard false
+physicalKeyboardType alphanumeric true
+// Mouse / MouseCursorData
+supportsCursor true
+defaults null 0 (x=0, y=0)
+stored true 1 12 (x=3, y=4)
+// Multitouch
+inputMode gesture
+inputMode set touchPoint
+inputMode bogus THREW ArgumentError 2008
+mapTouchToMouse true
+mapTouchToMouse set false
+maxTouchPoints 0
+supportedGestures null
+supportsGestureEvents false
+supportsTouchEvents false
+// ByteArray
+shareable default false
+shareable set true
+shareable reset false
+cas mismatch 20 20
+cas match 20 7
+cas 0 10 -1
+length after cas 12 12
+unaligned THREW RangeError 1506
+negative THREW RangeError 1506
+past end THREW RangeError 1506
+straddling THREW RangeError 1506
+cas length mismatch 12 12
+cas length match 12 16
+cas length shrink 16 4
+cas length same 4 4
+// writeObject with a repeated object
+amf3 bytes 29
+amf3 identity true true true 1
+amf0 bytes 55
+amf0 identity true true true 1

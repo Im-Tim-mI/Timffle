@@ -54,6 +54,26 @@ pub trait RenderBackend: Any {
         bounds: PixelRegion,
     ) -> Option<Box<dyn SyncHandle>>;
 
+    /// Timffle: whether `render_offscreen_with_cache` draws the cacheAsBitmap pictures
+    /// (and so the filters) that `BitmapData.draw` of a filtered object needs. Backends
+    /// that do not keep drawing such objects without their filters.
+    fn supports_offscreen_bitmap_cache(&self) -> bool {
+        false
+    }
+
+    /// Timffle: `render_offscreen` after drawing (and filtering) the given
+    /// cacheAsBitmap pictures, which the commands may sample.
+    fn render_offscreen_with_cache(
+        &mut self,
+        handle: BitmapHandle,
+        commands: CommandList,
+        quality: StageQuality,
+        bounds: PixelRegion,
+        _cache_entries: Vec<BitmapCacheEntry>,
+    ) -> Option<Box<dyn SyncHandle>> {
+        self.render_offscreen(handle, commands, quality, bounds)
+    }
+
     /// Applies the given filter with a `BitmapHandle` source onto a destination `BitmapHandle`.
     /// The `destination_rect` must be calculated by the caller and is assumed to be correct.
     /// Both `source_rect` and `destination_rect` must be valid (`BoundingBox::valid`).
@@ -126,6 +146,23 @@ pub trait RenderBackend: Any {
         handle: Box<dyn SyncHandle>,
         with_rgba: RgbaBufRead,
     ) -> Result<(), Error>;
+
+    /// Timffle: `Context3D.drawToBitmapData` — copies the `source_region` of a
+    /// Stage3D buffer (`source`, a texture owned by a `Context3D`) into the
+    /// bitmap `destination` at `dest_point`, pixel for pixel (no scaling, no
+    /// blending; the colours are taken as premultiplied, as Flash does).
+    /// The caller has clipped the region to both textures. Returns the handle
+    /// that syncs the new GPU pixels back to the CPU, or `None` when the
+    /// backend cannot copy.
+    fn copy_stage3d_to_bitmap(
+        &mut self,
+        _source: BitmapHandle,
+        _source_region: PixelRegion,
+        _destination: BitmapHandle,
+        _dest_point: (u32, u32),
+    ) -> Option<Box<dyn SyncHandle>> {
+        None
+    }
 }
 
 pub enum PixelBenderTarget {
@@ -151,6 +188,17 @@ pub trait ShaderModule: Any {}
 pub trait Texture: Any + Debug {
     fn width(&self) -> u32;
     fn height(&self) -> u32;
+    // Timffle: number of mip levels the GPU texture holds (1 when the texture
+    // has no mip chain, e.g. a RectangleTexture).
+    fn mip_level_count(&self) -> u32 {
+        1
+    }
+    // Timffle: the block format the GPU texture stores natively when the
+    // backend could honour a COMPRESSED / COMPRESSED_ALPHA request with a
+    // compressed format (None: RGBA8 storage, uploads are decoded on the CPU).
+    fn compressed_format(&self) -> Option<crate::compressed::CompressedFormat> {
+        None
+    }
 }
 
 pub trait RawTexture: Any + Debug {
@@ -272,6 +320,10 @@ pub trait Context3D: Any {
     fn profile(&self) -> Context3DProfile;
     // The BitmapHandle for the texture we're rendering to
     fn bitmap_handle(&self) -> BitmapHandle;
+    // Timffle: the back buffer (the one drawTriangles() writes until the next
+    // present()), read by `Context3D.drawToBitmapData`; `None` before
+    // configureBackBuffer().
+    fn back_buffer_bitmap_handle(&mut self) -> Option<BitmapHandle>;
     // Whether or not we should actually render the texture
     // as part of stage rendering
     fn should_render(&self) -> bool;
@@ -319,6 +371,10 @@ pub trait Context3D: Any {
     fn process_command(&mut self, command: Context3DCommand<'_>);
 
     fn present(&mut self);
+
+    // Timffle: the string Flash exposes as Context3D.driverInfo: the graphics API in
+    // use (no vendor, model or driver version).
+    fn driver_info(&self) -> String;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -519,6 +575,31 @@ impl FromWStr for Context3DTextureFilter {
         }
     }
 }
+// Timffle: `Context3D.setSamplerStateAt` mipfilter ("mipnone" / "mipnearest" /
+// "miplinear"). Textures carry a full mip chain, so the filter is real.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Context3DMipFilter {
+    None,
+    Nearest,
+    Linear,
+}
+
+impl FromWStr for Context3DMipFilter {
+    type Err = ();
+
+    fn from_wstr(s: &WStr) -> Result<Self, Self::Err> {
+        if s == b"mipnone" {
+            Ok(Context3DMipFilter::None)
+        } else if s == b"mipnearest" {
+            Ok(Context3DMipFilter::Nearest)
+        } else if s == b"miplinear" {
+            Ok(Context3DMipFilter::Linear)
+        } else {
+            Err(())
+        }
+    }
+}
+
 pub enum Context3DCommand<'a> {
     Clear {
         red: f64,
@@ -542,6 +623,9 @@ pub enum Context3DCommand<'a> {
         enable_depth_and_stencil: bool,
         anti_alias: u32,
         surface_selector: u32,
+        // Timffle: colour output 0..3 (multiple render targets); the caller
+        // has checked the range, the profile and that the sizes match.
+        color_output_index: u32,
     },
     SetRenderToBackBuffer,
 
@@ -587,6 +671,8 @@ pub enum Context3DCommand<'a> {
         source_height: u32,
         dest: Rc<dyn Texture>,
         layer: u32,
+        // Timffle: the mip level written (`miplevel` of the upload* methods).
+        mip_level: u32,
     },
     SetTextureAt {
         sampler: u32,
@@ -611,6 +697,8 @@ pub enum Context3DCommand<'a> {
         sampler: u32,
         wrap: Context3DWrapMode,
         filter: Context3DTextureFilter,
+        // Timffle
+        mip_filter: Context3DMipFilter,
     },
     SetScissorRectangle {
         rect: Option<Rectangle<Twips>>,

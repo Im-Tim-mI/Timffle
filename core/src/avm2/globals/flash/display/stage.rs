@@ -2,18 +2,37 @@
 
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
-use crate::avm2::error::make_error_2008;
+use crate::avm2::error::{make_error_2008, make_error_3707};
 use crate::avm2::function::FunctionArgs;
-use crate::avm2::object::VectorObject;
+use crate::avm2::globals::flash::system::capabilities::screen_resolution;
+use crate::avm2::globals::slots::flash_events_stage_video_availability_event as availability_slots; // Timffle
+use crate::avm2::globals::slots::flash_geom_rectangle as rectangle_slots;
+use crate::avm2::object::{ScriptObject, TObject, VectorObject};
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::vector::VectorStorage;
-use crate::avm2_stub_getter;
 use crate::display_object::{
-    StageDisplayState, TDisplayObject, TDisplayObjectContainer, TInteractiveObject,
+    FullScreenSourceRect, StageDisplayState, TDisplayObject, TDisplayObjectContainer,
+    TInteractiveObject, WindowMode,
 };
 use crate::string::{AvmString, WString};
 use swf::Color;
+
+/// Timffle: whether the SWF that runs `activation` may script the object
+/// that has keyboard focus (`Stage.focus` is null and
+/// `Stage.isFocusInaccessible()` true otherwise, as in Flash Player).
+fn focus_accessible(activation: &mut Activation<'_, '_>) -> bool {
+    match activation.context.focus_tracker.get() {
+        Some(focus) => {
+            let caller = activation.caller_movie_or_root();
+            focus
+                .as_displayobject()
+                .movie()
+                .allows_access_from(caller.url())
+        }
+        None => true,
+    }
+}
 
 /// Implement `align`'s getter
 pub fn get_align<'gc>(
@@ -179,6 +198,10 @@ pub fn get_focus<'gc>(
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
+    // Timffle: focus in a sandbox the caller may not script reads as null.
+    if !focus_accessible(activation) {
+        return Ok(Value::Null);
+    }
     Ok(activation
         .context
         .focus_tracker
@@ -186,6 +209,15 @@ pub fn get_focus<'gc>(
         .map(|o| o.as_displayobject())
         .map(|focus_dobj| focus_dobj.object2_or_null())
         .unwrap_or(Value::Null))
+}
+
+/// Timffle: implement `isFocusInaccessible`
+pub fn is_focus_inaccessible<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok((!focus_accessible(activation)).into())
 }
 
 /// Implement `focus`'s setter
@@ -371,27 +403,150 @@ pub fn set_stage_height<'gc>(
 }
 
 /// Implement `allowsFullScreen`'s getter
+///
+/// Timffle: whether the host (the `allowFullScreen` embed parameter / the
+/// player configuration) lets this movie go full screen.
 pub fn get_allows_full_screen<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.display.Stage", "allowsFullScreen");
-    Ok(true.into())
+    Ok(activation.context.stage.allow_fullscreen().into())
 }
 
 /// Implement `allowsFullScreenInteractive`'s getter
+///
+/// Timffle: false, as in the standalone Flash Player 32 (measured,
+/// timffle/difftest/src/D42Stage.hx) and in the browser plugin without the
+/// `allowFullScreenInteractive` embed parameter, which this player does not
+/// have. Setting `displayState` to `FULL_SCREEN_INTERACTIVE` still works where
+/// full screen is allowed, as it does in the standalone Flash Player, and the
+/// player's full screen keeps keyboard input either way.
 pub fn get_allows_full_screen_interactive<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(false.into())
+}
+
+/// Timffle: `fullScreenSourceRect`'s getter (a copy, as in Flash Player).
+pub fn get_full_screen_source_rect<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(
-        activation,
-        "flash.display.Stage",
-        "allowsFullScreenInteractive"
-    );
-    Ok(false.into())
+    match activation.context.stage.full_screen_source_rect() {
+        Some(rect) => activation.avm2().classes().rectangle.construct(
+            activation,
+            &[
+                rect.x.into(),
+                rect.y.into(),
+                rect.width.into(),
+                rect.height.into(),
+            ],
+        ),
+        None => Ok(Value::Null),
+    }
+}
+
+/// Timffle: `fullScreenSourceRect`'s setter. Flash Player stores a rounded,
+/// size-clamped copy; `null` goes back to showing the whole stage.
+pub fn set_full_screen_source_rect<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    // Read the Rectangle's numbers directly: Flash accepts any value here
+    // (NaN, 1e9), which would not fit into twips.
+    let rect = args.try_get_object(0).map(|object| {
+        FullScreenSourceRect::from_f64(
+            object.get_slot(rectangle_slots::X).as_f64(),
+            object.get_slot(rectangle_slots::Y).as_f64(),
+            object.get_slot(rectangle_slots::WIDTH).as_f64(),
+            object.get_slot(rectangle_slots::HEIGHT).as_f64(),
+        )
+    });
+    let stage = activation.context.stage;
+    stage.set_full_screen_source_rect(activation.context, rect);
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `mouseLock`'s getter
+pub fn get_mouse_lock<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(activation.context.stage.mouse_lock().into())
+}
+
+/// Timffle: `mouseLock`'s setter. Flash Player throws `Error #3707` for any
+/// assignment (even `false`) outside full-screen mode.
+pub fn set_mouse_lock<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let stage = activation.context.stage;
+    if !stage.is_fullscreen() {
+        return Err(make_error_3707(activation));
+    }
+    stage.set_mouse_lock(activation.context, args.get_bool(0));
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `wmodeGPU`'s getter: true when the page asked for `wmode=gpu`
+/// and the content is drawn by a GPU renderer (WebGPU / WebGL / wgpu), the
+/// case in which Flash Player reports GPU compositing.
+pub fn get_wmode_gpu<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let gpu_renderer = !matches!(activation.context.renderer.name(), "canvas" | "Null");
+    Ok((activation.context.stage.window_mode() == WindowMode::Gpu && gpu_renderer).into())
+}
+
+/// Timffle: create the `stageVideos` vector. Flash Player 32 offers eight
+/// `StageVideo` slots on every platform, GPU or not (whether a video can
+/// actually be shown is reported later through `StageVideoAvailabilityEvent`).
+/// The class cannot be instantiated from ActionScript (`Error #2012`), so the
+/// objects are made here.
+pub fn create_stage_videos<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    const STAGE_VIDEO_COUNT: usize = 8;
+    let class = activation.avm2().classes().stagevideo;
+    let videos = (0..STAGE_VIDEO_COUNT)
+        .map(|_| {
+            ScriptObject::custom_object(
+                activation.gc(),
+                class.inner_class_definition(),
+                Some(class.prototype()),
+                class.instance_vtable(),
+            )
+            .into()
+        })
+        .collect();
+    let storage = VectorStorage::from_values(videos, false, Some(class.inner_class_definition()));
+    Ok(VectorObject::from_vector(storage, activation).into())
+}
+
+/// Timffle: fill in the read-only `reason` and `driver` of a
+/// `StageVideoAvailabilityEvent` the stage is about to dispatch (its
+/// constructor only takes the availability, as in Flash).
+pub fn fill_stage_video_availability<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let event = args.get_object(activation, 0, "event")?;
+    event.set_slot(availability_slots::REASON, args.get_value(1), activation)?;
+    event.set_slot(availability_slots::DRIVER, args.get_value(2), activation)?;
+    Ok(Value::Undefined)
 }
 
 /// Implement `quality`'s getter
@@ -455,23 +610,27 @@ pub fn invalidate<'gc>(
 }
 
 /// Stage.fullScreenHeight's getter
+///
+/// Timffle: the screen height Flash reports, the same number as
+/// `Capabilities.screenResolutionY` (Flash Player 32 returns the monitor
+/// size for both).
 pub fn get_full_screen_height<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.display.Stage", "fullScreenHeight");
-    Ok(768.into())
+    Ok((screen_resolution(activation).1 as u32).into())
 }
 
 /// Stage.fullScreenWidth's getter
+///
+/// Timffle: see `fullScreenHeight`.
 pub fn get_full_screen_width<'gc>(
     activation: &mut Activation<'_, 'gc>,
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.display.Stage", "fullScreenWidth");
-    Ok(1024.into())
+    Ok((screen_resolution(activation).0 as u32).into())
 }
 
 pub fn set_tab_children<'gc>(

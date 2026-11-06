@@ -3,22 +3,38 @@ package flash.display {
     import __ruffle__.stub_getter;
     import __ruffle__.stub_setter;
 
+    // Timffle: members that Flash Player answers the same way on a machine
+    // without the feature (colorCorrectionSupport, softKeyboardRect,
+    // displayContextInfo, constructor) were measured on the standalone
+    // Flash Player 32.0.0.465 (timffle/difftest/src/D42Stage.hx,
+    // D43StageFull.hx) and are implemented to give those answers.
+
     import flash.accessibility.AccessibilityImplementation;
     import flash.accessibility.AccessibilityProperties;
     import flash.errors.IllegalOperationError;
     import flash.events.Event;
+    import flash.events.StageVideoAvailabilityEvent;
     import flash.geom.Rectangle;
     import flash.geom.Transform;
     import flash.media.StageVideo;
+    import flash.media.StageVideoAvailability;
+    import flash.media.StageVideoAvailabilityReason;
     import flash.text.TextSnapshot;
     import flash.ui.ContextMenu;
+    import flash.utils.setTimeout;
 
     [Ruffle(Abstract)]
     public class Stage extends DisplayObjectContainer {
         private var _colorCorrection:String = ColorCorrection.DEFAULT;
-        private var _mouseLock:Boolean = false;
         private var _nativeWindow:NativeWindow;
-        private var _fullScreenSourceRect:Rectangle;
+        // Timffle: Flash Player hands out the same Rectangle object every time
+        // (created on first use: the Stage is made natively, so field
+        // initializers do not run).
+        private var _softKeyboardRect:Rectangle;
+        // Timffle: created on first use; the same Vector and StageVideo objects afterwards.
+        private var _stageVideos:Vector.<StageVideo>;
+        // Timffle: a stage video availability report is already queued.
+        private var _availabilityPending:Boolean;
 
         override public function set accessibilityImplementation(value:AccessibilityImplementation):void {
             Error.throwError(IllegalOperationError, 2071);
@@ -44,7 +60,30 @@ package flash.display {
             useWeakReference:Boolean = false
         ):void {
             super.addEventListener(type, listener, useCapture, priority, useWeakReference);
+            // Timffle: Flash Player reports the stage video availability after a
+            // listener is registered, once per frame however many listeners were
+            // added in it, to every listener of the stage (measured on Flash
+            // Player 32, tests/tests/swfs/avm2/stagevideo_bounds). This player has
+            // no hardware video surface, so the answer is always `unavailable`
+            // with reason `StageVideoAvailabilityReason.UNAVAILABLE` (no driver
+            // to name).
+            if (type == StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY && !this._availabilityPending) {
+                this._availabilityPending = true;
+                var self:Stage = this;
+                setTimeout(function():void {
+                    self._availabilityPending = false;
+                    var event:StageVideoAvailabilityEvent = new StageVideoAvailabilityEvent(
+                        StageVideoAvailabilityEvent.STAGE_VIDEO_AVAILABILITY, false, false,
+                        StageVideoAvailability.UNAVAILABLE
+                    );
+                    self.fillStageVideoAvailability(event, StageVideoAvailabilityReason.UNAVAILABLE, null);
+                    self.dispatchEvent(event);
+                }, 0);
+            }
         }
+
+        // Timffle: sets the event's read-only `reason` and `driver`.
+        private native function fillStageVideoAvailability(event:StageVideoAvailabilityEvent, reason:String, driver:String):void;
 
         override public function set alpha(value:Number):void {
             Error.throwError(IllegalOperationError, 2071);
@@ -241,25 +280,19 @@ package flash.display {
         public native function get focus():InteractiveObject;
         public native function set focus(value:InteractiveObject):void;
 
-        public function isFocusInaccessible():Boolean {
-            stub_method("flash.display.Stage", "isFocusInaccessible");
-            return false;
-        }
+        // Timffle: true when the focused object lives in a SWF the caller
+        // may not script (then `focus` reads as null).
+        public native function isFocusInaccessible():Boolean;
 
         public native function get frameRate():Number;
         public native function set frameRate(value:Number):void;
 
         public native function get fullScreenHeight():uint;
 
-        public function get fullScreenSourceRect():Rectangle {
-            stub_getter("flash.display.Stage", "fullScreenSourceRect");
-            return this._fullScreenSourceRect;
-        }
-
-        public function set fullScreenSourceRect(rect: Rectangle):void {
-            stub_setter("flash.display.Stage", "fullScreenSourceRect");
-            this._fullScreenSourceRect = rect;
-        }
+        // Timffle: stored rounded and size-clamped like Flash Player, and used
+        // by the renderer in full-screen mode.
+        public native function get fullScreenSourceRect():Rectangle;
+        public native function set fullScreenSourceRect(rect:Rectangle):void;
 
         public native function get fullScreenWidth():uint;
 
@@ -278,18 +311,21 @@ package flash.display {
         public native function get stageFocusRect():Boolean;
         public native function set stageFocusRect(value:Boolean):void;
 
+        // Timffle: true only when the page asked for wmode=gpu and a GPU
+        // renderer draws the content (Flash Player 32 standalone: false).
         [API("665")]
-        public function get wmodeGPU():Boolean {
-            stub_getter("flash.display.Stage", "wmodeGPU");
-            return true;
-        }
+        public native function get wmodeGPU():Boolean;
 
+        // Timffle: the player never shows a soft keyboard of its own (the
+        // browser's on-screen keyboard is outside the stage and its size is
+        // not exposed), so like Flash Player on a machine without one this is
+        // always the empty rectangle, and always the same object.
         [API("670")]
         public function get softKeyboardRect():Rectangle {
-            stub_getter("flash.display.Stage", "softKeyboardRect");
-            // This is technically a valid implementation most of the time,
-            // as 0x0 Rect is the expected value with no soft keyboard.
-            return new Rectangle(0, 0, 0, 0);
+            if (!this._softKeyboardRect) {
+                this._softKeyboardRect = new Rectangle(0, 0, 0, 0);
+            }
+            return this._softKeyboardRect;
         }
 
         [API("670")]
@@ -301,11 +337,17 @@ package flash.display {
         public native function get quality():String;
         public native function set quality(value:String):void;
 
+        // Timffle: Flash Player 32 always offers eight StageVideo objects,
+        // the same ones for the life of the stage.
         [API("667")]
         public function get stageVideos():Vector.<StageVideo> {
-            stub_getter("flash.display.Stage", "stageVideos");
-            return null;
+            if (!this._stageVideos) {
+                this._stageVideos = this.createStageVideos();
+            }
+            return this._stageVideos;
         }
+
+        private native function createStageVideos():Vector.<StageVideo>;
 
         [API("674")]
         public native function get stage3Ds():Vector.<Stage3D>;
@@ -316,30 +358,37 @@ package flash.display {
         public function get colorCorrection():String {
             return this._colorCorrection;
         }
+        // Timffle: Flash Player keeps the requested setting even where colour
+        // correction is unsupported; other strings are ArgumentError #2008,
+        // null is TypeError #2007 (measured on Flash Player 32).
         [API("662")]
         public function set colorCorrection(value:String):void {
-            stub_setter("flash.display.Stage", "colorCorrection");
-            if (value == null) throw new TypeError("Error #2007: Parameter colorCorrection must be non-null.", 2007);
+            // Thrown here, not through Error.throwError: Flash's stack trace
+            // starts at this setter.
+            if (value == null) {
+                throw new TypeError("Error #2007: Parameter colorCorrection must be non-null.", 2007);
+            }
+            if (value != ColorCorrection.DEFAULT && value != ColorCorrection.ON && value != ColorCorrection.OFF) {
+                throw new ArgumentError("Error #2008: Parameter colorCorrection must be one of the accepted values.", 2008);
+            }
             this._colorCorrection = value;
         }
 
+        // Timffle: the renderer does not colour-manage its output (no ICC
+        // profile is applied), which is what Flash Player reports as
+        // "unsupported" on a machine without colour management.
         [API("662")]
         public function get colorCorrectionSupport():String {
-            stub_getter("flash.display.Stage", "colorCorrectionSupport");
             return ColorCorrectionSupport.UNSUPPORTED;
         }
 
+        // Timffle: a real pointer lock (browser Pointer Lock API / desktop
+        // cursor grab); settable only in full-screen mode (Error #3707
+        // otherwise, even for false) and released when full screen ends.
         [API("678")]
-        public function get mouseLock():Boolean {
-            stub_getter("flash.display.Stage", "mouseLock");
-            return this._mouseLock;
-        }
-
+        public native function get mouseLock():Boolean;
         [API("678")]
-        public function set mouseLock(value:Boolean):void {
-            stub_setter("flash.display.Stage", "mouseLock");
-            this._mouseLock = value;
-        }
+        public native function set mouseLock(value:Boolean):void;
 
         [API("668")]
         public static function get supportsOrientationChange():Boolean {
@@ -386,23 +435,22 @@ package flash.display {
             stub_method("flash.display.Stage", "setAspectRatio");
         }
 
-        // Undocumented function, what does it do? Running it in standalone
-        // debug FP32, it always seems to return `null`
+        // Undocumented. Timffle: the standalone Flash Player 32.0.0.465 (release)
+        // returns null and has no setter (ReferenceError #1074 when assigned),
+        // exactly as here; it is the AIR description of the display context
+        // and has no value in Flash Player.
         [API("674")]
         public function get displayContextInfo():String {
-            stub_getter("flash.display.Stage", "displayContextInfo");
             return null;
         }
 
-        // Undocumented accessors, what do they do? Running them in standalone
-        // debug FP32, `get constructor` always seems to return `null` and `set
-        // constructor` seems to do nothing
+        // Undocumented. Timffle: Flash Player 32 always reads `constructor` as
+        // null and ignores assignments (measured with 1 and an Object), so the
+        // accessors do the same.
         public function get constructor():* {
-            stub_getter("flash.display.Stage", "constructor");
             return null;
         }
         public function set constructor(value:*):* {
-            stub_setter("flash.display.Stage", "constructor");
         }
 
         // TODO: Construct the NativeWindow as a native object

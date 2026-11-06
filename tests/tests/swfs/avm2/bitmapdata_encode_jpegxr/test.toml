@@ -1,0 +1,11 @@
+num_ticks = 60
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32
+
+[required_features]
+jpegxr = true

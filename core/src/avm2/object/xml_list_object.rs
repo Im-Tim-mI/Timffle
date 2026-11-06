@@ -22,7 +22,7 @@ use ruffle_wstr::{WStr, WString};
 use std::cell::{Cell, Ref, RefMut};
 use std::fmt::{self, Debug};
 
-use super::{ClassObject, XmlObject};
+use super::{ClassObject, NotificationCommand, XmlObject};
 
 /// A class instance allocator that allocates XMLList objects.
 pub fn xml_list_allocator<'gc>(
@@ -673,6 +673,18 @@ impl<'gc> TObject<'gc> for XmlListObject<'gc> {
         Ok(self.has_own_property(&multiname))
     }
 
+    // Timffle: ECMA-357 13.5.4.19 XMLList.prototype.propertyIsEnumerable — an index below the
+    // length is enumerable (Flash Player 32 agrees, see timffle/difftest/src/D47XmlProps.hx).
+    fn property_is_enumerable(&self, name: AvmString<'gc>) -> bool {
+        let name_str = name.to_utf8_lossy();
+        if let Ok(index) = name_str.parse::<usize>()
+            && index.to_string() == name_str
+        {
+            return index < self.length();
+        }
+        self.base().property_is_enumerable(name)
+    }
+
     // ECMA-357 9.2.1.2 [[Put]] (P, V)
     fn set_property_local(
         self,
@@ -688,6 +700,8 @@ impl<'gc> TObject<'gc> for XmlListObject<'gc> {
             && let Ok(mut index) = local_name.parse::<usize>()
         {
             self.reevaluate_target_object(activation);
+            // Timffle: set when this put appends a fresh child (reported as nodeAdded, not nodeChanged).
+            let mut appended = false;
 
             // 2.a. If x.[[TargetObject]] is not null
             let r = if let Some(target) = self.target_object() {
@@ -849,6 +863,7 @@ impl<'gc> TObject<'gc> for XmlListObject<'gc> {
                 }
 
                 // 2.c.ix. Call the [[Append]] method of x with argument y
+                appended = true;
                 self.append(XmlObject::new(y, activation).into(), activation.gc());
             }
 
@@ -930,6 +945,9 @@ impl<'gc> TObject<'gc> for XmlListObject<'gc> {
                     if let Some(q) = q {
                         // 2.f.iii.2. Call the [[Replace]] method of parent with arguments q and c
                         parent.replace(q, c.into(), activation)?;
+                        // Timffle: XML.setNotification callbacks get nodeChanged / nodeAdded.
+                        let old = if appended { None } else { Some(child) };
+                        parent.notify_node_changed(activation, None, c.into(), old)?;
 
                         let E4XNodeKind::Element { children, .. } = &*parent.kind() else {
                             unreachable!()
@@ -978,12 +996,19 @@ impl<'gc> TObject<'gc> for XmlListObject<'gc> {
                         // 2.g.ii.2. Call the [[Replace]] method of parent with arguments q and V
                         parent.replace(q, value, activation)?;
 
-                        let E4XNodeKind::Element { children, .. } = &*parent.kind() else {
-                            unreachable!()
+                        let new_node = {
+                            let E4XNodeKind::Element { children, .. } = &*parent.kind() else {
+                                unreachable!()
+                            };
+                            children[q]
                         };
 
                         // 2.g.ii.3. Let V = parent[q]
-                        value = XmlObject::new(children[q], activation).into();
+                        value = XmlObject::new(new_node, activation).into();
+                        // Timffle: XML.setNotification callbacks get nodeChanged / nodeAdded
+                        // (appendChild() comes through here with a fresh placeholder child).
+                        let old = if appended { None } else { Some(child) };
+                        parent.notify_node_changed(activation, Some(new_node), value, old)?;
                     }
                 }
 
@@ -1115,15 +1140,35 @@ impl<'gc> TObject<'gc> for XmlListObject<'gc> {
             && let Some(local_name) = name.local_name()
             && let Ok(index) = local_name.parse::<usize>()
         {
-            if index < children.len() {
-                let removed = children.remove(index);
-                let removed_node = removed.node();
-                if let Some(parent) = removed_node.parent() {
-                    if removed_node.is_attribute() {
-                        parent.remove_attribute(activation.gc(), removed_node);
-                    } else {
-                        parent.remove_child(activation.gc(), removed_node);
-                    }
+            let removed_node = if index < children.len() {
+                Some(children.remove(index).node())
+            } else {
+                None
+            };
+            // Timffle: the notification callbacks below run ActionScript; release the borrow.
+            drop(children);
+            if let Some(removed_node) = removed_node
+                && let Some(parent) = removed_node.parent()
+            {
+                if removed_node.is_attribute() {
+                    parent.remove_attribute(activation.gc(), removed_node);
+                    let attr_name = removed_node
+                        .local_name()
+                        .map(Value::from)
+                        .unwrap_or(Value::Null);
+                    let old_value = match &*removed_node.kind() {
+                        E4XNodeKind::Attribute(value) => Value::from(*value),
+                        _ => Value::Null,
+                    };
+                    parent.trigger_notification(
+                        activation,
+                        NotificationCommand::AttributeRemoved,
+                        attr_name,
+                        old_value,
+                    )?;
+                } else {
+                    parent.remove_child(activation.gc(), removed_node);
+                    parent.notify_nodes_removed(activation, &[removed_node])?;
                 }
             }
             return Ok(true);

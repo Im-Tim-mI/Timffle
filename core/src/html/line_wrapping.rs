@@ -209,6 +209,8 @@ mod tests {
             letter_spacing,
             kerning,
             color: swf::Color::BLACK,
+            opentype: None,
+            fte_grid: None,
         }
     }
 

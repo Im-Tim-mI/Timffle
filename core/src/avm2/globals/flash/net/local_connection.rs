@@ -1,7 +1,7 @@
 use crate::avm2::amf::{amf3_values_len, serialize_value};
 use crate::avm2::error::{
-    Error2004Type, make_error_2004, make_error_2082, make_error_2083, make_error_2084,
-    make_error_2085,
+    Error2004Type, make_error_2004, make_error_2052, make_error_2082, make_error_2083,
+    make_error_2084, make_error_2085,
 };
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::parameters::ParametersExt;
@@ -19,10 +19,56 @@ pub fn get_domain<'gc>(
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    let movie = &activation.context.root_swf;
+    // Timffle: the domain of the calling SWF (a loaded child SWF reports its
+    // own domain), not always the root SWF's.
+    let movie = activation.caller_movie_or_root();
     let domain = LocalConnections::get_domain(movie.url());
 
     Ok(Value::String(AvmString::new_utf8(activation.gc(), domain)))
+}
+
+// Timffle: `allowDomain()` / `allowInsecureDomain()` record the sender domains
+// this (receiving) connection accepts; see `LocalConnectionObject::accepts_sender`.
+fn allow_domains_impl<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+    insecure: bool,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    let mut domains = Vec::with_capacity(args.len());
+    for arg in args {
+        // Flash tests the type: null, numbers and objects are ArgumentError #2052.
+        match arg {
+            Value::String(domain) => domains.push(domain.to_string()),
+            _ => return Err(make_error_2052(activation)),
+        }
+    }
+
+    if let Some(local_connection) = this.as_local_connection_object() {
+        local_connection.allow_domains(domains.iter().map(String::as_str), insecure);
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Implements `LocalConnection.allowDomain`
+pub fn allow_domain<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    allow_domains_impl(activation, this, args, false)
+}
+
+/// Implements `LocalConnection.allowInsecureDomain`
+pub fn allow_insecure_domain<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    allow_domains_impl(activation, this, args, true)
 }
 
 /// `send()` rejects messages larger than this with ArgumentError #2084.
@@ -60,14 +106,22 @@ pub fn send<'gc>(
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
 
-    let domain = LocalConnections::get_domain(activation.context.root_swf.url());
+    // Timffle: names are qualified with the domain of the SWF that created
+    // this connection (Flash ties the object to its creator's sandbox).
+    let sender_url = this
+        .as_local_connection_object()
+        .map(|lc| lc.movie_url().to_string())
+        .unwrap_or_else(|| activation.context.root_swf.url().to_string());
+    let domain = LocalConnections::get_domain(&sender_url);
     let qualified_name = LocalConnections::qualified_name(&domain, &connection_name);
-    let mut size_table = Default::default();
+    let mut size_table = crate::avm2::amf::ObjectTable::default();
     let mut amf3_arguments = Vec::with_capacity(args.len() - 2);
     for arg in args.get_slice_from(2..) {
         let value = serialize_value(activation, arg, AMFVersion::AMF3, &mut size_table);
         amf3_arguments.push(Rc::new(value));
     }
+    // Timffle: a thrown `ObjectEncoding.dynamicPropertyWriter` aborts the send.
+    size_table.take_error()?;
     let mut limit = MAX_MESSAGE_SIZE;
     if activation
         .context
@@ -88,15 +142,17 @@ pub fn send<'gc>(
     let mut amf_arguments = Vec::with_capacity(args.len() - 2);
     // One table for all arguments, so shared and cyclic references survive
     // across arguments too.
-    let mut object_table = Default::default();
+    let mut object_table = crate::avm2::amf::ObjectTable::default();
     for arg in args.get_slice_from(2..) {
         let value = serialize_value(activation, arg, AMFVersion::AMF0, &mut object_table);
         amf_arguments.push(value);
     }
+    object_table.take_error()?;
 
     if let Some(local_connection) = this.as_local_connection_object() {
         activation.context.local_connections.send(
             &domain,
+            &sender_url,
             (activation.domain(), local_connection),
             connection_name,
             method_name,

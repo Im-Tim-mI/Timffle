@@ -23,16 +23,18 @@
 			
 			var self = this;
 			
+			// Timffle: both traces re-enabled. The two 'exitFrame' events in a row are
+			// frame 0's (Flash dispatches no 'enterFrame' for the first frame) and frame 1's
+			// (the download is delivered after it). test.swf is now built from this file with
+			// asc.jar (`-AS3 -optimize -import playerglobal_import.abc -swf Test,550,400,24
+			// Test.as`); output.txt was recorded from it with the Flash Player 32 debugger
+			// (two identical runs, cut after two frames past 'complete').
 			this.addEventListener(Event.ENTER_FRAME, function(e) {
-				// FIXME - re-enable this when the timing of 'content' being
-				// set in Ruffle matches Flash Player
-				//trace("enterFrame in Test: this.loader.content = " + self.loader.content);
+				trace("enterFrame in Test: this.loader.content = " + self.loader.content);
 			});
 		
 			this.addEventListener(Event.EXIT_FRAME, function(e) {
-				// FIXME - Flash Player has two 'exitFrame' events in a
-				// row. Until we can figure out why, don't log them.
-				//trace("exitFrame in Test");
+				trace("exitFrame in Test");
 			});
 		}
 	

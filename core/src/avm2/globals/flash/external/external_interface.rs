@@ -19,10 +19,53 @@ pub fn call<'gc>(
         .map(|arg| ExternalValue::from_avm2(activation, arg.to_owned()))
         .collect::<Result<Vec<ExternalValue>, Error>>()?;
 
-    let result =
-        ExternalInterface::call_method(activation.context, &name.to_utf8_lossy(), &external_args);
+    let name = name.to_utf8_lossy();
+    let result = if activation.context.external_interface.marshall_exceptions() {
+        // Timffle: a container exception is rethrown here as an Error.
+        match ExternalInterface::call_method_checked(activation.context, &name, &external_args) {
+            Ok(result) => result,
+            Err(message) => {
+                let message = AvmString::new_utf8(activation.gc(), message);
+                let error = activation
+                    .avm2()
+                    .classes()
+                    .error
+                    .construct(activation, &[message.into(), 0.into()])?;
+                return Err(Error::from_value(activation, error));
+            }
+        }
+    } else {
+        ExternalInterface::call_method(activation.context, &name, &external_args)
+    };
 
     Ok(result.into_avm2(activation.context))
+}
+
+/// Timffle: `ExternalInterface.marshallExceptions` getter.
+pub fn get_marshall_exceptions<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    Ok(activation
+        .context
+        .external_interface
+        .marshall_exceptions()
+        .into())
+}
+
+/// Timffle: `ExternalInterface.marshallExceptions` setter.
+pub fn set_marshall_exceptions<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let value = args.get_bool(0);
+    activation
+        .context
+        .external_interface
+        .set_marshall_exceptions(value);
+    Ok(Value::Undefined)
 }
 
 fn check_available<'gc>(activation: &mut Activation<'_, 'gc>) -> Result<(), Error<'gc>> {

@@ -1,6 +1,4 @@
 package flash.net {
-    import __ruffle__.stub_getter;
-
     import flash.events.EventDispatcher;
     import flash.utils.ByteArray;
     import flash.utils.Endian;
@@ -27,11 +25,11 @@ package flash.net {
 
         public native function get bytesAvailable():uint;
 
+        // Timffle: bytes written but not yet flushed to the network (Flash Player 32: 0 right
+        // after connect, the write buffer length after writes, 0 after flush, #2002 when the
+        // socket is not open).
         [API("674")]
-        public function get bytesPending():uint {
-            stub_getter("flash.net.Socket", "bytesPending");
-            return 0;
-        }
+        public native function get bytesPending():uint;
 
         public native function get endian():String;
         public native function set endian(value:String):void;

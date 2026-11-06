@@ -18,6 +18,14 @@ pub enum PlayerEvent {
         x: f64,
         y: f64,
     },
+    /// Timffle: relative pointer motion in device pixels (the raw motion of a
+    /// locked pointer: winit `DeviceEvent::MouseMotion`, the browser's
+    /// `PointerEvent.movementX/Y` scaled by `devicePixelRatio`). The player uses
+    /// it only while `Stage.mouseLock` is on, and then ignores `MouseMove`.
+    MouseMoveRelative {
+        dx: f64,
+        dy: f64,
+    },
     MouseUp {
         x: f64,
         y: f64,
@@ -278,6 +286,16 @@ pub enum ClipEvent<'gc> {
     /// Analogous to [`ClipEvent::Release`], but for right mouse button.
     RightRelease,
 
+    /// Timffle: left mouse button was released over this AVM2 object although the press
+    /// happened on another object. Delivered after the pressed object's
+    /// [`ClipEvent::ReleaseOutside`]; the object dispatches `click` only if it tracks as a
+    /// menu (`MovieClip.trackAsMenu` / `SimpleButton.trackAsMenu`) at that moment, which is
+    /// how Flash Player evaluates the flag (after the `mouseUp` handlers ran).
+    MenuRelease {
+        /// The index of this click, same as the index of the last [`ClipEvent::Press`] event.
+        index: usize,
+    },
+
     /// Middle mouse button was released inside a previously-pressed display object.
     ///
     /// Analogous to [`ClipEvent::Release`], but for middle mouse button.
@@ -414,6 +432,7 @@ impl ClipEvent<'_> {
                 | Self::RightPress
                 | Self::MiddlePress
                 | Self::Release { .. }
+                | Self::MenuRelease { .. }
                 | Self::RightRelease
                 | Self::MiddleRelease
                 | Self::ReleaseOutside

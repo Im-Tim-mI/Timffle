@@ -1,159 +1,148 @@
 package flash.media {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-    import __ruffle__.stub_method;
-
     import flash.events.EventDispatcher;
 
+    // Timffle: Flash Player on a desktop without a microphone. This player
+    // has no audio capture pipeline on any platform, so `names` is empty and
+    // `getMicrophone()`/`getEnhancedMicrophone()` return null (the AS3
+    // reference: null "if no microphones are installed" and "when enhanced
+    // audio fails to initialize"). `isSupported` is true, as Flash Player 32
+    // reports on a desktop with or without audio devices (measured).
+    //
+    // `new Microphone()` does not throw in Flash Player 32: it makes a
+    // Microphone attached to no device, which answers 0, false or null from
+    // every getter (a SoundTransform from `soundTransform`) and ignores every
+    // setter; only a null `codec` or `soundTransform` is TypeError #2007
+    // (measured on Flash Player 32, tests/tests/swfs/avm2/stagevideo_bounds).
+    // That is the only kind of Microphone this player can have.
     public final class Microphone extends EventDispatcher {
+        public function Microphone() {
+            super();
+        }
+
         [API("672")]
         public static function getEnhancedMicrophone(index:int = -1):Microphone {
-            stub_method("flash.media.Microphone", "getEnhancedMicrophone");
-            return new Microphone();
+            return null;
         }
 
         public static function getMicrophone(index:int = -1):Microphone {
-            stub_method("flash.media.Microphone", "getMicrophone");
-            return new Microphone();
+            return null;
         }
 
+        [API("667")]
+        public static function get isSupported():Boolean {
+            return true;
+        }
+
+        public static function get names():Array {
+            return [];
+        }
+
+        // The settings of a Microphone without a device do not change.
         public function setLoopBack(isLooped:Boolean = true):void {
-            stub_method("flash.media.Microphone", "setLoopBack");
         }
 
         public function setSilenceLevel(silenceLevel:Number, timeout:int = -1):void {
-            stub_method("flash.media.Microphone", "setSilenceLevel");
         }
 
         public function setUseEchoSuppression(isEchoSuppressed:Boolean):void {
-            stub_method("flash.media.Microphone", "setUseEchoSuppression");
         }
 
-        public function get activityLevel():Number {
-            stub_getter("flash.media.Microphone", "activityLevel");
-            return 0.0;
+        public function set codec(codec:String):void {
+            if (codec == null) {
+                Error.throwError(TypeError, 2007, "codec");
+            }
         }
 
-        public function get codec():String {
-            stub_getter("flash.media.Microphone", "codec");
-            return "";
+        public function set enableVAD(isEnabled:Boolean):void {
         }
 
-        public function set codec(codec:String) {
-            stub_setter("flash.media.Microphone", "codec");
-        }
-
-        public function get enableVAD():Boolean {
-            stub_getter("flash.media.Microphone", "enableVAD");
-            return false;
-        }
-
-        public function set enableVAD(isEnabled:Boolean) {
-            stub_setter("flash.media.Microphone", "enableVAD");
-        }
-
-        public function get encodeQuality():int {
-            stub_getter("flash.media.Microphone", "encodeQuality");
-            return 0;
-        }
-
-        public function set encodeQuality(quality:int) {
-            stub_setter("flash.media.Microphone", "encodeQuality");
+        public function set encodeQuality(quality:int):void {
         }
 
         [API("672")]
         public function get enhancedOptions():MicrophoneEnhancedOptions {
-            stub_getter("flash.media.Microphone", "enhancedOptions");
-            return new MicrophoneEnhancedOptions();
+            return null;
         }
 
         [API("672")]
-        public function set enhancedOptions(params:MicrophoneEnhancedOptions) {
-            stub_setter("flash.media.Microphone", "enhancedOptions");
+        public function set enhancedOptions(params:MicrophoneEnhancedOptions):void {
         }
 
-        public function get framesPerPacket():int {
-            stub_getter("flash.media.Microphone", "framesPerPacket");
+        public function set framesPerPacket(fpp:int):void {
+        }
+
+        public function set gain(gain:Number):void {
+        }
+
+        public function set noiseSuppressionLevel(level:int):void {
+        }
+
+        public function set rate(level:int):void {
+        }
+
+        public function get soundTransform():SoundTransform {
+            return new SoundTransform();
+        }
+
+        public function set soundTransform(tf:SoundTransform):void {
+            if (tf == null) {
+                Error.throwError(TypeError, 2007, "soundTransform");
+            }
+        }
+
+        public function get activityLevel():Number {
             return 0;
         }
 
-        public function set framesPerPacket(fpp:int) {
-            stub_setter("flash.media.Microphone", "framesPerPacket");
+        public function get codec():String {
+            return null;
         }
 
-        public function get gain():Number {
-            stub_getter("flash.media.Microphone", "gain");
-            return 0.0;
-        }
-
-        public function set gain(gain:Number) {
-            stub_setter("flash.media.Microphone", "gain");
-        }
-
-        public function get index():int {
-            stub_getter("flash.media.Microphone", "index");
-            return 0;
-        }
-
-        public static function get isSupported():Boolean {
-            stub_getter("flash.media.Microphone", "isSupported");
+        public function get enableVAD():Boolean {
             return false;
         }
 
+        public function get encodeQuality():int {
+            return 0;
+        }
+
+        public function get framesPerPacket():int {
+            return 0;
+        }
+
+        public function get gain():Number {
+            return 0;
+        }
+
+        public function get index():int {
+            return 0;
+        }
+
         public function get muted():Boolean {
-            stub_getter("flash.media.Microphone", "muted");
-            return true;
+            return false;
         }
 
         public function get name():String {
-            stub_getter("flash.media.Microphone", "name");
-            return "";
-        }
-
-        public static function get names():Array {
-            stub_getter("flash.media.Microphone", "names");
-            return [];
+            return null;
         }
 
         public function get noiseSuppressionLevel():int {
-            stub_getter("flash.media.Microphone", "noiseSuppressionLevel");
             return 0;
-        }
-
-        public function set noiseSuppressionLevel(level:int) {
-            stub_setter("flash.media.Microphone", "noiseSuppressionLevel");
         }
 
         public function get rate():int {
-            stub_getter("flash.media.Microphone", "rate");
             return 0;
         }
 
-        public function set rate(level:int) {
-            stub_setter("flash.media.Microphone", "rate");
-        }
-
         public function get silenceLevel():Number {
-            stub_getter("flash.media.Microphone", "silenceLevel");
             return 0;
         }
 
         public function get silenceTimeout():int {
-            stub_getter("flash.media.Microphone", "silenceTimeout");
             return 0;
         }
 
-        public function get soundTransform():flash.media.SoundTransform {
-            stub_getter("flash.media.Microphone", "soundTransform");
-            return new SoundTransform();
-        }
-
-        public function set soundTransform(tf:flash.media.SoundTransform) {
-            stub_setter("flash.media.Microphone", "soundTransform");
-        }
-
         public function get useEchoSuppression():Boolean {
-            stub_getter("flash.media.Microphone", "useEchoSuppression");
             return false;
         }
     }

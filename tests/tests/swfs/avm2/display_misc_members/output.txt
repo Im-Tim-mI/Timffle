@@ -1,0 +1,124 @@
+gfr blur4x4p1 (8,18,34,44)
+gfr blur4x4p3 (4,14,42,52)
+gfr blur5.5x2.3p2 (4,17,42,46)
+gfr blur0x0p1 (9,19,32,42)
+gfr blur255x255p15 (-883,-873,1816,1826)
+gfr blur10p0 (10,20,30,40)
+gfr blur10p16 (-25,-15,100,110)
+gfr blur-4p1 (9,19,32,42)
+gfr blur4x0p1 (8,19,34,42)
+gfr blur2.5p1 (8,19,34,42)
+gfr blur5p2 (5,-6,40,92)
+gfr blur15p3 (-11,18,72,44)
+gfr blur3p5 (4,17,42,46)
+gfr blur2.5p8 (5,-8,40,96)
+gfr blur0.75p12 (7,17,36,46)
+gfr blur1.5p15 (4,9,42,62)
+gfr glow6x6p2 (3,13,44,54)
+gfr glowInner6x6p2 (3,13,44,54)
+gfr shadow d4 a45 b4p1 (10,20,34,44)
+gfr shadow d4 a225 b4p1 (5,15,35,45)
+gfr shadow d10 a0 b0p1 (10,19,41,42)
+gfr shadow d4 a90 b0 (9,20,32,45)
+gfr shadow d2.5 a0 b0 (10,19,33,42)
+gfr shadow d-4 a0 b0 (5,19,35,42)
+gfr shadow d4 a30 b0 (10,20,34,43)
+gfr shadowInner d4 a45 b4p1 (10,20,34,44)
+gfr shadowHide d4 a45 b4p1 (10,20,34,44)
+gfr shadow d4 a0 b2 q2 (10,19,35,42)
+gfr bevel d4 a45 b4p1 (6,16,38,48)
+gfr bevel d4 a45 b4p1 inner (6,16,38,48)
+gfr bevel d2.5 a0 b0 (7,19,36,42)
+gfr bevel d4 a30 b0 (6,17,38,46)
+gfr gglow b4p1 d4 (10,20,34,44)
+gfr gbevel b4p1 d4 (6,16,38,48)
+gfr colormatrix (10,20,30,40)
+gfr convolution3x3 (9,19,32,42)
+gfr convolution5x7 (8,17,34,46)
+gfr convolution4x4 (8,18,34,44)
+gfr convolution1.5x2.5 (10,19,30,42)
+gfr dmap color 10x10 (10,20,30,40)
+gfr dmap wrap -10x-10 (10,20,30,40)
+gfr outside (-2,-2,104,104)
+gfr empty (8,8,4,4)
+gfr negsize (134217725,134217725,4,4)
+gfr frac (8,9,35,34)
+gfr frac2 (10,12,31,30)
+gfr frac4 (0,1,100,99)
+gfr clampleft (0,0,15,15)
+gfr fullyout (134217727,134217727,0,0)
+gfr fullyout blur (134217725,134217725,4,4)
+gfr negout (134217727,134217727,0,0)
+gfr shader (0,0,100,100)
+gfr nullrect THREW TypeError #2007
+gfr nullfilter THREW TypeError #2007
+gfr returns new rect true
+gfr disposed THREW ArgumentError #2015
+encode png pos=len true endian=bigEndian PNG 8x6 depth=8 colorType=6
+encode png fast pos=len true endian=bigEndian PNG 8x6 depth=8 colorType=6
+encode png opaque pos=len true endian=bigEndian PNG 8x6 depth=8 colorType=2
+encode png sub pos=len true endian=bigEndian PNG 3x2 depth=8 colorType=6
+encode png outside pos=len true endian=bigEndian PNG 8x6 depth=8 colorType=6
+encode jpeg80 pos=len true endian=bigEndian JPEG app0=ffe0 4a464946
+encode jpeg0 pos=len true endian=bigEndian JPEG app0=ffe0 4a464946
+encode jpeg100 pos=len true endian=bigEndian JPEG app0=ffe0 4a464946
+encode jpeg200 THREW RangeError #2006
+encode disjoint THREW ArgumentError #2006
+encode empty THREW ArgumentError #2006
+encode nullrect THREW TypeError #2007
+encode obj compressor THREW ArgumentError #2004
+encode null compressor THREW TypeError #2007
+encode string compressor THREW ArgumentError #2004
+encode prefilled same=true pos=len true head=68656c6c6f89504e470d0a1a0a
+encode disposed THREW ArgumentError #2015
+overlap (30,30) [a,b] len=2
+overlap root (30,30) [a,b] len=2
+overlap stage (30,30) [a,b] len=2
+only a (5,5) [a] len=1
+inner (40,40) [a,b,inner] len=3
+inner from b (15,15) [] len=0
+inner from b global (40,40) [b,inner] len=2
+shape (250,50) [shape] len=1
+tf (210,210) [tf] len=1
+bmp transparent (310,10) [bmp] len=1
+empty region (150,50) [] len=0
+hidden (10,110) [] len=0
+nomouse (110,110) [nomouse] len=1
+nmc (105,155) [nmc,nmcchild] len=2
+alpha0 fill (160,110) [alpha0] len=1
+alphaprop (160,160) [alphaprop] len=1
+masked in (5,205) [masked] len=1
+masked out (30,230) [] len=0
+masked2 out (70,210) [] len=0
+line (320,100) [line] len=1
+line 3 off (320,103) [] len=0
+btn up (310,210) [up] len=1
+btn hit only (330,230) [] len=0
+btn2 up only (380,230) [up2] len=1
+btn2 hit (355,205) [up2] len=1
+scaled (230,330) [scaled] len=1
+rotated inside (300,320) [rotated] len=1
+rotated corner (325,302) [] len=0
+nested (115,315) [n1,n2,n3] len=3
+scrolled in (205,405) [scrolled] len=1
+scrolled out (230,430) [scrolled] len=1
+mc (310,410) [mc] len=1
+far (1000,1000) [] len=0
+null point THREW TypeError #2007
+inacc false false stage false
+inacc null THREW TypeError #2007
+self from self (5,5) [] len=0
+self from self global (405,405) [self,selfchild] len=2
+self from root (405,405) [self,selfchild] len=2
+self from root 420 (420,420) [self] len=1
+off stage (5,5) [offchild] len=1
+AVLoader is Loader true cli=true
+AVLoader.load THREW Error #2037
+png decoded flash.display::Bitmap 8x6 transparent=true (0,0)=80ff0000 (1,1)=ff00ff00
+jpeg decoded flash.display::Bitmap 8x6 blue-ish=true
+AVM1 content flash.display::AVM1Movie avm=2 swfv=8
+AVM1Movie.addCallback THREW flash.errors::IllegalOperationError #2014
+AVM1Movie.addCallback null THREW flash.errors::IllegalOperationError #2014
+AVM1Movie.call THREW flash.errors::IllegalOperationError #2014
+AVM1Movie.call null THREW flash.errors::IllegalOperationError #2014
+done

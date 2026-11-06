@@ -1,0 +1,61 @@
+# test=d63stage3d
+driverInfo non-empty true
+has totalGPUMemory true
+totalGPUMemory 0
+createTexture 8x8 bgra streaming 2: ok
+upload mip0 8x8: ok
+upload mip1 4x4: ok
+upload mip2 2x2: ok
+upload mip3 1x1: ok
+upload mip4 1x1 (too large): THREW Error#3674 ArgumentError
+upload mip1 with 8x8 (larger): ok
+upload mip0 with 4x4 (smaller): ok
+upload mip0 with 16x16 (larger): ok
+upload mip0 with 8x4 (narrow): ok
+bytes mip1 exact 64: ok
+bytes mip1 short 63: THREW Error#3669 RangeError
+bytes mip0 offset 3 of 259: ok
+bytes mip0 offset past end: THREW Error#3669 RangeError
+bytes mip4 (too large): THREW Error#3674 ArgumentError
+bytes mip0 larger 1024: ok
+createCubeTexture 4 streaming 1: ok
+cube side 5 level 0: ok
+cube side 0 level 1: ok
+cube side 0 level 2: ok
+cube side 0 level 3 (too large): THREW Error#3674 ArgumentError
+cube side 6 level 0 (bad side): THREW Error#3673 ArgumentError
+cube bytes side 2 level 1 16 bytes: ok
+cube bytes side 2 level 1 short 15: THREW Error#3669 RangeError
+sampler mipnone: ok
+sampler mipnearest: ok
+sampler miplinear: ok
+sampler bogus mip: THREW Error#2008 ArgumentError
+sampler bogus wrap: THREW Error#2008 ArgumentError
+sampler bogus filter: THREW Error#2008 ArgumentError
+createTexture 4x4 bgrPacked565: ok
+565 bitmap 4x4: ok
+565 bytes 32: ok
+565 bytes 31: THREW Error#3669 RangeError
+565 bytes 64: ok
+createTexture 4x4 bgraPacked4444: ok
+4444 bytes 32: ok
+4444 bytes 31: THREW Error#3669 RangeError
+createTexture 4x4 compressed: ok
+compressed bitmap 4x4: ok
+compressed bytes 64: ok
+compressed bytes 63: THREW Error#3669 RangeError
+compressed bytes 8: THREW Error#3669 RangeError
+compressed garbage ATF 64: THREW Error#3677 ArgumentError
+compressed ATF offset past end: THREW Error#3669 RangeError
+render to texture antiAlias 4: ok
+drawToBitmapData 64x64: FF0000
+drawToBitmapData 32x32: 00FF00
+drawToBitmapData 128x128: 0000FF 777777
+backBuffer size: 64x64
+maxBackBufferWidth set 99999: 16384
+maxBackBufferWidth set 1: 64
+mip level from oversized bitmap: mipnearest 0000FF 0000FF 0000FF | mipnone FF0000 FF0000 FF0000
+dispose then driverInfo: Disposed
+context recreated
+after dispose createTexture: THREW Error#3694 Error
+# done

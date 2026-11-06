@@ -12,5 +12,9 @@ package flash.system {
 
             return dummyDomain;
         }
+
+        // Timffle: see security_domain.rs.
+        [API("680")]
+        public native function get domainID():String;
     }
 }

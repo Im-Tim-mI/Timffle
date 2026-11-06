@@ -1,8 +1,35 @@
 num_ticks = 20
+# Timffle: output.expected.png was recorded with Flash Player 32.0.0.465
+# (standalone, Wine 11.19 on Xvfb, 2026-11-06, twice, identical). Context3D
+# there is Flash's software renderer ("Software"): with wined3d's Vulkan
+# renderer Flash falls back to it, and on the DirectX 11 path (wined3d OpenGL
+# on llvmpipe) Wine fails to translate the water's fragment shader and the
+# water is not drawn at all. The Wine prefix had the harness's device font
+# installed with timffle/difftest/install_test_fonts.sh (Ruffle's Noto Sans
+# subset, _sans substituted to it). The copy of test.swf used for the
+# recording counts enterFrames: it waits before the 11th until the mouse
+# button is down (pointer moved to 450,450 and pressed with XTest, as
+# input.json does after tick 10, so the plane is picked during the 11th
+# render as here) and stops updating after the 19th, the last one Ruffle runs
+# in 20 ticks. Its AwayStats overlay shows what this harness shows:
+# System.totalMemory 90 MiB and driverInfo "Dummy Ruffle driver" (the values
+# the harness pins), and instead of its 200 ms Timer and getTimer() it
+# replays a run of this test (GT 720): the getTimer() value of each of the 19
+# enterFrames and the two timer updates after the 8th and 17th, so the FPS
+# texts ("4/44", "A: 3") and the diagram are the same. Picking and the brush
+# agree exactly (plane point 0.46229746203597 / 0.2864573539918218, brush
+# 31x31 in both). Outliers (colour channels > 30, GT 720 / NVK), 4,299:
+# 1,703 in the AwayStats overlay (rasterisation of the device text: hinted
+# and anti-aliased in Flash, aliased outlines here), 1,757 in the Away3D
+# signature (vector logo and text drawn by BitmapData.draw at quality HIGH:
+# anti-aliasing and ~1 px), 728 in the drop's reflection, the rest pool-edge
+# and slider pixels. getTimer() is wall-clock time in this harness, so on a
+# faster or slower machine the overlay prints other FPS digits; the limit
+# leaves room for that (a mask is not available in the image comparison).
 
 [image_comparisons.output]
 tolerance = 30
-max_outliers = 400
+max_outliers = 4800
 
 [player_options]
 with_renderer = { optional = false, quality = "low" }

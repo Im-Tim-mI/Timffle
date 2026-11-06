@@ -1,0 +1,87 @@
+== AVSegmentedSource
+load -> '17'
+load DASH -> '17'
+load('') -> '17'
+load(null) threw TypeError #2007
+loadManifest -> '17'
+loadWithBackgroundManifest -> '17'
+getTimeline -> null
+getPeriodInfo(0) -> null
+getTrackCount -> 0
+getABRProfileCount -> 0
+getPerceivedBandwidth -> 0
+getMediaPreferredStartTime -> -1
+selectTrack -> '17'
+selectTrackString -> '17'
+setBandwidth -> '6'
+setHoldAt -> '17'
+setPauseAtPeriodEnd -> '6'
+clearPauseAtPeriodEnd -> '6'
+releaseManifest -> '17'
+removeByVirtualTime -> 'null'
+removeByLocalTime -> 'null'
+removeByVirtualTimeWithReplacement -> 'null'
+setSubscribedTags -> '0'
+setSubscribedTagsForBackgroundManifest -> '0'
+setCuePointTags -> '0'
+setSubscribedTags(null) threw TypeError #2007
+insertByVirtualTime -> null
+insertByLocalTime -> null
+networkingParams -> '[object AVNetworkingParams] readSetCookieHeader=true'
+networkingParams = new(false) -> 'same=false readSetCookieHeader=true'
+networkingParams = null threw TypeError #2007
+cookieHeader/masterUpdateInterval/useRedirectedUrl -> 'ok'
+addCustomHeader(X, [1]) threw ArgumentError #2004
+addCustomHeader(X, []) threw ArgumentError #2004
+addCustomHeader(null, null) threw ArgumentError #2004
+dispose -> 'ok'
+load after dispose -> '17'
+== AVStream
+new AVStream(null) threw TypeError #2007
+play -> '57'
+pause -> '0'
+resume -> true
+seek -> '6'
+seekToKeyFrame -> '6'
+seekToLivePoint -> '6'
+seekToLocalTime -> '6'
+fastForward -> '19'
+rewind -> '19'
+step -> '21'
+setPlaySpeed -> 'ok'
+playState -> 0
+time/frameTime/currentFPS -> '0,-1e-9,0'
+bufferLength/backBufferLength/clientLivePoint -> '0,0,0'
+droppedFrames/decoderType/renderType -> '0,undefined,undefined'
+useHardwareDecoder -> 'true/false'
+captionsEnabled -> 'false/true'
+volume -> '1,0.25,1,0'
+bufferTime/initialBufferTime/backBufferTime -> 'ok'
+captionStyle = null threw TypeError #2007
+captionStyle = new -> 'ok'
+dispose -> 'ok'
+play after dispose -> '57'
+== AVURLLoader / AVURLStream / AVLoader
+AVURLLoader.stream -> 'flash.media::AVURLStream same=true connected=false'
+AVURLLoader.dataFormat -> 'text'
+AVURLLoader.load threw Error #2037
+AVURLLoader.load(null) threw Error #2037
+AVURLLoader.close threw flash.errors::IOError #2029
+new AVURLLoader(request) threw Error #2037
+AVURLStream.load threw Error #2037
+AVURLStream.load(null) threw Error #2037
+AVURLStream.connected -> false
+AVURLStream.close threw flash.errors::IOError #2029
+AVLoader.load threw Error #2037
+== AuthorizedFeaturesLoader (synchronous part)
+authorizedFeatures -> null
+loadAuthorizedFeaturesFromData(null) -> 'ok'
+== DRMManager argument checks
+loadVoucher(cd, bogus) threw ArgumentError #0 ''
+loadVoucher(null, allowServer) threw ArgumentError #0 ''
+loadVoucher(cd, null) threw ArgumentError #0 ''
+loadPreviewVoucher(null) threw ArgumentError #0 ''
+returnVoucher(null, ...) threw ArgumentError #0 ''
+returnVoucher(url, null, null) threw ArgumentError #0 ''
+new DRMContentData(bytes) -> ',,,'
+DRMContentData().getVoucherAccessInfo() -> null

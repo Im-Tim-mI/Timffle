@@ -1,10 +1,13 @@
 package flash.display {
-    import __ruffle__.stub_method;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_constructor;
-
     import flash.events.EventDispatcher;
 
+    // Timffle: real ShaderJob. `start(true)` runs the shader at once; `start(false)` queues it
+    // and the result is written to `target` and `complete` dispatched after the current script
+    // turn (still before the next frame, as measured on Flash Player 32). The shader's
+    // parameters and inputs are copied when `start()` is called, so later changes do not reach
+    // a queued job (Flash copies the Shader internally). A job can be started once: a second
+    // `start()` throws ArgumentError #2172 even after it finished or was cancelled; `cancel()`
+    // drops a queued job (no `complete`) and sets `progress` to 0.
     [API("662")]
     public class ShaderJob extends EventDispatcher {
         [Ruffle(NativeAccessible)]
@@ -19,16 +22,26 @@ package flash.display {
         [Ruffle(NativeAccessible)]
         private var _height:int;
 
+        // Timffle: 0 = never started, 1 = queued or running, 2 = finished, 3 = cancelled.
+        [Ruffle(NativeAccessible)]
+        private var _state:int = 0;
+
+        // Timffle: NaN before the first start(), 0 while queued (and after cancel()), 1 when done.
+        [Ruffle(NativeAccessible)]
+        private var _progress:Number = NaN;
+
         public function ShaderJob(shader:Shader = null, target:Object = null, width:int = 0, height:int = 0) {
             this._shader = shader;
             this._target = target;
             this._width = width;
             this._height = height;
-            stub_constructor("flash.display.ShaderJob");
         }
 
         public function cancel():void {
-            stub_method("flash.display.ShaderJob", "cancel")
+            if (this._state == 1) {
+                this._state = 3;
+            }
+            this._progress = 0;
         }
 
         public native function start(waitForCompletion:Boolean = false):void;
@@ -50,8 +63,7 @@ package flash.display {
         }
 
         public function get progress():Number {
-            stub_getter("flash.display.ShaderJob", "progress")
-            return 0;
+            return this._progress;
         }
 
         public function get shader():Shader {

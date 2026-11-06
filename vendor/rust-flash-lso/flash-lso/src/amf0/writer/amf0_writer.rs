@@ -15,12 +15,16 @@ pub struct Amf0Writer {
 
     /// The reference cache, allows writing self-referential data
     pub(crate) cache: BTreeMap<CacheKey, Reference>,
+
+    /// Timffle: whether primitive values (numbers, strings, booleans, null,
+    /// undefined) are left out of the reference numbering.
+    pub(crate) skip_primitive_refs: bool,
 }
 
 impl<'a> ObjWriter<'a> for Amf0Writer {
     fn add_element(&mut self, name: &str, s: Value, inc_ref: bool) {
         if inc_ref {
-            self.ref_num += 1;
+            self.primitive_reference();
         }
 
         self.elements.push(Element::new(name, Rc::new(s)))
@@ -142,6 +146,12 @@ impl<'a> ObjWriter<'a> for Amf0Writer {
         }
     }
 
+    fn primitive_reference(&mut self) {
+        if !self.skip_primitive_refs {
+            self.ref_num += 1;
+        }
+    }
+
     fn make_reference(&mut self) -> Reference {
         let ref_num = Reference(self.ref_num);
         self.ref_num += 1;
@@ -158,6 +168,18 @@ impl<'a> ObjWriter<'a> for Amf0Writer {
 }
 
 impl Amf0Writer {
+    /// Timffle: a writer that numbers only objects, arrays, dates and XML, the
+    /// way Flash Player numbers AMF0 references in NetConnection/LocalConnection
+    /// data (shared objects number every value). `first_reference` is the number
+    /// the first written object gets.
+    pub fn without_primitive_references(first_reference: u16) -> Self {
+        Self {
+            ref_num: first_reference,
+            skip_primitive_refs: true,
+            ..Self::default()
+        }
+    }
+
     /// Produce an `Lso` with the given name
     pub fn commit_lso(self, name: &str) -> Lso {
         Lso::new(self.elements, name, AMFVersion::AMF0)

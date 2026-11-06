@@ -7,7 +7,7 @@ use crate::avm1::{Object, ObjectHandle, Value};
 use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::globals::flash::utils::byte_array::strip_bom;
 use crate::avm2::object::{
-    ByteArrayObject, EventObject as Avm2EventObject, FileReferenceObject,
+    ByteArrayObject, EventObject as Avm2EventObject, FileReference, FileReferenceObject,
     FileReferenceObjectHandle, LoaderInfoObject, LoaderStream, ScriptObject as Avm2ScriptObject,
     ScriptObjectHandle as Avm2ScriptObjectHandle, SoundLoadingState, SoundObject,
     SoundObjectHandle, TObject as _,
@@ -16,7 +16,6 @@ use crate::avm2::{
     Activation as Avm2Activation, Avm2, BitmapDataObject, Domain as Avm2Domain,
     Object as Avm2Object, Value as Avm2Value,
 };
-use crate::avm2_stub_method_context;
 use crate::backend::navigator::{
     ErrorResponse, FetchReason, OwnedFuture, Request, SuccessResponse,
 };
@@ -31,6 +30,7 @@ use crate::display_object::{
     TInteractiveObject,
 };
 use crate::events::ClipEvent;
+use crate::frame_lifecycle::FramePhase;
 use crate::limits::ExecutionLimit;
 use crate::player::{Player, PostFrameCallback};
 use crate::streams::{NetStream, NetStreamHandle};
@@ -219,12 +219,15 @@ impl From<crate::avm1::Error<'_>> for Error {
 /// Holds all in-progress loads for the player.
 #[derive(Collect)]
 #[collect(no_drop)]
-pub struct LoadManager<'gc>(SlotMap<LoaderHandle, MovieLoader<'gc>>);
+/// Timffle: the second field numbers the loaders in the order they were added
+/// (`MovieLoader::seq`); the third counts the AVM2 frames started
+/// (`MovieLoader::parsed_in_frame`).
+pub struct LoadManager<'gc>(SlotMap<LoaderHandle, MovieLoader<'gc>>, u64, u64);
 
 impl<'gc> LoadManager<'gc> {
     /// Construct a new `LoadManager`.
     pub fn new() -> Self {
-        Self(SlotMap::with_key())
+        Self(SlotMap::with_key(), 0, 0)
     }
 
     /// Add a new loader to the `LoadManager`.
@@ -237,10 +240,52 @@ impl<'gc> LoadManager<'gc> {
     /// Movie loaders are removed automatically after the loader status is set
     /// accordingly.
     pub fn add_loader(&mut self, loader: MovieLoader<'gc>) -> LoaderHandle {
+        self.1 += 1;
+        let seq = self.1;
         let handle = self.0.insert(loader);
         let loader = self.get_loader_mut(handle).unwrap();
         loader.self_handle = Some(handle);
+        loader.seq = seq;
         handle
+    }
+
+    /// Timffle: called when an AVM2 frame starts, before `enterFrame`.
+    pub fn begin_frame(&mut self) {
+        self.2 += 1;
+    }
+
+    /// Timffle: records that a loader's movie finished parsing; its content is
+    /// constructed by `construct_parsed` in the next frame that starts afterwards. A
+    /// `loadBytes()` called from an `enterFrame` listener is parsed before this
+    /// frame's `construct_parsed`, yet Flash Player 32 constructs it only in the next
+    /// frame (`avm2/timffle_request_delivery_later`).
+    fn mark_parsed(&mut self, handle: LoaderHandle, status: u16, redirected: bool) -> bool {
+        let frame = self.2;
+        match self.get_loader_mut(handle) {
+            Some(loader) => {
+                loader.loader_status = LoaderStatus::Parsed;
+                loader.http_status = status;
+                loader.redirected = redirected;
+                loader.parsed_in_frame = frame;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Timffle: the handles of all loaders, the most recently started first. Flash
+    /// Player 32 constructs the loaded content of several loaders that are ready in
+    /// the same frame, and sends their `init`/`httpStatus`/`complete`, in this order
+    /// (the last `load()`/`loadBytes()` call first; `open`/`progress` still follow
+    /// the call order). Measured with two to four Loaders, `load()` and `loadBytes()`
+    /// mixed, and a Loader reused for a second `load()`
+    /// (`avm2/timffle_loader_same_frame_order`, `_reload`,
+    /// `from_shumway/as3-loader/events/loader-events`); six Loaders mixing both cases
+    /// came in an order no simple rule explains. Ruffle went by slot order.
+    fn handles_latest_first(&self) -> Vec<LoaderHandle> {
+        let mut handles: Vec<_> = self.0.iter().map(|(h, l)| (l.seq, h)).collect();
+        handles.sort_unstable_by_key(|&(seq, _)| std::cmp::Reverse(seq));
+        handles.into_iter().map(|(_, h)| h).collect()
     }
 
     /// Remove a completed loader.
@@ -366,6 +411,8 @@ impl<'gc> LoadManager<'gc> {
             http_status: 0,
             redirected: false,
             movie: None,
+            seq: 0,
+            parsed_in_frame: 0,
         };
         let handle = self.add_loader(loader);
         let loader = self.get_loader_mut(handle).unwrap();
@@ -460,6 +507,8 @@ impl<'gc> LoadManager<'gc> {
             http_status: 0,
             redirected: false,
             movie: None,
+            seq: 0,
+            parsed_in_frame: 0,
         };
         let handle = context.load_manager.add_loader(loader);
         MovieLoader::movie_loader_bytes(handle, context, loader_url, bytes)
@@ -499,11 +548,7 @@ impl<'gc> LoadManager<'gc> {
     /// Process tags on all loaders in the Parsing phase.
     ///
     /// Returns true if *all* loaders finished preloading.
-    pub fn preload_tick(
-        context: &mut UpdateContext<'gc>,
-        limit: &mut ExecutionLimit,
-        construct_parsed: bool,
-    ) -> bool {
+    pub fn preload_tick(context: &mut UpdateContext<'gc>, limit: &mut ExecutionLimit) -> bool {
         let mut did_finish = true;
         let handles: Vec<_> = context.load_manager.0.iter().map(|(h, _)| h).collect();
 
@@ -513,54 +558,69 @@ impl<'gc> LoadManager<'gc> {
                 _ => None,
             };
 
-            match status {
-                Some(LoaderStatus::Parsing) => {
-                    match MovieLoader::preload_tick(handle, context, limit, 0, false, true) {
-                        Ok(f) => did_finish = did_finish && f,
-                        // Cancelled by a `progress` listener (`Loader.close()`, or another `load()`).
-                        Err(Error::Cancelled) => {}
-                        Err(e) => {
-                            tracing::error!("Error encountered while preloading movie: {}", e)
-                        }
+            // Timffle: a movie that finished parsing (`LoaderStatus::Parsed`) waits for
+            // `construct_parsed`, which the AVM2 frame loop calls after the `enterFrame`
+            // broadcast.
+            if let Some(LoaderStatus::Parsing) = status {
+                match MovieLoader::preload_tick(handle, context, limit, 0, false) {
+                    Ok(f) => did_finish = did_finish && f,
+                    // Cancelled by a `progress` listener (`Loader.close()`, or another `load()`).
+                    Err(Error::Cancelled) => {}
+                    Err(e) => {
+                        tracing::error!("Error encountered while preloading movie: {}", e)
                     }
                 }
-                // Timffle: a movie that finished parsing between frames (or `loadBytes`
-                // content) is constructed now, at the start of the frame: Flash Player
-                // constructs loaded content in the next frame after its bytes arrived, runs
-                // its first frame and fires `init`/`complete` at the end of that same frame,
-                // so nothing the constructor started (a URLLoader, a timer, a socket reply)
-                // can complete before the Loader's `complete`. Ruffle constructed the
-                // content in the download callback, between frames; 摩爾莊園's TimesArkPanel
-                // then saw its XML (from the browser cache) before `init(data)` had given it
-                // the year, and showed an empty bookshelf drawer.
-                Some(LoaderStatus::Parsed) if construct_parsed => {
-                    let (target_clip, http_status, redirected) =
-                        match context.load_manager.get_loader(handle) {
-                            Some(MovieLoader {
-                                target_clip,
-                                http_status,
-                                redirected,
-                                ..
-                            }) => (*target_clip, *http_status, *redirected),
-                            None => continue,
-                        };
-                    match MovieLoader::movie_loader_complete(
-                        handle,
-                        context,
-                        Some(target_clip),
-                        http_status,
-                        redirected,
-                    ) {
-                        Ok(()) => {}
-                        Err(Error::Cancelled) => {}
-                        Err(e) => tracing::error!("Error finishing loading of movie: {}", e),
-                    }
-                }
-                _ => {}
             }
         }
 
         did_finish
+    }
+
+    /// Timffle: constructs the content of every loader whose movie finished parsing
+    /// (`LoaderStatus::Parsed`), so the frame-1 constructor, `added`/`addedToStage`,
+    /// the content's frame-1 script and `init`/`httpStatus`/`complete` all land in the
+    /// frame that is starting. The AVM2 frame loop calls this right after the
+    /// `enterFrame` broadcast and before the construct phase, which is where Flash
+    /// Player constructs loaded content: an `enterFrame` listener still sees
+    /// `content == null` in the frame the content appears, `frameConstructed` sees it,
+    /// the content's frame-1 script runs with the frame scripts of that frame, and
+    /// `init`/`httpStatus`/`complete` follow `exitFrame` (real Flash 32:
+    /// `timffle/difftest/expected/lt*.txt`, the same SWFs as the
+    /// `tests/tests/swfs/avm2/timffle_loader_timing_*` tests; also `loader_events_2` and
+    /// `from_shumway/as3-loader/events/loader-events`). `load()` and `loadBytes()` behave
+    /// alike; a download that spans frames constructs in the frame after its last byte.
+    /// Ruffle constructed the content in the download callback, between frames, and
+    /// (26344) in the preload step before `enterFrame`.
+    pub fn construct_parsed(context: &mut UpdateContext<'gc>) {
+        let frame = context.load_manager.2;
+        let handles = context.load_manager.handles_latest_first();
+        for handle in handles {
+            let (target_clip, http_status, redirected) =
+                match context.load_manager.get_loader(handle) {
+                    Some(MovieLoader {
+                        loader_status: LoaderStatus::Parsed,
+                        target_clip,
+                        http_status,
+                        redirected,
+                        parsed_in_frame,
+                        ..
+                    }) if *parsed_in_frame < frame => (*target_clip, *http_status, *redirected),
+                    _ => continue,
+                };
+            match MovieLoader::movie_loader_complete(
+                handle,
+                context,
+                Some(target_clip),
+                http_status,
+                redirected,
+            ) {
+                Ok(()) => {}
+                // Cancelled by the content's constructor or an `added` listener
+                // (`Loader.close()`, or another `load()`).
+                Err(Error::Cancelled) => {}
+                Err(e) => tracing::error!("Error finishing loading of movie: {}", e),
+            }
+        }
     }
 
     pub fn run_exit_frame(context: &mut UpdateContext<'gc>) {
@@ -573,7 +633,7 @@ impl<'gc> LoadManager<'gc> {
         {
             movie.try_fire_loaderinfo_events(context);
         }
-        let handles: Vec<_> = context.load_manager.0.iter().map(|(h, _)| h).collect();
+        let handles = context.load_manager.handles_latest_first();
         for handle in handles {
             if let Some(MovieLoader { target_clip, .. }) = context.load_manager.get_loader(handle)
                 && let Some(movie) = target_clip.as_movie_clip()
@@ -619,8 +679,9 @@ pub enum LoaderStatus {
     Pending,
     /// The movie is currently being parsed (e.g. mc.preload)
     Parsing,
-    /// Timffle: the movie is parsed; its content is constructed when the next
-    /// frame starts (`LoadManager::preload_tick`), as Flash Player does.
+    /// Timffle: the movie is parsed; its content is constructed in the next frame,
+    /// after the `enterFrame` broadcast (`LoadManager::construct_parsed`), as Flash
+    /// Player does.
     Parsed,
     /// The movie loaded successfully.
     Succeeded,
@@ -706,6 +767,16 @@ pub struct MovieLoader<'gc> {
     /// completed and we expect the Player to periodically tick preload
     /// until loading completes.
     movie: Option<SwfMovie<'gc>>,
+
+    /// Timffle: the order in which loaders were started, set by
+    /// `LoadManager::add_loader` (see `LoadManager::handles_latest_first`).
+    #[collect(require_static)]
+    seq: u64,
+
+    /// Timffle: the value of the frame counter of `LoadManager` when the movie
+    /// finished parsing (see `LoadManager::mark_parsed`).
+    #[collect(require_static)]
+    parsed_in_frame: u64,
 }
 
 impl<'gc> MovieLoader<'gc> {
@@ -740,7 +811,6 @@ impl<'gc> MovieLoader<'gc> {
         limit: &mut ExecutionLimit,
         status: u16,
         redirected: bool,
-        complete_now: bool,
     ) -> Result<bool, Error> {
         let (mc, is_avm2) = match context.load_manager.get_loader(handle) {
             Some(Self {
@@ -789,7 +859,11 @@ impl<'gc> MovieLoader<'gc> {
         if did_finish {
             // AVM1 `loadMovie`/`MovieClipLoader` keep Ruffle's timing (content constructed
             // as soon as it is parsed): its tests pin that order and the fix is for AVM2.
-            if complete_now || !is_avm2 {
+            // Timffle: an AVM1 movie downloaded by an AVM2 `Loader` is also added, with
+            // `init`/`httpStatus`/`complete`, as soon as it arrives (its first frame
+            // script runs in the next frame), not one frame later like AVM2 content
+            // (Flash Player 32: `mixed_avm/avm2_loads_avm1_events`).
+            if !is_avm2 || !mc.movie().is_action_script_3() {
                 MovieLoader::movie_loader_complete(
                     handle,
                     context,
@@ -798,15 +872,10 @@ impl<'gc> MovieLoader<'gc> {
                     redirected,
                 )?;
             } else {
-                // Timffle: parsed between frames; the content is constructed when the
-                // next frame starts (see `LoadManager::preload_tick`).
-                match context.load_manager.get_loader_mut(handle) {
-                    Some(loader) => {
-                        loader.loader_status = LoaderStatus::Parsed;
-                        loader.http_status = status;
-                        loader.redirected = redirected;
-                    }
-                    None => return Err(Error::Cancelled),
+                // Timffle: parsed between frames; the content is constructed in the next
+                // frame after `enterFrame` (see `LoadManager::construct_parsed`).
+                if !context.load_manager.mark_parsed(handle, status, redirected) {
+                    return Err(Error::Cancelled);
                 }
             }
         }
@@ -833,7 +902,13 @@ impl<'gc> MovieLoader<'gc> {
             let request_url = request.url().to_string();
             let resolved_url = player.lock().unwrap().navigator().resolve_url(&request_url);
 
+            let delivery_hold = player.lock().unwrap().delivery_hold();
             let fetch = player.lock().unwrap().fetch(request, FetchReason::LoadSwf);
+            // Timffle: the start step (`open`, `onLoadStart`) waits like the response
+            // does (see `Player::delivery_hold`).
+            if let Some(hold) = delivery_hold {
+                hold.await;
+            }
 
             let mut replacing_root_movie = false;
             player.lock().unwrap().update(|uc| -> Result<(), Error> {
@@ -1810,10 +1885,21 @@ fn load_sound_avm1_data<'gc>(
 /// Kick off an AVM2 audio load.
 ///
 /// Returns the loader's async process, which you will need to spawn.
+///
+/// Timffle: `caller_url` is the URL of the SWF that called `load()` (for
+/// `isURLInaccessible`), `generation` the value `SoundObject::begin_load`
+/// returned; the result is dropped when `close()` or another `load()` has
+/// bumped the generation since. Event order and property values follow Flash
+/// Player 32 (timffle/difftest/src/D60Media.hx): `open` (url still unset),
+/// `progress` 0/total (url and bytesTotal set), `progress` total/total,
+/// `id3`, `complete`; data that is not MP3 completes with a zero `length`
+/// (no error); a failed request is `open` then `ioError` "Error #2032".
 pub fn load_sound_avm2<'gc>(
     uc: &UpdateContext<'gc>,
     sound: SoundObject<'gc>,
     request: Request,
+    caller_url: String,
+    generation: u32,
 ) -> OwnedFuture<(), Error> {
     let player = uc.player_handle();
     let sound = SoundObjectHandle::stash(uc, sound);
@@ -1826,35 +1912,70 @@ pub fn load_sound_avm2<'gc>(
             let sound = sound.fetch(uc);
             let sound_object = Avm2Object::from(sound);
 
-            if sound.loading_state() == SoundLoadingState::Loaded {
-                // Sound has already been loaded.
+            if sound.loading_state() == SoundLoadingState::Loaded
+                || sound.load_generation() != generation
+            {
+                // Sound has already been loaded, or this download was closed.
                 return Ok(());
             }
 
-            match response {
-                Ok((body, _, _, _)) => {
-                    let handle = uc.audio.register_mp3(&body)?;
-                    sound.set_owned_sound(uc, handle);
+            let mut activation = Avm2Activation::from_nothing(uc);
+            let open_evt = Avm2EventObject::bare_default_event(activation.context, "open");
+            Avm2::dispatch_event(activation.context, open_evt, sound_object);
 
+            match response {
+                Ok((body, url, _, redirected)) => {
                     let total_len = body.len();
 
-                    // FIXME - the "open" event should be fired earlier, and not fired in case of ioerror.
-                    let mut activation = Avm2Activation::from_nothing(uc);
-                    let open_evt = Avm2EventObject::bare_default_event(activation.context, "open");
-                    Avm2::dispatch_event(activation.context, open_evt, sound_object);
+                    // Flash reveals only the origin of a URL the SWF may not see:
+                    // the download was redirected to another origin.
+                    let final_url = Url::parse(&url).ok();
+                    let inaccessible = redirected
+                        && match (&final_url, Url::parse(&caller_url).ok()) {
+                            (Some(final_url), Some(caller)) => {
+                                final_url.origin() != caller.origin()
+                            }
+                            _ => false,
+                        };
+                    let shown_url = match (&final_url, inaccessible) {
+                        (Some(final_url), true) => final_url.origin().ascii_serialization(),
+                        _ => url,
+                    };
+                    sound.set_url_inaccessible(inaccessible);
+                    sound.set_url(
+                        activation.gc(),
+                        Some(AvmString::new_utf8(activation.gc(), shown_url)),
+                    );
+                    sound.set_bytes(0, total_len as u32);
 
-                    // FIXME - As in load_url_loader, we should fire "progress" events as we receive data,
-                    // not just at the end
+                    let progress_evt =
+                        Avm2EventObject::progress_event(&mut activation, "progress", 0, total_len);
+                    Avm2::dispatch_event(activation.context, progress_evt, sound_object);
+                    if sound.load_generation() != generation {
+                        return Ok(());
+                    }
+
+                    sound.set_bytes(total_len as u32, total_len as u32);
+                    match uc.audio.register_mp3(&body) {
+                        Ok(handle) => sound.set_owned_sound(uc, handle),
+                        Err(e) => {
+                            tracing::warn!("Sound.load: data is not MP3 audio: {e:?}");
+                            sound.set_loading_state(SoundLoadingState::Loaded);
+                        }
+                    }
+
+                    let mut activation = Avm2Activation::from_nothing(uc);
                     let progress_evt = Avm2EventObject::progress_event(
                         &mut activation,
                         "progress",
                         total_len,
                         total_len,
                     );
-
                     Avm2::dispatch_event(activation.context, progress_evt, sound_object);
 
-                    sound.read_and_call_id3_event(&mut activation, body.as_slice());
+                    if sound.sound_handle().is_some() {
+                        sound.read_and_call_id3_event(&mut activation, body.as_slice());
+                    }
 
                     let complete_evt =
                         Avm2EventObject::bare_default_event(activation.context, "complete");
@@ -1867,14 +1988,10 @@ pub fn load_sound_avm2<'gc>(
                         response.error
                     );
 
-                    let mut activation = Avm2Activation::from_nothing(uc);
-
-                    // FIXME: Match the exact error message generated by Flash.
-                    let io_error_evt = Avm2EventObject::io_error_event(
-                        &mut activation,
-                        "Error #2032: Stream Error",
-                        2032,
-                    );
+                    sound.load_failed();
+                    // Flash Player 32 (release) reports the bare code.
+                    let io_error_evt =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2032", 2032);
 
                     Avm2::dispatch_event(uc, io_error_evt, sound_object);
                 }
@@ -1895,7 +2012,10 @@ pub fn load_netstream<'gc>(
     let stream = NetStreamHandle::stash(uc, stream);
 
     Box::pin(async move {
-        let fetch = player.lock().unwrap().fetch(request, FetchReason::Other);
+        let fetch = player
+            .lock()
+            .unwrap()
+            .fetch_stream(request, FetchReason::Other);
         match fetch.await {
             Ok(mut response) => {
                 let expected_length = response.expected_length();
@@ -2069,6 +2189,52 @@ impl<'gc> MovieLoader<'gc> {
             }
             ContentType::Unknown => SwfMovieData::error_movie(url.clone()),
         };
+        // Timffle: `Security.disableAVM1Loading`: an AS3 SWF that set it may not
+        // load ActionScript 1.0/2.0 content. Flash blocks the load once the file
+        // is known to be AVM1 and reports it on the LoaderInfo as `securityError`
+        // #2111 ("Security.disableAVM1Loading is true so the current load of the
+        // ActionScript 1.0/2.0 SWF file has been blocked."); the Loader ends up
+        // in its error state like any failed load.
+        if let MovieLoaderVMData::Avm2 { loader_info, .. } = vm_data
+            && sniffed_type == ContentType::Swf
+            && uc.avm2.security_disable_avm1_loading
+            && !movie.is_action_script_3()
+        {
+            if let Some(mc) = clip.as_movie_clip() {
+                MovieLoader::load_error_swf(mc, uc, url);
+            }
+            loader_info.set_errored(true);
+            let fake_movie = SwfMovie::new(
+                uc.gc(),
+                SwfMovieData::fake_with_compressed_len(uc.root_swf.version(), loader_url, length),
+            );
+            loader_info
+                .set_loader_stream(LoaderStream::NotYetLoaded(fake_movie, None, false), uc.gc());
+            let mut activation = Avm2Activation::from_nothing(uc);
+            let text = AvmString::new_utf8(
+                activation.gc(),
+                "Error #2111: Security.disableAVM1Loading is true so the current load of the ActionScript 1.0/2.0 SWF file has been blocked.",
+            );
+            let security_error_event_cls = activation.avm2().classes().securityerrorevent;
+            let event_type = AvmString::new_ascii_static(activation.gc(), b"securityError");
+            let security_error_evt = Avm2EventObject::from_class_and_args(
+                &mut activation,
+                security_error_event_cls,
+                &[
+                    event_type.into(),
+                    false.into(),
+                    false.into(),
+                    text.into(),
+                    2111.into(),
+                ],
+            );
+            Avm2::dispatch_event(activation.context, security_error_evt, loader_info.into());
+            if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
+                loader.loader_status = LoaderStatus::Failed;
+            }
+            return Ok(());
+        }
+
         let movie = SwfMovie::new(uc.gc(), movie);
 
         match uc.load_manager.get_loader_mut(handle) {
@@ -2178,15 +2344,11 @@ impl<'gc> MovieLoader<'gc> {
                             mc.compressed_loaded_bytes() as usize,
                             mc.compressed_total_bytes() as usize,
                         )?;
-                        // Timffle: constructed when the next frame starts, like a
-                        // downloaded movie (see `LoadManager::preload_tick`); Ruffle used
+                        // Timffle: constructed in the next frame after `enterFrame`, like a
+                        // downloaded movie (see `LoadManager::construct_parsed`); Ruffle used
                         // a post-frame callback, which left a tick boundary between the
                         // constructor and `init`/`complete`.
-                        if let Some(loader) = uc.load_manager.get_loader_mut(handle) {
-                            loader.loader_status = LoaderStatus::Parsed;
-                            loader.http_status = 0;
-                            loader.redirected = false;
-                        }
+                        uc.load_manager.mark_parsed(handle, 0, false);
                     }
                 }
 
@@ -2198,7 +2360,6 @@ impl<'gc> MovieLoader<'gc> {
                         &mut ExecutionLimit::with_max_ops_and_time(10000, Duration::from_millis(1)),
                         status,
                         redirected,
-                        false,
                     )?;
                 };
 
@@ -2464,7 +2625,12 @@ impl<'gc> MovieLoader<'gc> {
             // and consequently are observed to have their currentFrame lag one
             // frame behind objects placed by the timeline (even if they were
             // both placed in the same frame to begin with).
-            mc.base().set_skip_next_enter_frame(true);
+            // Timffle: content constructed by `LoadManager::construct_parsed` is already
+            // past this frame's enter phase, so the next enterFrame is its first one and
+            // moves it to frame 2 (`loader_loadbytes_events`, real Flash).
+            if *uc.frame_phase != FramePhase::Construct {
+                mc.base().set_skip_next_enter_frame(true);
+            }
 
             let movie = movie.unwrap();
             let flashvars = movie.parameters();
@@ -2507,16 +2673,9 @@ impl<'gc> MovieLoader<'gc> {
                 .is_some_and(|m| m.avm2_constructor_failed());
 
             if !constructor_errored {
-                // This isn't completely correct - the 'large_preload' test observes
-                // the child being set after an 'enterFrame' call. However, our
-                // current logic should hopefully be good enough.
-                avm2_stub_method_context!(
-                    uc,
-                    "flash.display.Loader",
-                    "load",
-                    "addChild at the correct time"
-                );
-
+                // Timffle: this runs after the `enterFrame` broadcast of the frame
+                // following the download (`LoadManager::construct_parsed`), so `content`
+                // and the Loader's child appear exactly when they do in Flash Player.
                 loader_info.set_expose_content();
 
                 // Note that we do *not* use the 'addChild' method here:
@@ -2575,11 +2734,20 @@ impl<'gc> MovieLoader<'gc> {
             MovieLoaderVMData::Avm2 { loader_info, .. } => {
                 let current_movie = loader_info.loader_stream().movie();
 
+                // Timffle: remembered for `LoaderInfo.isURLInaccessible`.
+                loader_info.set_redirected(redirected);
                 loader_info
                     .set_loader_stream(LoaderStream::Swf(current_movie, dobj.unwrap()), uc.gc());
 
+                // Timffle: a downloaded AVM1 movie gets `init`/`httpStatus`/`complete`
+                // right after `added`, before its first frame script runs (Flash Player
+                // 32: `mixed_avm/avm2_loads_avm1_events`), like an image.
+                let avm1_download = vm_data.load_bytes_info().is_none()
+                    && dobj
+                        .and_then(|d| d.as_movie_clip())
+                        .is_some_and(|mc| !mc.movie().is_action_script_3());
                 if let Some(dobj) = dobj
-                    && dobj.as_movie_clip().is_none()
+                    && (dobj.as_movie_clip().is_none() || avm1_download)
                 {
                     loader_info.fire_init_and_complete_events(uc, status, redirected);
                 }
@@ -2909,6 +3077,263 @@ pub fn select_file_dialog_avm2<'gc>(
                 tracing::warn!("Error on file dialog: {:?}", err);
             }
         }
+
+        Ok(())
+    })
+}
+
+/// Timffle: `FileReferenceList.browse()`: the multi-file dialog from an AVM2 scope. On a
+/// selection, `fileList` is filled with one `FileReference` per file and `select` is
+/// dispatched; otherwise `cancel`.
+pub fn select_multi_file_dialog_avm2<'gc>(
+    uc: &UpdateContext<'gc>,
+    target_object: Avm2Object<'gc>,
+    dialog: MultiDialogResultFuture,
+) -> OwnedFuture<(), Error> {
+    use crate::avm2::globals::slots::flash_net_file_reference_list as list_slots;
+
+    let handle = Avm2ScriptObjectHandle::stash(
+        uc,
+        target_object
+            .as_script_object()
+            .expect("FileReferenceList is a plain script object"),
+    );
+
+    run_file_dialog(uc, dialog, move |uc, dialog_result| {
+        let target_object = Avm2Object::from(handle.fetch(uc));
+        let mut activation = Avm2Activation::from_nothing(uc);
+
+        match dialog_result {
+            Ok(MultiFileDialogResult::Selection(selections)) => {
+                let file_reference_class = activation.avm2().classes().filereference;
+                let mut files = Vec::with_capacity(selections.len());
+                for selection in selections {
+                    let file = match file_reference_class.construct(&mut activation, &[]) {
+                        Ok(file) => file,
+                        Err(err) => {
+                            tracing::warn!("Could not create a FileReference: {:?}", err);
+                            return Ok(());
+                        }
+                    };
+                    let file = file
+                        .as_object()
+                        .and_then(|o| o.as_file_reference())
+                        .expect("FileReference constructor made a FileReference");
+                    file.init_from_file_selection(selection);
+                    files.push(Some(file.into()));
+                }
+                let file_list = crate::avm2::ArrayObject::from_storage(
+                    activation.context,
+                    crate::avm2::ArrayStorage::from_storage(files),
+                );
+                if let Err(err) = target_object.set_slot(
+                    list_slots::_FILE_LIST,
+                    file_list.into(),
+                    &mut activation,
+                ) {
+                    tracing::warn!("Could not set fileList: {:?}", err);
+                    return Ok(());
+                }
+
+                let select_event =
+                    Avm2EventObject::bare_default_event(activation.context, "select");
+                Avm2::dispatch_event(activation.context, select_event, target_object);
+            }
+            Ok(MultiFileDialogResult::Canceled) => {
+                let cancel_event =
+                    Avm2EventObject::bare_default_event(activation.context, "cancel");
+                Avm2::dispatch_event(activation.context, cancel_event, target_object);
+            }
+            Err(err) => {
+                tracing::warn!("Error on file dialog: {:?}", err);
+            }
+        }
+
+        Ok(())
+    })
+}
+
+/// Timffle: `FileReference.download()` from an AVM2 scope: the save dialog (`select` with the
+/// chosen name, or `cancel`), then the request (`open`, `progress`, `complete` with the file
+/// written, or `httpStatus`/`ioError`). Nothing after the dialog is reported once
+/// `FileReference.cancel()` changed the object's generation.
+pub fn download_file_dialog_avm2<'gc>(
+    uc: &UpdateContext<'gc>,
+    target_object: FileReferenceObject<'gc>,
+    dialog: DialogResultFuture,
+    request: Request,
+    generation: u32,
+) -> OwnedFuture<(), Error> {
+    let player = uc.player_handle();
+    let handle = FileReferenceObjectHandle::stash(uc, target_object);
+    let url = request.url().to_string();
+
+    Box::pin(async move {
+        let dialog_result = dialog.await;
+
+        // Dialog is done, allow opening new dialogs
+        player.lock().unwrap().ui_mut().close_file_dialog();
+
+        let selected = player.lock().unwrap().update(|uc| {
+            let target = handle.fetch(uc);
+            if target.generation() != generation {
+                return false;
+            }
+            match dialog_result {
+                Ok(FileDialogResult::Selection(selection)) => {
+                    // `name` is known from the select event on, the rest after `complete`.
+                    target.init_from_file_selection(selection);
+                    let select_event = Avm2EventObject::bare_default_event(uc, "select");
+                    Avm2::dispatch_event(uc, select_event, target.into());
+                    true
+                }
+                Ok(FileDialogResult::Canceled) => {
+                    let cancel_event = Avm2EventObject::bare_default_event(uc, "cancel");
+                    Avm2::dispatch_event(uc, cancel_event, target.into());
+                    false
+                }
+                Err(err) => {
+                    tracing::warn!("Download dialog had an error {:?}", err);
+                    false
+                }
+            }
+        });
+        if !selected {
+            return Ok(());
+        }
+
+        // Doing this in two steps to prevent holding the player lock during fetch
+        let future = player.lock().unwrap().fetch(request, FetchReason::Other);
+        let download_res = wait_for_full_response(future).await;
+
+        player.lock().unwrap().update(|uc| {
+            let target = handle.fetch(uc);
+            if target.generation() != generation {
+                return;
+            }
+            let mut activation = Avm2Activation::from_nothing(uc);
+
+            match download_res {
+                Ok((body, _, _, _)) => {
+                    let open_event =
+                        Avm2EventObject::bare_default_event(activation.context, "open");
+                    Avm2::dispatch_event(activation.context, open_event, target.into());
+
+                    // The file now exists on disk: the properties describe it from here on.
+                    if let FileReference::FileDialogSelection(mut selection) =
+                        target.take_file_reference()
+                    {
+                        selection.write_and_refresh(&body);
+                        target.init_from_file_selection(selection);
+                    }
+
+                    let progress_event = Avm2EventObject::progress_event(
+                        &mut activation,
+                        "progress",
+                        body.len(),
+                        body.len(),
+                    );
+                    Avm2::dispatch_event(activation.context, progress_event, target.into());
+
+                    let complete_event =
+                        Avm2EventObject::bare_default_event(activation.context, "complete");
+                    Avm2::dispatch_event(activation.context, complete_event, target.into());
+                }
+                Err(err) => {
+                    activation
+                        .context
+                        .avm_trace(&format!("Error opening URL '{url}'"));
+                    if let Error::HttpNotOk(_, status, redirected, _) = err.error {
+                        let open_event =
+                            Avm2EventObject::bare_default_event(activation.context, "open");
+                        Avm2::dispatch_event(activation.context, open_event, target.into());
+                        let status_event =
+                            Avm2EventObject::http_status_event(&mut activation, status, redirected);
+                        Avm2::dispatch_event(activation.context, status_event, target.into());
+                    }
+                    let io_error_event =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2032", 2032);
+                    Avm2::dispatch_event(activation.context, io_error_event, target.into());
+                }
+            }
+        });
+
+        Ok(())
+    })
+}
+
+/// Timffle: `FileReference.upload()` from an AVM2 scope: POSTs `request` (already a
+/// multipart body) and reports `open`, `progress`, `complete`, `uploadCompleteData` (the
+/// server's answer), or `httpStatus`/`ioError`. Stops reporting once `cancel()` changed the
+/// object's generation.
+pub fn upload_file_avm2<'gc>(
+    uc: &UpdateContext<'gc>,
+    target_object: FileReferenceObject<'gc>,
+    request: Request,
+    total_size_bytes: usize,
+    generation: u32,
+) -> OwnedFuture<(), Error> {
+    let player = uc.player_handle();
+    let handle = FileReferenceObjectHandle::stash(uc, target_object);
+    let url = request.url().to_string();
+
+    Box::pin(async move {
+        // Doing this in two steps to prevent holding the player lock during fetch
+        let future = player.lock().unwrap().fetch(request, FetchReason::Other);
+        let result = wait_for_full_response(future).await;
+
+        player.lock().unwrap().update(|uc| {
+            let target = handle.fetch(uc);
+            if target.generation() != generation {
+                return;
+            }
+            let mut activation = Avm2Activation::from_nothing(uc);
+
+            let open_event = Avm2EventObject::bare_default_event(activation.context, "open");
+            Avm2::dispatch_event(activation.context, open_event, target.into());
+
+            match result {
+                Ok((body, _, _, _)) => {
+                    let progress_event = Avm2EventObject::progress_event(
+                        &mut activation,
+                        "progress",
+                        total_size_bytes,
+                        total_size_bytes,
+                    );
+                    Avm2::dispatch_event(activation.context, progress_event, target.into());
+
+                    let complete_event =
+                        Avm2EventObject::bare_default_event(activation.context, "complete");
+                    Avm2::dispatch_event(activation.context, complete_event, target.into());
+
+                    let data_event_class = activation.avm2().classes().dataevent;
+                    let event_type = AvmString::new_utf8(activation.gc(), "uploadCompleteData");
+                    let data = AvmString::new_utf8(
+                        activation.gc(),
+                        String::from_utf8_lossy(&body).as_ref(),
+                    );
+                    let data_event = Avm2EventObject::from_class_and_args(
+                        &mut activation,
+                        data_event_class,
+                        &[event_type.into(), false.into(), false.into(), data.into()],
+                    );
+                    Avm2::dispatch_event(activation.context, data_event, target.into());
+                }
+                Err(err) => {
+                    activation
+                        .context
+                        .avm_trace(&format!("Error opening URL '{url}'"));
+                    if let Error::HttpNotOk(_, status, redirected, _) = err.error {
+                        let status_event =
+                            Avm2EventObject::http_status_event(&mut activation, status, redirected);
+                        Avm2::dispatch_event(activation.context, status_event, target.into());
+                    }
+                    let io_error_event =
+                        Avm2EventObject::io_error_event(&mut activation, "Error #2038", 2038);
+                    Avm2::dispatch_event(activation.context, io_error_event, target.into());
+                }
+            }
+        });
 
         Ok(())
     })

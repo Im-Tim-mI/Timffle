@@ -1,6 +1,4 @@
 package flash.display {
-    import __ruffle__.stub_method;
-
     import flash.geom.Matrix;
 
     [Ruffle(Abstract)]
@@ -26,10 +24,10 @@ package flash.display {
             focalPointRatio:Number = 0
         ):void;
 
+        // Timffle: the shader is evaluated once over the fill's bounds when the shape is
+        // first rendered and used as a bitmap fill (see Drawing::add_shader_fill).
         [API("662")]
-        public function beginShaderFill(shader:Shader, matrix:Matrix = null):void {
-            stub_method("flash.display.Graphics", "beginShaderFill");
-        }
+        public native function beginShaderFill(shader:Shader, matrix:Matrix = null):void;
 
         [Ruffle(FastCall)]
         public native function clear():void;
@@ -117,13 +115,35 @@ package flash.display {
             culling:String = "none"
         ):void;
 
+        // Timffle: like Flash's playerglobal, a GraphicsPath item goes through
+        // drawPathObject() -> drawPath() (visible in error stack traces and sharing
+        // drawPath's fill-group rules); other items are handled natively one by one.
         [API("662")]
-        public native function drawGraphicsData(graphicsData:Vector.<IGraphicsData>):void;
-
-        [API("662")]
-        public function lineShaderStyle(shader:Shader, matrix:Matrix = null):void {
-            stub_method("flash.display.Graphics", "lineShaderStyle");
+        public function drawGraphicsData(graphicsData:Vector.<IGraphicsData>):void {
+            if (graphicsData == null) {
+                Error.throwError(TypeError, 2007, "graphicsData");
+            }
+            for (var i:int = 0; i < graphicsData.length; i++) {
+                var item:IGraphicsData = graphicsData[i];
+                if (item is GraphicsPath) {
+                    this.drawPathObject(GraphicsPath(item));
+                } else if (item != null) {
+                    this.drawGraphicsDataItem(item);
+                }
+            }
         }
+
+        private function drawPathObject(path:GraphicsPath):void {
+            if (path.commands != null && path.data != null) {
+                this.drawPath(path.commands, path.data, path.winding);
+            }
+        }
+
+        private native function drawGraphicsDataItem(item:IGraphicsData):void;
+
+        // Timffle: like beginShaderFill, as the stroke's fill.
+        [API("662")]
+        public native function lineShaderStyle(shader:Shader, matrix:Matrix = null):void;
 
         [API("662")]
         public native function lineBitmapStyle(

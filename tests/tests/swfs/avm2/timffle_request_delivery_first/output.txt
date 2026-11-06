@@ -1,0 +1,72 @@
+ctor url=file at=0 k=loader,urlloader,urlstream,sound,bytes
+go from ctor f=0
+  [loader] started (f=0)
+  [urlloader] started (f=0)
+  [urlstream] started (f=0)
+  [sound] started (f=0)
+  [bytes4(instance3)] progress 0/633 (f=0)
+  [bytes4(instance3)] progress 633/633 (f=0)
+  [bytes] started (f=0)
+frameConstructed 0
+exitFrame 0
+  [root] init (f=0)
+  [root] progress 5509/5509 (f=0)
+  [root] complete (f=0)
+enterFrame 1
+    A ctor instance4
+frameConstructed 1
+exitFrame 1
+  [bytes4(instance3)] init (f=1)
+  [bytes4(instance3)] complete (f=1)
+  [loader0(instance1)] open (f=1)
+  [loader0(instance1)] progress 0/633 (f=1)
+  [loader0(instance1)] progress 633/633 (f=1)
+  [urlloader] open (f=1)
+  [urlloader] progress 6/6 (f=1)
+  [urlloader] httpStatus (f=1)
+  [urlloader] complete (f=1)
+  [urlstream] open (f=1)
+  [urlstream] progress 6/6 (f=1)
+  [urlstream] httpStatus (f=1)
+  [urlstream] complete (f=1)
+  [sound] open (f=1)
+  [sound] progress 0/4180 (f=1)
+  [sound] progress 4180/4180 (f=1)
+  [sound] complete (f=1)
+enterFrame 2
+    A ctor instance2
+frameConstructed 2
+exitFrame 2
+  [loader0(instance1)] init (f=2)
+  [loader0(instance1)] httpStatus (f=2)
+  [loader0(instance1)] complete (f=2)
+enterFrame 3
+frameConstructed 3
+exitFrame 3
+enterFrame 4
+frameConstructed 4
+exitFrame 4
+enterFrame 5
+frameConstructed 5
+exitFrame 5
+enterFrame 6
+frameConstructed 6
+exitFrame 6
+enterFrame 7
+frameConstructed 7
+exitFrame 7
+enterFrame 8
+frameConstructed 8
+exitFrame 8
+enterFrame 9
+frameConstructed 9
+exitFrame 9
+enterFrame 10
+frameConstructed 10
+exitFrame 10
+enterFrame 11
+frameConstructed 11
+exitFrame 11
+enterFrame 12
+frameConstructed 12
+exitFrame 12

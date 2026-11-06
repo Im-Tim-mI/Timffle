@@ -34,8 +34,12 @@ mod library;
 pub mod limits;
 pub mod loader;
 mod local_connection;
+/// Timffle: memory accounting for `System.totalMemory` and friends.
+pub mod memory;
 mod net_connection;
 mod orphan_manager;
+/// Timffle: wheel notches and smooth scrolling → Flash `MouseEvent.delta`.
+pub mod wheel;
 pub mod pixel_bender;
 mod player;
 mod prelude;

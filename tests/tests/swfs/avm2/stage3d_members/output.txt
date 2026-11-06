@@ -1,0 +1,5 @@
+Context3D.supportsVideoTexture: false
+new VideoTexture(): 2012
+TextureBase.dispose twice: ok
+stage3Ds: 4
+context3D before request: null

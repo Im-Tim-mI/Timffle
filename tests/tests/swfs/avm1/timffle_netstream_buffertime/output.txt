@@ -1,0 +1,7 @@
+default bufferTime 0
+setBufferTime(0.5) -> 0.5
+setBufferTime(NaN) -> 4294967.295
+setBufferTime(0) -> 0.1
+setBufferTime(0.05) -> 0.1
+setBufferTime(-1) -> 0.1
+after play 0.1

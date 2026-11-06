@@ -736,6 +736,20 @@ impl AudioMixer {
         self.sounds.get(sound).map(|s| &s.format)
     }
 
+    /// Timffle: see `AudioBackend::sound_samples`.
+    pub fn sound_samples(
+        &self,
+        sound_handle: SoundHandle,
+    ) -> Option<(Box<dyn super::SoundSampleSource>, u32)> {
+        let sound = self.sounds.get(sound_handle)?;
+        let data = Cursor::new(ArcAsRef(sound.data.clone()));
+        let mut decoder = decoders::make_decoder(&sound.format, data).ok()?;
+        for _ in 0..sound.skip_sample_frames {
+            decoder.next();
+        }
+        Some((Box::new(DecoderSampleSource(decoder)), sound.num_sample_frames))
+    }
+
     /// Sets the sound transform for the given playing sound.
     pub fn set_sound_transform(
         &mut self,
@@ -851,6 +865,24 @@ impl AsRef<[u8]> for SoundData {
             SoundData::Movie(slice) => slice.data(),
             SoundData::Owned(data) => data,
         }
+    }
+}
+
+/// Timffle: a `Decoder` exposed as `SoundSampleSource` for `Sound.extract()`.
+struct DecoderSampleSource(Box<dyn Decoder>);
+
+impl Iterator for DecoderSampleSource {
+    type Item = [i16; 2];
+
+    #[inline]
+    fn next(&mut self) -> Option<[i16; 2]> {
+        self.0.next()
+    }
+}
+
+impl super::SoundSampleSource for DecoderSampleSource {
+    fn sample_rate(&self) -> u16 {
+        self.0.sample_rate()
     }
 }
 
@@ -1237,6 +1269,13 @@ macro_rules! impl_audio_mixer_backend {
         #[inline]
         fn get_sound_format(&self, sound: SoundHandle) -> Option<&swf::SoundFormat> {
             self.$mixer.get_sound_format(sound)
+        }
+
+        fn sound_samples(
+            &self,
+            sound: SoundHandle,
+        ) -> Option<(Box<dyn $crate::backend::audio::SoundSampleSource>, u32)> {
+            self.$mixer.sound_samples(sound)
         }
 
         #[inline]

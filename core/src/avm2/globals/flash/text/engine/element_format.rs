@@ -547,3 +547,60 @@ pub fn set_locked<'gc>(
     this.set_locked(args.get_bool(0));
     Ok(Value::Undefined)
 }
+
+// Timffle: ascent / (ascent + descent) of the font this format resolves to,
+// used by `getFontMetrics` to place the em box relative to the baseline.
+pub fn font_ascent_ratio<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this
+        .as_object()
+        .unwrap()
+        .as_element_format_object()
+        .unwrap();
+    let fd = this.font_description();
+    let font_name = fd.font_name();
+    let name = font_name.to_utf8_lossy();
+    let bold = fd.font_weight() == crate::fte::FontWeightValue::Bold;
+    let italic = fd.font_posture() == crate::fte::FontPostureValue::Italic;
+    let movie = activation.caller_movie_or_root();
+    let font = {
+        let context = &mut *activation.context;
+        context
+            .library
+            .get_embedded_font_by_name(
+                &name,
+                crate::font::FontType::EmbeddedCFF,
+                bold,
+                italic,
+                Some(movie),
+            )
+            .or_else(|| {
+                context.library.get_or_load_device_font(
+                    &name,
+                    bold,
+                    italic,
+                    &*context.ui,
+                    &mut *context.renderer,
+                    context.gc_context,
+                )
+            })
+    };
+    let ratio = match font {
+        Some(font) => {
+            use crate::font::FontLike;
+            let metrics = font.metrics();
+            let ascent = f64::from(metrics.ascent);
+            let descent = f64::from(metrics.descent);
+            if ascent + descent > 0.0 {
+                ascent / (ascent + descent)
+            } else {
+                0.8
+            }
+        }
+        None => 0.8,
+    };
+    Ok(ratio.into())
+}

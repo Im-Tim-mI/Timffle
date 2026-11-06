@@ -3,26 +3,11 @@
 use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::function::FunctionArgs;
-use crate::avm2::object::{WorkerDomainObject, WorkerObject};
-use crate::avm2::parameters::ParametersExt;
+use crate::avm2::object::WorkerDomainObject;
 use crate::avm2::value::Value;
-use crate::avm2_stub_method;
 
-/// Implements `WorkerDomain.createWorker`
-pub fn create_worker<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
-    args: FunctionArgs<'_, 'gc>,
-) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_method!(activation, "flash.system.WorkerDomain", "createWorker");
-
-    let _swf = args.get_object(activation, 0, "swf")?;
-    let _give_app_privileges = args.get_bool(1);
-
-    let worker = WorkerObject::new(activation);
-
-    Ok(worker.into())
-}
+// Timffle: `WorkerDomain.createWorker` moved to WorkerDomain.as (it answers
+// null, as Flash does without concurrency).
 
 pub fn instantiate_internal<'gc>(
     activation: &mut Activation<'_, 'gc>,

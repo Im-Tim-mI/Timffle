@@ -1,0 +1,80 @@
+mouseWheelEnabled default: true
+mouseWheelEnabled after set: false
+useRichTextClipboard default: false
+useRichTextClipboard after set: true
+textInteractionMode: normal normal=true
+text: Hello bold world
+
+getRawText: Hello bold world
+
+getXMLText(): <flashrichtext version="1">
+  <textformat font="Times New Roman" size="12" color="0" bold="false" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">(Hello )</textformat>
+  <textformat font="Times New Roman" size="12" color="0" bold="true" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">(bold)</textformat>
+  <textformat font="Times New Roman" size="12" color="0" bold="false" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">( world
+)</textformat>
+</flashrichtext>
+getXMLText(6, 10): <flashrichtext version="1">
+  <textformat font="Times New Roman" size="12" color="0" bold="true" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">(bold)</textformat>
+</flashrichtext>
+getXMLText(-5, 99): <flashrichtext version="1">
+  <textformat font="Times New Roman" size="12" color="0" bold="false" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">(Hello )</textformat>
+  <textformat font="Times New Roman" size="12" color="0" bold="true" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">(bold)</textformat>
+  <textformat font="Times New Roman" size="12" color="0" bold="false" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">( world
+)</textformat>
+</flashrichtext>
+getXMLText(3, 3): [<flashrichtext version="1">
+</flashrichtext>]
+insertXMLText(HTML): 2138
+after insertXMLText text: Hello fancy world
+
+after insertXMLText html: <P ALIGN="LEFT"><FONT FACE="Times New Roman" SIZE="12" COLOR="#000000" LETTERSPACING="0" KERNING="0">Hello <B><I>fancy</I></B> world</FONT></P>
+format at 6: italic=true bold=true
+format at 0: italic=false bold=false
+after insertXMLText at 0: Oh Hello fancy world
+ underline=true
+insertXMLText past end: 2006
+after insertXMLText past end: Oh Hello fancy world
+
+plain getXMLText: <flashrichtext version="1">
+  <textformat font="Times New Roman" size="12" color="0" bold="false" italic="false" underline="false" url="" target="" align="left" leftMargin="0" rightMargin="0" indent="0" leading="0" blockIndent="0" kerning="false" letterSpacing="0" display="block">(plain)</textformat>
+</flashrichtext>
+plain getRawText: plain
+getImageReference(pic): null
+getImageReference(nope): null
+isFontCompatible Arial regular: false
+isFontCompatible _sans bold: false
+isFontCompatible bad style: 2008 ArgumentError: Error #2008: Parameter fontStyle must be one of the accepted values.
+isFontCompatible null name: 2007 TypeError: Error #2007: Parameter fontName must be non-null.
+isFontCompatible null style: 2007 TypeError: Error #2007: Parameter fontStyle must be non-null.
+TextRenderer.antiAliasType default: default
+TextRenderer.antiAliasType set: off
+TextRenderer.antiAliasType bad: no error
+TextRenderer.antiAliasType null: 2007 TypeError: Error #2007: Parameter antiAliasType must be non-null.
+TextRenderer.antiAliasType kept: off
+TextRenderer.displayMode default: crt
+TextRenderer.displayMode set: lcd
+TextRenderer.displayMode set: crt
+TextRenderer.displayMode bad: no error
+TextRenderer.displayMode kept: crt
+TextRenderer.maxLevel default: 4
+TextRenderer.maxLevel set: 7
+TextRenderer.maxLevel set: 3
+TextRenderer.maxLevel bad: no error
+TextRenderer.maxLevel kept: 3
+setAdvancedAntiAliasingTable ok: no error
+setAdvancedAntiAliasingTable again: no error
+setAdvancedAntiAliasingTable empty: no error
+setAdvancedAntiAliasingTable bad style: no error
+setAdvancedAntiAliasingTable bad color: no error
+setAdvancedAntiAliasingTable bad entry: 2005 TypeError: Error #2005: Parameter advancedAntiAliasingTable is of the incorrect type. Should be type CSMSettings.
+setAdvancedAntiAliasingTable null font: 2007 TypeError: Error #2007: Parameter fontName must be non-null.
+setAdvancedAntiAliasingTable null table: no error
+enumerateFonts(false) is Array: true length 0
+enumerateFonts(true) is Array: true
+enumerateFonts(true) holds the embedded ones: true
+enumerateFonts(true) types ok: true sorted: true
+enumerateFonts(true) has device fonts: true
+scroller maxScrollV>1: true scrollV=1
+after wheel with mouseWheelEnabled=false: scrollV=1
+scroll event: scrollV=4
+after wheel with mouseWheelEnabled=true: scrollV>1=true

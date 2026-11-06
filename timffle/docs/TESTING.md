@@ -23,7 +23,7 @@
 
 **想法：** 把一個小的 ActionScript 3 測試程式（用 Haxe 編成 SWF）分別在真 Flash Player 32 和在 Ruffle 裡執行，兩邊都把「觀察到的行為」一行一行回報給本機的測試伺服器，再逐行比對。真 Flash 的輸出存成**黃金答案**（`difftest/expected/<測試>.txt`）；之後只要 Ruffle 的輸出與黃金答案相同，就代表行為與 Flash 一致。以真實播放器的輸出當標準，比對規格書或猜測可靠得多——本專案的 3D、`Matrix3D`、命中測試規則都是這樣量出來的（見 [`FLASH-NOTES.md`](FLASH-NOTES.md)）。
 
-目前收錄 30 個黃金答案：`t*`（LocalConnection、URLStream 基本行為）、`r*`（回歸：循環參照、`client` 為原始型別、`URLStream` 狀態與 API、AMF3 循環、`Loader`／`URLLoader` 取消與事件時序）、`d13`～`d40`（3D、`Matrix3D`、`Utils3D`、`BitmapData.draw`）。需要遊戲檔案才能跑的測試**不在** repo 內。
+目前收錄 36 個黃金答案：`lt*`（`Loader` 內容的建構時機：哪一個影格、哪一個階段建構、何時發 `init`／`complete`；SWF 由 `src/loadtime/build.sh` 產生，需要 Java（asc.jar）），`t*`（LocalConnection、URLStream 基本行為）、`r*`（回歸：循環參照、`client` 為原始型別、`URLStream` 狀態與 API、AMF3 循環、`Loader`／`URLLoader` 取消與事件時序）、`d13`～`d40`（3D、`Matrix3D`、`Utils3D`、`BitmapData.draw`）。需要遊戲檔案才能跑的測試**不在** repo 內。
 
 ### 環境變數
 
@@ -46,10 +46,31 @@ RUFFLE_BIN=/path/to/ruffle ./run_all.sh               # 只跑 Ruffle，與 expe
 RUFFLE_BIN=/path/to/ruffle ./run_all.sh d19render3d   # 只跑一個
 RUFFLE_BIN=/path/to/ruffle ./run_all.sh --flash       # 也跑真 Flash（需要 FLASH_EXE 與 Wine）
 ./compare.py --bless 新測試                           # 確認 Flash 的輸出可信後，存成新的黃金答案
+
+# 幾個人同時量測時各用自己的埠：伺服器與 runner 讀 DIFFTEST_HTTP_PORT／DIFFTEST_SOCK_PORT，
+# SWF 編譯時加 -D harness_base=http://127.0.0.1:<埠>（H.BASE；沒給就是 18765）
+DIFFTEST_HTTP_PORT=18865 DIFFTEST_SOCK_PORT=18866 python3 server.py
+./build.sh S1Global s1global -D harness -D harness_base=http://127.0.0.1:18865 -swf-version 32
 python3 verify_flash_goldens.py                       # 只檢查最新一次 Flash 輸出是否仍等於黃金答案
 ```
 
+**要送滑鼠輸入的黃金答案**放在 `difftest/expected-interactive/`（不在 `run_all.sh` 裡）：`d66movement`（`MouseEvent.movementX/Y`、`Stage.mouseLock`）由 `drive_movement.py <display>` 在私有 Xvfb 用 XTest 送點擊、滾輪、全螢幕與相對移動；設 `RUFFLE_BIN`（與 `RUFFLE_HOME`）改跑桌面版，報告寫到 `results/ruffle/`。SWF 要用 `./build.sh D66Movement d66movement -D harness -D harness_base=http://127.0.0.1:<埠> -swf-version 32` 編。
+
 比對時會忽略以 `~` 開頭的行（計時、版本、各播放器容許不同的原始數值）。一個黃金答案**至少要跑兩次真 Flash**確認輸出穩定才存。
+
+### 讓 Flash 用測試框架的裝置字型（錄影像黃金圖）
+
+Rust 測試框架在 `with_default_font = true` 時把所有內建名稱（`_sans`、`_serif`、`_typewriter`、日文的）都畫成 Ruffle 內嵌的 Noto Sans 子集（`core/assets/notosans.subset.ttf.gz`，只有 regular）。Wine 下的 Flash 原本用系統的 Arial 替代字型（Liberation Sans），用真 Flash 錄 `output.expected.png` 時，裝置字就會因為字型不同而多出幾千個離群點。錄之前在**自己的** prefix 裝同一個字型：
+
+```sh
+WINE_DIR=/path/to/wine/bin ./install_test_fonts.sh /path/to/your-wineprefix
+```
+
+- `make_test_fonts.py`（不需要第三方模組）從子集做出兩個檔：`NotoSans-TestRegular.ttf`（`usWinAscent/Descent` 改成 Ruffle 用的 ascender／descender 1069／293；合併過數學符號的子集原本是 3105／2550，GDI 用這兩個值排行）與 `NotoSans-TestBold.ttf`（同樣的輪廓，標成粗體：框架要粗體也是畫 regular，GDI 才不會自己加粗）。家族名是 `Timffle Test Sans`，不和主機 fontconfig 的完整 Noto Sans（輪廓不同、有真的粗體）混在一起。
+- 腳本把兩個檔複製到 `drive_c/windows/Fonts`、寫進 `HKLM\Software\Microsoft\Windows NT\CurrentVersion\Fonts`，再在 `HKLM\…\FontSubstitutes` 與 `HKCU\Software\Wine\Fonts\Replacements` 把 Arial、Times New Roman、Courier New、Verdana、Tahoma、Helvetica、Times、Courier 與 MS Gothic／Mincho 系列指到它。這會改變那個 prefix 裡所有程式的字，**不要對共用的 prefix 跑**。
+- 驗證：Flash 32 的 `TextField.getLineMetrics` 對 `_sans`、`_serif`、`_typewriter`、Arial 等名稱（一般與粗體）都回與 `Timffle Test Sans` 相同的寬度與 ascent／descent（9 px 的 "Simple Stage3D Sprite Demo v1 - 49 created"：寬 183、ascent 10、descent 3；Liberation Sans 是 188／8／2）。
+- 剩下的差異是點陣化：Flash 用提示＋反鋸齒的字形畫裝置字（與 `stage.quality` 無關，LOW 也一樣），測試框架在 `quality = "low"` 下畫無反鋸齒的輪廓。影像比對沒有遮罩，這部分仍由 `max_outliers` 容納。
+- 用過的錄製：`avm2/stage3d_bitmap`、`avm2/away3d_advanced_shallow_water_demo`（2026-11-06，各自的 `test.toml` 有方法）。
 
 ### 新增一個測試
 

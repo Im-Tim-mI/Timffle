@@ -1,0 +1,140 @@
+# pbj loaded bytes=510 447
+whole (columns) 0: 06 0F 18 21 2A 33 3C 45
+whole (columns) 1: 06 0F 18 21 2A 33 3C 45
+whole (columns) 2: 06 0F 18 21 2A 33 3C 45
+whole (columns) 3: 06 0F 18 21 2A 33 3C 45
+whole (columns) 4: 06 0F 18 21 2A 33 3C 45
+whole (columns) 5: 06 0F 18 21 2A 33 3C 45
+whole (columns) 6: 06 0F 18 21 2A 33 3C 45
+whole (columns) 7: 06 0F 18 21 2A 33 3C 45
+whole (rows) 0: 06 06 06 06 06 06 06 06
+whole (rows) 1: 0F 0F 0F 0F 0F 0F 0F 0F
+whole (rows) 2: 18 18 18 18 18 18 18 18
+whole (rows) 3: 21 21 21 21 21 21 21 21
+whole (rows) 4: 2A 2A 2A 2A 2A 2A 2A 2A
+whole (rows) 5: 33 33 33 33 33 33 33 33
+whole (rows) 6: 3C 3C 3C 3C 3C 3C 3C 3C
+whole (rows) 7: 45 45 45 45 45 45 45 45
+sub 2,2,4,4 at 1,1 (columns) 0: 06 0F 18 21 2A -- -- --
+sub 2,2,4,4 at 1,1 (columns) 1: 06 0F 18 21 2A -- -- --
+sub 2,2,4,4 at 1,1 (columns) 2: 06 0F 18 21 2A -- -- --
+sub 2,2,4,4 at 1,1 (columns) 3: 06 0F 18 21 2A -- -- --
+sub 2,2,4,4 at 1,1 (columns) 4: 06 0F 18 21 2A -- -- --
+sub 2,2,4,4 at 1,1 (columns) 5: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 1,1 (columns) 6: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 1,1 (columns) 7: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 1,1 (rows) 0: 06 06 06 06 06 -- -- --
+sub 2,2,4,4 at 1,1 (rows) 1: 0F 0F 0F 0F 0F -- -- --
+sub 2,2,4,4 at 1,1 (rows) 2: 18 18 18 18 18 -- -- --
+sub 2,2,4,4 at 1,1 (rows) 3: 21 21 21 21 21 -- -- --
+sub 2,2,4,4 at 1,1 (rows) 4: 2A 2A 2A 2A 2A -- -- --
+sub 2,2,4,4 at 1,1 (rows) 5: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 1,1 (rows) 6: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 1,1 (rows) 7: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 0: 06 0F 18 21 -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 1: 06 0F 18 21 -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 2: 06 0F 18 21 -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 3: 06 0F 18 21 -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 4: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 5: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 6: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (columns) 7: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 0: 06 06 06 06 -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 1: 0F 0F 0F 0F -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 2: 18 18 18 18 -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 3: 21 21 21 21 -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 4: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 5: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 6: -- -- -- -- -- -- -- --
+sub 2,2,4,4 at 0,0 (rows) 7: -- -- -- -- -- -- -- --
+sub 0,0,4,4 at 2,2 (columns) 0: -- -- -- -- -- -- -- --
+sub 0,0,4,4 at 2,2 (columns) 1: -- -- -- -- -- -- -- --
+sub 0,0,4,4 at 2,2 (columns) 2: -- -- 18 21 2A 33 3C 45
+sub 0,0,4,4 at 2,2 (columns) 3: -- -- 18 21 2A 33 3C 45
+sub 0,0,4,4 at 2,2 (columns) 4: -- -- 18 21 2A 33 3C 45
+sub 0,0,4,4 at 2,2 (columns) 5: -- -- 18 21 2A 33 3C 45
+sub 0,0,4,4 at 2,2 (columns) 6: -- -- 18 21 2A 33 3C 45
+sub 0,0,4,4 at 2,2 (columns) 7: -- -- 18 21 2A 33 3C 45
+sub 0,0,4,4 at 2,2 (rows) 0: -- -- -- -- -- -- -- --
+sub 0,0,4,4 at 2,2 (rows) 1: -- -- -- -- -- -- -- --
+sub 0,0,4,4 at 2,2 (rows) 2: -- -- 18 18 18 18 18 18
+sub 0,0,4,4 at 2,2 (rows) 3: -- -- 21 21 21 21 21 21
+sub 0,0,4,4 at 2,2 (rows) 4: -- -- 2A 2A 2A 2A 2A 2A
+sub 0,0,4,4 at 2,2 (rows) 5: -- -- 33 33 33 33 33 33
+sub 0,0,4,4 at 2,2 (rows) 6: -- -- 3C 3C 3C 3C 3C 3C
+sub 0,0,4,4 at 2,2 (rows) 7: -- -- 45 45 45 45 45 45
+sub 4,0,2,8 at 1,0 (columns) 0: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 1: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 2: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 3: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 4: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 5: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 6: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (columns) 7: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 0: 06 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 1: 0F -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 2: 18 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 3: 21 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 4: 2A -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 5: 33 -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 6: 3C -- -- -- -- -- -- --
+sub 4,0,2,8 at 1,0 (rows) 7: 45 -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 0: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 1: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 2: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 3: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 4: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 5: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 6: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (columns) 7: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 0: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 1: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 2: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 3: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 4: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 5: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 6: -- -- -- -- -- -- -- --
+clamped 6,6,4,4 at 0,0 (rows) 7: -- -- -- -- -- -- -- --
+whole at 5,5 (columns) 0: -- -- -- -- -- -- -- --
+whole at 5,5 (columns) 1: -- -- -- -- -- -- -- --
+whole at 5,5 (columns) 2: -- -- -- -- -- -- -- --
+whole at 5,5 (columns) 3: -- -- -- -- -- -- -- --
+whole at 5,5 (columns) 4: -- -- -- -- -- -- -- --
+whole at 5,5 (columns) 5: -- -- -- -- -- 33 3C 45
+whole at 5,5 (columns) 6: -- -- -- -- -- 33 3C 45
+whole at 5,5 (columns) 7: -- -- -- -- -- 33 3C 45
+whole at 5,5 (rows) 0: -- -- -- -- -- -- -- --
+whole at 5,5 (rows) 1: -- -- -- -- -- -- -- --
+whole at 5,5 (rows) 2: -- -- -- -- -- -- -- --
+whole at 5,5 (rows) 3: -- -- -- -- -- -- -- --
+whole at 5,5 (rows) 4: -- -- -- -- -- -- -- --
+whole at 5,5 (rows) 5: -- -- -- -- -- 33 33 33
+whole at 5,5 (rows) 6: -- -- -- -- -- 3C 3C 3C
+whole at 5,5 (rows) 7: -- -- -- -- -- 45 45 45
+empty 2,2,0,0 (columns) 0: 06 0F 18 21 -- -- -- --
+empty 2,2,0,0 (columns) 1: 06 0F 18 21 -- -- -- --
+empty 2,2,0,0 (columns) 2: 06 0F 18 21 -- -- -- --
+empty 2,2,0,0 (columns) 3: 06 0F 18 21 -- -- -- --
+empty 2,2,0,0 (columns) 4: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (columns) 5: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (columns) 6: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (columns) 7: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (rows) 0: 06 06 06 06 -- -- -- --
+empty 2,2,0,0 (rows) 1: 0F 0F 0F 0F -- -- -- --
+empty 2,2,0,0 (rows) 2: 18 18 18 18 -- -- -- --
+empty 2,2,0,0 (rows) 3: 21 21 21 21 -- -- -- --
+empty 2,2,0,0 (rows) 4: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (rows) 5: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (rows) 6: -- -- -- -- -- -- -- --
+empty 2,2,0,0 (rows) 7: -- -- -- -- -- -- -- --
+src 8 dst 12 rect x=0 w=8 at 0: 06 0E 16 1D 25 2D 34 3C -- -- -- --
+src 8 dst 12 rect x=2 w=4 at 1: 06 0E 16 1D 25 -- -- -- -- -- -- --
+src 8 dst 12 rect x=0 w=4 at 6: -- -- -- -- -- -- 34 3C 00 00 00 00
+src 8 dst 12 rect x=1 w=2 at 3: -- 0E 16 1D 25 2D 34 3C 00 -- -- --
+src 12 dst 8 rect x=0 w=12 at 0: 06 0B 10 15 1A 1F 24 29
+src 12 dst 8 rect x=2 w=4 at 1: 06 0B 10 15 1A 1F 24 29
+src 12 dst 8 rect x=4 w=4 at 0: 06 0B 10 15 -- -- -- --
+src 12 dst 8 rect x=0 w=4 at 3: -- -- -- 15 1A 1F 24 29
+src 12 dst 12 rect x=3 w=2 at 1: 06 0B 10 15 1A 1F 24 -- -- -- -- --
+generateFilterRect (x=0, y=0, w=8, h=8)
+shader without an image input THREW ArgumentError #2167

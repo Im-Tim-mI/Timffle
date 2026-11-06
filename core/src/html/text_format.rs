@@ -1,6 +1,7 @@
 //! Classes that store formatting options
 
 use crate::context::UpdateContext;
+use crate::font::{FteGlyphGrid, OpenTypeFeatures};
 use crate::html::iterators::TextSpanIter;
 use crate::string::{Integer, SwfStrExt as _, Units, WStr, WString};
 use crate::tag_utils::SwfMovie;
@@ -152,6 +153,12 @@ pub struct TextFormat {
     pub url: Option<WString>,
     pub target: Option<WString>,
     pub display: Option<TextDisplay>,
+    /// Timffle: OpenType features of `flash.text.engine` text (from its
+    /// `ElementFormat`); TextFields never set them.
+    pub opentype: Option<OpenTypeFeatures>,
+    /// Timffle: the pixel grid `flash.text.engine` glyphs of an embedded CFF font snap
+    /// to (from the `FontDescription`); TextFields never set it.
+    pub fte_grid: Option<FteGlyphGrid>,
 }
 
 impl Default for TextFormat {
@@ -185,6 +192,8 @@ impl TextFormat {
             url: None,
             target: None,
             display: None,
+            opentype: None,
+            fte_grid: None,
         }
     }
 
@@ -263,6 +272,8 @@ impl TextFormat {
             bullet: Some(false),
             url: Some(WString::new()),
             target: Some(WString::new()),
+            opentype: None,
+            fte_grid: None,
         }
     }
 
@@ -361,6 +372,16 @@ impl TextFormat {
             } else {
                 None
             },
+            opentype: if self.opentype == rhs.opentype {
+                self.opentype
+            } else {
+                None
+            },
+            fte_grid: if self.fte_grid == rhs.fte_grid {
+                self.fte_grid
+            } else {
+                None
+            },
         }
     }
 
@@ -389,6 +410,8 @@ impl TextFormat {
             url: self.url.or(rhs.url),
             target: self.target.or(rhs.target),
             display: self.display.or(rhs.display),
+            opentype: self.opentype.or(rhs.opentype),
+            fte_grid: self.fte_grid.or(rhs.fte_grid),
         }
     }
 }
@@ -433,6 +456,10 @@ pub struct TextSpanFont {
     pub color: swf::Color,
     pub letter_spacing: f64,
     pub kerning: bool,
+    /// Timffle: see `TextFormat::opentype`.
+    pub opentype: Option<OpenTypeFeatures>,
+    /// Timffle: see `TextFormat::fte_grid`.
+    pub fte_grid: Option<FteGlyphGrid>,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -477,6 +504,8 @@ impl Default for TextSpanFont {
             },
             kerning: false,
             letter_spacing: 0.0,
+            opentype: None,
+            fte_grid: None,
         }
     }
 }
@@ -507,6 +536,14 @@ impl TextSpanFont {
 
         if let Some(letter_spacing) = &tf.letter_spacing {
             self.letter_spacing = *letter_spacing;
+        }
+
+        if let Some(opentype) = tf.opentype {
+            self.opentype = Some(opentype);
+        }
+
+        if let Some(fte_grid) = tf.fte_grid {
+            self.fte_grid = Some(fte_grid);
         }
     }
 }
@@ -638,6 +675,8 @@ impl TextSpan {
             url: Some(self.url.clone()),
             target: Some(self.target.clone()),
             display: Some(self.display),
+            opentype: self.font.opentype,
+            fte_grid: self.font.fte_grid,
         }
     }
 }

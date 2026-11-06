@@ -5,6 +5,11 @@ package flash.events {
         public static const GESTURE_ROTATE:String = "gestureRotate";
         public static const GESTURE_SWIPE:String = "gestureSwipe";
         public static const GESTURE_ZOOM:String = "gestureZoom";
+        // Timffle: AIR 24 constant. Flash Player 32 has it as undefined (standalone projector;
+        // avm2/all_classes/events/swf30), so it carries playerglobal 32.0's own mark (719),
+        // which Flash Player content never sees.
+        [API("719")]
+        public static const GESTURE_DIRECTIONAL_TAP:String = "gestureDirectionalTap";
 
         private var _offsetX:Number;
         private var _offsetY:Number;

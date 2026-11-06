@@ -920,6 +920,7 @@ pub fn make_error_1128<'gc>(
 make_error_fn!(make_error_1129, 1129, type_error);
 make_error_fn!(make_error_1131, 1131, type_error);
 make_error_fn!(make_error_1132, 1132, syntax_error);
+make_error_fn!(make_error_1000, 1000, error); // Timffle
 make_error_fn!(make_error_1504, 1504, error);
 make_error_fn!(make_error_1506, 1506, range_error);
 
@@ -958,6 +959,23 @@ pub fn make_error_2001<'gc>(
 
 make_error_fn!(make_error_2002, 2002, io_error);
 make_error_fn!(make_error_2003, 2003, security_error);
+
+// Timffle: Flash's generic cross-sandbox access error (`LoaderInfo` sandbox
+// bridges, `getLoaderInfoByDefinition`).
+#[inline(never)]
+#[cold]
+pub fn make_error_2047<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    property: &str,
+    caller: &str,
+    target: &str,
+) -> Error<'gc> {
+    make_error!(security_error(
+        activation,
+        error_message!(2047, property, caller, target),
+        2047,
+    ))
+}
 
 pub enum Error2004Type {
     Error,
@@ -1047,6 +1065,8 @@ pub fn make_error_2012<'gc>(
 make_error_fn!(make_error_2015, 2015, argument_error);
 make_error_fn!(make_error_2017, 2017, security_error);
 make_error_fn!(make_error_2018, 2018, security_error);
+// Timffle: `SharedObject.deleteAll`/`getDiskUsage` (AIR-only features).
+make_error_fn!(make_error_2014, 2014, error);
 
 #[inline(never)]
 #[cold]
@@ -1090,6 +1110,13 @@ pub fn make_error_2027<'gc>(
 make_error_fn!(make_error_2029, 2029, io_error);
 make_error_fn!(make_error_2030, 2030, eof_error);
 make_error_fn!(make_error_2037, 2037, error);
+// Timffle: a file dialog is already open (`FileReferenceList.browse`, `FileReference.download`).
+make_error_fn!(make_error_2041, 2041, illegal_operation_error);
+// Timffle: `Stage.mouseLock` set outside full-screen mode.
+make_error_fn!(make_error_3707, 3707, error);
+make_error_fn!(make_error_2052, 2052, argument_error);
+// Timffle: `Security.exactSettings` changed after the player used it.
+make_error_fn!(make_error_2054, 2054, security_error);
 make_error_fn!(make_error_2058, 2058, io_error);
 make_error_fn!(make_error_2067, 2067, error);
 make_error_fn!(make_error_2078, 2078, illegal_operation_error);
@@ -1110,6 +1137,21 @@ pub fn make_error_2085<'gc>(activation: &mut Activation<'_, 'gc>, param_name: &s
 make_error_fn!(make_error_2097, 2097, argument_error);
 make_error_fn!(make_error_2099, 2099, error);
 
+/// Timffle: a network SWF reached for a `file:` URL (`sendToURL`).
+#[inline(never)]
+#[cold]
+pub fn make_error_2148<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    swf_url: &str,
+    resource: &str,
+) -> Error<'gc> {
+    make_error!(security_error(
+        activation,
+        error_message!(2148, swf_url, resource),
+        2148,
+    ))
+}
+
 #[inline(never)]
 #[cold]
 pub fn make_error_2109<'gc>(
@@ -1126,6 +1168,10 @@ pub fn make_error_2109<'gc>(
 
 make_error_fn!(make_error_2126, 2126, argument_error);
 make_error_fn!(make_error_2130, 2130, error);
+// Timffle: `SharedObject.getRemote` without a usable remote path, and
+// `SharedObject.connect` without a server connection.
+make_error_fn!(make_error_2134, 2134, error);
+make_error_fn!(make_error_2139, 2139, error);
 
 #[inline(never)]
 #[cold]
@@ -1137,6 +1183,20 @@ pub fn make_error_2136<'gc>(activation: &mut Activation<'_, 'gc>) -> Error<'gc> 
 
 make_error_fn!(make_error_2150, 2150, argument_error);
 make_error_fn!(make_error_2162, 2162, argument_error);
+
+// Timffle: `ShaderJob.start()` with an image input that has no `input`.
+#[inline(never)]
+#[cold]
+pub fn make_error_2164<'gc>(activation: &mut Activation<'_, 'gc>, input_name: &str) -> Error<'gc> {
+    make_error!(argument_error(
+        activation,
+        error_message!(2164, input_name),
+        2164,
+    ))
+}
+
+// Timffle: `ShaderJob.start()` on a job that was already started.
+make_error_fn!(make_error_2172, 2172, argument_error);
 
 #[inline(never)]
 #[cold]
@@ -1151,12 +1211,22 @@ pub fn make_error_2165<'gc>(activation: &mut Activation<'_, 'gc>, input_name: &s
 make_error_fn!(make_error_2174, 2174, error);
 make_error_fn!(make_error_2175, 2175, error);
 
-// Currently we don't use this, see `globals::flash::system::system::set_clipboard`
+// Timffle: `System.setClipboard` outside user interaction (browser plugin);
+// only the web build raises it, so it is dead code elsewhere.
 make_error_fn!(
     #[allow(dead_code)]
     make_error_2176,
     2176,
-    error
+    security_error
+);
+// Timffle: `Clipboard.getData` outside an `Event.PASTE` handler.
+make_error_fn!(make_error_2179, 2179, security_error);
+// Timffle: `Clipboard` writes outside user interaction (browser plugin only).
+make_error_fn!(
+    #[allow(dead_code)]
+    make_error_2191,
+    2191,
+    security_error
 );
 
 make_error_fn!(make_error_2180, 2180, argument_error);
@@ -1188,6 +1258,8 @@ pub fn make_error_2187<'gc>(
 }
 
 make_error_fn!(make_error_3669, 3669, error);
+// Timffle: Stage3D objects used after dispose()
+make_error_fn!(make_error_3694, 3694, error);
 make_error_fn!(make_error_3670, 3670, argument_error);
 make_error_fn!(make_error_3671, 3671, argument_error);
 
@@ -1209,9 +1281,29 @@ make_error_fn!(
     argument_error
 );
 
+// Timffle: Stage3D texture uploads ("Miplevel too large", "Texture decoding
+// failed", RangeError "Bad input size" for a ByteArray that is too short).
+make_error_fn!(make_error_3674, 3674, argument_error);
+// Timffle: CubeTexture side outside 0..5 (measured on Flash 32).
+make_error_fn!(make_error_3673, 3673, argument_error);
+// Timffle: a Shader without byte code used as a fill (measured on Flash 32).
+make_error_fn!(make_error_2171, 2171, argument_error);
+// Timffle: a ShaderFilter whose shader has no image input (measured on Flash 32).
+make_error_fn!(make_error_2167, 2167, argument_error);
+make_error_fn!(make_error_3677, 3677, argument_error);
+make_error_fn!(make_error_3669_range, 3669, range_error);
+
+// Timffle: Context3D.setRenderToTexture colorOutputIndex (multiple render targets):
+// bit depth of all render targets must match / index outside [0..3] / needs the
+// standard profile.
+make_error_fn!(make_error_3761, 3761, argument_error);
+make_error_fn!(make_error_3770, 3770, argument_error);
+make_error_fn!(make_error_3779, 3779, argument_error);
 make_error_fn!(make_error_3771, 3771, argument_error);
 make_error_fn!(make_error_3772, 3772, argument_error);
 make_error_fn!(make_error_3773, 3773, argument_error);
+// Timffle: BitmapData.encode with JPEGXREncoderOptions.trimFlexBits above 15.
+make_error_fn!(make_error_3699, 3699, error);
 
 #[inline(never)]
 #[cold]
@@ -1260,6 +1352,12 @@ pub fn make_agal_upload_error<'gc>(
             ),
             3646
         ),
+        // Timffle: `oc4` and above in a fragment program (multiple render
+        // targets allow `oc0`..`oc3`).
+        AgalError::ColorOutputOutOfRange {
+            token: _,
+            shader_type: _,
+        } => error(activation, error_message!(3760), 3760),
         AgalError::SamplerRegisterAsSource {
             operand,
             token,

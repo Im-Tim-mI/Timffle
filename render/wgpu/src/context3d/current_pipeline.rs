@@ -114,7 +114,9 @@ pub struct CurrentPipeline {
 
     sample_count: u32,
 
-    target_format: TextureFormat,
+    // Timffle: the format of every colour target (slot 0 first); more than
+    // one entry while rendering to multiple render targets.
+    target_formats: Vec<TextureFormat>,
 
     dirty: Cell<bool>,
 
@@ -134,6 +136,8 @@ pub struct BoundTextureData {
     /// uses `view`
     pub id: Rc<dyn Texture>,
     pub view: TextureView,
+    // Timffle: the same texture restricted to mip level 0 (mipfilter "mipnone").
+    pub base_level_view: TextureView,
     pub cube: bool,
 }
 
@@ -180,7 +184,7 @@ impl CurrentPipeline {
             alpha_component: wgpu::BlendComponent::REPLACE,
             sample_count: 1,
 
-            target_format: TextureFormat::Rgba8Unorm,
+            target_formats: vec![TextureFormat::Rgba8Unorm],
 
             sampler_configs: [SamplerConfig::default(); 8],
         }
@@ -268,10 +272,11 @@ impl CurrentPipeline {
         }
     }
 
-    pub fn update_target_format(&mut self, format: TextureFormat) {
-        if self.target_format != format {
+    // Timffle: all colour targets of the current render pass (slot 0 first).
+    pub fn update_target_formats(&mut self, formats: Vec<TextureFormat>) {
+        if self.target_formats != formats {
             self.dirty.set(true);
-            self.target_format = format;
+            self.target_formats = formats;
         }
     }
 
@@ -293,6 +298,34 @@ impl CurrentPipeline {
         let wgpu_samplers =
             self.sampler_configs
                 .map(|sampler| match (sampler.wrapping, sampler.filter) {
+                    // Timffle: `mipnearest` with a linear or anisotropic filter
+                    // takes the nearest level, as in Flash Player 32 (the
+                    // samplers below would blend two levels).
+                    (wrapping, filter)
+                        if sampler.mipmap == naga_agal::Mipmap::Nearest
+                            && filter != Filter::Nearest =>
+                    {
+                        let (address_mode_u, address_mode_v) = match wrapping {
+                            Wrapping::Clamp => (
+                                wgpu::AddressMode::ClampToEdge,
+                                wgpu::AddressMode::ClampToEdge,
+                            ),
+                            Wrapping::Repeat => {
+                                (wgpu::AddressMode::Repeat, wgpu::AddressMode::Repeat)
+                            }
+                            Wrapping::ClampURepeatV => {
+                                (wgpu::AddressMode::ClampToEdge, wgpu::AddressMode::Repeat)
+                            }
+                            Wrapping::RepeatUClampV => {
+                                (wgpu::AddressMode::Repeat, wgpu::AddressMode::ClampToEdge)
+                            }
+                        };
+                        &descriptors.bitmap_samplers.linear_mip_nearest[&WgpuSamplerConfig {
+                            anisotropy_clamp: 1,
+                            address_mode_u,
+                            address_mode_v,
+                        }]
+                    }
                     (Wrapping::Clamp, Filter::Linear) => &descriptors.bitmap_samplers.clamp_linear,
                     (Wrapping::Clamp, Filter::Nearest) => {
                         &descriptors.bitmap_samplers.clamp_nearest
@@ -369,7 +402,14 @@ impl CurrentPipeline {
             if let Some(bound_texture) = bound_texture {
                 bind_group_entries.push(BindGroupEntry {
                     binding: naga_agal::TEXTURE_START_BIND_INDEX + i as u32,
-                    resource: BindingResource::TextureView(&bound_texture.view),
+                    // Timffle: without a mip filter only level 0 is visible.
+                    resource: BindingResource::TextureView(
+                        if self.sampler_configs[i].mipmap == naga_agal::Mipmap::Disable {
+                            &bound_texture.base_level_view
+                        } else {
+                            &bound_texture.view
+                        },
+                    ),
                 });
                 bind_group_entries.push(BindGroupEntry {
                     binding: naga_agal::TEXTURE_SAMPLER_START_BIND_INDEX + i as u32,
@@ -404,6 +444,7 @@ impl CurrentPipeline {
             ShaderCompileData {
                 vertex_attributes: agal_attributes,
                 texture_infos,
+                color_outputs: self.target_formats.len() as u32, // Timffle
             },
         );
 
@@ -522,6 +563,23 @@ impl CurrentPipeline {
             None
         };
 
+        // Timffle: one colour target per bound render target; blending and the
+        // colour mask apply to all of them, as in Flash.
+        let color_targets = self
+            .target_formats
+            .iter()
+            .map(|format| {
+                Some(ColorTargetState {
+                    format: *format,
+                    blend: Some(wgpu::BlendState {
+                        color: self.color_component,
+                        alpha: self.alpha_component,
+                    }),
+                    write_mask: self.color_mask,
+                })
+            })
+            .collect::<Vec<_>>();
+
         let wgpu_vertex_buffers = index_per_buffer
             .iter()
             .map(|data| {
@@ -560,14 +618,7 @@ impl CurrentPipeline {
                 fragment: Some(wgpu::FragmentState {
                     module: &compiled_shaders.fragment_module,
                     entry_point: Some(naga_agal::SHADER_ENTRY_POINT),
-                    targets: &[Some(ColorTargetState {
-                        format: self.target_format,
-                        blend: Some(wgpu::BlendState {
-                            color: self.color_component,
-                            alpha: self.alpha_component,
-                        }),
-                        write_mask: self.color_mask,
-                    })],
+                    targets: &color_targets, // Timffle
                     compilation_options: Default::default(),
                 }),
                 primitive: wgpu::PrimitiveState {
@@ -611,7 +662,9 @@ impl CurrentPipeline {
         sampler: usize,
         wrap: ruffle_render::backend::Context3DWrapMode,
         filter: ruffle_render::backend::Context3DTextureFilter,
+        mip_filter: ruffle_render::backend::Context3DMipFilter,
     ) {
+        use ruffle_render::backend::Context3DMipFilter;
         let sampler_config = SamplerConfig {
             wrapping: match wrap {
                 Context3DWrapMode::Clamp => Wrapping::Clamp,
@@ -627,8 +680,12 @@ impl CurrentPipeline {
                 Context3DTextureFilter::Anisotropic8X => Filter::Anisotropic8x,
                 Context3DTextureFilter::Anisotropic16X => Filter::Anisotropic16x,
             },
-            // FIXME - implement this
-            mipmap: naga_agal::Mipmap::Disable,
+            // Timffle: real; the bound view is cut to level 0 for `Disable`.
+            mipmap: match mip_filter {
+                Context3DMipFilter::None => naga_agal::Mipmap::Disable,
+                Context3DMipFilter::Nearest => naga_agal::Mipmap::Nearest,
+                Context3DMipFilter::Linear => naga_agal::Mipmap::Linear,
+            },
         };
         self.dirty.set(true);
         self.sampler_configs[sampler] = sampler_config;

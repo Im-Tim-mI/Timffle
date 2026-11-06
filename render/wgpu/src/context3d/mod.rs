@@ -4,6 +4,7 @@ use ruffle_render::backend::{
     Context3DVertexBufferFormat, IndexBuffer, ProgramType, ShaderModule, VertexBuffer,
 };
 use ruffle_render::bitmap::BitmapHandle;
+use ruffle_render::compressed::CompressedFormat; // Timffle
 use ruffle_render::error::Error;
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -21,6 +22,7 @@ use crate::Texture;
 use crate::context3d::current_pipeline::{AGAL_FLOATS_PER_REGISTER, BoundTextureData, IntoWgpu};
 use crate::descriptors::Descriptors;
 use crate::utils::supported_sample_count;
+use naga_agal::MAX_COLOR_OUTPUTS;
 
 use std::num::NonZeroU64;
 use std::rc::Rc;
@@ -52,6 +54,17 @@ pub struct WgpuContext3D {
     current_texture_size: Option<Extent3d>,
     current_depth_texture_view: Option<wgpu::TextureView>,
     current_texture_resolve_view: Option<wgpu::TextureView>,
+    // Timffle: format and sample count of colour output 0, and the colour
+    // outputs 1..3 bound with `setRenderToTexture(…, colorOutputIndex)`
+    // (multiple render targets). A render pass attaches output 0 and the
+    // contiguous run of bound extra outputs; `setRenderToBackBuffer()`,
+    // `present()` and `configureBackBuffer()` unbind them.
+    current_texture_format: TextureFormat,
+    current_sample_count: u32,
+    extra_color_targets: [Option<ExtraColorTarget>; MAX_COLOR_OUTPUTS - 1],
+    // Timffle: whether colour output 0 is the back buffer (false while
+    // `setRenderToTexture` is in effect).
+    rendering_to_back_buffer: bool,
 
     back_buffer_sample_count: u32,
     back_buffer_size: Option<Extent3d>,
@@ -149,6 +162,10 @@ impl WgpuContext3D {
             current_texture_size: None,
             current_depth_texture_view: None,
             current_texture_resolve_view: None,
+            current_texture_format: TextureFormat::Rgba8Unorm,
+            current_sample_count: 1,
+            extra_color_targets: std::array::from_fn(|_| None),
+            rendering_to_back_buffer: true,
 
             back_buffer_sample_count: 1,
             back_buffer_size: None,
@@ -199,8 +216,128 @@ impl WgpuContext3D {
             .update_has_depth_texture(self.current_depth_texture_view.is_some());
         self.current_pipeline
             .update_sample_count(self.back_buffer_sample_count);
-        self.current_pipeline
-            .update_target_format(TextureFormat::Rgba8Unorm);
+        // Timffle: the back buffer is a single Rgba8 colour output.
+        self.current_texture_format = TextureFormat::Rgba8Unorm;
+        self.current_sample_count = self.back_buffer_sample_count;
+        self.extra_color_targets = std::array::from_fn(|_| None);
+        self.rendering_to_back_buffer = true;
+        self.sync_target_formats();
+    }
+
+    // Timffle: `clear()` is applied lazily by the next render pass; before
+    // the current target is read (`drawToBitmapData`) or shown (`present()`)
+    // a pending clear is applied with an empty render pass, as Flash clears
+    // immediately.
+    fn flush_pending_clear(&mut self) {
+        if self.clear_color.is_none() || self.current_texture_view.is_none() {
+            return;
+        }
+        let mut encoder =
+            self.descriptors
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: create_debug_label!("Clear command encoder").as_deref(),
+                });
+        let pass = self.make_render_pass(&mut encoder);
+        drop(pass);
+        self.descriptors.queue.submit([encoder.finish()]);
+    }
+
+    // Timffle: the extra colour outputs that take part in a render pass — the
+    // contiguous run bound from colorOutputIndex 1 upwards.
+    fn active_extra_color_targets(&self) -> &[Option<ExtraColorTarget>] {
+        let bound = self
+            .extra_color_targets
+            .iter()
+            .take_while(|target| target.is_some())
+            .count();
+        &self.extra_color_targets[..bound]
+    }
+
+    // Timffle: tells the pipeline which colour targets the next draw renders to.
+    fn sync_target_formats(&mut self) {
+        let mut formats = vec![self.current_texture_format];
+        formats.extend(
+            self.active_extra_color_targets()
+                .iter()
+                .flatten()
+                .map(|target| target.format),
+        );
+        self.current_pipeline.update_target_formats(formats);
+    }
+
+    // Timffle: binds `texture` as colour output `index` (1..3) of the
+    // current render target. Its size must match colour output 0 (the AVM
+    // side checks that and reports the Flash error); the sample count of
+    // output 0 applies to all outputs.
+    fn set_extra_color_target(
+        &mut self,
+        index: usize,
+        texture_wrapper: &TextureWrapper,
+        surface_selector: u32,
+    ) {
+        let Some(current_size) = self.current_texture_size else {
+            tracing::warn!(
+                "setRenderToTexture with colorOutputIndex {index} before a render target was set"
+            );
+            return;
+        };
+        let (width, height) = (
+            texture_wrapper.texture.width(),
+            texture_wrapper.texture.height(),
+        );
+        if width != current_size.width || height != current_size.height {
+            tracing::warn!(
+                "setRenderToTexture colorOutputIndex {index}: {width}x{height} does not match colour output 0 ({}x{})",
+                current_size.width,
+                current_size.height
+            );
+            return;
+        }
+
+        let view_desc = TextureViewDescriptor {
+            base_array_layer: surface_selector,
+            array_layer_count: Some(1),
+            mip_level_count: Some(1),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            ..Default::default()
+        };
+        let format = texture_wrapper.texture.format();
+        let sample_count = self.current_sample_count;
+        let (view, resolve_view) = if sample_count != 1 {
+            let msaa_texture = self
+                .descriptors
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: create_debug_label!("Render target texture MSAA").as_deref(),
+                    size: Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: texture_wrapper.texture.depth_or_array_layers(),
+                    },
+                    mip_level_count: 1,
+                    sample_count,
+                    dimension: texture_wrapper.texture.dimension(),
+                    format,
+                    view_formats: &[format],
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                });
+            (
+                msaa_texture.create_view(&view_desc),
+                Some(texture_wrapper.texture.create_view(&view_desc)),
+            )
+        } else {
+            (texture_wrapper.texture.create_view(&view_desc), None)
+        };
+
+        self.extra_color_targets[index - 1] = Some(ExtraColorTarget {
+            view,
+            resolve_view,
+            format,
+            width,
+            height,
+        });
+        self.sync_target_formats();
     }
 
     fn make_render_pass<'a>(
@@ -242,17 +379,32 @@ impl WgpuContext3D {
             None
         };
 
-        let mut pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Context3D render pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: self.current_texture_view.as_ref().unwrap(),
-                resolve_target: self.current_texture_resolve_view.as_ref(),
+        // Timffle: colour output 0 plus the bound extra outputs (multiple
+        // render targets); `clear()` clears all of them.
+        let mut color_attachments = vec![Some(wgpu::RenderPassColorAttachment {
+            view: self.current_texture_view.as_ref().unwrap(),
+            resolve_target: self.current_texture_resolve_view.as_ref(),
+            ops: wgpu::Operations {
+                load: color_load,
+                store: wgpu::StoreOp::Store,
+            },
+            depth_slice: None,
+        })];
+        for target in self.active_extra_color_targets().iter().flatten() {
+            color_attachments.push(Some(wgpu::RenderPassColorAttachment {
+                view: &target.view,
+                resolve_target: target.resolve_view.as_ref(),
                 ops: wgpu::Operations {
                     load: color_load,
                     store: wgpu::StoreOp::Store,
                 },
                 depth_slice: None,
-            })],
+            }));
+        }
+
+        let mut pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Context3D render pass"),
+            color_attachments: &color_attachments,
             depth_stencil_attachment,
             ..Default::default()
         });
@@ -322,11 +474,31 @@ pub struct VertexBufferWrapper {
 #[derive(Debug)]
 pub struct TextureWrapper {
     texture: wgpu::Texture,
+    // Timffle: Some when the texture stores DXT/ETC2 blocks natively.
+    compressed: Option<CompressedFormat>,
+}
+
+// Timffle: a colour output 1..3 of multiple render targets.
+pub struct ExtraColorTarget {
+    view: wgpu::TextureView,
+    // The user's texture when `view` is a multisampled intermediate.
+    resolve_view: Option<wgpu::TextureView>,
+    format: TextureFormat,
+    width: u32,
+    height: u32,
 }
 
 impl IndexBuffer for IndexBufferWrapper {}
 impl VertexBuffer for VertexBufferWrapper {}
 impl ruffle_render::backend::Texture for TextureWrapper {
+    // Timffle
+    fn mip_level_count(&self) -> u32 {
+        self.texture.mip_level_count()
+    }
+    fn compressed_format(&self) -> Option<CompressedFormat> {
+        self.compressed
+    }
+
     fn width(&self) -> u32 {
         self.texture.width()
     }
@@ -352,6 +524,15 @@ impl Context3D for WgpuContext3D {
     }
     fn bitmap_handle(&self) -> BitmapHandle {
         self.front_buffer_raw_texture_handle.clone()
+    }
+    // Timffle: `drawToBitmapData` reads the back buffer, "not the front
+    // buffer shown on stage" (resolved already when multisampled).
+    fn back_buffer_bitmap_handle(&mut self) -> Option<BitmapHandle> {
+        self.back_buffer_size?;
+        if self.rendering_to_back_buffer {
+            self.flush_pending_clear();
+        }
+        Some(self.back_buffer_raw_texture_handle.clone())
     }
     fn should_render(&self) -> bool {
         // If this is None, we haven't called configureBackBuffer yet.
@@ -411,22 +592,25 @@ impl Context3D for WgpuContext3D {
         _optimize_for_render_to_texture: bool,
         streaming_levels: u32,
     ) -> Result<Rc<dyn ruffle_render::backend::Texture>, Error> {
-        let format = convert_texture_format(format);
+        // Timffle: compressed formats are stored natively when the adapter
+        // has the feature (BC on desktop, ETC2 on mobile), RGBA8 otherwise.
+        let (format, compressed) =
+            convert_texture_format(format, self.descriptors.device.features());
 
         // Wgpu doesn't support using this as a render attachment. Hopefully no swfs try
         // to use it as one.
-        let render_attachment = if matches!(format, TextureFormat::Bc3RgbaUnorm) {
+        let render_attachment = if compressed.is_some() {
             TextureUsages::empty()
         } else {
             TextureUsages::RENDER_ATTACHMENT
         };
 
-        if streaming_levels != 0 {
-            return Err(Error::Unimplemented(
-                format!("streamingLevels={streaming_levels}").into(),
-            ));
-        }
-
+        // Timffle: a (power-of-two) Texture always has a full mip chain that
+        // `uploadFromBitmapData(…, miplevel)` and friends fill level by level;
+        // `streamingLevels` only tells Flash which levels may arrive later, so it
+        // needs no separate storage. RectangleTexture (not power of two) has one
+        // level, like Flash.
+        let _ = streaming_levels;
         let texture = self.descriptors.device.create_texture(&TextureDescriptor {
             label: None,
             size: Extent3d {
@@ -434,14 +618,17 @@ impl Context3D for WgpuContext3D {
                 height,
                 depth_or_array_layers: 1,
             },
-            mip_level_count: 1,
+            mip_level_count: mip_chain_levels(width, height),
             sample_count: 1,
             dimension: TextureDimension::D2,
             format,
             view_formats: &[format],
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | render_attachment,
         });
-        Ok(Rc::new(TextureWrapper { texture }))
+        Ok(Rc::new(TextureWrapper {
+            texture,
+            compressed,
+        }))
     }
 
     fn create_cube_texture(
@@ -451,15 +638,17 @@ impl Context3D for WgpuContext3D {
         _optimize_for_render_to_texture: bool,
         streaming_levels: u32,
     ) -> Result<Rc<dyn ruffle_render::backend::Texture>, Error> {
-        let format = convert_texture_format(format);
+        // Timffle: native compressed storage when available, see `create_texture`.
+        let (format, compressed) =
+            convert_texture_format(format, self.descriptors.device.features());
+        let render_attachment = if compressed.is_some() {
+            TextureUsages::empty()
+        } else {
+            TextureUsages::RENDER_ATTACHMENT
+        };
 
-        if streaming_levels != 0 {
-            tracing::warn!(
-                "createCubeTexture: streaming_levels={} is not yet implemented",
-                streaming_levels,
-            );
-        }
-
+        // Timffle: full mip chain, see `create_texture`.
+        let _ = streaming_levels;
         let texture = self.descriptors.device.create_texture(&TextureDescriptor {
             label: None,
             size: Extent3d {
@@ -467,7 +656,7 @@ impl Context3D for WgpuContext3D {
                 height: size,
                 depth_or_array_layers: 6,
             },
-            mip_level_count: 1,
+            mip_level_count: mip_chain_levels(size, size),
             sample_count: 1,
             dimension: TextureDimension::D2,
             format,
@@ -475,11 +664,12 @@ impl Context3D for WgpuContext3D {
             // Note - `optimize_for_render_to_texture` is just a hint, so
             // have to use `TextureUsages::TEXTURE_BINDING` even if the hint
             // is `false`.
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_DST
-                | TextureUsages::RENDER_ATTACHMENT,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | render_attachment,
         });
-        Ok(Rc::new(TextureWrapper { texture }))
+        Ok(Rc::new(TextureWrapper {
+            texture,
+            compressed,
+        }))
     }
 
     fn upload_shaders(
@@ -687,6 +877,12 @@ impl Context3D for WgpuContext3D {
                 self.current_pipeline
                     .update_has_depth_texture(depth_and_stencil);
                 self.current_pipeline.update_sample_count(sample_count);
+                // Timffle: a fresh back buffer is the only colour output.
+                self.current_texture_format = format;
+                self.current_sample_count = sample_count;
+                self.extra_color_targets = std::array::from_fn(|_| None);
+                self.rendering_to_back_buffer = true;
+                self.sync_target_formats();
             }
             Context3DCommand::UploadToIndexBuffer {
                 buffer,
@@ -757,7 +953,22 @@ impl Context3D for WgpuContext3D {
                 enable_depth_and_stencil,
                 anti_alias,
                 surface_selector,
+                color_output_index,
             } => {
+                // Timffle: colour outputs 1..3 share output 0's depth buffer,
+                // sample count and size; only the texture (and face) is theirs.
+                if color_output_index != 0 {
+                    let texture_wrapper =
+                        <dyn Any>::downcast_ref::<TextureWrapper>(texture.as_ref()).unwrap();
+                    self.current_pipeline.remove_texture(&texture);
+                    self.set_extra_color_target(
+                        (color_output_index as usize).min(MAX_COLOR_OUTPUTS - 1),
+                        texture_wrapper,
+                        surface_selector,
+                    );
+                    return;
+                }
+
                 let mut sample_count = anti_alias;
                 if sample_count == 0 {
                     sample_count = 1;
@@ -788,6 +999,8 @@ impl Context3D for WgpuContext3D {
                 let view_desc = TextureViewDescriptor {
                     base_array_layer: surface_selector,
                     array_layer_count: Some(1),
+                    // Timffle: textures carry a mip chain; rendering targets level 0.
+                    mip_level_count: Some(1),
                     dimension: Some(wgpu::TextureViewDimension::D2),
                     ..Default::default()
                 };
@@ -840,8 +1053,24 @@ impl Context3D for WgpuContext3D {
                     .update_has_depth_texture(enable_depth_and_stencil);
                 self.current_pipeline.remove_texture(&texture);
                 self.current_pipeline.update_sample_count(sample_count);
-                self.current_pipeline
-                    .update_target_format(texture_wrapper.texture.format());
+                // Timffle: a new colour output 0 keeps the extra outputs that
+                // still fit it (same size) and drops the others.
+                self.current_texture_format = texture_wrapper.texture.format();
+                self.rendering_to_back_buffer = false;
+                let same_sample_count = self.current_sample_count == sample_count;
+                self.current_sample_count = sample_count;
+                let (width, height) = (
+                    texture_wrapper.texture.width(),
+                    texture_wrapper.texture.height(),
+                );
+                for target in self.extra_color_targets.iter_mut() {
+                    if target.as_ref().is_some_and(|t| {
+                        !same_sample_count || t.width != width || t.height != height
+                    }) {
+                        *target = None;
+                    }
+                }
+                self.sync_target_formats();
             }
 
             Context3DCommand::SetRenderToBackBuffer => {
@@ -985,6 +1214,7 @@ impl Context3D for WgpuContext3D {
                 source_height,
                 dest,
                 layer,
+                mip_level,
             } => {
                 let dest = Rc::<dyn Any>::downcast::<TextureWrapper>(dest).unwrap();
 
@@ -993,19 +1223,20 @@ impl Context3D for WgpuContext3D {
                 // If we were to use `self.buffer_command_encoder.copy_texture_to_texture`, the
                 // BitmapData's gpu texture might be modified before we actually submit
                 // `buffer_command_encoder` to the device.
+                // Timffle: block formats copy whole blocks, so a level smaller
+                // than a block (the tail of a mip chain) still copies one block
+                // and the copy extent is rounded up to the block size.
                 let dest_format = dest.texture.format();
-                let src_bytes_per_row = dest_format.block_copy_size(None).unwrap()
-                    * (source_width / dest_format.block_dimensions().0);
-
-                let rows_per_image = source_height / dest_format.block_dimensions().1;
+                let (block_w, block_h) = dest_format.block_dimensions();
+                let blocks_per_row = source_width.div_ceil(block_w);
+                let src_bytes_per_row = dest_format.block_copy_size(None).unwrap() * blocks_per_row;
+                let rows_per_image = source_height.div_ceil(block_h);
+                let copy_width = blocks_per_row * block_w;
+                let copy_height = rows_per_image * block_h;
 
                 // Wgpu requires us to pad the image rows to a multiple of COPY_BYTES_PER_ROW_ALIGNMENT
                 let dest_bytes_per_row =
-                    if matches!(dest.texture.format(), wgpu::TextureFormat::Rgba8Unorm) {
-                        (source_width * 4).next_multiple_of(COPY_BYTES_PER_ROW_ALIGNMENT)
-                    } else {
-                        src_bytes_per_row
-                    };
+                    src_bytes_per_row.next_multiple_of(COPY_BYTES_PER_ROW_ALIGNMENT);
                 let dest_size = dest_bytes_per_row as u64 * rows_per_image as u64;
                 assert!(
                     dest_bytes_per_row >= src_bytes_per_row && dest_size >= source.len() as u64
@@ -1051,7 +1282,7 @@ impl Context3D for WgpuContext3D {
                     },
                     wgpu::TexelCopyTextureInfo {
                         texture: &dest.texture,
-                        mip_level: 0,
+                        mip_level, // Timffle
                         origin: wgpu::Origin3d {
                             x: 0,
                             y: 0,
@@ -1061,8 +1292,8 @@ impl Context3D for WgpuContext3D {
                     },
                     // The copy size uses the original image, with the original row size
                     wgpu::Extent3d {
-                        width: source_width,
-                        height: source_height,
+                        width: copy_width,   // Timffle
+                        height: copy_height, // Timffle
                         depth_or_array_layers: 1,
                     },
                 );
@@ -1081,9 +1312,17 @@ impl Context3D for WgpuContext3D {
                         view.dimension = Some(wgpu::TextureViewDimension::Cube);
                         view.array_layer_count = Some(6);
                     }
+                    // Timffle: a second view restricted to level 0 is bound while
+                    // the sampler's mipfilter is "mipnone", so levels that were
+                    // never uploaded cannot bleed into the result.
+                    let base_view = wgpu::TextureViewDescriptor {
+                        mip_level_count: Some(1),
+                        ..view.clone()
+                    };
 
                     Some(BoundTextureData {
                         view: texture_wrapper.texture.create_view(&view),
+                        base_level_view: texture_wrapper.texture.create_view(&base_view),
                         id: texture,
                         cube,
                     })
@@ -1181,9 +1420,14 @@ impl Context3D for WgpuContext3D {
                 sampler,
                 wrap,
                 filter,
+                mip_filter,
             } => {
-                self.current_pipeline
-                    .update_sampler_state_at(sampler as usize, wrap, filter);
+                self.current_pipeline.update_sampler_state_at(
+                    sampler as usize,
+                    wrap,
+                    filter,
+                    mip_filter,
+                );
             }
             Context3DCommand::SetScissorRectangle { rect } => {
                 self.scissor_rectangle = rect;
@@ -1217,8 +1461,39 @@ impl Context3D for WgpuContext3D {
         }
     }
 
+    // Timffle: only the graphics API, the way Flash Player names it ("DirectX11",
+    // "DirectX9", "OpenGL"; "Software Hw_disabled=<reason>" when Stage3D falls back to
+    // software). Flash Player's own string never carries the GPU vendor, model or driver
+    // version, and this player does not either: those would let any SWF fingerprint the
+    // user's machine. The API is the wgpu backend in use; a CPU adapter (lavapipe, WARP,
+    // SwiftShader) is the "hardware graphics initialization failure" case.
+    fn driver_info(&self) -> String {
+        if let Some(fixed) = &self.descriptors.context3d_driver_info_override {
+            return fixed.clone();
+        }
+        let info = self.descriptors.adapter.get_info();
+        if matches!(info.device_type, wgpu::DeviceType::Cpu) {
+            return "Software Hw_disabled=unavailable".to_string();
+        }
+        match info.backend {
+            wgpu::Backend::Vulkan => "Vulkan",
+            wgpu::Backend::Metal => "Metal",
+            wgpu::Backend::Dx12 => "DirectX12",
+            // wgpu's GL backend is WebGL 2 in a browser.
+            wgpu::Backend::Gl if cfg!(target_family = "wasm") => "WebGL",
+            wgpu::Backend::Gl => "OpenGL",
+            wgpu::Backend::BrowserWebGpu => "WebGPU",
+            wgpu::Backend::Noop => "Software Hw_disabled=unavailable",
+        }
+        .to_string()
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn present(&mut self) {
+        // Timffle: a frame that only called clear() still shows the clear.
+        if self.rendering_to_back_buffer {
+            self.flush_pending_clear();
+        }
         std::mem::swap(
             &mut self.back_buffer_raw_texture_handle,
             &mut self.front_buffer_raw_texture_handle,
@@ -1250,33 +1525,62 @@ pub struct ClearColor {
     mask: u32,
 }
 
-fn convert_texture_format(input: Context3DTextureFormat) -> wgpu::TextureFormat {
+// Timffle: the wgpu storage for a Stage3D texture format and, for the
+// compressed formats, the block format the texture stores natively.
+fn convert_texture_format(
+    input: Context3DTextureFormat,
+    features: wgpu::Features,
+) -> (wgpu::TextureFormat, Option<CompressedFormat>) {
+    let bc = features.contains(wgpu::Features::TEXTURE_COMPRESSION_BC);
+    let etc2 = features.contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2);
     match input {
-        // Some of these formats are unsupported by wgpu to various degrees:
-        // * Bgra doesn't exist in webgl
-        //
-        // Instead, we just use Rgba8Unorm, which is the closest thing we have.
-        // When we implement Texture.uploadFromByteArray, we'll need to convert
-        // the user-supplied data to Rgba8Unorm.
-        //
-        // The Rgba8Unorm format stores more data for each channel, so this
-        // will result in (hopefully minor) rendering differences.
-        Context3DTextureFormat::Bgra => TextureFormat::Rgba8Unorm,
-        Context3DTextureFormat::BgraPacked => TextureFormat::Rgba8Unorm,
-        // Wgpu doesn't have 'Rgb8Unorm', so we use 'Rgba8Unorm' instead.
-        // Applications *should* use an opaque Bitmap with this format, so the
-        // alpha channel should be set to 1.0 and have no effect.
-        // FIXME: Validate that this is actually the case, and throw an
-        // error if we get an unexpected bitmap from ActionScript
-        Context3DTextureFormat::BgrPacked => TextureFormat::Rgba8Unorm,
-        // Starling claims that this is dxt5, which has an alpha channel
-        Context3DTextureFormat::CompressedAlpha => TextureFormat::Bc3RgbaUnorm,
-        // Starling claims that this is dxt1. It's unclear if there's supposed
-        // to be an alpha channel, so we're relying on SWFS doing "the right thing"
-        // as with BgrPacked
-        Context3DTextureFormat::Compressed => TextureFormat::Rgba8Unorm,
-        Context3DTextureFormat::RgbaHalfFloat => TextureFormat::Rgba16Float,
+        // Bgra doesn't exist in webgl, so we use Rgba8Unorm (the uploads
+        // convert the user-supplied data).
+        Context3DTextureFormat::Bgra => (TextureFormat::Rgba8Unorm, None),
+        // The packed 16-bit formats have no sampled equivalent on every wgpu
+        // backend; the uploads quantise the pixels to 4-4-4-4 / 5-6-5 and
+        // expand them back, so sampling has exactly Flash's precision.
+        Context3DTextureFormat::BgraPacked => (TextureFormat::Rgba8Unorm, None),
+        Context3DTextureFormat::BgrPacked => (TextureFormat::Rgba8Unorm, None),
+        // "compressed" is DXT1 and "compressedAlpha" DXT5 (Flash's ATF tools):
+        // stored natively when the adapter decodes them, otherwise as ETC2
+        // (mobile GPUs; the ATF's ETC payload or ETC1 blocks go in unchanged)
+        // and otherwise as RGBA8 that the CPU decoders fill.
+        Context3DTextureFormat::Compressed => {
+            if bc {
+                (TextureFormat::Bc1RgbaUnorm, Some(CompressedFormat::Dxt1))
+            } else if etc2 {
+                (
+                    TextureFormat::Etc2Rgb8Unorm,
+                    Some(CompressedFormat::Etc2Rgb),
+                )
+            } else {
+                (TextureFormat::Rgba8Unorm, None)
+            }
+        }
+        Context3DTextureFormat::CompressedAlpha => {
+            if bc {
+                (TextureFormat::Bc3RgbaUnorm, Some(CompressedFormat::Dxt5))
+            } else if etc2 {
+                (
+                    TextureFormat::Etc2Rgba8Unorm,
+                    Some(CompressedFormat::Etc2Rgba),
+                )
+            } else {
+                (TextureFormat::Rgba8Unorm, None)
+            }
+        }
+        Context3DTextureFormat::RgbaHalfFloat => (TextureFormat::Rgba16Float, None),
     }
+}
+
+// Timffle: number of levels in a full mip chain down to 1x1 (1 when the size
+// is not a power of two, where Flash has no mipmaps either).
+fn mip_chain_levels(width: u32, height: u32) -> u32 {
+    if width == 0 || height == 0 || !width.is_power_of_two() || !height.is_power_of_two() {
+        return 1;
+    }
+    32 - width.max(height).leading_zeros()
 }
 
 // Rounds up 'len' to the nearest multiple of COPY_BUFFER_ALIGNMENT

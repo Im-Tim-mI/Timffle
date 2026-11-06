@@ -1,0 +1,11 @@
+num_ticks = 6
+[[compilers]]
+type = "Rascal"
+target = "test.swf"
+scripts = ["test.as"]
+swf_version = 15
+[[compilers]]
+type = "Rascal"
+target = "b.swf"
+scripts = ["b.as"]
+swf_version = 15

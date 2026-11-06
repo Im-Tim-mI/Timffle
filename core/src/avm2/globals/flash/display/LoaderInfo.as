@@ -1,8 +1,4 @@
 package flash.display {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
-    import __ruffle__.stub_setter;
-
     import flash.errors.IllegalOperationError;
     import flash.events.Event;
     import flash.events.EventDispatcher;
@@ -40,32 +36,17 @@ package flash.display {
             throw new IllegalOperationError("Error #2118: The LoaderInfo class does not implement this method.", 2118);
         }
 
-        public static function getLoaderInfoByDefinition(object:Object):LoaderInfo {
-            // Docs say that this returns `null` when debugging isn't enabled,
-            // and (TODO) in FP it throws a SecurityError unless called in a
-            // local SWF that has been marked as "trusted", so do we really need
-            // to implement it?
-            stub_method("flash.display.LoaderInfo", "getLoaderInfoByDefinition");
-            return null;
-        }
+        // Timffle: a release Flash Player only answers this in the local-trusted
+        // sandbox (with null); elsewhere it throws a SecurityError (loader_info.rs).
+        public static native function getLoaderInfoByDefinition(object:Object):LoaderInfo;
 
         // Playerglobals says all the *Bridge functions are AIR-only, but that
-        // doesn't seem to be true
+        // doesn't seem to be true. Timffle: stored on the LoaderInfo; only the
+        // Loader's SWF may set the parent bridge, only the content the child one.
+        public native function get parentSandboxBridge():Object;
+        public native function set parentSandboxBridge(obj:Object):void;
 
-        public function get parentSandboxBridge():Object {
-            stub_getter("flash.display.LoaderInfo", "parentSandboxBridge");
-            return null;
-        }
-        public function set parentSandboxBridge(obj:Object):void {
-            stub_setter("flash.display.LoaderInfo", "parentSandboxBridge");
-        }
-
-        public function get childSandboxBridge():Object {
-            stub_getter("flash.display.LoaderInfo", "childSandboxBridge");
-            return null;
-        }
-        public function set childSandboxBridge(obj:Object):void {
-            stub_setter("flash.display.LoaderInfo", "childSandboxBridge");
-        }
+        public native function get childSandboxBridge():Object;
+        public native function set childSandboxBridge(obj:Object):void;
     }
 }

@@ -32,6 +32,9 @@ pub fn perform_automated_event(evt: &AutomatedEvent, player: &mut Player) {
             index: Some(index.unwrap_or_default()),
         },
         AutomatedEvent::MouseMove { pos, .. } => PlayerEvent::MouseMove { x: pos.0, y: pos.1 },
+        AutomatedEvent::MouseMoveRelative { dx, dy } => {
+            PlayerEvent::MouseMoveRelative { dx: *dx, dy: *dy }
+        }
         AutomatedEvent::MouseUp { pos, btn } => PlayerEvent::MouseUp {
             x: pos.0,
             y: pos.1,

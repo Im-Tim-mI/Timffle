@@ -79,6 +79,14 @@ pub struct VideoData<'gc> {
 
     /// The self bounds for this movie.
     size: Cell<(i32, i32)>,
+
+    /// Timffle: the last known frame size of the video stream, for
+    /// `videoWidth`/`videoHeight` after the stream was detached.
+    last_video_size: Cell<(i32, i32)>,
+
+    /// Timffle: `clear()` hides the NetStream frame with this serial until a
+    /// newer frame is decoded.
+    cleared_serial: Cell<Option<u64>>,
 }
 
 /// An optionally-instantiated video stream.
@@ -155,6 +163,8 @@ impl<'gc> Video<'gc> {
                 movie,
                 size: Cell::new(size),
                 decoded_frame: RefCell::new(None),
+                last_video_size: Cell::new((0, 0)),
+                cleared_serial: Cell::new(None),
             },
         ))
     }
@@ -178,6 +188,8 @@ impl<'gc> Video<'gc> {
                 movie,
                 size: Cell::new((width, height)),
                 decoded_frame: RefCell::new(None),
+                last_video_size: Cell::new((0, 0)),
+                cleared_serial: Cell::new(None),
             },
         ))
     }
@@ -207,6 +219,66 @@ impl<'gc> Video<'gc> {
         self.set_source(context, VideoSource::NetStream { stream });
         self.0.stream.set(VideoStream::Uninstantiated(0));
         self.0.keyframes.replace(BTreeSet::new());
+        self.0.cleared_serial.set(None);
+        self.invalidate_cached_bitmap();
+        *context.needs_render = true;
+    }
+
+    /// Timffle: `attachNetStream(null)` — disconnect the stream. Nothing is
+    /// drawn until a stream is attached again; the last frame size stays.
+    pub fn detach_netstream(self, context: &mut UpdateContext<'gc>) {
+        self.0.last_video_size.set(self.video_size());
+        self.set_source(context, VideoSource::Unconnected);
+        self.0.stream.set(VideoStream::Uninstantiated(0));
+        self.0.keyframes.replace(BTreeSet::new());
+        self.0.cleared_serial.set(None);
+        self.invalidate_cached_bitmap();
+        *context.needs_render = true;
+    }
+
+    /// Timffle: the size of the video stream's frames (`videoWidth`,
+    /// `videoHeight`): the decoded frame's size, else the stream's declared
+    /// size (SWF stream header or FLV metadata), else the last known size.
+    pub fn video_size(self) -> (i32, i32) {
+        let size = match self.0.source.get() {
+            VideoSource::Swf(swf_source) => match &*self.0.decoded_frame.borrow() {
+                Some((_, bitmap)) => (bitmap.width as i32, bitmap.height as i32),
+                None => (
+                    swf_source.streamdef.width.into(),
+                    swf_source.streamdef.height.into(),
+                ),
+            },
+            VideoSource::NetStream { stream } => {
+                if let Some(bitmap) = stream.last_decoded_bitmap() {
+                    (bitmap.width as i32, bitmap.height as i32)
+                } else if let Some((width, height)) = stream.metadata_size() {
+                    (width.into(), height.into())
+                } else {
+                    self.0.last_video_size.get()
+                }
+            }
+            VideoSource::Unconnected => self.0.last_video_size.get(),
+        };
+        self.0.last_video_size.set(size);
+        size
+    }
+
+    /// Timffle: `clear()` — drop the image on screen, keep the stream.
+    pub fn clear(self, context: &mut UpdateContext<'gc>) {
+        self.0.last_video_size.set(self.video_size());
+        match self.0.source.get() {
+            VideoSource::Swf(_) => {
+                self.0.decoded_frame.replace(None);
+            }
+            VideoSource::NetStream { stream } => {
+                self.0
+                    .cleared_serial
+                    .set(Some(stream.decoded_frame_serial()));
+            }
+            VideoSource::Unconnected => {}
+        }
+        self.invalidate_cached_bitmap();
+        *context.needs_render = true;
     }
 
     /// Preload frame data from an SWF.
@@ -531,7 +603,13 @@ impl<'gc> TDisplayObject<'gc> for Video<'gc> {
                 false,
                 None,
                 self.0.movie.version(),
-                stream.last_decoded_bitmap(),
+                // Timffle: a frame hidden by `clear()` stays hidden until the
+                // stream decodes a newer one.
+                if self.0.cleared_serial.get() == Some(stream.decoded_frame_serial()) {
+                    None
+                } else {
+                    stream.last_decoded_bitmap()
+                },
                 None,
             ),
             VideoSource::Unconnected { .. } => return context.transform_stack.pop(),

@@ -1,0 +1,97 @@
+// defaultObjectEncoding
+defaultObjectEncoding = 3
+// defaultObjectEncoding = 5
+-> 5
+// defaultObjectEncoding = 0
+-> 0
+// getLocal with default 0
+objectEncoding = 0
+// preventBackup
+preventBackup = null
+// preventBackup = true
+-> true
+// deleteAll(url)
+Error #2014: Error #2014: Feature is not available at this time.
+// deleteAll(null)
+TypeError #2007: Error #2007: Parameter url must be non-null.
+// getDiskUsage(url)
+Error #2014: Error #2014: Feature is not available at this time.
+// getDiskUsage(null)
+TypeError #2007: Error #2007: Parameter url must be non-null.
+// objectEncoding
+objectEncoding = 3 size = 0
+// client == so
+true
+// client = obj
+true
+// client = so
+true
+// client = null
+TypeError #2004: Error #2004: One of the parameters is invalid.
+// client = 1
+TypeError #2004: Error #2004: One of the parameters is invalid.
+// fps = 10
+ok
+// setDirty(x)
+ok
+// setDirty(null)
+TypeError #2007: Error #2007: Parameter propertyName must be non-null.
+// setProperty
+data.p = 7
+// send on local
+ok
+// connect(null) on local
+Error #2139: Error #2139: SharedObject could not connect.
+// connect(unconnected nc) on local
+Error #2139: Error #2139: SharedObject could not connect.
+// objectEncoding = 1
+ArgumentError #2008: Error #2008: Parameter objectEncoding must be one of the accepted values.
+// objectEncoding = 7
+ArgumentError #2008: Error #2008: Parameter objectEncoding must be one of the accepted values.
+// objectEncoding = 0
+-> 0
+// objectEncoding = 3
+-> 3
+// flush AMF3
+flushed size = 42
+// size AMF0
+flushed size = 52
+AMF3 again size = 42
+// close local
+data.a = 1 size = 42 flush = flushed
+// getLocal after close
+true
+// getRemote(name)
+Error #2134: Error #2134: Cannot create SharedObject.
+// getRemote(null)
+TypeError #2007: Error #2007: Parameter name must be non-null.
+// getRemote(http path)
+Error #2134: Error #2134: Cannot create SharedObject.
+// getRemote(rtmp)
+size = 0 objectEncoding = 3 data = [object Object]
+// getRemote same
+true
+// getRemote persistent differs
+false
+// getRemote RTMFP
+true
+// remote data
+data.z = 1 size = 29
+// remote flush
+Error #2130: Error #2130: Unable to flush SharedObject.
+// remote send
+ok
+// remote setDirty
+ok
+// remote connect(null)
+Error #2139: Error #2139: SharedObject could not connect.
+// remote connect(unconnected)
+Error #2139: Error #2139: SharedObject could not connect.
+// remote connect(connected)
+nc.connected = true
+netStatus SharedObject.UriMismatch level=error
+Error #2139: Error #2139: SharedObject could not connect.
+// remote close
+size = 29
+// remote clear
+size = 0

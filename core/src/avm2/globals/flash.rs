@@ -1,6 +1,7 @@
 //! `flash` namespace
 
 pub mod crypto;
+pub mod desktop;
 pub mod display;
 #[expect(non_snake_case)]
 pub mod display3D;
@@ -11,6 +12,10 @@ pub mod geom;
 pub mod globalization;
 pub mod media;
 pub mod net;
+// Timffle: `flash.printing` package natives
+pub mod printing;
+// Timffle: `flash.sampler` package natives
+pub mod sampler;
 pub mod system;
 pub mod text;
 pub mod ui;

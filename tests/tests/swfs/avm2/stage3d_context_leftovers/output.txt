@@ -1,0 +1,15 @@
+context created: standard
+configureBackBuffer: 64x64
+configureBackBuffer best resolution: 64x64
+drawToBitmapData: ff0000
+drawToBitmapData srcRect/destPoint: 1063
+drawToBitmapData clipped: ok ff
+drawToBitmapData disposed bitmap: 2015
+setRenderToTexture colorOutputIndex 4: 3770
+setRenderToTexture colorOutputIndex 0/1: ok
+setRenderToTexture colorOutputIndex 2 size mismatch: 3761
+setRenderToTexture colorOutputIndex 2 bit depth mismatch: 3761
+program oc0/oc1: ok
+mrt draw: ok
+program oc4: 3760
+drawToBitmapData after dispose: 3694

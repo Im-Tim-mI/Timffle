@@ -1,0 +1,127 @@
+// sendToURL
+sendToURL(null) THREW TypeError #2007
+sendToURL(new URLRequest()) THREW TypeError #2007
+sendToURL get returned
+sendToURL post returned
+sendToURL foo returned
+// Socket.bytesPending
+bytesPending unconnected THREW flash.errors::IOError #2002
+// URLRequest.useRedirectedURL
+useRedirectedURL(null) url=http://127.0.0.1:18765/x/y.txt
+useRedirectedURL unloaded THREW Error #2037
+useRedirectedURL no url THREW TypeError #2007
+// NetConnection.connect
+nc empty THREW ArgumentError #2004
+nc rtmp returned connected=false uri=rtmp://localhost:1935/app
+nc rtmp protocol THREW ArgumentError #2126
+nc rtmp call THREW ArgumentError #2126
+nc rtmps returned connected=false uri=rtmps://localhost/app
+nc rtmps protocol THREW ArgumentError #2126
+nc rtmps call THREW ArgumentError #2126
+nc rtmfp returned connected=false uri=rtmfp:
+nc rtmfp protocol THREW ArgumentError #2126
+nc rtmfp call THREW ArgumentError #2126
+nc foo returned connected=false uri=foo://bar/app
+nc foo protocol THREW ArgumentError #2126
+nc foo call THREW ArgumentError #2126
+nc word returned connected=false uri=hello
+nc word protocol THREW ArgumentError #2126
+nc word call THREW ArgumentError #2126
+nc rtmp then close returned connected=false uri=rtmp://localhost/app
+nc rtmp then close protocol THREW ArgumentError #2126
+nc rtmp then close call THREW ArgumentError #2126
+nc rtmp then close netStatus NetConnection.Connect.Closed level=status connected=false uri=null
+nc rtmp then close closed, uri=null
+// ObjectEncoding.dynamicPropertyWriter
+default=null
+set same=true
+set plain object THREW TypeError #1034
+still same=true
+plain amf3 len=21 back=Object{a=1,c=s,extra=42} hex=0A0B010361040103630603730B6578747261042A01
+plain amf0 len=39 back=Object{a=1,c=s,extra=42} hex=03000161003FF00000000000000001630200017300056578747261004045000000000000000009
+URLVariables amf3 len=19 back=Object{dynA=5,extra=42} hex=0A0B010964796E4104050B6578747261042A01
+Sealed amf3 len=7 back=Object{x=1} hex=0A130103780401
+Array amf3 len=7 back=Array{0=1,1=2} hex=09050104010402
+Array named amf3 len=16 back=Array{0=1,1=2,named=n} hex=09050B6E616D656406036E0104010402
+nested amf3 len=32 back=Object{extra=42,outer=[object Object]} hex=0A0B010B6F757465720A010B696E6E657204010B6578747261042A0104042A01
+function value amf3 len=19 back=Object{a=1,extra=42,f=undefined} hex=0A0B01036104010366000B6578747261042A01
+calls: obj=Object fields=a,b,c output=flash.net::DynamicPropertyOutput | obj=Object fields=a,b,c output=flash.net::DynamicPropertyOutput | obj=flash.net::URLVariables fields=b,dynA output=flash.net::DynamicPropertyOutput | obj=Object fields=outer output=flash.net::DynamicPropertyOutput | obj=Object fields=b,inner output=flash.net::DynamicPropertyOutput | obj=Object fields=a,f output=flash.net::DynamicPropertyOutput
+late write ignored
+plain again amf3 len=16 back=Object{a=1,extra=42} hex=0A0B01036104010B6578747261042A01
+null name THREW TypeError #2007
+writer throws THREW Error #77
+duplicate a=2 hex=0A0B010361040100040201
+cleared=null
+cleared amf3 len=12 back=Object{a=1,b=2} hex=0A0B01036204020361040101
+// NetMonitor
+listStreams __AS3__.vec::Vector.<flash.net::NetStream> len=1 has ns0=true fixed=false same list=false
+monitor event netStreamCreate flash.events::NetMonitorEvent netStream=flash.net::NetStream isNs1=false listLen=2
+monitor2 event netStreamCreate
+after ns1 len=2 [1] is ns1=true
+after close+dispose len=2
+// SecureSocket
+isSupported=false
+new SecureSocket() THREW flash.errors::IllegalOperationError #2014
+// FileReference
+cancel returned
+download(null) THREW TypeError #2007
+download(new URLRequest()) THREW TypeError #2007
+upload(null) THREW TypeError #2007
+upload(req, null) THREW TypeError #2007
+upload(req, '') THREW ArgumentError #2085
+upload(req) unselected THREW Error #2037
+upload(new URLRequest()) unselected THREW Error #2037
+load() unselected THREW Error #2037
+download then cancel returned
+download returned
+// FileReferenceList
+fileList fresh=null
+list.browse([1]) THREW ArgumentError #2097
+list.browse returned true
+list2.browse returned true
+nc rtmp netStatus NetConnection.Connect.Failed level=error connected=false uri=rtmp://localhost:1935/app
+nc rtmps netStatus NetConnection.Connect.Failed level=error connected=false uri=rtmps://localhost/app
+nc rtmfp netStatus NetConnection.Connect.Failed level=error connected=false uri=rtmfp:
+download event select name=debug-success.txt size=13
+download-dns event select name=debug-success.txt size=13
+download-status event select name=debug-success.txt size=13
+download-dialog-cancel event cancel name THREW #2037
+upload event select name=test.txt size=13
+upload returned
+upload-status event select name=test.txt size=13
+upload-cancelled event select name=test.txt size=13
+upload then cancel returned
+list select len=3 test1.txt:13,test2.txt:13,test3.txt:13
+list2 cancel fileList=
+socket connect bytesPending=0
+socket after write bytesPending=7
+socket after flush bytesPending=0
+bytesPending closed THREW flash.errors::IOError #2002
+// source request loaded: Hello, World!
+useRedirectedURL domain url=http://127.0.0.1:18765/x/y.txt?q=1
+useRedirectedURL whole+pattern url=http://127.0.0.1:18765/x/y.txt?q=1
+download event open name=debug-success.txt size=13
+download event progress 13/13 name=debug-success.txt size=13
+download event complete name=debug-success.txt size=13
+Error opening URL 'down.txt?debug-error-dns'
+download-dns event ioError #2032 name=debug-success.txt size=13
+Error opening URL 'down.txt?debug-error-statuscode'
+download-status event open name=debug-success.txt size=13
+download-status event httpStatus status=0 name=debug-success.txt size=13
+download-status event ioError #2032 name=debug-success.txt size=13
+upload event open name=test.txt size=13
+upload event progress 13/13 name=test.txt size=13
+upload event complete name=test.txt size=13
+upload event uploadCompleteData data=Hello, World! name=test.txt size=13
+upload-status event open name=test.txt size=13
+Error opening URL 'upload.php?debug-error-statuscode'
+upload-status event httpStatus status=0 name=test.txt size=13
+upload-status event ioError #2038 name=test.txt size=13
+// frame 4
+nc[0] connected=false uri=null
+nc[1] connected=false uri=rtmp://localhost:1935/app
+nc[2] connected=false uri=rtmps://localhost/app
+nc[3] connected=false uri=rtmfp:
+nc[4] connected=false uri=foo://bar/app
+nc[5] connected=false uri=hello
+nc[6] connected=false uri=null

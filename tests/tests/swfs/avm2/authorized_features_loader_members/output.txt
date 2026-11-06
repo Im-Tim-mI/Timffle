@@ -1,0 +1,9 @@
+authorizedFeatures: null
+loadAuthorizedFeatures returned synchronously, authorizedFeatures: null
+loadAuthorizedFeaturesFromData returned synchronously
+error: error Error #3727: Failed to obtain authorization token. bubbles=false cancelable=false
+authorizedFeatures after: null
+error: error Error #3727: Failed to obtain authorization token. bubbles=false cancelable=false
+authorizedFeatures after: null
+error: error Error #3727: Failed to obtain authorization token. bubbles=false cancelable=false
+authorizedFeatures after: null

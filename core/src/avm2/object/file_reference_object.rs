@@ -20,6 +20,7 @@ pub fn file_reference_allocator<'gc>(
             base,
             reference: RefCell::new(FileReference::None),
             loaded: Cell::new(false),
+            generation: Cell::new(0),
         },
     ))
     .into())
@@ -66,6 +67,23 @@ impl FileReferenceObject<'_> {
         self.0.reference.borrow()
     }
 
+    /// Timffle: takes the selection out (leaving `None`), e.g. to write downloaded data into it.
+    pub fn take_file_reference(self) -> FileReference {
+        self.0.reference.replace(FileReference::None)
+    }
+
+    /// Timffle: the current operation number; `cancel()` bumps it so a running download or
+    /// upload stops reporting (see `loader::download_file_dialog_avm2`).
+    pub fn generation(self) -> u32 {
+        self.0.generation.get()
+    }
+
+    pub fn cancel_operations(self) {
+        self.0
+            .generation
+            .set(self.0.generation.get().wrapping_add(1));
+    }
+
     pub fn set_loaded(self, value: bool) {
         self.0.loaded.set(value)
     }
@@ -90,6 +108,9 @@ pub struct FileReferenceObjectData<'gc> {
     reference: RefCell<FileReference>,
 
     loaded: Cell<bool>,
+
+    /// Timffle: see [`FileReferenceObject::generation`].
+    generation: Cell<u32>,
 }
 
 impl fmt::Debug for FileReferenceObject<'_> {

@@ -1,0 +1,73 @@
+GESTURE_DIRECTIONAL_TAP=undefined GESTURE_PAN=gesturePan
+needsSoftKeyboard default=false
+needsSoftKeyboard after set=true
+focus before=null requestSoftKeyboard()=false focus after=flash.display::Sprite same=true
+needs=false requestSoftKeyboard()=false focus after=null
+tf requestSoftKeyboard()=false focus=flash.text::TextField
+softKeyboardInputAreaOfInterest default=null
+area after set=(1,2,3,4) same=true same twice=true
+area after mutating original=(99,2,3,4)
+area after mutating returned=(99,2,77,4)
+area after null=null
+accessibilityImplementation default=null
+accImpl after set same=true stub=false
+accImpl after null=null
+trackAsMenu default=false
+trackAsMenu after set=true other=false
+trackAsMenu after reset=false
+SimpleButton trackAsMenu default=false
+precisionHint default=full
+after fast=fast
+set bogus THREW ArgumentError #2004
+set FULL upper THREW ArgumentError #2004
+set null THREW ArgumentError #2004
+set empty THREW ArgumentError #2004
+precisionHint still=fast
+startTouchDrag(0) ok x=0
+startTouchDrag(1,true,rect) ok x=0
+mixed ok
+# waiting for drags (1: A->B with B.trackAsMenu; 2: B->A; 3: A->B with A.trackAsMenu)
+# pbj loaded bytes=447
+ShaderJob() shader=null target=null w=0 h=0 progress=NaN
+start no shader THREW TypeError #2007
+start no shader async THREW TypeError #2007
+start null target THREW TypeError #2007
+start string target THREW ArgumentError #2004
+start sprite target THREW ArgumentError #2004
+sync bitmap pixel=FF640000 progress=1
+start sync again THREW ArgumentError #2172
+sync bytearray length=96 first floats=0.3921568989753723,0,0,1 progress=1
+sync vector length=16 v0..3=0.3921568989753723,0,0,1 progress=1
+start sync bytearray 0x0 THREW ArgumentError #2004
+start sync vector 3x0 THREW ArgumentError #2004
+sync fixed vector THREW RangeError #1126
+async right after start pixel=FF0000FF progress=0
+start async twice THREW ArgumentError #2172
+start sync while async pending THREW ArgumentError #2172
+after cancel progress=0 pixel=FF0000FF
+restart after cancel THREW ArgumentError #2172
+progress after cancel of finished=0
+cancel finished then start THREW ArgumentError #2172
+G started; radius now 200
+# async jobs started; doneA=false progressA=0
+jobA complete frame+0 bubbles=false cancelable=false target same=true bitmapData same=true byteArray=null vector=null pixel=FF640000 progress=1 type=complete
+jobG complete frame+0 pixel=FF640000 (radius changed after start)
+# next frame: doneA=true progressA=1 G progress=1
+  A mouseDown target=A buttonDown=true trackAsMenu A=false B=true
+# mouseDown 1 at 100,172 target=A
+  B mouseUp target=B buttonDown=false trackAsMenu A=false B=true
+# mouseUp 1 at 300,172 target=B
+  A releaseOutside target=A buttonDown=false trackAsMenu A=false B=true
+  B click target=B buttonDown=false trackAsMenu A=false B=true
+  B mouseDown target=B buttonDown=true trackAsMenu A=false B=true
+# mouseDown 2 at 300,172 target=B
+  A mouseUp target=A buttonDown=false trackAsMenu A=false B=true
+# mouseUp 2 at 100,172 target=A
+# flags swapped: A=true B=false; drag 3 is A -> B
+  B releaseOutside target=B buttonDown=false trackAsMenu A=true B=false
+  A click target=A buttonDown=false trackAsMenu A=true B=false
+  A mouseDown target=A buttonDown=true trackAsMenu A=true B=false
+# mouseDown 3 at 100,172 target=A
+  B mouseUp target=B buttonDown=false trackAsMenu A=true B=false
+# mouseUp 3 at 300,172 target=B
+  A releaseOutside target=A buttonDown=false trackAsMenu A=true B=false

@@ -1,0 +1,12 @@
+repeated object: 08 00 00 00 02 00 01 30 03 00 01 61 00 3f f0 00 00 00 00 00 00 00 00 09 00 01 31 07 00 01 00 00 09
+read back length=2 same instance=true a=1
+cycle: 03 00 04 73 65 6c 66 07 00 00 00 00 09
+read back cycle=true
+distinct objects: 08 00 00 00 02 00 01 30 03 00 01 61 00 3f f0 00 00 00 00 00 00 00 00 09 00 01 31 03 00 01 61 00 3f f0 00 00 00 00 00 00 00 00 09 00 00 09
+two calls: 03 00 01 61 00 3f f0 00 00 00 00 00 00 00 00 09 03 00 01 61 00 3f f0 00 00 00 00 00 00 00 00 09
+read back two calls: same instance=false a=1,1
+shared array: 03 00 01 70 08 00 00 00 01 00 01 30 00 40 00 00 00 00 00 00 00 00 00 09 00 01 71 07 00 01 00 00 09
+read back shared array: p===q true p[0]=2
+typed object: 08 00 00 00 02 00 01 30 10 00 01 54 00 01 6e 00 40 08 00 00 00 00 00 00 00 00 09 00 01 31 07 00 01 00 00 09
+read back typed: same instance=true is Typed=true n=3
+hand-written reference: x===z true y=2

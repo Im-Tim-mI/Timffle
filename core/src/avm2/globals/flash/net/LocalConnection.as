@@ -1,6 +1,4 @@
 package flash.net {
-    import __ruffle__.stub_method;
-
     import flash.events.EventDispatcher;
     import flash.events.StatusEvent;
     import flash.utils.setTimeout;
@@ -29,12 +27,10 @@ package flash.net {
         public native function get client():Object;
         public native function set client(client:Object):void;
 
-        public function allowDomain(...domains):void {
-            stub_method("flash.net.LocalConnection", "allowDomain");
-        }
+        // Timffle: real allow lists; a send() from a domain the receiver did
+        // not allow gets a status event with level "error" (local_connection.rs).
+        public native function allowDomain(...domains):void;
 
-        public function allowInsecureDomain(...domains):void {
-            stub_method("flash.net.LocalConnection", "allowInsecureDomain");
-        }
+        public native function allowInsecureDomain(...domains):void;
     }
 }

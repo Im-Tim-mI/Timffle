@@ -1,42 +1,46 @@
 package flash.ui {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
-
     import flash.geom.Point;
     import flash.display.BitmapData;
 
+    // Timffle: the description of a native cursor, a plain data holder that
+    // `Mouse.registerCursor()` reads when the cursor is registered: the frames (`data`, each
+    // at most 32x32 pixels -- the size limit is checked at registration, not here, as the
+    // reference documents no error for the setters), the animation `frameRate` and the
+    // `hotSpot` (default (0,0)). Nothing is copied on assignment. Flash Player 32 (measured):
+    // a null `hotSpot` is TypeError #2007 and a negative `frameRate` reads back as 0.
+    [API("667")]
     public final class MouseCursorData {
         private var _data:Vector.<BitmapData>;
-        private var _frameRate:Number;
+        private var _frameRate:Number = 0;
         private var _hotSpot:Point = new Point(0, 0);
 
+        public function MouseCursorData() {
+        }
+
         public function get data():Vector.<BitmapData> {
-            stub_getter("flash.ui.MouseCursorData", "data");
             return this._data;
         }
 
         public function set data(value:Vector.<BitmapData>):void {
-            stub_setter("flash.ui.MouseCursorData", "data");
             this._data = value;
         }
 
         public function get frameRate():Number {
-            stub_getter("flash.ui.MouseCursorData", "frameRate");
             return this._frameRate;
         }
 
         public function set frameRate(value:Number):void {
-            stub_setter("flash.ui.MouseCursorData", "frameRate");
-            this._frameRate = value;
+            this._frameRate = value < 0 ? 0 : value;
         }
 
         public function get hotSpot():Point {
-            stub_getter("flash.ui.MouseCursorData", "hotSpot");
             return this._hotSpot;
         }
 
         public function set hotSpot(value:Point):void {
-            stub_setter("flash.ui.MouseCursorData", "hotSpot");
+            if (value == null) {
+                throw new TypeError("Error #2007: Parameter hotSpot must be non-null.", 2007);
+            }
             this._hotSpot = value;
         }
     }

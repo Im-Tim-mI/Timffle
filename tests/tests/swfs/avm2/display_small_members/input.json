@@ -1,0 +1,20 @@
+[
+  { "type": "Wait" },
+  { "type": "Wait" },
+  { "type": "MouseMove", "pos": [100, 172] },
+  { "type": "MouseDown", "pos": [100, 172], "btn": "Left" },
+  { "type": "MouseMove", "pos": [200, 172] },
+  { "type": "MouseMove", "pos": [300, 172] },
+  { "type": "MouseUp", "pos": [300, 172], "btn": "Left" },
+  { "type": "Wait" },
+  { "type": "MouseDown", "pos": [300, 172], "btn": "Left" },
+  { "type": "MouseMove", "pos": [200, 172] },
+  { "type": "MouseMove", "pos": [100, 172] },
+  { "type": "MouseUp", "pos": [100, 172], "btn": "Left" },
+  { "type": "Wait" },
+  { "type": "MouseDown", "pos": [100, 172], "btn": "Left" },
+  { "type": "MouseMove", "pos": [200, 172] },
+  { "type": "MouseMove", "pos": [300, 172] },
+  { "type": "MouseUp", "pos": [300, 172], "btn": "Left" },
+  { "type": "Wait" }
+]

@@ -50,6 +50,12 @@ thread_local! {
 static GLOBAL: tracing_tracy::client::ProfiledAllocator<std::alloc::System> =
     tracing_tracy::client::ProfiledAllocator::new(std::alloc::System, 0);
 
+// Timffle: count allocated bytes for `System.totalMemory`/`freeMemory`.
+#[cfg(not(feature = "tracy"))]
+#[global_allocator]
+static GLOBAL: ruffle_core::memory::CountingAllocator<std::alloc::System> =
+    ruffle_core::memory::CountingAllocator(std::alloc::System);
+
 static RUFFLE_VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     "-",

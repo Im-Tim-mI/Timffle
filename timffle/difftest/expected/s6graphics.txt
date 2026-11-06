@@ -1,0 +1,234 @@
+# test=s6graphics
+r1 fill-unclosed x100y20 n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=0.498)
+  1: Path(cmds=[1,2,2,2] data=[10,10,50,10,50,50,10,10] winding=evenOdd)
+  2: EndFill
+r1b on stage n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=0.498)
+  1: Path(cmds=[1,2,2,2] data=[10,10,50,10,50,50,10,10] winding=evenOdd)
+  2: EndFill
+r2 stroke-only n=4 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Stroke(thickness=2 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=00FE00 alpha=0.749))
+  1: Path(cmds=[1,2,2] data=[0,0,20,0,20,20] winding=nonZero)
+  2: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  3: EndFill
+r3 rect-fill-stroke-x2 n=13 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,30,0,30,20,0,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2,2] data=[30,0,30,20,0,20,0,0,30,0] winding=nonZero)
+  5: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  6: Solid(color=123456 alpha=1)
+  7: Path(cmds=[1,2,2,2,2] data=[40,0,50,0,50,10,40,10,40,0] winding=evenOdd)
+  8: EndFill
+  9: Stroke(thickness=1 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=0000FF alpha=1))
+  10: Path(cmds=[1,2,2,2,2] data=[50,0,50,10,40,10,40,0,50,0] winding=nonZero)
+  11: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  12: EndFill
+r4 circle n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FFFFFF alpha=1)
+  1: Path(cmds=[1,3,3,2,3,3,2,3,3,2,3,3,2] data=[70,50,70,58.3,64.15,64.15,58.3,70,50,70,50,70,41.7,70,35.85,64.15,30,58.3,30,50,30,50,30,41.7,35.85,35.85,41.7,30,50,30,50,30,58.3,30,64.15,35.85,70,41.7,70,50,70,50] winding=evenOdd)
+  2: EndFill
+r5 gradient n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Gradient(type=linear colors=[4294901760,2130771712,255] alphas=[1,0.4980392156862745,0] ratios=[0,128,255] matrix=[0.043,0.022,-0.043,0.022,60,45] spread=reflect interp=linearRGB focal=0)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,100,0,100,50,0,50,0,0] winding=evenOdd)
+  2: EndFill
+r5b radial focal n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Gradient(type=radial colors=[4294901760,4278190335] alphas=[1,1] ratios=[0,255] matrix=[0.043,0.022,-0.043,0.022,60,45] spread=pad interp=rgb focal=0.502)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,100,0,100,50,0,50,0,0] winding=evenOdd)
+  2: EndFill
+r6 bitmap n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Bitmap(8x4 matrix=[2,0,0,2.999,5,7] repeat=true smooth=false)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,40,0,40,40,0,40,0,0] winding=evenOdd)
+  2: EndFill
+r7 drawPath nonZero cubic n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=1)
+  1: Path(cmds=[1,2,2,2,3,3,3,3,1,2,3,2] data=[0,0,20,0,20,20,0,20,1.95,14.5,3.5,11.95,5.1,9.4,5.6,8.1,6.15,6.85,4.9,5.25,3.7,3.6,0,0,30,30,40,40,45,45,50,40,30,30] winding=nonZero)
+  2: EndFill
+r8 recurse=true n=6 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=111111 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  2: EndFill
+  3: Solid(color=222222 alpha=1)
+  4: Path(cmds=[1,2,2,2,2] data=[50,0,50,20,40,20,40,0,50,0] winding=evenOdd)
+  5: EndFill
+r8b recurse=false n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=111111 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  2: EndFill
+r8c child n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=222222 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  2: EndFill
+r9 triangles n=6 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=1)
+  1: Path(cmds=[1,2,2,2] data=[0,0,10,0,10,10,0,0] winding=evenOdd)
+  2: EndFill
+  3: Solid(color=00FF00 alpha=1)
+  4: Path(cmds=[1,2,2,2,2] data=[0,0,5,0,5,5,0,5,0,0] winding=evenOdd)
+  5: EndFill
+r10 open fill, style change n=10 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=1)
+  1: Path(cmds=[1,2,2,2] data=[0,0,10,0,10,10,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=3 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2] data=[0,0,10,0] winding=nonZero)
+  5: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  6: Stroke(thickness=5 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=00FF00 alpha=1))
+  7: Path(cmds=[1,2,2] data=[10,0,10,10,0,0] winding=nonZero)
+  8: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  9: EndFill
+r10b after endFill n=10 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=1)
+  1: Path(cmds=[1,2,2,2] data=[0,0,10,0,10,10,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=3 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2] data=[0,0,10,0] winding=nonZero)
+  5: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  6: Stroke(thickness=5 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=00FF00 alpha=1))
+  7: Path(cmds=[1,2,2] data=[10,0,10,10,0,0] winding=nonZero)
+  8: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  9: EndFill
+r11 empty n=0 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+r11b cleared n=0 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+r12 no moveTo + 2pt subpath n=3 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=FF0000 alpha=1)
+  1: Path(cmds=[1,2,2,2,1,2,2] data=[0,0,10,0,10,10,0,0,20,20,30,20,20,20] winding=evenOdd)
+  2: EndFill
+r13 drawGraphicsData n=7 __AS3__.vec::Vector.<flash.display::IGraphicsData>
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,3,2] data=[0,0,20,0,20,20,0,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=2 hint=false scale=normal caps=none joints=round miter=3 fill=Solid(color=AACEEF alpha=0.247))
+  4: Path(cmds=[1,2,3] data=[0,0,20,0,20,20,0,20] winding=nonZero)
+  5: Stroke(thickness=0 hint=false scale=normal caps=none joints=round miter=3 fill=null)
+  6: EndFill
+s1 style-before-fill closed n=7
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,30,0,30,20,0,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2,2] data=[30,0,30,20,0,20,0,0,30,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s2 style-after-fill closed n=7
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,30,0,30,20,0,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2,2] data=[30,0,30,20,0,20,0,0,30,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s3 style-before-fill open n=7
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2] data=[0,0,30,0,30,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2] data=[30,0,30,20,0,0,30,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s4 stroke-only closed + rect n=7
+  0: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  1: Path(cmds=[1,2,2,2,2] data=[30,0,30,20,0,20,0,0,30,0] winding=nonZero)
+  2: Stroke(thickness=0 fill=null)
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2,2] data=[50,0,50,10,40,10,40,0,50,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s5 two fills no endFill n=13
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,30,0,30,20,0,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2,2] data=[30,0,30,20,0,20,0,0,30,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: Solid(color=FF0000 alpha=1)
+  7: Path(cmds=[1,2,2,2,2] data=[40,0,50,0,50,10,40,10,40,0] winding=evenOdd)
+  8: EndFill
+  9: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  10: Path(cmds=[1,2,2,2,2] data=[50,0,50,10,40,10,40,0,50,0] winding=nonZero)
+  11: Stroke(thickness=0 fill=null)
+  12: EndFill
+s6 moveTo before beginFill n=7
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2] data=[5,5,30,5,30,20,5,5] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2,2,2] data=[30,5,30,20,5,5,30,5] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s7 lineStyle() mid path n=7
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,30,0,30,20,0,20,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=2 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,2] data=[0,0,30,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s8 circle stroke+fill n=7
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,3,3,2,3,3,2,3,3,2,3,3,2] data=[70,50,70,58.3,64.15,64.15,58.3,70,50,70,50,70,41.7,70,35.85,64.15,30,58.3,30,50,30,50,30,41.7,35.85,35.85,41.7,30,50,30,50,30,58.3,30,64.15,35.85,70,41.7,70,50,70,50] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=0000FF alpha=1))
+  4: Path(cmds=[1,3,2,3,3,2,3,3,2,3,3,3,1,2] data=[64.15,64.15,58.3,70,50,70,50,70,41.7,70,35.85,64.15,30,58.3,30,50,30,50,30,41.7,35.85,35.85,41.7,30,50,30,50,30,58.3,30,64.15,35.85,70,41.7,70,50,70,58.3,64.15,64.15,70,50,70,50] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: EndFill
+s9 ellipse+roundrect n=3
+  0: Solid(color=00FF00 alpha=1)
+  1: Path(cmds=[1,3,3,2,3,3,2,3,3,2,3,3,2,1,3,3,2,3,3,2,3,3,2,3,3,2] data=[40,10,40,14.15,34.15,17.05,28.3,20,20,20,20,20,11.7,20,5.85,17.05,0,14.15,0,10,0,10,0,5.85,5.85,2.95,11.7,0,20,0,20,0,28.3,0,34.15,2.95,40,5.85,40,10,40,10,40,47,40,48.25,38.55,49.1,37.05,50,35,50,5,50,2.95,50,1.45,49.1,0,48.25,0,47,0,33,0,31.75,1.45,30.9,2.95,30,5,30,35,30,37.05,30,38.55,30.9,40,31.75,40,33,40,47] winding=evenOdd)
+  2: EndFill
+c1 colours n=31
+  0: Solid(color=FE8040 alpha=0.74902)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  2: EndFill
+  3: Stroke(thickness=1 fill=Solid(color=FE8040 alpha=0.74902))
+  4: Path(cmds=[1,2,2,2,2] data=[10,0,10,10,0,10,0,0,10,0] winding=nonZero)
+  5: Stroke(thickness=0 fill=null)
+  6: Solid(color=0DCCAB alpha=0.29804)
+  7: Path(cmds=[1,2,2,2,2] data=[20,0,30,0,30,10,20,10,20,0] winding=evenOdd)
+  8: EndFill
+  9: Stroke(thickness=1 fill=Solid(color=0DCCAB alpha=0.29804))
+  10: Path(cmds=[1,2,2,2,2] data=[30,0,30,10,20,10,20,0,30,0] winding=nonZero)
+  11: Stroke(thickness=0 fill=null)
+  12: Solid(color=FFFFFF alpha=0.49804)
+  13: Path(cmds=[1,2,2,2,2] data=[40,0,50,0,50,10,40,10,40,0] winding=evenOdd)
+  14: EndFill
+  15: Stroke(thickness=1 fill=Solid(color=FFFFFF alpha=0.49804))
+  16: Path(cmds=[1,2,2,2,2] data=[50,0,50,10,40,10,40,0,50,0] winding=nonZero)
+  17: Stroke(thickness=0 fill=null)
+  18: Solid(color=7A7A7A alpha=0.09804)
+  19: Path(cmds=[1,2,2,2,2] data=[60,0,70,0,70,10,60,10,60,0] winding=evenOdd)
+  20: EndFill
+  21: Stroke(thickness=1 fill=Solid(color=7A7A7A alpha=0.09804))
+  22: Path(cmds=[1,2,2,2,2] data=[70,0,70,10,60,10,60,0,70,0] winding=nonZero)
+  23: Stroke(thickness=0 fill=null)
+  24: Solid(color=000000 alpha=0)
+  25: Path(cmds=[1,2,2,2,2] data=[80,0,90,0,90,10,80,10,80,0] winding=evenOdd)
+  26: EndFill
+  27: Stroke(thickness=1 fill=Solid(color=000000 alpha=0))
+  28: Path(cmds=[1,2,2,2,2] data=[90,0,90,10,80,10,80,0,90,0] winding=nonZero)
+  29: Stroke(thickness=0 fill=null)
+  30: EndFill
+g1 matrices n=15
+  0: Gradient(type=linear colors=[4294901760,4278190335] alphas=[1,1] ratios=[0,255] matrix=[1,2,3,4,5,6] spread=pad interp=rgb focal=0)
+  1: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  2: EndFill
+  3: Bitmap(8x4 matrix=[0.99976,1.99951,2.99927,3.99902,5,6] repeat=true smooth=false)
+  4: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  5: EndFill
+  6: Gradient(type=linear colors=[4294901760,4278190335] alphas=[1,1] ratios=[0,255] matrix=[0.5,0,0,0.25,1,-2] spread=pad interp=rgb focal=0)
+  7: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  8: EndFill
+  9: Gradient(type=linear colors=[4294901760,4278190335] alphas=[1,1] ratios=[0,255] matrix=[0.12207,0,0,0.12207,0,0] spread=pad interp=rgb focal=0)
+  10: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  11: EndFill
+  12: Bitmap(8x4 matrix=[0.99976,0,0,0.99976,0,0] repeat=true smooth=false)
+  13: Path(cmds=[1,2,2,2,2] data=[0,0,10,0,10,10,0,10,0,0] winding=evenOdd)
+  14: EndFill
+g2 line styles n=4
+  0: Stroke(thickness=3 fill=Gradient(type=radial colors=[2147418112,4278190335] alphas=[0.4980392156862745,1] ratios=[10,200] matrix=[0.5,0,0,0.25,1,-2] spread=repeat interp=linearRGB focal=-0.4))
+  1: Path(cmds=[1,2,2] data=[0,0,20,0,20,20] winding=nonZero)
+  2: Stroke(thickness=0 fill=null)
+  3: EndFill
+# done

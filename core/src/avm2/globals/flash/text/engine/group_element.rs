@@ -205,8 +205,18 @@ fn replace_elements_impl<'gc>(
 
     // This crash affects at least both `replaceElements` and `setElements`.
 
+    // Timffle: maintain `ContentElement.groupElement` on the way in and out.
+    let mc = activation.gc();
+    for element in &new_elements {
+        element.set_group_element(Some(this), mc);
+    }
     let removed_elements = elements
         .splice(begin_index..end_index, new_elements)
+        .inspect(|e| {
+            if e.group_element().is_some_and(|g| Object::ptr_eq(g, this)) {
+                e.set_group_element(None, mc);
+            }
+        })
         .map(Value::from)
         .collect::<Vec<_>>();
 

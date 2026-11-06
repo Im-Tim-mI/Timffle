@@ -1,0 +1,40 @@
+# test=issup
+begin
+Camera.isSupported = true
+Microphone.isSupported = true
+AudioDeviceManager.isSupported = true
+PrintJob.isSupported = true
+Capabilities.hasPrinting = true
+Worker.isSupported = true
+WorkerDomain.isSupported = true
+Mutex.isSupported = true
+Condition.isSupported = true
+Camera.names = [] length=0
+Microphone.names = [] length=0
+Capabilities.hasAudio = true
+Capabilities.hasMP3 = true
+Capabilities.hasVideoEncoder = true
+Capabilities.hasAudioEncoder = true
+Capabilities.hasStreamingAudio = true
+Capabilities.hasStreamingVideo = true
+Capabilities.avHardwareDisable = false
+Capabilities.localFileReadDisable = false
+Capabilities.hasEmbeddedVideo = true
+Capabilities.hasAccessibility = false
+Capabilities.hasIME = false
+Capabilities.hasTLS = true
+Capabilities.hasScreenBroadcast = false
+Capabilities.hasScreenPlayback = false
+Camera.getCamera() = null
+Camera.getCamera("0") = null
+Microphone.getMicrophone() = null
+Microphone.getEnhancedMicrophone() = null
+new AudioDeviceManager() THREW ArgumentError #2012
+AudioDeviceManager.audioDeviceManager = flash.media::AudioDeviceManager deviceNames=[] length=0 selectedDeviceIndex=0
+new PrintJob() = flash.printing::PrintJob
+PrintJob fields before start THREW Error #2141
+Worker.current = flash.system::Worker isPrimordial=true state=running
+WorkerDomain.current = flash.system::WorkerDomain
+new Mutex().tryLock() = true
+ver=32,0,0,465
+# done

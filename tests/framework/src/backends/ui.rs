@@ -87,6 +87,8 @@ pub struct TestUiBackend {
     #[cfg(feature = "freetype")]
     font_atlases: FontAtlases,
     clipboard: String,
+    /// Timffle: whether `Stage.mouseLock` requests are granted.
+    mouse_lock: bool,
 }
 
 impl TestUiBackend {
@@ -94,6 +96,7 @@ impl TestUiBackend {
         fonts: HashMap<FontQuery, Font>,
         font_sorts: HashMap<FontQuery, Vec<FontQuery>>,
         device_font_renderer: FontRendererKind,
+        mouse_lock: bool,
     ) -> Self {
         Self {
             fonts,
@@ -102,6 +105,7 @@ impl TestUiBackend {
             #[cfg(feature = "freetype")]
             font_atlases: FontAtlases::new(),
             clipboard: "".to_string(),
+            mouse_lock,
         }
     }
 }
@@ -125,6 +129,10 @@ impl UiBackend for TestUiBackend {
 
     fn set_fullscreen(&mut self, _is_full: bool) -> Result<(), FullscreenError> {
         Ok(())
+    }
+
+    fn set_mouse_lock(&mut self, lock: bool) -> bool {
+        !lock || self.mouse_lock
     }
 
     fn display_root_movie_download_failed_message(&self, _invalid_swf: bool, _fetch_error: String) {

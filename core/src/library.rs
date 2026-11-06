@@ -752,6 +752,28 @@ impl<'gc> Library<'gc> {
         result
     }
 
+    /// Timffle: every device font this player knows (`Font.enumerateFonts(true)`):
+    /// the ones already loaded for some movie plus the implementations of the
+    /// built-in names, which are loaded here if nothing asked for them yet.
+    pub fn known_device_fonts(
+        &mut self,
+        ui: &dyn UiBackend,
+        renderer: &mut dyn RenderBackend,
+        gc_context: &Mutation<'gc>,
+    ) -> Vec<Font<'gc>> {
+        for name in [
+            DefaultFont::Sans,
+            DefaultFont::Serif,
+            DefaultFont::Typewriter,
+            DefaultFont::JapaneseGothic,
+            DefaultFont::JapaneseGothicMono,
+            DefaultFont::JapaneseMincho,
+        ] {
+            self.default_font(name, false, false, ui, renderer, gc_context);
+        }
+        self.device_fonts.all()
+    }
+
     /// Returns the device font exactly matching the requested options.
     fn get_or_load_exact_device_font(
         &mut self,

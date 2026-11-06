@@ -1,6 +1,4 @@
 package flash.display {
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_setter;
     import flash.utils.ByteArray;
 
     [API("662")]
@@ -28,13 +26,17 @@ package flash.display {
             this._data = value;
         }
 
+        // Timffle: Flash Player only accepts ShaderPrecision.FULL / FAST (anything else,
+        // including null, "" and "FULL", is ArgumentError #2004 — measured on Flash Player 32).
+        // Ruffle evaluates Pixel Bender shaders in full precision; the hint is stored.
         public function get precisionHint():String {
-            stub_getter("flash.display.Shader", "precisionHint");
             return this._precisionHint;
         }
 
         public function set precisionHint(value:String):void {
-            stub_setter("flash.display.Shader", "precisionHint");
+            if (value !== ShaderPrecision.FULL && value !== ShaderPrecision.FAST) {
+                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+            }
             this._precisionHint = value;
         }
     }

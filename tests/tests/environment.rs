@@ -162,6 +162,11 @@ mod renderer {
     pub(super) fn build_wgpu_descriptors() -> Option<Arc<Descriptors>> {
         let (instance, adapter, device, queue) = create_wgpu_device()?;
 
-        Some(Arc::new(Descriptors::new(instance, adapter, device, queue)))
+        let mut descriptors = Descriptors::new(instance, adapter, device, queue);
+        // Timffle: Context3D.driverInfo describes the GPU and driver; tests
+        // pin it (to the string Ruffle used before driverInfo was real) so
+        // image goldens that print it are the same on every machine.
+        descriptors.context3d_driver_info_override = Some("Dummy Ruffle driver".to_string());
+        Some(Arc::new(descriptors))
     }
 }

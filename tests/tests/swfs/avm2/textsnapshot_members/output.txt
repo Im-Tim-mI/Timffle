@@ -1,0 +1,45 @@
+sprite without static text: charCount=0 getText=[] findText=-1 getSelected=false getSelectedText=[] runs=0 hit=-1
+new TextSnapshot(): 2012
+Caught error: ArgumentError: Error #2012: StaticText$ class cannot be instantiated.
+e.errorID: 2012
+Child: [object StaticText]
+loaded: [object MainTimeline] children=1 child0=[object StaticText]
+textSnapshot: [object TextSnapshot] is TextSnapshot=true
+charCount: 38
+getText(0, charCount): [My first lineThe second lineThird line]
+getText(0, 3): [My ]
+getText(-4, 2): [My]
+getText(2, 2): [ ]
+getText(2, 1): [ ]
+getText(1000, 2000): [e]
+getText with line endings: [My first lineThe second lineThird line]
+findText(0, 'y ', true): 1
+findText(2, 'y ', true): -1
+findText(0, upper, false): 1
+findText(0, upper, true): -1
+findText(0, 'zzzz', false): -1
+findText(0, '', false): -1
+getSelected(0, charCount) before: false
+getSelectedText before: []
+getSelected(1, 3): true
+getSelected(0, 1): false
+getSelected(2, 10): true
+getSelected(3, 10): false
+getSelectedText: [y ]
+getSelectedText after adding 0..1: [My ]
+getSelectedText after removing 1..2: [M ]
+getSelected(1, 2): false
+new snapshot getSelectedText: [M ]
+getTextRunInfo(0, 2).length: 3
+run 0: indexInRun=0 selected=true font=Times New Roman color=0xff000000 height=12 matrix=[0.05 0 0 0.05 64 91.25] corners=(0,0)(0,0)(0,0)(0,0)
+run 1: indexInRun=1 selected=false font=Times New Roman color=0xff000000 height=12 matrix=[0.05 0 0 0.05 74.65 91.25] corners=(0,0)(0,0)(0,0)(0,0)
+run 2: indexInRun=2 selected=true font=Times New Roman color=0xff000000 height=12 matrix=[0.05 0 0 0.05 80.65 91.25] corners=(0,0)(0,0)(0,0)(0,0)
+run keys: color,corner0x,corner0y,corner1x,corner1y,corner2x,corner2y,corner3x,corner3y,font,height,indexInRun,matrix_a,matrix_b,matrix_c,matrix_d,matrix_tx,matrix_ty,selected
+getTextRunInfo(5, 2).length: 1
+getTextRunInfo(1000, 2000).length: 1
+hitTestTextNearPos(centre of 0): -1
+hitTestTextNearPos(far, 0): -1
+hitTestTextNearPos(far, 10): -1
+hitTestTextNearPos(far, huge): false
+hitTestTextNearPos(just above 1, 0): -1
+hitTestTextNearPos(just above 1, 5): -1

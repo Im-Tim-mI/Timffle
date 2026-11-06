@@ -1,0 +1,53 @@
+# test=ltload_grand
+before load content=null numChildren=0 loaded=none
+after load content=null numChildren=0 loaded=none
+frameConstructed 0 content=null numChildren=0 loaded=none
+exitFrame 0 content=null numChildren=0 loaded=none
+enterFrame 1 content=null numChildren=0 loaded=none
+frameConstructed 1 content=null numChildren=0 loaded=none
+exitFrame 1 content=null numChildren=0 loaded=none
+event open in frame 1 content=null numChildren=0 loaded=none
+~ progress 0/5976 in frame 1
+event progress(first) in frame 1 content=null numChildren=0 loaded=0
+~ progress 5976/5976 in frame 1
+event progress(all bytes) in frame 1 content=null numChildren=0 loaded=all
+enterFrame 2 content=null numChildren=0 loaded=all
+  child constructor parent=null stage=null pad=0 (frame 2)
+  child constructor: loadBytes(grandchild) called, content=null (frame 2)
+  child added target=other parent=null stage=null (frame 2)
+  child added target=self parent=null stage=null (frame 2)
+  child added target=self parent=set stage=set (frame 2)
+  child addedToStage parent=set stage=set (frame 2)
+frameConstructed 2 content=set numChildren=1 loaded=all
+  child frameConstructed #1 parent=set stage=set (frame 2)
+  child frameScript1 #1 parent=set stage=set (frame 2)
+exitFrame 2 content=set numChildren=1 loaded=all
+  child exitFrame #1 parent=set stage=set (frame 2)
+event init in frame 2 content=set numChildren=1 loaded=all
+~ httpStatus 200
+event httpStatus in frame 2 content=set numChildren=1 loaded=all
+event complete in frame 2 content=set numChildren=1 loaded=all
+enterFrame 3 content=set numChildren=1 loaded=all
+  child enterFrame #1 parent=set stage=set (frame 3)
+  child | grand constructor parent=null stage=null pad=0 (frame 3)
+  child | grand added target=self parent=null stage=null (frame 3)
+  child | grand added target=self parent=set stage=set (frame 3)
+  child added target=other parent=set stage=set (frame 3)
+  child | grand addedToStage parent=set stage=set (frame 3)
+frameConstructed 3 content=set numChildren=1 loaded=all
+  child frameConstructed #2 parent=set stage=set (frame 3)
+  child | grand frameConstructed #1 parent=set stage=set (frame 3)
+  child | grand frameScript1 #1 parent=set stage=set (frame 3)
+exitFrame 3 content=set numChildren=1 loaded=all
+  child exitFrame #2 parent=set stage=set (frame 3)
+  child | grand exitFrame #1 parent=set stage=set (frame 3)
+  child grandchild loader: init content=set (frame 3)
+  child grandchild loader: complete (frame 3)
+enterFrame 4 content=set numChildren=1 loaded=all
+  child enterFrame #2 parent=set stage=set (frame 4)
+  child | grand enterFrame #1 parent=set stage=set (frame 4)
+frameConstructed 4 content=set numChildren=1 loaded=all
+  child | grand frameConstructed #2 parent=set stage=set (frame 4)
+exitFrame 4 content=set numChildren=1 loaded=all
+progress events: >=2
+# done

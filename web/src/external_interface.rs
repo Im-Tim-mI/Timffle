@@ -30,6 +30,17 @@ impl JavascriptInterface {
 
 impl ExternalInterfaceProvider for JavascriptInterface {
     fn call_method(&self, context: &mut UpdateContext<'_>, name: &str, args: &[Value]) -> Value {
+        self.call_method_checked(context, name, args)
+            .unwrap_or(ExternalValue::Undefined)
+    }
+
+    /// Timffle: a JavaScript exception comes back as `Err(its message)`.
+    fn call_method_checked(
+        &self,
+        context: &mut UpdateContext<'_>,
+        name: &str,
+        args: &[Value],
+    ) -> Result<Value, String> {
         let old_context = CURRENT_CONTEXT.with(|v| {
             v.replace(Some(unsafe {
                 std::mem::transmute::<&mut UpdateContext, &mut UpdateContext<'static>>(context)
@@ -40,10 +51,15 @@ impl ExternalInterfaceProvider for JavascriptInterface {
             .cloned()
             .map(external_to_js_value)
             .collect::<Vec<_>>();
-        let result = if let Ok(result) = call_external_interface(name, args.into_boxed_slice()) {
-            js_to_external_value(&result)
-        } else {
-            ExternalValue::Undefined
+        let result = match call_external_interface(name, args.into_boxed_slice()) {
+            Ok(result) => Ok(js_to_external_value(&result)),
+            Err(error) => Err(if let Some(error) = error.dyn_ref::<js_sys::Error>() {
+                String::from(error.message())
+            } else if let Some(message) = error.as_string() {
+                message
+            } else {
+                format!("{error:?}")
+            }),
         };
 
         CURRENT_CONTEXT.with(|v| v.replace(old_context));

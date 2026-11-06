@@ -8,11 +8,11 @@ use crate::avm2::bytearray::ByteArrayStorage;
 use crate::avm2::class::Class;
 use crate::avm2::object::{ByteArrayObject, ClassObject, ScriptObject, TObject, VectorObject};
 use crate::avm2::vector::VectorStorage;
-use crate::avm2::{Activation, Error, Object, Value};
-use crate::avm2_stub_method;
+use crate::avm2::{Activation, Error, FunctionArgs, Object, Value};
 use crate::string::AvmString;
 use enumset::EnumSet;
-use flash_lso::types::{AMFVersion, Element, Lso, ObjectId};
+use flash_lso::amf0::read::AMF0_REFERENCE_ID_BASE;
+use flash_lso::types::{AMFVersion, Element, Lso, ObjectId, Reference};
 use flash_lso::types::{Attribute, ClassDefinition, Value as AmfValue};
 use fnv::FnvHashMap;
 
@@ -27,9 +27,26 @@ pub struct ObjectTable<'gc> {
     /// recursing forever.
     in_progress: FnvHashMap<Object<'gc>, ObjectId>,
     next_id: i64,
+    /// Timffle: the AMF0 reference table: every complex object (anonymous/typed object,
+    /// array) written so far, in order of occurrence, as the AMF0 specification (2.9)
+    /// indexes it; a later occurrence of the same object (repeated or cyclic) is written
+    /// as a `reference` marker (0x07) carrying this index, like Flash Player.
+    amf0_references: FnvHashMap<Object<'gc>, u16>,
+    /// Timffle: the first error thrown by an `ObjectEncoding.dynamicPropertyWriter` while
+    /// serializing; the serializer cannot return it itself, so the caller checks
+    /// [`ObjectTable::take_error`] afterwards.
+    error: Option<Error<'gc>>,
 }
 
 impl<'gc> ObjectTable<'gc> {
+    /// Timffle: fails with the error a `dynamicPropertyWriter` threw during serialization.
+    pub fn take_error(&mut self) -> Result<(), Error<'gc>> {
+        match self.error.take() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+
     /// Marks `obj` as being serialized and returns the id its value should carry,
     /// or `Err(reference)` if `obj` is already being serialized (a cycle).
     fn begin(&mut self, obj: Object<'gc>) -> Result<ObjectId, AmfValue> {
@@ -65,6 +82,21 @@ pub fn serialize_value<'gc>(
         Value::Integer(i) => AmfValue::Integer(i),
         Value::String(s) => AmfValue::String(s.to_string()),
         Value::Object(o) => {
+            // Timffle: AMF0 has no per-value ids; a repeated or cyclic complex object is a
+            // reference into the table of complex objects written so far. The object is
+            // entered before its children so that a cycle back to it finds it.
+            let amf0_index = if amf_version == AMFVersion::AMF0 && is_amf0_complex(o) {
+                if let Some(index) = object_table.amf0_references.get(&o) {
+                    return AmfValue::Reference(Reference(*index));
+                }
+                let index = u16::try_from(object_table.amf0_references.len()).ok();
+                if let Some(index) = index {
+                    object_table.amf0_references.insert(o, index);
+                }
+                index
+            } else {
+                None
+            };
             // A repeated (non-cyclic) object is written again in full, carrying the
             // same id so the deserializer can restore identity.
             if let Some(done) = object_table.done.get(&o) {
@@ -76,12 +108,32 @@ pub fn serialize_value<'gc>(
                 Ok(id) => id,
                 Err(reference) => return reference,
             };
+            // Timffle: an AMF0 complex object is identified by its reference-table index,
+            // the id a decoder gives it too, so a value tree handed over in memory (a
+            // `LocalConnection` call) resolves its references like one read from bytes.
+            let id = amf0_index.map_or(id, |index| {
+                ObjectId(AMF0_REFERENCE_ID_BASE + i64::from(index))
+            });
             let value = serialize_object(activation, o, id, amf_version, object_table);
             object_table.end(o);
             object_table.done.insert(o, Rc::new(value.clone()));
             value
         }
     }
+}
+
+/// Timffle: whether AMF0 writes `o` as a complex object that enters the reference table
+/// (an anonymous or typed object, or an array); dates, XML and byte arrays are written by
+/// value every time, and the AMF3-only kinds (vectors, dictionaries) never as AMF0.
+fn is_amf0_complex<'gc>(o: Object<'gc>) -> bool {
+    o.as_array_storage().is_some()
+        || !(o.as_function_object().is_some()
+            || o.as_display_object().is_some()
+            || o.as_vector_storage().is_some()
+            || o.as_date_object().is_some()
+            || o.as_xml_object().is_some()
+            || o.as_bytearray().is_some()
+            || o.as_dictionary_object().is_some())
 }
 
 fn serialize_object<'gc>(
@@ -201,15 +253,49 @@ fn serialize_object<'gc>(
 
         let mut object_body = Vec::new();
         let mut static_properties = Vec::new();
-        recursive_serialize(
-            activation,
-            o,
-            &mut object_body,
-            Some(&mut static_properties),
-            amf_version,
-            object_table,
-        )
-        .unwrap();
+        // Timffle: `ObjectEncoding.dynamicPropertyWriter` decides the dynamic properties of a
+        // dynamic object (Flash Player 32: plain Objects and dynamic class instances, not
+        // Arrays or sealed classes; the sealed properties are still written natively).
+        let writer = if class.is_sealed() {
+            None
+        } else {
+            activation.avm2().dynamic_property_writer
+        };
+        if let Some(writer) = writer {
+            let result = serialize_sealed_properties(
+                activation,
+                o,
+                &mut object_body,
+                &mut static_properties,
+                amf_version,
+                object_table,
+            )
+            .and_then(|()| {
+                write_dynamic_properties(
+                    activation,
+                    writer,
+                    o,
+                    &mut object_body,
+                    amf_version,
+                    object_table,
+                )
+            });
+            if let Err(error) = result
+                && object_table.error.is_none()
+            {
+                object_table.error = Some(error);
+            }
+        } else {
+            recursive_serialize(
+                activation,
+                o,
+                &mut object_body,
+                Some(&mut static_properties),
+                amf_version,
+                object_table,
+            )
+            .unwrap();
+        }
         AmfValue::Object(
             id,
             object_body,
@@ -220,11 +306,76 @@ fn serialize_object<'gc>(
                     // FIXME - implement this
                     static_properties,
                 })
+            } else if !name.is_empty() {
+                // Timffle: an instance of a class registered with `registerClassAlias`
+                // is an AMF0 typed object (0x10, with the alias), like Flash Player;
+                // only an unregistered class is an anonymous object.
+                Some(ClassDefinition::default_with_name(name))
             } else {
                 None
             },
         )
     }
+}
+
+/// Timffle: runs `ObjectEncoding.dynamicPropertyWriter.writeDynamicProperties(obj, output)` and
+/// appends what it wrote through the `DynamicPropertyOutput` (in the writer's order, duplicates
+/// kept, function values written as `undefined`, like Flash Player 32).
+fn write_dynamic_properties<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    writer: Object<'gc>,
+    obj: Object<'gc>,
+    elements: &mut Vec<Element>,
+    amf_version: AMFVersion,
+    object_table: &mut ObjectTable<'gc>,
+) -> Result<(), Error<'gc>> {
+    use crate::avm2::globals::slots::flash_net_dynamic_property_output as output_slots;
+
+    if object_table.error.is_some() {
+        // An earlier writer call threw; the caller gets that error, stop calling out.
+        return Ok(());
+    }
+
+    let output_class = activation.avm2().classes().dynamicpropertyoutput;
+    let output = output_class
+        .construct(activation, &[])?
+        .as_object()
+        .expect("DynamicPropertyOutput is an object");
+
+    let method_name = AvmString::new_utf8(activation.gc(), "writeDynamicProperties");
+    let result = Value::from(writer).call_public_property(
+        method_name,
+        FunctionArgs::from_slice(&[obj.into(), output.into()]),
+        activation,
+    );
+    // Writes after the callback are ignored.
+    output.set_slot(output_slots::_OPEN, false.into(), activation)?;
+    result?;
+
+    let entries = output
+        .get_slot(output_slots::_ENTRIES)
+        .as_object()
+        .expect("DynamicPropertyOutput._entries is an Array");
+    let pairs: Vec<(Value<'gc>, Value<'gc>)> = {
+        let storage = entries.as_array_storage().unwrap();
+        (0..storage.length() / 2)
+            .map(|i| {
+                (
+                    storage.get(i * 2).unwrap_or(Value::Undefined),
+                    storage.get(i * 2 + 1).unwrap_or(Value::Undefined),
+                )
+            })
+            .collect()
+    };
+    for (name, value) in pairs {
+        let name = name
+            .coerce_to_string(activation)?
+            .to_utf8_lossy()
+            .to_string();
+        let elem = get_or_create_element(activation, name, value, object_table, amf_version);
+        elements.push(elem);
+    }
+    Ok(())
 }
 
 /// The number of bytes `values` take when written one after another as AMF3,
@@ -259,6 +410,43 @@ fn class_to_alias<'gc>(activation: &mut Activation<'_, 'gc>, class: Class<'gc>) 
     }
 }
 
+/// Timffle: the sealed (vtable) properties of `obj`, the first part of [`recursive_serialize`].
+fn serialize_sealed_properties<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    obj: Object<'gc>,
+    elements: &mut Vec<Element>,
+    static_properties: &mut Vec<String>,
+    amf_version: AMFVersion,
+    object_table: &mut ObjectTable<'gc>,
+) -> Result<(), Error<'gc>> {
+    let vtable = obj.vtable();
+    // TODO: respect versioning
+    // Flash appears to use vtable iteration order, but we sort ours
+    // to make our test output consistent.
+    let mut props = vtable.public_properties().collect::<Vec<_>>();
+    props.sort_by_key(|(name, _)| *name);
+
+    for (name, prop) in props {
+        if let Property::Method { .. } = prop {
+            continue;
+        }
+        if let Property::Virtual { get, set } = prop
+            && !(get.is_some() && set.is_some())
+        {
+            continue;
+        }
+
+        let value = Value::from(obj).get_public_property(name, activation)?;
+        let name = name.to_utf8_lossy().to_string();
+        let elem =
+            get_or_create_element(activation, name.clone(), value, object_table, amf_version);
+
+        elements.push(elem);
+        static_properties.push(name);
+    }
+    Ok(())
+}
+
 /// Serialize an Object and any children to a AMF object
 pub fn recursive_serialize<'gc>(
     activation: &mut Activation<'_, 'gc>,
@@ -269,31 +457,14 @@ pub fn recursive_serialize<'gc>(
     object_table: &mut ObjectTable<'gc>,
 ) -> Result<(), Error<'gc>> {
     if let Some(static_properties) = static_properties {
-        let vtable = obj.vtable();
-        // TODO: respect versioning
-        // Flash appears to use vtable iteration order, but we sort ours
-        // to make our test output consistent.
-        let mut props = vtable.public_properties().collect::<Vec<_>>();
-        props.sort_by_key(|(name, _)| *name);
-
-        for (name, prop) in props {
-            if let Property::Method { .. } = prop {
-                continue;
-            }
-            if let Property::Virtual { get, set } = prop
-                && !(get.is_some() && set.is_some())
-            {
-                continue;
-            }
-
-            let value = Value::from(obj).get_public_property(name, activation)?;
-            let name = name.to_utf8_lossy().to_string();
-            let elem =
-                get_or_create_element(activation, name.clone(), value, object_table, amf_version);
-
-            elements.push(elem);
-            static_properties.push(name);
-        }
+        serialize_sealed_properties(
+            activation,
+            obj,
+            elements,
+            static_properties,
+            amf_version,
+            object_table,
+        )?;
     }
 
     // FIXME: Flash only seems to use this enumeration for dynamic classes.
@@ -338,25 +509,10 @@ fn get_or_create_value<'gc>(
     object_table: &mut ObjectTable<'gc>,
     amf_version: AMFVersion,
 ) -> Rc<AmfValue> {
-    if let Some(obj) = val.as_object() {
-        match object_table.done.get(&obj) {
-            Some(rc_val) => {
-                // Even though we'll clone the same 'Rc<AmfValue>' for each occurrence
-                // of 'Object', flash_lso doesn't serialize this correctly yet.
-                avm2_stub_method!(
-                    activation,
-                    "flash.utils.ByteArray",
-                    "writeObject",
-                    "with same Object used multiple times"
-                );
-                rc_val.clone()
-            }
-            // `serialize_value` records the object in `object_table.done` itself.
-            None => Rc::new(serialize_value(activation, val, amf_version, object_table)),
-        }
-    } else {
-        Rc::new(serialize_value(activation, val, amf_version, object_table))
-    }
+    // Timffle: `serialize_value` writes a repeated object as an AMF0 `reference`, or in
+    // AMF3 in full with the id the encoder's object reference table turns into a
+    // reference; nothing is left to stub.
+    Rc::new(serialize_value(activation, val, amf_version, object_table))
 }
 
 /// Deserialize a AmfValue to a Value
@@ -577,12 +733,15 @@ pub fn deserialize_value_impl<'gc>(
             tracing::error!("Deserialization not yet implemented for Custom: {:?}", val);
             Value::Undefined
         }
-        AmfValue::Reference(_) => {
-            tracing::error!(
-                "Deserialization not yet implemented for Reference: {:?}",
-                val
-            );
-            Value::Undefined
+        // Timffle: an AMF0 reference names the n-th complex object of the stream; the
+        // decoder (and the AMF0 serializer) mark those with `AMF0_REFERENCE_ID_BASE + n`.
+        AmfValue::Reference(r) => {
+            if let Some(o) = object_map.get(&ObjectId(AMF0_REFERENCE_ID_BASE + i64::from(r.0))) {
+                (*o).into()
+            } else {
+                tracing::error!("AMF0 deserializer got a reference {r:?} to an unknown object");
+                Value::Undefined
+            }
         }
         AmfValue::AMF3(val) => deserialize_value_impl(activation, val, object_map)?,
         AmfValue::Unsupported => Value::Undefined,
@@ -606,10 +765,14 @@ pub fn deserialize_lso<'gc>(
 ) -> Result<Object<'gc>, Error<'gc>> {
     let obj = ScriptObject::new_object(activation.context);
 
+    // Timffle: one object map for the whole file: a reference in one property to an
+    // object stored by an earlier one (AMF0 reference table, AMF3 object table) resolves
+    // to that same object.
+    let mut object_map = BTreeMap::new();
     for child in &lso.body {
         obj.set_dynamic_property(
             AvmString::new_utf8(activation.gc(), &child.name),
-            deserialize_value(activation, child.value())?,
+            deserialize_value_impl(activation, child.value(), &mut object_map)?,
             activation.gc(),
         );
     }

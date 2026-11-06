@@ -12,12 +12,12 @@ use crate::backend::navigator::ErrorResponse;
 use crate::backend::navigator::FetchReason;
 use crate::backend::navigator::OwnedFuture;
 use crate::backend::navigator::SuccessResponse;
-use crate::backend::ui::FontDefinition;
+use crate::backend::ui::{CustomCursor, FontDefinition};
 use crate::backend::{
     audio::{AudioBackend, AudioManager},
     locale::LocaleBackend,
     log::LogBackend,
-    navigator::{NavigatorBackend, Request},
+    navigator::{NavigationMethod, NavigatorBackend, Request},
     storage::StorageBackend,
     ui::{MouseCursor, UiBackend},
 };
@@ -60,9 +60,10 @@ use crate::timer::Timers;
 use crate::vminterface::Instantiator;
 use async_channel::Sender;
 use enumset::EnumSet;
-use fnv::FnvHashSet;
+use fnv::FnvHashMap;
 use gc_arena::lock::GcRefLock;
 use gc_arena::{Collect, DynamicRootSet, Mutation, Rootable};
+use indexmap::IndexMap;
 use ruffle_common::duration::FloatDuration;
 use ruffle_macros::istr;
 use ruffle_render::backend::{RenderBackend, ViewportDimensions, null::NullRenderer};
@@ -111,11 +112,18 @@ impl StaticCallstack {
     }
 }
 
+/// Timffle: the bitmap of a cursor registered via `flash.ui.Mouse.registerCursor()`,
+/// shared between the registry and the backend it is shown on.
+#[derive(Clone, Collect)]
+#[collect(require_static)]
+pub struct RegisteredCursor(pub Rc<CustomCursor>);
+
 #[derive(Collect)]
 #[collect(no_drop)]
 pub struct MouseData<'gc> {
-    /// A set of custom cursors registered via `flash.ui.Mouse.registerCursor()`.
-    pub custom_cursors: FnvHashSet<AvmString<'gc>>,
+    /// The custom cursors registered via `flash.ui.Mouse.registerCursor()`, by name.
+    /// Timffle: with their bitmaps, not only their names.
+    pub custom_cursors: FnvHashMap<AvmString<'gc>, RegisteredCursor>,
 
     /// When setting `flash.ui.Mouse.cursor`, if the value exists
     /// in `custom_cursors`, then it will be stored here for the
@@ -144,6 +152,13 @@ pub struct MouseData<'gc> {
     /// while the drag is still active; this flag makes the nested call a
     /// no-op instead of recursing until stack overflow.
     pub updating_drop_target: bool,
+
+    /// Timffle: the relative motion (device pixels) of the mouse event being
+    /// handled while `Stage.mouseLock` is on; `MouseEvent.movementX/Y` of the
+    /// `mouseMove` it produces. `None` for every other event (Flash Player 32
+    /// reports 0 for an unlocked mouse and for non-move events).
+    #[collect(require_static)]
+    pub movement: Option<(f64, f64)>,
 }
 
 impl<'gc> MouseData<'gc> {
@@ -342,7 +357,7 @@ pub struct Player {
 
     renderer: Box<dyn RenderBackend>,
     audio: Box<dyn AudioBackend>,
-    navigator: Box<dyn NavigatorBackend>,
+    navigator: GatedNavigator,
     storage: Box<dyn StorageBackend>,
     log: Box<dyn LogBackend>,
     ui: Box<dyn UiBackend>,
@@ -384,6 +399,11 @@ pub struct Player {
     mouse_in_stage: bool,
     mouse_position: Point<Twips>,
 
+    /// Timffle: the mouse was locked (`Stage.mouseLock`) since the last
+    /// absolute pointer position, so `mouse_position` is not where the pointer
+    /// is; nothing is under the pointer until the host reports a position again.
+    mouse_position_stale: bool,
+
     /// The current mouse cursor icon.
     mouse_cursor: MouseCursor,
     mouse_cursor_needs_check: bool,
@@ -411,6 +431,10 @@ pub struct Player {
     /// contexts to other parts of the player. It can be used to ensure the
     /// player lives across `await` calls in async code.
     self_reference: Weak<Mutex<Self>>,
+
+    /// Timffle: holds back the results of downloads until the frame Flash Player
+    /// delivers them in (see `DeliveryGate`).
+    delivery_gate: Arc<Mutex<DeliveryGate>>,
 
     /// The current frame of the main timeline, if available.
     /// The first frame is frame 1.
@@ -565,13 +589,12 @@ impl Player {
         self.frame_accumulator += dt;
         let frame_duration = self.frame_duration();
 
-        // Timffle: events that arrive between frames (socket data, net connections, timers)
+        // Timffle: events that arrive between frames (socket data, timers)
         // run before this tick's frames, so a picture drawn after the tick shows the state
         // at the end of the last frame, as Flash Player draws it. Ruffle ran them after the
         // frames, so an object a timer had just placed was drawn before its constructor and
         // frame-1 script ran (摩爾莊園 lamu drawn uncoloured for one frame).
         self.update_sockets();
-        self.update_net_connections();
         self.update_timers(dt);
 
         let max_frames_per_tick = self.max_frames_per_tick();
@@ -600,6 +623,13 @@ impl Player {
                 break;
             }
         }
+
+        // Timffle: outgoing NetConnection packets (`NetConnection.call` queued by this
+        // tick's timers and frames) are sent after the frames, so a call made in a
+        // frame goes out in the same tick, before LocalConnection messages sent in
+        // that frame arrive (`avm1/amf_array_serialization`). It only starts
+        // requests, so running it after the frames does not change what is drawn.
+        self.update_net_connections();
 
         // Now that we're done running code,
         // we can stop pretending that more time passed than actually did.
@@ -877,6 +907,20 @@ impl Player {
         })
     }
 
+    /// Timffle: whether `Stage.mouseLock` is on (the host then sends
+    /// `PlayerEvent::MouseMoveRelative`).
+    pub fn mouse_lock(&mut self) -> bool {
+        self.mutate_with_update_context(|context| context.stage.mouse_lock())
+    }
+
+    /// Timffle: the host reports that the pointer lock changed on its own
+    /// (for example the user pressed Escape in the browser).
+    pub fn set_mouse_lock(&mut self, locked: bool) {
+        self.mutate_with_update_context(|context| {
+            context.stage.set_mouse_lock_state(locked);
+        });
+    }
+
     pub fn set_fullscreen(&mut self, is_fullscreen: bool) {
         self.mutate_with_update_context(|context| {
             let display_state = if is_fullscreen {
@@ -1066,6 +1110,7 @@ impl Player {
             PlayerEvent::KeyDown { .. }
             | PlayerEvent::KeyUp { .. }
             | PlayerEvent::MouseMove { .. }
+            | PlayerEvent::MouseMoveRelative { .. }
             | PlayerEvent::MouseUp { .. }
             | PlayerEvent::MouseDown { .. }
             | PlayerEvent::MouseLeave
@@ -1113,6 +1158,26 @@ impl Player {
     ///    second wave of event processing.
     fn handle_input_event(&mut self, event: PlayerEvent) -> bool {
         let mut player_event_handled = false;
+
+        // Timffle: while `Stage.mouseLock` is on, the pointer only reports
+        // relative motion (Flash Player 32: every locked mouseMove targets the
+        // stage, `movementX/Y` is the raw screen-pixel motion, `localX/Y` read 0
+        // and `stage.mouseX/Y` is that motion in stage units; down/up/wheel read
+        // 0). Absolute moves are ignored while locked, relative ones otherwise.
+        let mouse_locked = self.mutate_with_update_context(|context| context.stage.mouse_lock());
+        let mut movement = None;
+        let event = match event {
+            PlayerEvent::MouseMoveRelative { dx, dy } => {
+                if !mouse_locked {
+                    return false;
+                }
+                movement = Some((dx, dy));
+                PlayerEvent::MouseMove { x: dx, y: dy }
+            }
+            PlayerEvent::MouseMove { .. } if mouse_locked => return false,
+            event => event,
+        };
+
         let prev_mouse_buttons = self.input.get_mouse_down_buttons();
         let Some(event) = self.input.process_event(event) else {
             return false;
@@ -1197,6 +1262,9 @@ impl Player {
         }
 
         self.mutate_with_update_context(|context| {
+            // Timffle: the browser plugin allows clipboard writes only while a
+            // user event is being handled (`Clipboard`, `System.setClipboard`).
+            context.avm2.in_user_interaction = true;
             let button_event = ButtonKeyCode::from_input_event(&event)
                 .map(|key_code| ClipEvent::KeyPress { key_code });
 
@@ -1374,6 +1442,22 @@ impl Player {
                 }
             }
 
+            // Timffle: Flash dispatches `Event.PASTE` to whatever has focus, not
+            // only to text fields (those dispatch it from `text_control_input`).
+            if !key_press_handled
+                && let InputEvent::TextControl {
+                    code: crate::events::TextControlCode::Paste,
+                } = &event
+                && context.focus_tracker.get_as_edit_text().is_none()
+                && let Some(focus) = context.focus_tracker.get()
+                && let Some(target) = focus.as_displayobject().object2()
+            {
+                crate::avm2::globals::flash::desktop::clipboard::dispatch_paste_event(
+                    context,
+                    target.into(),
+                );
+            }
+
             // KeyPress events also take precedence over tabbing.
             if !key_press_handled
                 && let InputEvent::KeyDown {
@@ -1414,6 +1498,7 @@ impl Player {
             }
 
             Self::run_actions(context);
+            context.avm2.in_user_interaction = false;
         });
 
         // Update mouse state.
@@ -1424,21 +1509,48 @@ impl Player {
             let inverse_view_matrix =
                 self.mutate_with_update_context(|context| context.stage.inverse_view_matrix());
             let prev_mouse_position = self.mouse_position;
-            self.mouse_position = inverse_view_matrix * Point::from_pixels(x, y);
+            if !mouse_locked {
+                self.mouse_position_stale = false;
+            }
+            self.mouse_position = if !mouse_locked {
+                inverse_view_matrix * Point::from_pixels(x, y)
+            } else if movement.is_some() {
+                // Timffle: the motion vector in stage coordinates (no translation).
+                Point::ZERO
+                    + (inverse_view_matrix * Point::from_pixels(x, y)
+                        - inverse_view_matrix * Point::ZERO)
+            } else {
+                Point::ZERO
+            };
 
             // Update the dragged object here to keep it constantly in sync with the mouse position.
             self.mutate_with_update_context(|context| {
                 Self::update_drag(context);
             });
 
-            let is_mouse_moved = prev_mouse_position != self.mouse_position;
+            let is_mouse_moved = if mouse_locked {
+                movement.is_some_and(|(dx, dy)| dx != 0.0 || dy != 0.0)
+            } else {
+                prev_mouse_position != self.mouse_position
+            };
 
+            self.mutate_with_update_context(|context| context.mouse_data.movement = movement);
             // This fires button rollover/press events, which should run after the above mouseMove events.
-            if self.update_mouse_state(
+            let mouse_state_changed = self.update_mouse_state(
                 changed_mouse_buttons,
                 is_mouse_moved,
                 &mut player_event_handled,
-            ) {
+            );
+            self.mutate_with_update_context(|context| context.mouse_data.movement = None);
+            if mouse_state_changed {
+                self.needs_render = true;
+            }
+            // Timffle: a handler of this event locked the mouse; Flash Player 32
+            // sends mouseOut/rollOut to the object under the pointer right away.
+            if !mouse_locked
+                && self.mouse_lock()
+                && self.update_mouse_state(EnumSet::empty(), false, &mut player_event_handled)
+            {
                 self.needs_render = true;
             }
         }
@@ -1583,7 +1695,13 @@ impl Player {
     ) -> bool {
         let mut new_cursor = self.mouse_cursor;
         let mut mouse_cursor_needs_check = self.mouse_cursor_needs_check;
-        let mouse_in_stage = self.mouse_in_stage();
+        // Timffle: a locked mouse points at nothing (Flash Player 32: the object
+        // under the pointer gets mouseOut/rollOut and later events target the stage).
+        let mouse_locked = self.mutate_with_update_context(|context| context.stage.mouse_lock());
+        if mouse_locked {
+            self.mouse_position_stale = true;
+        }
+        let mouse_in_stage = self.mouse_in_stage() && !self.mouse_position_stale;
 
         // Determine the display object the mouse is hovering over.
         // Search through levels from top-to-bottom, returning the first display object that is under the mouse.
@@ -1592,7 +1710,8 @@ impl Player {
             // skip mouse hover when it's not necessary.
             let mut skip_mouse_hover = !is_mouse_moved
                 && changed_mouse_buttons.is_empty()
-                && context.mouse_data.hovered.is_some();
+                && context.mouse_data.hovered.is_some()
+                && !mouse_locked;
 
             let new_over_object = if mouse_in_stage {
                 run_mouse_pick(context, true)
@@ -1688,7 +1807,9 @@ impl Player {
             {
                 // If the mouse button is down, the object the user clicked on grabs the focus
                 // and fires "drag" events.
-                if context.input.is_mouse_down(MouseButton::Left) {
+                // Timffle: not when the mouse gets locked (Flash Player 32: plain
+                // mouseOut/rollOut, with buttonDown still true).
+                if context.input.is_mouse_down(MouseButton::Left) && !mouse_locked {
                     context.mouse_data.hovered = new_over_object;
                     if let Some(down_object) = context.mouse_data.pressed {
                         if InteractiveObject::option_ptr_eq(
@@ -1901,6 +2022,20 @@ impl Player {
                                         from: cur_over_object,
                                     },
                                 ));
+
+                                // Timffle: Flash's `trackAsMenu` (MovieClip / SimpleButton in
+                                // AVM2): the object under the mouse gets `click` although the
+                                // press happened elsewhere — after the pressed object's
+                                // `releaseOutside`, with the flag read at dispatch time, as
+                                // measured on Flash Player 32 (D58Misc).
+                                if over_object.as_displayobject().movie().is_action_script_3() {
+                                    events.push((
+                                        over_object,
+                                        ClipEvent::MenuRelease {
+                                            index: context.input.last_click_index(),
+                                        },
+                                    ));
+                                }
                             } else {
                                 new_cursor = MouseCursor::Arrow;
                             }
@@ -1995,6 +2130,14 @@ impl Player {
         object1: DisplayObject<'gc>,
         object2: DisplayObject<'gc>,
     ) -> bool {
+        // Timffle: this "same timeline character at the same depth" rule exists for objects a
+        // goto re-created while the mouse was held; objects made by script (`new Sprite()`,
+        // all character id 0) are only equal to themselves — otherwise a press on one script
+        // clip and a release on another counted as a click (measured against Flash Player 32
+        // in display_small_members).
+        if !object1.instantiated_by_timeline() || !object2.instantiated_by_timeline() {
+            return false;
+        }
         object1.depth() == object2.depth()
             && object1.id() == object2.id()
             && SwfMovie::ptr_eq(&object1.movie(), &object2.movie())
@@ -2099,6 +2242,8 @@ impl Player {
             return;
         }
 
+        self.delivery_gate.lock().unwrap().in_frame = true;
+        RUNNING_FRAME.set(true);
         self.update(|context| {
             // TODO: Is this order correct?
             run_all_phases_avm2(context);
@@ -2113,7 +2258,9 @@ impl Player {
             }
         });
 
+        RUNNING_FRAME.set(false);
         self.needs_render = true;
+        DeliveryGate::frame_ran(&self.delivery_gate);
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2150,6 +2297,7 @@ impl Player {
                 transform_stack: &mut this.transform_stack,
                 is_offscreen: false,
                 use_bitmap_cache: true,
+                in_bitmap_draw: false, // Timffle
                 stage,
             };
 
@@ -2198,11 +2346,11 @@ impl Player {
     }
 
     pub fn navigator(&self) -> &dyn NavigatorBackend {
-        &*self.navigator
+        &*self.navigator.inner
     }
 
     pub fn navigator_mut(&mut self) -> &mut dyn NavigatorBackend {
-        &mut *self.navigator
+        &mut *self.navigator.inner
     }
 
     /// Timffle: how many pictures `render` has drawn.
@@ -2243,6 +2391,22 @@ impl Player {
 
     pub fn ui_mut(&mut self) -> &mut dyn UiBackend {
         &mut *self.ui
+    }
+
+    /// Timffle: true for an AVM2 MovieClip with `trackAsMenu` set or an AVM2 SimpleButton
+    /// in menu tracking mode.
+    pub(crate) fn avm2_tracks_as_menu(object: InteractiveObject<'_>) -> bool {
+        let dobj = object.as_displayobject();
+        if !dobj.movie().is_action_script_3() {
+            return false;
+        }
+        if let Some(mc) = dobj.as_movie_clip() {
+            mc.track_as_menu()
+        } else if let Some(button) = dobj.as_avm2_button() {
+            button.button_tracking() == crate::display_object::ButtonTracking::Menu
+        } else {
+            false
+        }
     }
 
     pub fn run_actions(context: &mut UpdateContext<'_>) {
@@ -2324,6 +2488,12 @@ impl Player {
                 }
             }
         }
+
+        // Timffle: background `ShaderJob`s finish after the script turn that queued them
+        // (their `complete` handlers may queue more, hence inside this function).
+        if !context.avm2.shader_jobs.is_empty() {
+            crate::avm2::globals::flash::display::shader_job::run_pending(context);
+        }
     }
 
     /// Runs the closure `f` with an `UpdateContext`.
@@ -2369,7 +2539,7 @@ impl Player {
                 rng: &mut this.rng,
                 renderer: this.renderer.deref_mut(),
                 audio: this.audio.deref_mut(),
-                navigator: this.navigator.deref_mut(),
+                navigator: &mut this.navigator,
                 ui: this.ui.deref_mut(),
                 action_queue,
                 gc_context,
@@ -2610,6 +2780,10 @@ impl Player {
 
             let mut avm2_activation = Avm2Activation::from_nothing(context);
             for so in avm2_activation.context.avm2_shared_objects.clone().values() {
+                // Timffle: remote shared objects (`getRemote`) have no file.
+                if so.is_remote() {
+                    continue;
+                }
                 if crate::avm2::globals::flash::net::shared_object::flush_impl(
                     &mut avm2_activation,
                     *so,
@@ -2664,12 +2838,24 @@ impl Player {
         name: &str,
         args: impl IntoIterator<Item = ExternalValue>,
     ) -> ExternalValue {
+        self.call_internal_interface_checked(name, args)
+            .unwrap_or(ExternalValue::Null)
+    }
+
+    /// Timffle: `call_internal_interface` that hands an exception thrown by the
+    /// callback back to the container as `Err(message)` when
+    /// `ExternalInterface.marshallExceptions` is true.
+    pub fn call_internal_interface_checked(
+        &mut self,
+        name: &str,
+        args: impl IntoIterator<Item = ExternalValue>,
+    ) -> Result<ExternalValue, String> {
         self.mutate_with_update_context(|context| {
             if let Some(callback) = context.external_interface.get_callback(name) {
-                callback.call(context, name, args)
+                callback.call_checked(context, name, args)
             } else {
                 tracing::warn!("Calling unknown internal interface: {}", name);
-                ExternalValue::Null
+                Ok(ExternalValue::Null)
             }
         })
     }
@@ -2717,10 +2903,41 @@ impl Player {
         });
     }
 
+    /// Timffle: for a load that reports something before its response arrives
+    /// (`MovieLoader`'s start step): a future to await first, when the request may
+    /// not be answered yet (see `DeliveryGate`). Call it from the request's future.
+    pub fn delivery_hold(&self) -> Option<impl std::future::Future<Output = ()> + use<>> {
+        DeliveryGate::hold(&self.delivery_gate)
+    }
+
     pub fn fetch(
+        &self,
+        request: Request,
+        fetch_reason: FetchReason,
+    ) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
+        self.fetch_with_hold(
+            request,
+            fetch_reason,
+            DeliveryGate::hold(&self.delivery_gate),
+        )
+    }
+
+    /// Timffle: `fetch` for a progressive `NetStream.play()`, whose data is not
+    /// held back (see `DeliveryGate`): in Flash Player 32 a stream played in the
+    /// root movie's constructor reports `NetStream.Play.Start` right after frame 0.
+    pub fn fetch_stream(
+        &self,
+        request: Request,
+        fetch_reason: FetchReason,
+    ) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
+        self.fetch_with_hold(request, fetch_reason, None)
+    }
+
+    fn fetch_with_hold(
         &self,
         mut request: Request,
         fetch_reason: FetchReason,
+        hold: Option<DeliveryWait>,
     ) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
         match self.compatibility_rules.block_or_rewrite_swf_url(
             request.url().into(),
@@ -2733,9 +2950,12 @@ impl Player {
         }
 
         let self_reference = self.self_reference.clone();
-        let fetch = self.navigator.fetch(request);
+        let fetch = self.navigator.inner.fetch(request);
         Box::pin(async move {
             let response = fetch.await;
+            if let Some(hold) = hold {
+                hold.await;
+            }
 
             let Ok(mut response) = response else {
                 return response;
@@ -2766,6 +2986,175 @@ impl Player {
 impl Drop for Player {
     fn drop(&mut self) {
         self.flush_shared_objects();
+    }
+}
+
+/// Timffle: when Flash Player 32 delivers the result of a download (`open`,
+/// `progress`, `complete`, `ioError`, AVM1 `onData`/`onLoadStart`…): never in the
+/// network step right after the frame that is running when the request is made,
+/// but after the `exitFrame` of
+/// * that same frame, for a request made during a frame (constructor, frame script,
+///   `enterFrame`/`exitFrame` listeners, timers);
+/// * the next frame, for a request made between frames (in the handler of another
+///   download's `complete`, a socket's data…);
+/// * frame 2, for a request made during the root movie's first frame.
+///
+/// Measured from a file and over HTTP (HTTP answers arrive later, never earlier)
+/// with `Loader.load`, `URLLoader`, `URLStream`, `Sound.load`, a `URLLoader` and a
+/// `Loader` started from a `URLLoader`'s `complete`, and AVM1 `LoadVars`, `XML`,
+/// `MovieClipLoader` and `loadMovie`; `loadBytes` has no download and is not held.
+/// The request's future records the frame count it may be answered at when it is
+/// spawned (`GatedNavigator::spawn_future`, `DELIVERY_TARGET`); the download itself
+/// starts at once, only its result waits. Ruffle answered as soon as the response
+/// was there (in the test harness: in the network step right after the request).
+#[derive(Default)]
+struct DeliveryGate {
+    frames_run: u32,
+    in_frame: bool,
+    wakers: Vec<std::task::Waker>,
+}
+
+/// Timffle: whether a player on this thread is running a frame (`Player::run_frame`)
+/// rather than handling an event between frames.
+pub(crate) fn is_running_frame() -> bool {
+    RUNNING_FRAME.get()
+}
+
+thread_local! {
+    static RUNNING_FRAME: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+
+    /// Timffle: the `DeliveryGate::frames_run` value the future being polled may be
+    /// answered at (set by `DeliveryScope`).
+    static DELIVERY_TARGET: std::cell::Cell<Option<u32>> = const { std::cell::Cell::new(None) };
+}
+
+impl DeliveryGate {
+    /// The frame count a request made now may be answered at; `None` before the
+    /// movie runs (the root movie's own download).
+    fn target(&self) -> Option<u32> {
+        if self.in_frame {
+            Some((self.frames_run + 1).max(2))
+        } else if self.frames_run == 0 {
+            None
+        } else {
+            Some(self.frames_run + 1)
+        }
+    }
+
+    fn hold(gate: &Arc<Mutex<Self>>) -> Option<DeliveryWait> {
+        let target = DELIVERY_TARGET.get()?;
+        (gate.lock().unwrap().frames_run < target).then(|| DeliveryWait(gate.clone(), target))
+    }
+
+    fn frame_ran(gate: &Arc<Mutex<Self>>) {
+        let mut gate = gate.lock().unwrap();
+        gate.in_frame = false;
+        gate.frames_run = gate.frames_run.saturating_add(1);
+        for waker in std::mem::take(&mut gate.wakers) {
+            waker.wake();
+        }
+    }
+}
+
+/// Timffle: resolves once `DeliveryGate::frames_run` reaches the target.
+pub struct DeliveryWait(Arc<Mutex<DeliveryGate>>, u32);
+
+impl std::future::Future for DeliveryWait {
+    type Output = ();
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<()> {
+        let mut gate = self.0.lock().unwrap();
+        if gate.frames_run >= self.1 {
+            std::task::Poll::Ready(())
+        } else {
+            gate.wakers.push(cx.waker().clone());
+            std::task::Poll::Pending
+        }
+    }
+}
+
+/// Timffle: polls a spawned future with `DELIVERY_TARGET` set to the target taken
+/// when it was spawned.
+struct DeliveryScope {
+    target: Option<u32>,
+    inner: OwnedFuture<(), crate::loader::Error>,
+}
+
+impl std::future::Future for DeliveryScope {
+    type Output = Result<(), crate::loader::Error>;
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let previous = DELIVERY_TARGET.replace(self.target);
+        let result = self.inner.as_mut().poll(cx);
+        DELIVERY_TARGET.set(previous);
+        result
+    }
+}
+
+/// Timffle: the player's navigator; spawned futures remember when they were
+/// spawned (see `DeliveryGate`), everything else goes to the backend.
+struct GatedNavigator {
+    inner: Box<dyn NavigatorBackend>,
+    gate: Arc<Mutex<DeliveryGate>>,
+}
+
+impl NavigatorBackend for GatedNavigator {
+    fn navigate_to_url(
+        &self,
+        url: &str,
+        target: &str,
+        vars_method: Option<(NavigationMethod, IndexMap<String, String>)>,
+    ) {
+        self.inner.navigate_to_url(url, target, vars_method)
+    }
+
+    fn navigate_to_url_normalized(
+        &self,
+        url: &str,
+        target: &str,
+        vars_method: Option<(NavigationMethod, IndexMap<String, String>)>,
+    ) {
+        self.inner
+            .navigate_to_url_normalized(url, target, vars_method)
+    }
+
+    fn fetch(&self, request: Request) -> OwnedFuture<Box<dyn SuccessResponse>, ErrorResponse> {
+        self.inner.fetch(request)
+    }
+
+    fn resolve_url(&self, url: &str) -> Result<url::Url, url::ParseError> {
+        self.inner.resolve_url(url)
+    }
+
+    fn spawn_future(&mut self, future: OwnedFuture<(), crate::loader::Error>) {
+        let target = self.gate.lock().unwrap().target();
+        self.inner.spawn_future(Box::pin(DeliveryScope {
+            target,
+            inner: future,
+        }))
+    }
+
+    fn pre_process_url(&self, url: url::Url) -> url::Url {
+        self.inner.pre_process_url(url)
+    }
+
+    fn connect_socket(
+        &mut self,
+        host: String,
+        port: u16,
+        timeout: Duration,
+        handle: crate::socket::SocketHandle,
+        receiver: async_channel::Receiver<Vec<u8>>,
+        sender: Sender<crate::socket::SocketAction>,
+    ) {
+        self.inner
+            .connect_socket(host, port, timeout, handle, receiver, sender)
     }
 }
 
@@ -3153,7 +3542,7 @@ impl PlayerBuilder {
             library: Library::empty(),
             load_manager: LoadManager::new(),
             mouse_data: MouseData {
-                custom_cursors: FnvHashSet::default(),
+                custom_cursors: FnvHashMap::default(),
                 current_custom_cursor: None,
                 hovered: None,
                 pressed: None,
@@ -3161,6 +3550,7 @@ impl PlayerBuilder {
                 middle_pressed: None,
                 forced_cursor: None,
                 updating_drop_target: false,
+                movement: None,
             },
             avm1_shared_objects: HashMap::new(),
             avm2_shared_objects: HashMap::new(),
@@ -3196,6 +3586,7 @@ impl PlayerBuilder {
         let navigator = self
             .navigator
             .unwrap_or_else(|| Box::new(navigator::NullNavigatorBackend::new()));
+        let delivery_gate: Arc<Mutex<DeliveryGate>> = Default::default();
         let renderer = self.renderer.unwrap_or_else(|| {
             Box::new(NullRenderer::new(ViewportDimensions {
                 width: self.viewport_width,
@@ -3227,7 +3618,10 @@ impl PlayerBuilder {
                 // Backends
                 audio,
                 log,
-                navigator,
+                navigator: GatedNavigator {
+                    inner: navigator,
+                    gate: delivery_gate.clone(),
+                },
                 renderer,
                 storage,
                 ui,
@@ -3254,6 +3648,7 @@ impl PlayerBuilder {
                 // Input
                 input: InputManager::new(self.gamepad_button_mapping),
                 mouse_in_stage: true,
+                mouse_position_stale: false,
                 mouse_position: Point::ZERO,
                 mouse_cursor: MouseCursor::Arrow,
                 mouse_cursor_needs_check: false,
@@ -3280,6 +3675,7 @@ impl PlayerBuilder {
                 needs_render: true,
                 full_gc_requested: false,
                 self_reference: self_ref.clone(),
+                delivery_gate,
                 load_behavior: self.load_behavior,
                 spoofed_url: self.spoofed_url.clone(),
                 compatibility_rules: self.compatibility_rules.clone(),

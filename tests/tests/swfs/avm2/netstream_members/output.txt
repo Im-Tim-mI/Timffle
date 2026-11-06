@@ -1,0 +1,112 @@
+new NetStream(null): TypeError #2007
+new NetStream(unconnected): ArgumentError #2126
+// defaults
+bufferTime: 0
+bufferTimeMax: 0
+bufferLength: 0
+backBufferTime: 30
+backBufferLength: 0
+inBufferSeek: false
+useHardwareDecoder: true
+useJitterBuffer: false
+checkPolicyFile: false
+liveDelay: 0
+maxPauseBufferTime: 600
+objectEncoding: 3
+farID: ''
+farNonce: 
+nearNonce: 
+peerStreams: 0
+audioReliable: true
+videoReliable: true
+dataReliable: true
+audioSampleAccess threw ArgumentError #2154
+videoSampleAccess threw ArgumentError #2154
+videoStreamSettings: null
+multicastAvailabilitySendToAll: false
+multicastAvailabilityUpdatePeriod: 0
+multicastFetchPeriod: 0
+multicastPushNeighborLimit: 0
+multicastRelayMarginDuration: 0
+multicastWindowDuration: 0
+multicastInfo: null
+audioCodec: 0
+videoCodec: 0
+decodedFrames: 0
+currentFPS: 0
+soundTransform.volume: 1
+info: currentBytesPerSecond=0 byteCount=0 maxBytesPerSecond=0 audioBytesPerSecond=0 audioByteCount=0 videoBytesPerSecond=0 videoByteCount=0 dataBytesPerSecond=0 dataByteCount=0 playbackBytesPerSecond=0 droppedFrames=0 audioBufferLength=0 videoBufferLength=0 dataBufferLength=0 audioBufferByteLength=0 videoBufferByteLength=0 dataBufferByteLength=0 srtt=0 audioLossRate=0 videoLossRate=0 metaData=null xmpData=null uri=null resourceName=null isLive=true
+time: 0
+// setters
+bufferTime: 2
+bufferTime (-1): 0.1
+useJitterBuffer (bufferTime 0): false
+useJitterBuffer (bufferTime 0.1): false
+bufferTimeMax: 5
+backBufferTime: 10
+inBufferSeek: true
+useHardwareDecoder: false
+checkPolicyFile: true
+maxPauseBufferTime: 120
+audioReliable (set false): true
+videoReliable (set false): true
+dataReliable (set false): true
+audioSampleAccess = true threw ArgumentError #2154
+videoSampleAccess = true threw ArgumentError #2154
+videoStreamSettings same: true
+multicast: false 0 0 0 0 0
+soundTransform: 0.5 0
+soundTransform is a copy: true
+soundTransform = null: TypeError #2007
+// methods without a server
+onPeerConnect: true
+send(null): TypeError #2007
+send ok
+attach(null): TypeError #2007
+attach(unconnected): ArgumentError #2126
+attach ok
+attachAudio/attachCamera(null) ok
+play2(null): TypeError #2007
+appendBytes(null): TypeError #2007
+appendBytesAction(bogus): ArgumentError #2008
+publish/receive*/resetDRMVouchers ok
+step without inBufferSeek: nothing
+close before play ok, time 0
+// playback
+status: NetStream.Play.Start
+status: NetStream.Buffer.Full
+onMetaData duration 1.07
+status: NetStream.Buffer.Flush
+status: NetStream.Play.Stop
+audioCodec: 2
+videoCodec: 2
+frames reached the decoder: 1
+bytesLoaded == bytesTotal: true
+time > 0: true
+bufferLength: 0
+info.byteCount == bytesLoaded: false
+info.videoByteCount > 0: false
+info.audioByteCount: 0
+info.dataByteCount > 0: false
+info.videoBufferByteLength: 0
+info.metaData.duration: 1.07
+info.resourceName ends with test.flv: true
+info.uri: null
+info.isLive: false
+backBufferLength (inBufferSeek false): 0
+backBufferLength > 0: true
+step(1) at the end: nothing reached the decoder: true
+status: NetStream.Step.Notify
+step(-1): a frame reached the decoder: true
+time after step(-1) went back: true
+closed: time 0 bytesLoaded 0 bufferLength 0
+disposed
+// data generation mode, 14567 bytes
+status: NetStream.Play.Start
+appended, bytesLoaded 14567 bytesTotal 14567
+status: NetStream.Buffer.Full
+status: NetStream.Buffer.Flush
+status: NetStream.Play.Stop
+generated: frames reached the decoder: 1, bytesLoaded == bytesTotal: true, audioCodec 2, videoCodec 2
+play2(stop) without streamName: TypeError #2007
+status: NetStream.Buffer.Empty

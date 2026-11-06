@@ -1,0 +1,86 @@
+== AVSource
+AVSource dispose twice ok
+== AVSegmentedSource
+load = 17 (PLAYBACK_NOT_ENABLED = 57)
+load DASH = 17
+load(null) threw TypeError #2007
+loadManifest = 17
+loadWithBackgroundManifest = 17
+getTimeline = null
+getBackgroundTimeline = null
+getPeriodInfo(0) = null
+getTrackCount(0, video) = 0
+getTrackInfo = null
+getABRProfileCount(0) = 0
+getABRProfileInfoAtIndex = null
+getCuePoint = null
+getSubscribedTag = null
+getTimelineSubscribedTag = null
+getPerceivedBandwidth = 0
+getMediaPreferredStartTime = -1
+selectTrack = 17
+selectTrackString = 17
+setBandwidth = 6
+setHoldAt = 17
+setPauseAtPeriodEnd = 6
+clearPauseAtPeriodEnd = 6
+releaseManifest = 17
+removeByVirtualTime = null
+removeByLocalTime = null
+removeByVirtualTimeWithReplacement = null
+setSubscribedTags = 0
+setSubscribedTagsForBackgroundManifest = 0
+setCuePointTags = 0
+setSubscribedTags(null) threw TypeError #2007
+insertByVirtualTime = null
+insertByLocalTime = null
+networkingParams = [object AVNetworkingParams], readSetCookieHeader = true
+networkingParams after set is the same object: false
+networkingParams = null threw TypeError #2007
+configuration setters ok
+addCustomHeader threw ArgumentError #2004
+addCustomHeader(null) threw ArgumentError #2004
+dispose ok, load after dispose = 17
+== AVStream
+new AVStream(null) threw TypeError #2007
+play = 57
+pause = 0
+resume = true
+seek = 6
+seekToKeyFrame = 6
+seekToLivePoint = 6
+seekToLocalTime = 6
+fastForward = 19
+rewind = 19
+step = 21
+setPlaySpeed ok
+playState.state = 0
+time = 0, frameTime = -1e-9, currentFPS = 0
+bufferLength = 0, backBufferLength = 0, clientLivePoint = 0
+droppedFrames = 0
+decoderType = undefined, renderType = undefined
+useHardwareDecoder = true
+useHardwareDecoder after set = false
+captionsEnabled = false
+captionsEnabled after set = true
+volume = 1
+volume after set 0.25 = 0.25
+volume after set 5 = 1
+volume after set -1 = 0
+buffer setters ok
+captionStyle = null threw TypeError #2007
+dispose ok, play after dispose = 57
+== AVURLLoader
+stream = [object AVURLStream], dataFormat = text
+load threw Error #2037
+load(null) threw Error #2037
+close threw flash.errors::IOError #2029
+new AVURLLoader(request) threw Error #2037
+hasEventListener(complete) = true
+== AVURLStream
+connected = false
+load threw Error #2037
+connected after load = false
+close threw flash.errors::IOError #2029
+== AuthorizedFeatures
+methods = createApplicationInstaller,enableAVLoader,enableAVURLLoader,enableAVURLStream,enableDiskCache,enableHLSPlayback,enableMediaPlayerHLSPlayback

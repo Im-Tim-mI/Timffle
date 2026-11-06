@@ -1,7 +1,4 @@
 package flash.display {
-    import __ruffle__.stub_method;
-    import __ruffle__.stub_setter;
-
     import flash.accessibility.AccessibilityImplementation;
     import flash.geom.Rectangle;
     import flash.ui.ContextMenu;
@@ -12,30 +9,38 @@ package flash.display {
         private var _needsSoftKeyboard:Boolean = false;
         private var _softKeyboardInputAreaOfInterest:Rectangle = null;
 
+        // Timffle: the player has no screen-reader bridge (Capabilities.hasAccessibility is
+        // false), so like Flash Player on such a machine the implementation is kept but never
+        // consulted.
         public function get accessibilityImplementation():AccessibilityImplementation {
             return this._accessibilityImpl;
         }
         public function set accessibilityImplementation(value:AccessibilityImplementation):void {
-            stub_setter("flash.display.InteractiveObject", "accessibilityImplementation");
             this._accessibilityImpl = value;
         }
 
         public native function get mouseEnabled():Boolean;
         public native function set mouseEnabled(value:Boolean):void;
 
+        // Timffle: soft-keyboard members behave like Flash Player on a machine without a
+        // virtual keyboard (measured on Flash Player 32): the flag and the rectangle are
+        // stored as given (same Rectangle object comes back), requestSoftKeyboard() moves the
+        // focus to the object when needsSoftKeyboard is true and always returns false because
+        // no keyboard is raised.
         [API("670")]
         public function get needsSoftKeyboard():Boolean {
             return this._needsSoftKeyboard;
         }
         [API("670")]
         public function set needsSoftKeyboard(value:Boolean):void {
-            stub_setter("flash.display.InteractiveObject", "needsSoftKeyboard");
             this._needsSoftKeyboard = value;
         }
 
         [API("670")]
         public function requestSoftKeyboard():Boolean {
-            stub_method("flash.display.InteractiveObject", "requestSoftKeyboard");
+            if (this._needsSoftKeyboard && this.stage) {
+                this.stage.focus = this;
+            }
             return false;
         }
 
@@ -45,7 +50,6 @@ package flash.display {
         }
         [API("670")]
         public function set softKeyboardInputAreaOfInterest(value:Rectangle):void {
-            stub_setter("flash.display.InteractiveObject", "softKeyboardInputAreaOfInterest");
             this._softKeyboardInputAreaOfInterest = value;
         }
 

@@ -77,6 +77,7 @@ pub fn run_all_phases_avm2(context: &mut UpdateContext<'_>) {
         return;
     }
 
+    context.load_manager.begin_frame();
     *context.frame_phase = FramePhase::Enter;
     OrphanManager::each_orphan_obj(context, |orphan, context| {
         orphan.enter_frame(context);
@@ -84,6 +85,9 @@ pub fn run_all_phases_avm2(context: &mut UpdateContext<'_>) {
     stage.enter_frame(context);
 
     *context.frame_phase = FramePhase::Construct;
+    // Timffle: content whose download (or `loadBytes`) finished before this frame is
+    // constructed here, after the `enterFrame` broadcast, as in Flash Player.
+    LoadManager::construct_parsed(context);
     OrphanManager::each_orphan_obj(context, |orphan, context| {
         orphan.construct_frame(context);
     });

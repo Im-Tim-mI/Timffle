@@ -1,11 +1,13 @@
 //! Object representation for VertexBuffer3D objects
 
+use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{Object, TObject};
 use gc_arena::{Collect, Gc, GcWeak};
 use ruffle_common::utils::HasPrefixField;
 use ruffle_render::backend::VertexBuffer;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::Context3DObject;
@@ -24,6 +26,7 @@ impl<'gc> VertexBuffer3DObject<'gc> {
         context3d: Context3DObject<'gc>,
         handle: Rc<dyn VertexBuffer>,
         data32_per_vertex: u8,
+        gpu_size: u64,
     ) -> Object<'gc> {
         let class = activation.avm2().classes().vertexbuffer3d;
 
@@ -32,15 +35,39 @@ impl<'gc> VertexBuffer3DObject<'gc> {
             VertexBuffer3DObjectData {
                 base: ScriptObjectData::new(class),
                 context3d,
-                handle,
+                handle: RefCell::new(Some(handle)),
                 data32_per_vertex,
+                gpu_size,
             },
         ))
         .into()
     }
 
     pub fn handle(self) -> Rc<dyn VertexBuffer> {
-        self.0.handle.clone()
+        self.0
+            .handle
+            .borrow()
+            .clone()
+            .expect("VertexBuffer3D was disposed")
+    }
+
+    // Timffle: dispose() drops the GPU buffer; later calls throw Error #3694.
+    pub fn is_disposed(self) -> bool {
+        self.0.handle.borrow().is_none()
+    }
+
+    pub fn check_disposed(self, activation: &mut Activation<'_, 'gc>) -> Result<(), Error<'gc>> {
+        if self.is_disposed() {
+            Err(crate::avm2::error::make_error_3694(activation))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn dispose(self) {
+        if self.0.handle.take().is_some() {
+            self.0.context3d.sub_gpu_memory(self.0.gpu_size);
+        }
     }
 
     pub fn context3d(self) -> Context3DObject<'gc> {
@@ -62,7 +89,10 @@ pub struct VertexBuffer3DObjectData<'gc> {
     context3d: Context3DObject<'gc>,
 
     #[collect(require_static)]
-    handle: Rc<dyn VertexBuffer>,
+    handle: RefCell<Option<Rc<dyn VertexBuffer>>>,
+
+    // Timffle: bytes counted in Context3D.totalGPUMemory.
+    gpu_size: u64,
 
     /// The 'data32PerVertex' value that this object was created with.
     /// This is the number of 32-bit values associated with each vertex,

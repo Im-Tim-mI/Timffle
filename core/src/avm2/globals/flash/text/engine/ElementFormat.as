@@ -1,5 +1,4 @@
 package flash.text.engine {
-    import __ruffle__.stub_method;
 
     import flash.geom.Rectangle;
 
@@ -121,12 +120,28 @@ package flash.text.engine {
             );
         }
 
+        // Timffle: metrics scaled from the font size. The em box is one em
+        // square placed so the roman baseline sits at the font's ascent ratio
+        // (the laid-out ascent/descent of this format's font); the other
+        // values are the OpenType OS/2 conventions Flash reports for fonts
+        // without explicit values (underline at 0.15 em / 0.075 em thick,
+        // strikethrough at -0.26 em, sub/superscript at ±0.15/-0.35 em scaled
+        // by 0.65). Fonts in this player expose no OS/2 table, so these are
+        // used for every font.
         public function getFontMetrics():FontMetrics {
-            stub_method("flash.text.engine.ElementFormat", "getFontMetrics");
-            var emBox:Rectangle = new Rectangle(0, this.fontSize * -0.8, this.fontSize, this.fontSize);
+            var size:Number = this.fontSize;
+            var ascentRatio:Number = this.fontAscentRatio();
+            var emBox:Rectangle = new Rectangle(0, -size * ascentRatio, size, size);
             return new FontMetrics(
-                emBox, -5, 1.2, 1.8, 1.2, 0.075, 0.6, -0.35, 0.6, 0.0
+                emBox,
+                -size * 0.26, size * 0.075,
+                size * 0.15, size * 0.075,
+                size * 0.15, 0.65,
+                -size * 0.35, 0.65,
+                0.0
             );
         }
+
+        private native function fontAscentRatio():Number;
     }
 }

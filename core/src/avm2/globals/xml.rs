@@ -11,7 +11,6 @@ use crate::avm2::object::{
 };
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::{Activation, ArrayObject, ArrayStorage, Error, Multiname, Value};
-use crate::avm2_stub_method;
 use crate::string::AvmString;
 
 pub fn init<'gc>(
@@ -274,6 +273,11 @@ pub fn set_name<'gc>(
         return Err(make_error_1117(activation, new_local_name));
     }
 
+    // Timffle: Flash Player 32 reports nameSet(name as passed, detail) where detail is the
+    // previous local name, except for a namespaced QName where it is the new local name
+    // (timffle/difftest/src/D49XmlSetName.hx).
+    let previous_name = node.local_name();
+
     // 4. If x.[[Class]] == "processing-instruction", let n.uri be the empty string
     // 6. Let ns be a new Namespace created as if by calling the constructor new Namespace(n.prefix, n.uri)
     // TODO: QName doesn't have a prefix
@@ -308,12 +312,12 @@ pub fn set_name<'gc>(
         }
     }
 
-    xml.trigger_notification(
-        activation,
-        NotificationCommand::NameSet,
-        new_name.into(),
-        new_local_name.into(),
-    );
+    let detail = if ns.is_some() {
+        new_local_name.into()
+    } else {
+        previous_name.map(Value::from).unwrap_or(Value::Null)
+    };
+    xml.trigger_notification(activation, NotificationCommand::NameSet, name, detail)?;
 
     Ok(Value::Undefined)
 }
@@ -400,6 +404,14 @@ pub fn add_namespace<'gc>(
         },
     );
 
+    // Timffle: XML.setNotification callbacks get namespaceAdded(Namespace, null).
+    node.trigger_notification(
+        activation,
+        NotificationCommand::NamespaceAdded,
+        Value::Object(ns.into()),
+        Value::Null,
+    )?;
+
     // 3. Return x
     Ok(this.into())
 }
@@ -438,6 +450,7 @@ pub fn set_namespace<'gc>(
         .as_namespace_object()
         .unwrap();
 
+    let ns_object = ns;
     let ns = E4XNamespace {
         prefix: ns.prefix(),
         uri: ns.namespace().as_uri(activation.strings()),
@@ -460,6 +473,14 @@ pub fn set_namespace<'gc>(
         // 5.a. Call x.[[AddInScopeNamespace]](ns2)
         node.add_in_scope_namespace(activation.gc(), ns);
     }
+
+    // Timffle: XML.setNotification callbacks get namespaceSet(Namespace, null).
+    node.trigger_notification(
+        activation,
+        NotificationCommand::NamespaceSet,
+        Value::Object(ns_object.into()),
+        Value::Null,
+    )?;
 
     Ok(Value::Undefined)
 }
@@ -539,17 +560,36 @@ pub fn remove_namespace<'gc>(
         }
     }
 
-    let E4XNodeKind::Element { children, .. } = &*node.kind() else {
-        unreachable!()
+    // Timffle: the notification callbacks run ActionScript, so walk a copy of the child list.
+    let children: Vec<E4XNode<'gc>> = {
+        let E4XNodeKind::Element { children, .. } = &*node.kind() else {
+            unreachable!()
+        };
+        children.clone()
     };
     // 8. For each property p of x
     for child in children {
         // 8.a. If p.[[Class]] = "element", call the removeNamespace method of p with argument ns
         if child.is_element() {
-            let xml = E4XOrXml::E4X(*child).get_or_create_xml(activation);
+            let xml = E4XOrXml::E4X(child).get_or_create_xml(activation);
             remove_namespace(activation, xml.into(), args)?;
         }
     }
+
+    // Timffle: XML.setNotification callbacks get namespaceRemoved(Namespace, null) for every
+    // element, children before their parent (Flash Player 32 order).
+    let ns_value = args.get_value(0);
+    let ns_object = activation
+        .avm2()
+        .classes()
+        .namespace
+        .construct(activation, &[ns_value])?;
+    node.trigger_notification(
+        activation,
+        NotificationCommand::NamespaceRemoved,
+        ns_object,
+        Value::Null,
+    )?;
 
     // 9. Return x
     Ok(this.into())
@@ -754,9 +794,15 @@ pub fn parent<'gc>(
 
     let xml = this.as_xml_object().unwrap();
     let node = xml.node();
-    Ok(node.parent().map_or(Value::Undefined, |parent| {
-        XmlObject::new(parent, activation).into()
-    }))
+    // Timffle: a node cut loose by `System.disposeXML` answers null, a root undefined.
+    let none = if node.is_disposed() {
+        Value::Null
+    } else {
+        Value::Undefined
+    };
+    Ok(node
+        .parent()
+        .map_or(none, |parent| XmlObject::new(parent, activation).into()))
 }
 
 pub fn elements<'gc>(
@@ -900,6 +946,8 @@ pub fn prepend_child<'gc>(
 
     // 1. Call the [[Insert]] method of this object with arguments "0" and value
     xml.node().insert(0, child, activation)?;
+    // Timffle: XML.setNotification callbacks get nodeAdded.
+    xml.node().notify_node_added(activation, child)?;
 
     // 2. Return x
     Ok(xml.into())
@@ -1094,6 +1142,7 @@ pub fn insert_child_after<'gc>(
         if let Some(index) = index {
             // 3.a.i.1. Call the [[Insert]] method of x with arguments ToString(i + 1) and child2
             xml.node().insert(index + 1, child2, activation)?;
+            xml.node().notify_node_added(activation, child2)?;
             // 3.a.i.2. Return x
             return Ok(xml.into());
         }
@@ -1101,6 +1150,7 @@ pub fn insert_child_after<'gc>(
     } else if matches!(child1, Value::Null) {
         // 2.a. Call the [[Insert]] method of x with arguments "0" and child2
         xml.node().insert(0, child2, activation)?;
+        xml.node().notify_node_added(activation, child2)?;
         // 2.b. Return x
         return Ok(xml.into());
     }
@@ -1152,6 +1202,7 @@ pub fn insert_child_before<'gc>(
         if let Some(index) = index {
             // 3.a.i.1. Call the [[Insert]] method of x with arguments ToString(i) and child2
             xml.node().insert(index, child2, activation)?;
+            xml.node().notify_node_added(activation, child2)?;
             // 3.a.i.2. Return x
             return Ok(xml.into());
         }
@@ -1165,6 +1216,7 @@ pub fn insert_child_before<'gc>(
 
         // 2.a. Call the [[Insert]] method of x with arguments ToString(x.[[Length]]) and child2
         xml.node().insert(length, child2, activation)?;
+        xml.node().notify_node_added(activation, child2)?;
         // 2.b. Return x
         return Ok(xml.into());
     }
@@ -1218,7 +1270,10 @@ pub fn replace<'gc>(
         && let Ok(index) = local_name.parse::<usize>()
     {
         // 4.a. Call the [[Replace]] method of x with arguments P and c and return x
-        self_node.replace(index, value, activation)?;
+        // Timffle: XML.setNotification callbacks get nodeChanged (or nodeAdded past the end).
+        let old = self_node.child_at(index);
+        let new_node = self_node.replace(index, value, activation)?;
+        self_node.notify_node_changed(activation, new_node, value, old)?;
         return Ok(xml.into());
     }
 
@@ -1229,17 +1284,23 @@ pub fn replace<'gc>(
     //       2. Then we will delete all matches.
     //       2. And then we insert a dummy E4XNode at the previously stored index, and use the replace method to correct it.
 
-    let index =
-        if let Some((index, _)) = self_node.remove_matching_children(activation.gc(), &multiname) {
-            self_node.insert_at(activation.gc(), index, E4XNode::dummy(activation.gc()));
-            index
-        // 8. If i == undefined, return x
-        } else {
-            return Ok(xml.into());
-        };
+    let (index, old) = if let Some((index, old, others)) =
+        self_node.remove_matching_children(activation.gc(), &multiname)
+    {
+        self_node.insert_at(activation.gc(), index, E4XNode::dummy(activation.gc()));
+        // Timffle: Flash reports the other matching children as removed first, last one first.
+        let others: Vec<E4XNode<'gc>> = others.into_iter().rev().collect();
+        self_node.notify_nodes_removed(activation, &others)?;
+        (index, old)
+    // 8. If i == undefined, return x
+    } else {
+        return Ok(xml.into());
+    };
 
     // 9. Call the [[Replace]] method of x with arguments ToString(i) and c
-    self_node.replace(index, value, activation)?;
+    let new_node = self_node.replace(index, value, activation)?;
+    // Timffle: then nodeChanged(new, old) for the one that was replaced.
+    self_node.notify_node_changed(activation, new_node, value, Some(old))?;
 
     // 10. Return x
     Ok(xml.into())
@@ -1306,7 +1367,7 @@ pub fn set_local_name<'gc>(
             NotificationCommand::NameSet,
             name.into(),
             previous_name.into(),
-        );
+        )?;
     }
 
     Ok(Value::Undefined)
@@ -1319,12 +1380,36 @@ pub fn set_notification<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    avm2_stub_method!(activation, "XML", "setNotification");
+    // Timffle: real since the api100 batch; every command Flash Player 32 reports is produced
+    // (see NotificationCommand). Flash returns null here and a non-Function argument fails the
+    // `f:Function` coercion in the AS declaration (#1034).
     let xml = this.as_xml_object().unwrap();
     let node = xml.node();
     let func = args.try_get_function(0);
     node.set_notification(func, activation.gc());
-    Ok(Value::Undefined)
+    Ok(Value::Null)
+}
+
+// Timffle: XML.AS3::hasOwnProperty / propertyIsEnumerable (ECMA-357 13.4.4.14 / 13.4.4.30),
+// the same answers as Object.prototype.hasOwnProperty/propertyIsEnumerable give on an XML.
+pub fn has_own_property<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let name = args.get_value(0).coerce_to_string(activation)?;
+    Ok(this.has_own_property_string(name, activation)?.into())
+}
+
+pub fn property_is_enumerable<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let name = args.get_value(0).coerce_to_string(activation)?;
+    Ok(this.property_is_enumerable(name).into())
 }
 
 pub fn notification<'gc>(

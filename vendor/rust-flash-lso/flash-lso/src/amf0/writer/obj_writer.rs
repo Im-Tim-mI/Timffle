@@ -90,13 +90,21 @@ pub trait ObjWriter<'a> {
 
     /// Write a date
     fn date(&mut self, name: &str, ms: f64, tz: Option<u16>) {
-        self.add_element(name, Value::Date(ms, tz), true)
+        // Timffle: a date always takes a reference number, also on writers that
+        // do not number primitives (see `Amf0Writer::without_primitive_references`).
+        self.make_reference();
+        self.add_element(name, Value::Date(ms, tz), false)
     }
 
     /// Write an XML
     fn xml(&mut self, name: &str, v: &str, s: bool) {
-        self.add_element(name, Value::XML(v.to_string(), s), true);
+        self.make_reference();
+        self.add_element(name, Value::XML(v.to_string(), s), false);
     }
+
+    /// Timffle: count a primitive value in the reference numbering, if this
+    /// writer's root numbers primitives.
+    fn primitive_reference(&mut self);
 
     /// Create a reference in the root
     fn make_reference(&mut self) -> Reference;

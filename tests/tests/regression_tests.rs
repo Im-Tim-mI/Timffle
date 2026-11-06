@@ -12,6 +12,12 @@ use clap::Parser;
 use libtest_mimic::{Arguments, Trial};
 use ruffle_fs_tests_runner::FsTestsRunner;
 use ruffle_test_framework::environment::CompileMode;
+
+// Timffle: count allocated bytes (the memory figures are pinned in main()
+// below, but the counting allocator stays the same as in the front ends).
+#[global_allocator]
+static GLOBAL: ruffle_core::memory::CountingAllocator<std::alloc::System> =
+    ruffle_core::memory::CountingAllocator(std::alloc::System);
 use ruffle_test_framework::options::TestOptions;
 use ruffle_test_framework::runner::TestStatus;
 use ruffle_test_framework::test::Test;
@@ -42,6 +48,12 @@ struct RuffleTestOpts {
 }
 
 fn main() {
+    // Timffle: pin System.totalMemory/freeMemory/privateMemory to the values
+    // Ruffle reported before they were real (90, 10 and 100 MiB), so image
+    // goldens that print them (away3d_advanced_shallow_water_demo's stats
+    // overlay) do not depend on this process's memory use.
+    ruffle_core::memory::pin_flash_memory_figures(90 << 20, 10 << 20, 100 << 20);
+
     let default_log_filter = default_log_filter();
 
     let _ = env_logger::Builder::from_env(

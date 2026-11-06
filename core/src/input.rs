@@ -84,6 +84,8 @@ pub struct InputManager {
 
     keys_down: HashSet<KeyCode>,
     keys_toggled: HashSet<KeyCode>,
+    /// Timffle: lock keys whose toggle the player has followed itself (see `infer_lock_state`).
+    locks_seen: HashSet<KeyCode>,
     last_key: KeyCode,
     last_char: Option<char>,
     last_click: Option<ClickEventData>,
@@ -100,6 +102,7 @@ impl InputManager {
             keys_down_phys_loc: HashSet::new(),
             keys_down: HashSet::new(),
             keys_toggled: HashSet::new(),
+            locks_seen: HashSet::new(),
             last_key: KeyCode::UNKNOWN,
             last_char: None,
             last_click: None,
@@ -119,10 +122,63 @@ impl InputManager {
         if key_code == KeyCode::UNKNOWN || self.keys_down.contains(&key_code) {
             return;
         }
+        self.locks_seen.insert(key_code);
         if self.keys_toggled.contains(&key_code) {
             self.keys_toggled.remove(&key_code);
         } else {
             self.keys_toggled.insert(key_code);
+        }
+    }
+
+    // Timffle: the player is never told the host's Caps Lock / Num Lock state (winit has no
+    // lock-state API; the web build passes key events only), so `Keyboard.capsLock` and
+    // `numLock` start as "off" and follow the lock keys (`toggle_key`). A typed letter or a
+    // numpad key reveals the real state -- an uppercase letter without Shift (or lowercase
+    // with Shift) means Caps Lock is on; a numpad key that produced a digit means Num Lock is
+    // on, one that produced a navigation key means it is off -- so it is corrected from them.
+    // Once the player has seen a lock key pressed it follows that key's toggles only, like
+    // Flash Player reading the lock state: a typed letter no longer overrides it (Flash's
+    // `Key.isToggled(Key.CAPSLOCK)` stays true after Caps Lock even if a lowercase letter
+    // arrives, avm1/key_isToggled).
+    fn infer_lock_state(&mut self, key: KeyDescriptor) {
+        let shift = self.keys_down.contains(&KeyCode::SHIFT);
+        match key.logical_key {
+            LogicalKey::Character(ch) if ch.is_ascii_alphabetic() => {
+                let caps_lock = ch.is_ascii_uppercase() != shift;
+                self.set_toggled(KeyCode::CAPS_LOCK, caps_lock);
+            }
+            LogicalKey::Character(ch)
+                if key.key_location == KeyLocation::Numpad && ch.is_ascii_digit() =>
+            {
+                self.set_toggled(KeyCode::NUM_LOCK, true);
+            }
+            LogicalKey::Named(
+                NamedKey::ArrowUp
+                | NamedKey::ArrowDown
+                | NamedKey::ArrowLeft
+                | NamedKey::ArrowRight
+                | NamedKey::Home
+                | NamedKey::End
+                | NamedKey::PageUp
+                | NamedKey::PageDown
+                | NamedKey::Insert
+                | NamedKey::Delete,
+            ) if key.key_location == KeyLocation::Numpad => {
+                self.set_toggled(KeyCode::NUM_LOCK, false);
+            }
+            _ => {}
+        }
+    }
+
+    // Timffle: see `infer_lock_state`.
+    fn set_toggled(&mut self, key_code: KeyCode, toggled: bool) {
+        if self.locks_seen.contains(&key_code) {
+            return;
+        }
+        if toggled {
+            self.keys_toggled.insert(key_code);
+        } else {
+            self.keys_toggled.remove(&key_code);
         }
     }
 
@@ -169,6 +225,8 @@ impl InputManager {
                 self.keys_down_phys_loc
                     .insert((key.physical_key, key.key_location));
 
+                self.infer_lock_state(key);
+
                 let key_code = self.map_to_key_code(key)?;
                 let key_char = self.map_to_key_char(key);
                 let key_location = self.map_to_key_location(key);
@@ -207,6 +265,8 @@ impl InputManager {
             }
 
             PlayerEvent::MouseMove { x, y } => InputEvent::MouseMove { x, y },
+            // Timffle: `Player::handle_input_event` turns these into `MouseMove`.
+            PlayerEvent::MouseMoveRelative { dx, dy } => InputEvent::MouseMove { x: dx, y: dy },
             PlayerEvent::MouseUp { x, y, button } => InputEvent::MouseUp { x, y, button },
             PlayerEvent::MouseDown {
                 x,

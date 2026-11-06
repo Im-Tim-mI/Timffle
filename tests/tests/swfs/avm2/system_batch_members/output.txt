@@ -1,0 +1,61 @@
+// flash.profiler
+profile/showRedrawRegions: no error
+// flash.system.IME
+IME.isSupported: false
+Capabilities.hasIME: false
+IME.enabled: false
+IME.conversionMode: UNKNOWN
+System.ime is IME: true
+IME.enabled = true: Error Error #2063: Error attempting to execute IME command. (2063)
+IME.enabled = false: Error Error #2063: Error attempting to execute IME command. (2063)
+IME.conversionMode = KOREAN: Error Error #2063: Error attempting to execute IME command. (2063)
+IME.doConversion(): Error Error #2063: Error attempting to execute IME command. (2063)
+IME.setCompositionString(): Error Error #2063: Error attempting to execute IME command. (2063)
+IME.compositionAbandoned(): Error Error #2063: Error attempting to execute IME command. (2063)
+IME.compositionSelectionChanged(): Error Error #2063: Error attempting to execute IME command. (2063)
+IME.enabled after: false
+IME.conversionMode after: UNKNOWN
+// flash.system.Security
+exactSettings: true
+exactSettings after = false: false
+exactSettings after = true: true
+getLocal: true
+exactSettings = true after use: no error
+exactSettings = false after use: SecurityError Error #2054: The value of Security.exactSettings cannot be changed after it has been used. (2054)
+exactSettings: true
+disableAVM1Loading: false
+loadPolicyFile(null): TypeError Error #2007: Parameter url must be non-null. (2007)
+loadPolicyFile(http): no error
+loadPolicyFile(http) again: no error
+loadPolicyFile(xmlsocket): no error
+showSettings(): no error
+showSettings(privacy): no error
+showSettings(bogus): no error
+// flash.system.SecurityDomain
+domainID: E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+domainID type: string
+// flash.system.ApplicationInstaller
+INSTALL_ONLY: install_only
+INSTALL_WITH_SHORTCUTS: install_with_shortcuts
+SHORTCUTS_ONLY: shortcuts_only
+new ApplicationInstaller(): ArgumentError Error #2012: ApplicationInstaller$ class cannot be instantiated. (2012)
+ApplicationInstaller.iconDigest(null): TypeError Error #2007: Parameter icon must be non-null. (2007)
+ApplicationInstaller.iconDigest(bytes): flash.errors::IllegalOperationError Error #2014: Feature is not available at this time. (2014)
+ApplicationInstaller.stringsDigest(null): TypeError Error #2007: Parameter strings must be non-null. (2007)
+ApplicationInstaller.stringsDigest(xml): flash.errors::IllegalOperationError Error #2014: Feature is not available at this time. (2014)
+new AuthorizedFeatures(): ArgumentError Error #2012: AuthorizedFeatures$ class cannot be instantiated. (2012)
+// flash.system.SystemUpdater
+update(bogus): Error Error #2205: Invalid update type bogus. (2205)
+update(DRM): no error
+update(SYSTEM) while pending: Error Error #2202: Only one SystemUpdater action is allowed at a time. (2202)
+update on another instance: Error Error #2202: Only one SystemUpdater action is allowed at a time. (2202)
+cancel(): no error
+update(null): Error Error #2202: Only one SystemUpdater action is allowed at a time. (2202)
+// Security.disableAVM1Loading
+disableAVM1Loading: true
+load(avm1.swf) started
+updater status: DRM.UpdateFailedNotSupported / error
+securityError: Error #2111: Security.disableAVM1Loading is true so the current load of the ActionScript 1.0/2.0 SWF file has been blocked. (2111)
+content after block: null
+disableAVM1Loading: false
+complete: content is flash.display::AVM1Movie

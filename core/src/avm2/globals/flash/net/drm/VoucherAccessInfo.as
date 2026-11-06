@@ -1,36 +1,37 @@
 package flash.net.drm {
-    import __ruffle__.stub_getter;
-
+    // Timffle: one way of obtaining a voucher for a DRMContentData. The only instance
+    // this player ever makes is the default entry of an empty DRMContentData
+    // (`getVoucherAccessInfo()` always returns at least that one): no name, no
+    // domain, no policy, no device group, and the authentication method is unknown
+    // (null) because no metadata was parsed.
     [API("667")]
     public final class VoucherAccessInfo {
-        public function get displayName():String {
-            stub_getter("flash.net.drm.VoucherAccessInfo", "displayName");
+        private var _displayName:String = null;
+        private var _authenticationMethod:String = null;
+        private var _domain:String = null;
+        private var _policyID:String = null;
+        private var _deviceGroup:DRMDeviceGroup = null;
 
-            return null;
+        public function get displayName():String {
+            return this._displayName;
         }
 
         public function get authenticationMethod():String {
-            stub_getter("flash.net.drm.VoucherAccessInfo", "authenticationMethod");
-
-            return null;
+            return this._authenticationMethod;
         }
 
         public function get domain():String {
-            stub_getter("flash.net.drm.VoucherAccessInfo", "domain");
-
-            return null;
+            return this._domain;
         }
 
+        [API("690")]
         public function get policyID():String {
-            stub_getter("flash.net.drm.VoucherAccessInfo", "policyID");
-
-            return null;
+            return this._policyID;
         }
 
+        [API("692")]
         public function get deviceGroup():DRMDeviceGroup {
-            stub_getter("flash.net.drm.VoucherAccessInfo", "deviceGroup");
-
-            return null;
+            return this._deviceGroup;
         }
     }
 }

@@ -68,6 +68,12 @@ package {
             return this;
         }
 
+        // Timffle: Flash's XMLList class declares its own hasOwnProperty/propertyIsEnumerable
+        // (ECMA-357 13.5.4.11 / 13.5.4.19): an index below the length or a property of one of
+        // the element children is an own property; only indices below the length are enumerable.
+        override AS3 native function hasOwnProperty(P:* = void 0):Boolean;
+        override AS3 native function propertyIsEnumerable(P:* = void 0):Boolean;
+
         prototype.hasComplexContent = function():Boolean {
             var self:XMLList = this;
             return self.AS3::hasComplexContent();
@@ -256,6 +262,19 @@ package {
             return self.AS3::normalize();
         }
 
+        // Timffle: like XML.prototype (see XML.as), measured on Flash Player 32.
+        prototype.hasOwnProperty = function(P:* = void 0):Boolean {
+            var self:XMLList = this;
+            return self.AS3::hasOwnProperty(P);
+        }
+
+        prototype.propertyIsEnumerable = function(P:* = void 0):Boolean {
+            var self:XMLList = this;
+            return self.AS3::propertyIsEnumerable(P);
+        }
+
+        prototype.valueOf = Object.prototype.valueOf;
+
         prototype.setPropertyIsEnumerable("hasComplexContent", false);
         prototype.setPropertyIsEnumerable("hasSimpleContent", false);
         prototype.setPropertyIsEnumerable("length", false);
@@ -293,6 +312,9 @@ package {
         prototype.setPropertyIsEnumerable("processingInstructions", false);
         prototype.setPropertyIsEnumerable("elements", false);
         prototype.setPropertyIsEnumerable("normalize", false);
+        prototype.setPropertyIsEnumerable("hasOwnProperty", false);
+        prototype.setPropertyIsEnumerable("propertyIsEnumerable", false);
+        prototype.setPropertyIsEnumerable("valueOf", false);
 
         public static const length:* = 1;
     }

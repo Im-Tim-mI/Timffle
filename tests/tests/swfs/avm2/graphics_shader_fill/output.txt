@@ -1,0 +1,19 @@
+beginShaderFill null THREW TypeError #2007
+lineShaderStyle null THREW TypeError #2007
+beginShaderFill empty shader THREW ArgumentError #2171
+after errors n=0 []
+# pbj loaded bytes=447
+fill pixel 10,10=FF640000 30,30=00000000
+fill data n=0 []
+fill+matrix pixel 20,20=FF640000 5,5=00000000
+fill+matrix data n=0 []
+stroke pixel 10,10=FF640000 10,20=00000000
+stroke data n=0 []
+solid then shader data n=3 [flash.display::GraphicsSolidFill, flash.display::GraphicsPath, flash.display::GraphicsEndFill]
+solid then shader pixel 5,5=FF0000FF 25,25=FF640000
+shader then solid data n=3 [flash.display::GraphicsSolidFill, flash.display::GraphicsPath, flash.display::GraphicsEndFill]
+plain then shader stroke data n=3 [flash.display::GraphicsStroke fill=flash.display::GraphicsSolidFill, flash.display::GraphicsPath, flash.display::GraphicsStroke fill=null]
+cleared shader fill data n=3 [flash.display::GraphicsSolidFill, flash.display::GraphicsPath, flash.display::GraphicsEndFill]
+graphicsData pixel 10,10=FF640000
+graphicsData data n=0 []
+graphicsData null shader THREW TypeError #2007

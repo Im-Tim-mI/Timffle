@@ -1,0 +1,13 @@
+num_ticks = 90
+
+[player_options]
+with_renderer = { optional = false, quality = "low" }
+with_video = true
+with_audio = true
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32

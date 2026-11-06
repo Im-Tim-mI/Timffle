@@ -1,0 +1,75 @@
+// Worker
+Worker.isSupported=true WorkerDomain.isSupported=true
+current=flash.system::Worker isPrimordial=true state=running
+start THREW Error #1511
+terminate THREW Error #3732
+createWorker null THREW TypeError #2007
+createWorker(junk)=flash.system::Worker state=new isPrimordial=false
+junk start ok state=new
+junk terminate()=true state settled=true
+listWorkers length=1 first is current=true
+setSharedProperty(null) ok get=1
+shared copy same=false twice same=false missing=null
+mutex by reference=true worker by reference=true
+// MessageChannel
+channel=flash.system::MessageChannel state=open messageAvailable=false
+after send messageAvailable=true events in send=0
+receive x=1 messageAvailable=false
+receive empty=null
+receive(true) empty=null
+receive(true) empty returned
+send over queueLimit 1 returned
+queue: one,null
+after close state=closing events=
+send after close THREW Error #3738
+receive after close=late state=closed
+channel to null THREW TypeError #2007
+// Mutex / Condition
+Mutex.isSupported=true Condition.isSupported=true
+new Mutex ok
+unlock without lock THREW Error #1514
+tryLock while owned=true
+three unlocks ok
+lock twice THREW Error #1514
+Condition(null) THREW ArgumentError #2007
+condition mutex same=true
+notify unowned THREW Error #1516
+notifyAll unowned THREW Error #1517
+wait unowned THREW Error #1518
+notify/notifyAll owned ok
+wait(-2) THREW ArgumentError #1515
+// SecurityDomain / installer / updater / Security
+domainID type=string length=64 looks hex=true is url=false
+domainID stable=true same object=true
+new SecurityDomain THREW ArgumentError #2012
+ApplicationInstaller defined=true AuthorizedFeatures=true SystemUpdater=true
+new ApplicationInstaller THREW ArgumentError #2012
+new AuthorizedFeatures THREW ArgumentError #2012
+disableAVM1Loading default=false
+after set=true
+after reset=false
+next frame events=channelMessage,channelMessage,channelMessage,channelState:closed state=closed
+wait(300)=true
+wait(300) returned
+after wait(300) held depth=1
+wait(0)=true
+wait(0) returned
+after wait(0) held depth=1
+wait(notify+300)=true
+wait(notify+300) returned
+after wait(notify+300) held depth=1
+wait(-1) THREW flash.errors::ScriptTimeoutError #1502
+after wait(-1) held depth=0
+wait(20000) THREW flash.errors::ScriptTimeoutError #1502
+after wait(20000) held depth=0
+wait(none) THREW flash.errors::ScriptTimeoutError #1502
+after wait(none) held depth=0
+// SystemUpdater (bad arguments only; no real update request)
+new SystemUpdater=flash.system::SystemUpdater
+fresh update(bogus) THREW Error #2205
+same update(bogus) again THREW Error #2205
+cancel ok
+after cancel update(bogus) THREW Error #2205
+second instance update(null) THREW Error #2203
+second instance update(bogus) THREW Error #2202
+third instance update(bogus) THREW Error #2202

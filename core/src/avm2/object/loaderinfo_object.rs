@@ -98,6 +98,16 @@ pub struct LoaderInfoObjectData<'gc> {
     expose_content: Cell<bool>,
 
     errored: Cell<bool>,
+
+    /// Timffle: whether the HTTP download of the content was redirected
+    /// (one of the conditions of `LoaderInfo.isURLInaccessible`).
+    redirected: Cell<bool>,
+
+    /// Timffle: `LoaderInfo.parentSandboxBridge`, set by the loading SWF.
+    parent_sandbox_bridge: Lock<Option<Object<'gc>>>,
+
+    /// Timffle: `LoaderInfo.childSandboxBridge`, set by the loaded content.
+    child_sandbox_bridge: Lock<Option<Object<'gc>>>,
 }
 
 impl<'gc> LoaderInfoObject<'gc> {
@@ -142,10 +152,48 @@ impl<'gc> LoaderInfoObject<'gc> {
                 content_type: Cell::new(ContentType::Unknown),
                 expose_content: Cell::new(false),
                 errored: Cell::new(false),
+                redirected: Cell::new(false),
+                parent_sandbox_bridge: Lock::new(None),
+                child_sandbox_bridge: Lock::new(None),
             },
         ));
 
         Ok(object)
+    }
+
+    /// Timffle: whether the content's download went through an HTTP redirect.
+    pub fn redirected(self) -> bool {
+        self.0.redirected.get()
+    }
+
+    pub fn set_redirected(self, redirected: bool) {
+        self.0.redirected.set(redirected);
+    }
+
+    pub fn parent_sandbox_bridge(self) -> Option<Object<'gc>> {
+        self.0.parent_sandbox_bridge.get()
+    }
+
+    pub fn set_parent_sandbox_bridge(self, mc: &Mutation<'gc>, bridge: Option<Object<'gc>>) {
+        unlock!(
+            Gc::write(mc, self.0),
+            LoaderInfoObjectData,
+            parent_sandbox_bridge
+        )
+        .set(bridge);
+    }
+
+    pub fn child_sandbox_bridge(self) -> Option<Object<'gc>> {
+        self.0.child_sandbox_bridge.get()
+    }
+
+    pub fn set_child_sandbox_bridge(self, mc: &Mutation<'gc>, bridge: Option<Object<'gc>>) {
+        unlock!(
+            Gc::write(mc, self.0),
+            LoaderInfoObjectData,
+            child_sandbox_bridge
+        )
+        .set(bridge);
     }
 
     pub fn loader(self) -> Option<StageObject<'gc>> {
@@ -190,6 +238,8 @@ impl<'gc> LoaderInfoObject<'gc> {
     pub fn reset_init_and_complete_events(self) {
         self.0.init_event_fired.set(false);
         self.0.complete_event_fired.set(false);
+        // Timffle: the next content starts without redirect state.
+        self.0.redirected.set(false);
     }
 
     /// The root clip of the content this loader info currently describes, if it has one yet.
@@ -222,19 +272,28 @@ impl<'gc> LoaderInfoObject<'gc> {
         if !self.0.complete_event_fired.get() {
             // NOTE: We have to check load progress here because this function
             // is called unconditionally at the end of every frame.
-            let (should_complete, from_bytes) = match self.0.loaded_stream.get() {
+            let (should_complete, from_bytes, total) = match self.0.loaded_stream.get() {
                 LoaderStream::Swf(movie, root) => (
                     root.as_movie_clip()
                         .map(|mc| mc.loaded_bytes() as i32 >= mc.total_bytes())
                         .unwrap_or(true),
                     movie.is_from_bytes(),
+                    movie.compressed_len(),
                 ),
-                _ => (false, false),
+                _ => (false, false, 0),
             };
 
             if should_complete {
                 let mut activation = Activation::from_nothing(context);
-                if !from_bytes {
+                if self.0.loader.is_none() {
+                    // Timffle: the root movie's LoaderInfo (no Loader) gets a final
+                    // `progress` (all bytes) between `init` and `complete` and no
+                    // `httpStatus`, from a file and over HTTP alike (Flash Player 32
+                    // standalone; `from_shumway/as3-loader/events/loader-events`).
+                    let progress_evt =
+                        EventObject::progress_event(&mut activation, "progress", total, total);
+                    Avm2::dispatch_event(context, progress_evt, self.into());
+                } else if !from_bytes {
                     let http_status_evt =
                         EventObject::http_status_event(&mut activation, status, redirected);
 

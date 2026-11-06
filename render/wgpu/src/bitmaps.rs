@@ -11,6 +11,14 @@ pub struct BitmapSamplers {
     pub repeat_u_clamp_v_linear: wgpu::Sampler,
     pub repeat_u_clamp_v_nearest: wgpu::Sampler,
     pub anisotropic: HashMap<WgpuSamplerConfig, wgpu::Sampler>,
+    /// Timffle: Stage3D samplers with a linear (or anisotropic) texture filter
+    /// and `mipnearest`. The samplers above tie the mip filter to the texture
+    /// filter, so `<linear,mipnearest>` blended two levels (trilinear); Flash
+    /// Player 32 takes the nearest level (avm2/stage3d_bitmap, re-recorded in
+    /// Flash). Keyed by address modes (`anisotropy_clamp` 1: wgpu allows
+    /// anisotropy only with a linear mip filter, and the anisotropic samplers
+    /// above are created with clamp 1 as well).
+    pub linear_mip_nearest: HashMap<WgpuSamplerConfig, wgpu::Sampler>,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -27,6 +35,28 @@ fn create_sampler(
     filter: wgpu::FilterMode,
     sampler_label: Option<String>,
 ) -> wgpu::Sampler {
+    create_sampler_with_mip_filter(
+        device,
+        address_mode_u,
+        address_mode_v,
+        filter,
+        match filter {
+            wgpu::FilterMode::Linear => wgpu::MipmapFilterMode::Linear,
+            wgpu::FilterMode::Nearest => wgpu::MipmapFilterMode::Nearest,
+        },
+        sampler_label,
+    )
+}
+
+// Timffle: explicit mip filter and anisotropy (see `linear_mip_nearest`).
+fn create_sampler_with_mip_filter(
+    device: &wgpu::Device,
+    address_mode_u: wgpu::AddressMode,
+    address_mode_v: wgpu::AddressMode,
+    filter: wgpu::FilterMode,
+    mipmap_filter: wgpu::MipmapFilterMode,
+    sampler_label: Option<String>,
+) -> wgpu::Sampler {
     device.create_sampler(&wgpu::SamplerDescriptor {
         label: sampler_label.as_deref(),
         address_mode_u,
@@ -35,10 +65,7 @@ fn create_sampler(
         address_mode_w: wgpu::AddressMode::Repeat,
         mag_filter: filter,
         min_filter: filter,
-        mipmap_filter: match filter {
-            wgpu::FilterMode::Linear => wgpu::MipmapFilterMode::Linear,
-            wgpu::FilterMode::Nearest => wgpu::MipmapFilterMode::Nearest,
-        },
+        mipmap_filter,
         lod_min_clamp: 0.0,
         lod_max_clamp: 100.0,
         compare: None,
@@ -138,7 +165,34 @@ impl BitmapSamplers {
             }
         }
 
+        let mut linear_mip_nearest = HashMap::new();
+        for u_mode in [wgpu::AddressMode::ClampToEdge, wgpu::AddressMode::Repeat] {
+            for v_mode in [wgpu::AddressMode::ClampToEdge, wgpu::AddressMode::Repeat] {
+                let sampler = create_sampler_with_mip_filter(
+                    device,
+                    u_mode,
+                    v_mode,
+                    wgpu::FilterMode::Linear,
+                    wgpu::MipmapFilterMode::Nearest,
+                    create_debug_label!(
+                        "Linear, mip nearest, u_mode={:?}, v_mode={:?} sampler",
+                        u_mode,
+                        v_mode
+                    ),
+                );
+                linear_mip_nearest.insert(
+                    WgpuSamplerConfig {
+                        anisotropy_clamp: 1,
+                        address_mode_u: u_mode,
+                        address_mode_v: v_mode,
+                    },
+                    sampler,
+                );
+            }
+        }
+
         Self {
+            linear_mip_nearest,
             repeat_linear,
             repeat_nearest,
             clamp_linear,

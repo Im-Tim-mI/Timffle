@@ -223,6 +223,97 @@ impl WgpuRenderBackend<crate::target::TextureTarget> {
 }
 
 impl<T: RenderTarget> WgpuRenderBackend<T> {
+    /// Draws cacheAsBitmap pictures into their textures and applies their filters
+    /// (Timffle: moved out of `submit_frame` so that `render_offscreen_with_cache`
+    /// shares it).
+    fn draw_cache_entries(&mut self, quality: StageQuality, cache_entries: Vec<BitmapCacheEntry>) {
+        for entry in cache_entries {
+            let texture = as_texture(&entry.handle);
+            let surface = Surface::new(
+                &self.descriptors,
+                quality,
+                texture.texture.width(),
+                texture.texture.height(),
+                wgpu::TextureFormat::Rgba8Unorm,
+            );
+            if entry.filters.is_empty() {
+                surface.draw_commands(
+                    RenderTargetMode::ExistingWithColor(
+                        texture.texture.clone(),
+                        wgpu::Color {
+                            r: f64::from(entry.clear.r) / 255.0,
+                            g: f64::from(entry.clear.g) / 255.0,
+                            b: f64::from(entry.clear.b) / 255.0,
+                            a: f64::from(entry.clear.a) / 255.0,
+                        },
+                    ),
+                    &self.descriptors,
+                    &self.meshes,
+                    entry.commands,
+                    &mut self.active_frame.staging_belt,
+                    &self.dynamic_transforms,
+                    &mut self
+                        .profiler
+                        .scope("Draw to CAB", &mut self.active_frame.command_encoder),
+                    (0, 0),
+                    LayerRef::None,
+                    &mut self.offscreen_texture_pool,
+                );
+            } else {
+                let mut scope = self
+                    .profiler
+                    .scope("Filters", &mut self.active_frame.command_encoder);
+                // We're relying on there being no impotent filters here,
+                // so that we can safely start by using the actual CAB texture.
+                // It's guaranteed that at least one filter would have used it and moved the target to something else,
+                // letting us safely copy back to it later.
+                let mut target = surface.draw_commands(
+                    RenderTargetMode::ExistingWithColor(
+                        texture.texture.clone(),
+                        wgpu::Color {
+                            r: f64::from(entry.clear.r) / 255.0,
+                            g: f64::from(entry.clear.g) / 255.0,
+                            b: f64::from(entry.clear.b) / 255.0,
+                            a: f64::from(entry.clear.a) / 255.0,
+                        },
+                    ),
+                    &self.descriptors,
+                    &self.meshes,
+                    entry.commands,
+                    &mut self.active_frame.staging_belt,
+                    &self.dynamic_transforms,
+                    &mut scope.scope("Draw to CAB"),
+                    (0, 0),
+                    LayerRef::None,
+                    &mut self.offscreen_texture_pool,
+                );
+                for filter in entry.filters {
+                    target = self.descriptors.filters.apply(
+                        &self.descriptors,
+                        &mut scope.scope(filter.name()),
+                        &mut self.offscreen_texture_pool,
+                        &mut self.active_frame.staging_belt,
+                        FilterSource::for_entire_texture(target.color_texture()),
+                        filter,
+                    );
+                }
+                run_copy_pipeline(
+                    &self.descriptors,
+                    texture.texture.format(),
+                    &texture.texture.create_view(&Default::default()),
+                    target.color_view(),
+                    target.globals(),
+                    target.color_texture().sample_count(),
+                    &mut scope.scope("Copy filtered to CAB"),
+                );
+            }
+            // Periodically flush GPU work to prevent OOM when many cache entries
+            // accumulate (e.g. when a large container's cacheAsBitmap is skipped
+            // but its hundreds of children each have their own bitmap caches).
+            self.active_frame.maybe_flush(&self.descriptors);
+        }
+    }
+
     pub fn new(descriptors: Arc<Descriptors>, target: T) -> Result<Self, Error> {
         if target.width() > descriptors.limits.max_texture_dimension_2d
             || target.height() > descriptors.limits.max_texture_dimension_2d
@@ -598,91 +689,8 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
             return;
         };
 
-        for entry in cache_entries {
-            let texture = as_texture(&entry.handle);
-            let surface = Surface::new(
-                &self.descriptors,
-                self.surface.quality(),
-                texture.texture.width(),
-                texture.texture.height(),
-                wgpu::TextureFormat::Rgba8Unorm,
-            );
-            if entry.filters.is_empty() {
-                surface.draw_commands(
-                    RenderTargetMode::ExistingWithColor(
-                        texture.texture.clone(),
-                        wgpu::Color {
-                            r: f64::from(entry.clear.r) / 255.0,
-                            g: f64::from(entry.clear.g) / 255.0,
-                            b: f64::from(entry.clear.b) / 255.0,
-                            a: f64::from(entry.clear.a) / 255.0,
-                        },
-                    ),
-                    &self.descriptors,
-                    &self.meshes,
-                    entry.commands,
-                    &mut self.active_frame.staging_belt,
-                    &self.dynamic_transforms,
-                    &mut self
-                        .profiler
-                        .scope("Draw to CAB", &mut self.active_frame.command_encoder),
-                    (0, 0),
-                    LayerRef::None,
-                    &mut self.offscreen_texture_pool,
-                );
-            } else {
-                let mut scope = self
-                    .profiler
-                    .scope("Filters", &mut self.active_frame.command_encoder);
-                // We're relying on there being no impotent filters here,
-                // so that we can safely start by using the actual CAB texture.
-                // It's guaranteed that at least one filter would have used it and moved the target to something else,
-                // letting us safely copy back to it later.
-                let mut target = surface.draw_commands(
-                    RenderTargetMode::ExistingWithColor(
-                        texture.texture.clone(),
-                        wgpu::Color {
-                            r: f64::from(entry.clear.r) / 255.0,
-                            g: f64::from(entry.clear.g) / 255.0,
-                            b: f64::from(entry.clear.b) / 255.0,
-                            a: f64::from(entry.clear.a) / 255.0,
-                        },
-                    ),
-                    &self.descriptors,
-                    &self.meshes,
-                    entry.commands,
-                    &mut self.active_frame.staging_belt,
-                    &self.dynamic_transforms,
-                    &mut scope.scope("Draw to CAB"),
-                    (0, 0),
-                    LayerRef::None,
-                    &mut self.offscreen_texture_pool,
-                );
-                for filter in entry.filters {
-                    target = self.descriptors.filters.apply(
-                        &self.descriptors,
-                        &mut scope.scope(filter.name()),
-                        &mut self.offscreen_texture_pool,
-                        &mut self.active_frame.staging_belt,
-                        FilterSource::for_entire_texture(target.color_texture()),
-                        filter,
-                    );
-                }
-                run_copy_pipeline(
-                    &self.descriptors,
-                    texture.texture.format(),
-                    &texture.texture.create_view(&Default::default()),
-                    target.color_view(),
-                    target.globals(),
-                    target.color_texture().sample_count(),
-                    &mut scope.scope("Copy filtered to CAB"),
-                );
-            }
-            // Periodically flush GPU work to prevent OOM when many cache entries
-            // accumulate (e.g. when a large container's cacheAsBitmap is skipped
-            // but its hundreds of children each have their own bitmap caches).
-            self.active_frame.maybe_flush(&self.descriptors);
-        }
+        let quality = self.surface.quality();
+        self.draw_cache_entries(quality, cache_entries); // Timffle: shared with render_offscreen_with_cache
 
         self.surface.draw_commands_and_copy_to(
             frame_output.view(),
@@ -879,6 +887,115 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
 
         self.active_frame.maybe_flush(&self.descriptors);
         Some(self.make_queue_sync_handle(target, None, handle, bounds))
+    }
+
+    // Timffle: `BitmapData.draw` of objects with filters (their own or their
+    // children's). The cacheAsBitmap pictures they need are drawn and filtered
+    // first, exactly as `submit_frame` does for the stage, then the commands.
+    fn supports_offscreen_bitmap_cache(&self) -> bool {
+        true
+    }
+
+    fn render_offscreen_with_cache(
+        &mut self,
+        handle: BitmapHandle,
+        commands: CommandList,
+        quality: StageQuality,
+        bounds: PixelRegion,
+        cache_entries: Vec<BitmapCacheEntry>,
+    ) -> Option<Box<dyn SyncHandle>> {
+        self.draw_cache_entries(quality, cache_entries);
+        self.render_offscreen(handle, commands, quality, bounds)
+    }
+
+    // Timffle: `Context3D.drawToBitmapData` — a plain texture copy from the
+    // Stage3D back buffer into the bitmap's texture, read back through the
+    // same queue sync handle as `BitmapData.draw`.
+    fn copy_stage3d_to_bitmap(
+        &mut self,
+        source: BitmapHandle,
+        source_region: PixelRegion,
+        destination: BitmapHandle,
+        dest_point: (u32, u32),
+    ) -> Option<Box<dyn SyncHandle>> {
+        let source_texture = as_texture(&source);
+        let dest_texture = as_texture(&destination);
+        if source_texture.texture.format() != dest_texture.texture.format() {
+            tracing::error!(
+                "drawToBitmapData: cannot copy {:?} into {:?}",
+                source_texture.texture.format(),
+                dest_texture.texture.format()
+            );
+            return None;
+        }
+
+        let width = source_region
+            .width()
+            .min(
+                source_texture
+                    .texture
+                    .width()
+                    .saturating_sub(source_region.x_min),
+            )
+            .min(dest_texture.texture.width().saturating_sub(dest_point.0));
+        let height = source_region
+            .height()
+            .min(
+                source_texture
+                    .texture
+                    .height()
+                    .saturating_sub(source_region.y_min),
+            )
+            .min(dest_texture.texture.height().saturating_sub(dest_point.1));
+        if width == 0 || height == 0 {
+            return None;
+        }
+
+        self.active_frame.command_encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &source_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: source_region.x_min,
+                    y: source_region.y_min,
+                    z: 0,
+                },
+                aspect: Default::default(),
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &dest_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: dest_point.0,
+                    y: dest_point.1,
+                    z: 0,
+                },
+                aspect: Default::default(),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        let target = TextureTarget {
+            size: wgpu::Extent3d {
+                width: dest_texture.texture.width(),
+                height: dest_texture.texture.height(),
+                depth_or_array_layers: 1,
+            },
+            texture: dest_texture.texture.clone(),
+            format: dest_texture.texture.format(),
+            buffer: None,
+        };
+        self.active_frame.maybe_flush(&self.descriptors);
+        Some(self.make_queue_sync_handle(
+            target,
+            None,
+            destination,
+            PixelRegion::for_region(dest_point.0, dest_point.1, width, height),
+        ))
     }
 
     fn is_filter_supported(&self, filter: &Filter) -> bool {
@@ -1130,18 +1247,21 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
 
         match target {
             PixelBenderTarget::Bitmap(_) => Ok(PixelBenderOutput::Bitmap(sync_handle)),
-            PixelBenderTarget::Bytes { width, .. } => {
+            PixelBenderTarget::Bytes { width, height } => {
                 let mut output = None;
                 self.resolve_sync_handle(
                     sync_handle,
                     Box::new(|raw_pixels, buffer_width| {
                         let width = *width as usize;
+                        // Timffle: the readback buffer can hold more rows than the job's
+                        // height; a ShaderJob result is exactly width * height pixels.
+                        let height = *height as usize;
 
                         if buffer_width as usize
                             != width * output_channels * std::mem::size_of::<f32>()
                         {
                             let mut new_pixels = Vec::new();
-                            for row in raw_pixels.chunks(buffer_width as usize) {
+                            for row in raw_pixels.chunks(buffer_width as usize).take(height) {
                                 let actual_row = &row[0..(width * std::mem::size_of::<[f32; 4]>())];
 
                                 for pixel in actual_row
@@ -1161,7 +1281,8 @@ impl<T: RenderTarget + 'static> RenderBackend for WgpuRenderBackend<T> {
                             }
                             output = Some(new_pixels);
                         } else {
-                            output = Some(raw_pixels.to_vec());
+                            let len = (buffer_width as usize * height).min(raw_pixels.len());
+                            output = Some(raw_pixels[..len].to_vec());
                         };
                     }),
                 )?;
@@ -1275,6 +1396,7 @@ async fn request_device(
 
     let optional_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
         | wgpu::Features::TEXTURE_COMPRESSION_BC
+        | wgpu::Features::TEXTURE_COMPRESSION_ETC2 // Timffle: Stage3D compressed textures on mobile GPUs
         | wgpu::Features::FLOAT32_FILTERABLE
         | GpuProfiler::ALL_WGPU_TIMER_FEATURES;
 

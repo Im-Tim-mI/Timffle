@@ -1,0 +1,8 @@
+num_ticks = 1
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 40 # AudioDeviceManager needs Flash Player 27 (SWF 38)

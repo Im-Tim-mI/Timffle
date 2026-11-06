@@ -2,7 +2,10 @@
 
 use crate::avm2::StageObject;
 use crate::avm2::activation::Activation;
-use crate::avm2::error::{make_error_2005, make_error_2007, make_error_2008, make_error_2078};
+use crate::avm2::error::{
+    Error2004Type, make_error_2004, make_error_2005, make_error_2007, make_error_2008,
+    make_error_2078,
+};
 use crate::avm2::filters::FilterAvm2Ext;
 use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::flash::geom::transform::color_transform_from_transform_object;
@@ -17,6 +20,7 @@ use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{ArrayObject, ArrayStorage};
 use crate::avm2::{ClassObject, Error};
+use crate::avm2_stub_getter;
 use crate::context::UpdateContext;
 use crate::display_object::BoundsMode;
 use crate::ecma_conversions::round_to_even;
@@ -24,7 +28,6 @@ use crate::prelude::*;
 use crate::string::AvmString;
 use crate::types::{Degrees, Percent};
 use crate::vminterface::Instantiator;
-use crate::{avm2_stub_getter, avm2_stub_setter};
 use ruffle_render::blend::ExtendedBlendMode;
 use ruffle_render::filters::Filter;
 use std::str::FromStr;
@@ -128,7 +131,8 @@ pub fn get_scale9grid<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    avm2_stub_getter!(activation, "flash.display.DisplayObject", "scale9Grid");
+    // Timffle: real 9-slice rendering lives in display_object.rs
+    // (`render_self_with_scaling_grid`), so this is no longer a stub.
     if let Some(dobj) = this.as_display_object() {
         let rect = dobj.scaling_grid();
         return if rect.is_valid() {
@@ -149,11 +153,30 @@ pub fn set_scale9grid<'gc>(
 ) -> Result<Value<'gc>, Error<'gc>> {
     let this = this.as_object().unwrap();
 
-    avm2_stub_setter!(activation, "flash.display.DisplayObject", "scale9Grid");
+    // Timffle: Flash validates the grid against the object's bounds — a
+    // rectangle that does not lie inside `getBounds(this)` (including one with a
+    // negative size, or any rectangle on an object with no content) throws
+    // ArgumentError #2004 ("Throws: ArgumentError — If you pass an invalid
+    // argument"). `null` clears the grid. The rendering half is in
+    // display_object.rs (`render_self_with_scaling_grid`).
     if let Some(dobj) = this.as_display_object() {
         let rect = match args.try_get_object(0) {
             None => Rectangle::default(),
-            Some(rect) => object_to_rectangle(rect),
+            Some(rect) => {
+                let rect = object_to_rectangle(rect);
+                let bounds = dobj.bounds(BoundsMode::Script);
+                let fits = bounds.is_valid()
+                    && rect.x_max >= rect.x_min
+                    && rect.y_max >= rect.y_min
+                    && rect.x_min >= bounds.x_min
+                    && rect.y_min >= bounds.y_min
+                    && rect.x_max <= bounds.x_max
+                    && rect.y_max <= bounds.y_max;
+                if !fits {
+                    return Err(make_error_2004(activation, Error2004Type::ArgumentError));
+                }
+                rect
+            }
         };
         dobj.set_scaling_grid(rect);
     }

@@ -1,13 +1,20 @@
 package flash.globalization {
-    import __ruffle__.stub_constructor;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
-
+    // Timffle: implemented for real. Style patterns, month/weekday names and
+    // the first weekday come from the compiled-in locale table
+    // (locale_data.rs); the LDML pattern renderer and the pattern syntax
+    // check (`patternSyntaxError`) live in date_time_formatter.rs.
     [API("667")]
     public final class DateTimeFormatter {
+        [Ruffle(NativeAccessible)]
+        private var _actualLocaleIDName:String;
+        [Ruffle(NativeAccessible)]
         private var _dateStyle:String;
+        [Ruffle(NativeAccessible)]
         private var _dateTimePattern:String;
+        [Ruffle(NativeAccessible)]
+        private var _lastOperationStatus:String = LastOperationStatus.NO_ERROR;
         private var _localeIDName:String;
+        [Ruffle(NativeAccessible)]
         private var _timeStyle:String;
 
         private static function throwNonNull(name:String) {
@@ -15,25 +22,26 @@ package flash.globalization {
         }
 
         public function DateTimeFormatter(requestedLocaleIDName:String, dateStyle:String = "long", timeStyle:String = "long") {
-            stub_constructor("flash.globalization.DateTimeFormatter");
-
             if (requestedLocaleIDName == null) {
                 throwNonNull("requestedLocaleIDName");
             }
 
             this._localeIDName = requestedLocaleIDName;
-            this._dateTimePattern = "EEEE, MMMM d, yyyy h:mm:ss a";
+            this.init(requestedLocaleIDName);
+            var status:String = this._lastOperationStatus;
             this.setDateTimeStyles(dateStyle, timeStyle);
+            // The constructor reports the locale fallback, not the style change.
+            this._lastOperationStatus = status;
         }
 
+        private native function init(requestedLocaleIDName:String):void;
+
         public function get actualLocaleIDName():String {
-            stub_getter("flash.globalization.DateTimeFormatter", "actualLocaleIDName");
-            return this._localeIDName;
+            return this._actualLocaleIDName;
         }
 
         public function get lastOperationStatus():String {
-            stub_getter("flash.globalization.DateTimeFormatter", "lastOperationStatus");
-            return LastOperationStatus.NO_ERROR;
+            return this._lastOperationStatus;
         }
 
         public function get requestedLocaleIDName():String {
@@ -41,29 +49,23 @@ package flash.globalization {
         }
 
         public function format(dateTime:Date):String {
-            stub_method("flash.globalization.DateTimeFormatter", "format");
-
             if (dateTime == null) {
                 throwNonNull("dateTime");
             }
-
-            return dateTime.toString();
+            return this.nativeFormat(dateTime);
         }
 
         public function formatUTC(dateTime:Date):String {
-            stub_method("flash.globalization.DateTimeFormatter", "formatUTC");
-
             if (dateTime == null) {
                 throwNonNull("dateTime");
             }
-
-            return dateTime.toUTCString();
+            return this.nativeFormatUTC(dateTime);
         }
 
-        public static function getAvailableLocaleIDNames():Vector.<String> {
-            stub_method("flash.globalization.DateTimeFormatter", "getAvailableLocaleIDNames");
-            return new <String>["en-US"];
-        }
+        private native function nativeFormat(dateTime:Date):String;
+        private native function nativeFormatUTC(dateTime:Date):String;
+
+        public static native function getAvailableLocaleIDNames():Vector.<String>;
 
         public function getDateStyle():String {
             return this._dateStyle;
@@ -73,36 +75,16 @@ package flash.globalization {
             return this._dateTimePattern;
         }
 
-        public function getFirstWeekday():int {
-            stub_method("flash.globalization.DateTimeFormatter", "getFirstWeekday");
-            return 0;
-        }
+        public native function getFirstWeekday():int;
 
         public function getMonthNames(nameStyle:String = "full", context:String = "standalone"):Vector.<String> {
-            stub_method("flash.globalization.DateTimeFormatter", "getMonthNames");
-
             if (nameStyle == null) {
                 throwNonNull("nameStyle");
             }
-
             if (context == null) {
                 throwNonNull("context");
             }
-
-            return new <String>[
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December"
-            ];
+            return this.nativeGetMonthNames(nameStyle, context);
         }
 
         public function getTimeStyle():String {
@@ -110,42 +92,36 @@ package flash.globalization {
         }
 
         public function getWeekdayNames(nameStyle:String = "full", context:String = "standalone"):Vector.<String> {
-            stub_method("flash.globalization.DateTimeFormatter", "getWeekdayNames");
-
             if (nameStyle == null) {
                 throwNonNull("nameStyle");
             }
-
             if (context == null) {
                 throwNonNull("context");
             }
-
-            return new <String>["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            return this.nativeGetWeekdayNames(nameStyle, context);
         }
 
-        public function setDateTimePattern(pattern:String):void {
-            stub_method("flash.globalization.DateTimeFormatter", "setDateTimePattern");
+        private native function nativeGetMonthNames(nameStyle:String, context:String):Vector.<String>;
+        private native function nativeGetWeekdayNames(nameStyle:String, context:String):Vector.<String>;
 
+        public function setDateTimePattern(pattern:String):void {
             if (pattern == null) {
                 throwNonNull("pattern");
             }
-
-            this._dateTimePattern = pattern;
+            this.nativeSetDateTimePattern(pattern);
         }
 
         public function setDateTimeStyles(dateStyle:String, timeStyle:String):void {
-            stub_method("flash.globalization.DateTimeFormatter", "setDateTimeStyles");
-
             if (dateStyle == null) {
                 throwNonNull("dateStyle");
             }
-
             if (timeStyle == null) {
                 throwNonNull("timeStyle");
             }
-
-            this._dateStyle = dateStyle;
-            this._timeStyle = timeStyle;
+            this.nativeSetDateTimeStyles(dateStyle, timeStyle);
         }
+
+        private native function nativeSetDateTimePattern(pattern:String):void;
+        private native function nativeSetDateTimeStyles(dateStyle:String, timeStyle:String):void;
     }
 }

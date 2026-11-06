@@ -1,0 +1,13 @@
+# Expected output recorded from Flash Player 32.0.0.465 (release, standalone, Wine), identical on two runs.
+# Source: S5CursorLines.hx (Haxe; built without -D harness, -swf-version 32, -D s5parts=cl: cursor errors and the Latin line-breaking cases).
+# The CJK and Hebrew cases need fonts this test does not carry: timffle/difftest/expected/s5cursorlines.txt.
+num_ticks = 1
+known_failure = true
+
+[default_fonts]
+sans = ["Noto Sans"]
+serif = ["Noto Sans"]
+
+[fonts.noto_sans]
+family = "Noto Sans"
+path = "NotoSans.ttf"

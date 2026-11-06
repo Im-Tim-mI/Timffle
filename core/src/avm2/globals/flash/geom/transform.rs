@@ -93,6 +93,33 @@ pub fn set_matrix<'gc>(
     Ok(Value::Undefined)
 }
 
+/// Timffle: `concatenatedColorTransform` — the product of the colour
+/// transforms from the stage down to this object (Flash's order: an
+/// ancestor's offsets are scaled by nothing, the descendant's by the
+/// ancestor's multipliers), or the object's own transform when it is not on
+/// the display list.
+pub fn get_concatenated_color_transform<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+    let dobj = get_display_object(this);
+
+    let mut color_transform = dobj.base().color_transform();
+    if dobj.is_on_stage(activation.context) {
+        let mut node = dobj.parent();
+        while let Some(ancestor) = node {
+            if ancestor.as_stage().is_some() {
+                break;
+            }
+            color_transform = ancestor.base().color_transform() * color_transform;
+            node = ancestor.parent();
+        }
+    }
+    color_transform_to_object(&color_transform, activation)
+}
+
 pub fn get_concatenated_matrix<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,

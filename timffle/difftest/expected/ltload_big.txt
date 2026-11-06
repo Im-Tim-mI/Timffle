@@ -1,0 +1,99 @@
+# test=ltload_big
+before load content=null numChildren=0 loaded=none
+after load content=null numChildren=0 loaded=none
+frameConstructed 0 content=null numChildren=0 loaded=none
+exitFrame 0 content=null numChildren=0 loaded=none
+enterFrame 1 content=null numChildren=0 loaded=none
+frameConstructed 1 content=null numChildren=0 loaded=none
+exitFrame 1 content=null numChildren=0 loaded=none
+event open in frame 1 content=null numChildren=0 loaded=none
+~ progress 0/301767 in frame 1
+event progress(first) in frame 1 content=null numChildren=0 loaded=0
+~ progress 8031/301767 in frame 1
+~ progress 16223/301767 in frame 1
+~ progress 24415/301767 in frame 1
+~ progress 32607/301767 in frame 1
+~ progress 40799/301767 in frame 1
+~ progress 48991/301767 in frame 1
+~ progress 57183/301767 in frame 1
+~ progress 65375/301767 in frame 1
+~ progress 73567/301767 in frame 1
+~ progress 75442/301767 in frame 1
+enterFrame 2 content=null numChildren=0 loaded=partial
+frameConstructed 2 content=null numChildren=0 loaded=partial
+exitFrame 2 content=null numChildren=0 loaded=partial
+enterFrame 3 content=null numChildren=0 loaded=partial
+frameConstructed 3 content=null numChildren=0 loaded=partial
+exitFrame 3 content=null numChildren=0 loaded=partial
+~ progress 83634/301767 in frame 3
+~ progress 91826/301767 in frame 3
+~ progress 100018/301767 in frame 3
+~ progress 108210/301767 in frame 3
+~ progress 116402/301767 in frame 3
+~ progress 124594/301767 in frame 3
+~ progress 132786/301767 in frame 3
+~ progress 140978/301767 in frame 3
+~ progress 149170/301767 in frame 3
+~ progress 150884/301767 in frame 3
+enterFrame 4 content=null numChildren=0 loaded=partial
+frameConstructed 4 content=null numChildren=0 loaded=partial
+exitFrame 4 content=null numChildren=0 loaded=partial
+enterFrame 5 content=null numChildren=0 loaded=partial
+frameConstructed 5 content=null numChildren=0 loaded=partial
+exitFrame 5 content=null numChildren=0 loaded=partial
+enterFrame 6 content=null numChildren=0 loaded=partial
+frameConstructed 6 content=null numChildren=0 loaded=partial
+exitFrame 6 content=null numChildren=0 loaded=partial
+~ progress 159076/301767 in frame 6
+~ progress 167268/301767 in frame 6
+~ progress 175460/301767 in frame 6
+~ progress 183652/301767 in frame 6
+~ progress 191844/301767 in frame 6
+~ progress 200036/301767 in frame 6
+~ progress 208228/301767 in frame 6
+~ progress 216420/301767 in frame 6
+~ progress 224612/301767 in frame 6
+~ progress 226326/301767 in frame 6
+enterFrame 7 content=null numChildren=0 loaded=partial
+frameConstructed 7 content=null numChildren=0 loaded=partial
+exitFrame 7 content=null numChildren=0 loaded=partial
+enterFrame 8 content=null numChildren=0 loaded=partial
+frameConstructed 8 content=null numChildren=0 loaded=partial
+exitFrame 8 content=null numChildren=0 loaded=partial
+~ progress 234518/301767 in frame 8
+~ progress 242710/301767 in frame 8
+~ progress 250902/301767 in frame 8
+~ progress 259094/301767 in frame 8
+~ progress 267286/301767 in frame 8
+~ progress 275478/301767 in frame 8
+~ progress 283670/301767 in frame 8
+~ progress 291862/301767 in frame 8
+~ progress 300054/301767 in frame 8
+~ progress 301767/301767 in frame 8
+event progress(all bytes) in frame 8 content=null numChildren=0 loaded=all
+enterFrame 9 content=null numChildren=0 loaded=all
+  child constructor parent=null stage=null pad=300000 (frame 9)
+  child added target=self parent=null stage=null (frame 9)
+  child added target=self parent=set stage=set (frame 9)
+  child addedToStage parent=set stage=set (frame 9)
+frameConstructed 9 content=set numChildren=1 loaded=all
+  child frameConstructed #1 parent=set stage=set (frame 9)
+  child frameScript1 #1 parent=set stage=set (frame 9)
+exitFrame 9 content=set numChildren=1 loaded=all
+  child exitFrame #1 parent=set stage=set (frame 9)
+event init in frame 9 content=set numChildren=1 loaded=all
+~ httpStatus 200
+event httpStatus in frame 9 content=set numChildren=1 loaded=all
+event complete in frame 9 content=set numChildren=1 loaded=all
+enterFrame 10 content=set numChildren=1 loaded=all
+  child enterFrame #1 parent=set stage=set (frame 10)
+frameConstructed 10 content=set numChildren=1 loaded=all
+  child frameConstructed #2 parent=set stage=set (frame 10)
+exitFrame 10 content=set numChildren=1 loaded=all
+  child exitFrame #2 parent=set stage=set (frame 10)
+enterFrame 11 content=set numChildren=1 loaded=all
+  child enterFrame #2 parent=set stage=set (frame 11)
+frameConstructed 11 content=set numChildren=1 loaded=all
+exitFrame 11 content=set numChildren=1 loaded=all
+progress events: >=2
+# done

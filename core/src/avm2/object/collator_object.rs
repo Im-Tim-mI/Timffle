@@ -24,6 +24,8 @@ pub fn collator_allocator<'gc>(
         CollatorObjectData {
             base,
             requested_locale_id_name: Lock::new(istr!("")),
+            // Timffle: the locale actually used, set by the constructor.
+            actual_locale_id_name: Lock::new(istr!("")),
             options: Cell::new(CollatorOptions::default()),
             last_operation_status: Cell::new(LastOperationStatus::NoError),
         },
@@ -55,6 +57,9 @@ pub struct CollatorObjectData<'gc> {
     base: ScriptObjectData<'gc>,
 
     requested_locale_id_name: Lock<AvmString<'gc>>,
+
+    // Timffle: the locale actually used (`actualLocaleIDName`).
+    actual_locale_id_name: Lock<AvmString<'gc>>,
 
     options: Cell<CollatorOptions>,
 
@@ -92,6 +97,11 @@ pub enum LastOperationStatus {
     NoError,
     #[avm2_variant("unsupportedError")]
     UnsupportedError,
+    // Timffle: reported by the constructor when the locale falls back.
+    #[avm2_variant("usingFallbackWarning")]
+    UsingFallbackWarning,
+    #[avm2_variant("usingDefaultWarning")]
+    UsingDefaultWarning,
 }
 
 impl<'gc> CollatorObject<'gc> {
@@ -104,6 +114,20 @@ impl<'gc> CollatorObject<'gc> {
             Gc::write(mc, self.0),
             CollatorObjectData,
             requested_locale_id_name
+        )
+        .set(value);
+    }
+
+    // Timffle: accessors for the actual locale ID name.
+    pub fn actual_locale_id_name(self) -> AvmString<'gc> {
+        self.0.actual_locale_id_name.get()
+    }
+
+    pub fn set_actual_locale_id_name(self, value: AvmString<'gc>, mc: &Mutation<'gc>) {
+        unlock!(
+            Gc::write(mc, self.0),
+            CollatorObjectData,
+            actual_locale_id_name
         )
         .set(value);
     }

@@ -7,7 +7,7 @@ use crate::avm2::activation::Activation;
 use crate::avm2::globals::slots::flash_media_id3info as id3_slots;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{ClassObject, Object, TObject};
-use crate::backend::audio::{AudioManager, SoundHandle, SoundRelease};
+use crate::backend::audio::{AudioManager, SoundHandle, SoundRelease, SoundSampleSource};
 use crate::context::UpdateContext;
 use crate::display_object::SoundTransform;
 use crate::string::AvmString;
@@ -19,11 +19,14 @@ use gc_arena::{
 };
 use id3::{Tag, TagLike};
 use ruffle_common::utils::HasPrefixField;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::io::Cursor;
 use swf::SoundInfo;
 
 use super::SoundChannelObject;
+
+/// The sample rate `Sound.extract()` always reports (Flash: "always 44100 Hz stereo").
+pub const EXTRACT_SAMPLE_RATE: u32 = 44100;
 
 /// A class instance allocator that allocates Sound objects.
 pub fn sound_allocator<'gc>(
@@ -41,6 +44,15 @@ pub fn sound_allocator<'gc>(
                 queued_plays: Vec::new(),
             }),
             id3: Lock::new(None),
+            url: Lock::new(None),
+            bytes_loaded: Cell::new(0),
+            bytes_total: Cell::new(0),
+            is_buffering: Cell::new(false),
+            is_url_inaccessible: Cell::new(false),
+            stream_open: Cell::new(false),
+            load_generation: Cell::new(0),
+            extract_cursor: Cell::new(0),
+            extract: RefCell::new(None),
         },
     ))
     .into())
@@ -75,6 +87,57 @@ impl SoundObjectHandle {
     }
 }
 
+/// Timffle: the decoder `Sound.extract()` keeps between calls so that reading a
+/// long sound in chunks does not decode it from the start every time.
+struct ExtractState {
+    source: Box<dyn SoundSampleSource>,
+    /// Sample frames the sound has at the source's own rate.
+    source_frames: u32,
+    /// Sample frames already taken from `source`.
+    source_pos: u32,
+    /// The last frame taken from `source` (held while resampling).
+    last: [i16; 2],
+    /// 44.1 kHz output frames already produced.
+    out_pos: u32,
+}
+
+impl ExtractState {
+    /// Number of 44.1 kHz output frames the whole sound yields.
+    fn total_out(&self) -> u32 {
+        let rate = u64::from(self.source.sample_rate().max(1));
+        if rate == u64::from(EXTRACT_SAMPLE_RATE) {
+            self.source_frames
+        } else {
+            (u64::from(self.source_frames) * u64::from(EXTRACT_SAMPLE_RATE) / rate) as u32
+        }
+    }
+
+    /// The source frame holding output frame `out`.
+    fn source_index(&self, out: u32) -> u32 {
+        let rate = u64::from(self.source.sample_rate().max(1));
+        if rate == u64::from(EXTRACT_SAMPLE_RATE) {
+            out
+        } else {
+            (u64::from(out) * rate / u64::from(EXTRACT_SAMPLE_RATE)) as u32
+        }
+    }
+
+    fn next_out(&mut self) -> [i16; 2] {
+        let want = self.source_index(self.out_pos);
+        while self.source_pos <= want {
+            match self.source.next() {
+                Some(frame) => {
+                    self.last = frame;
+                    self.source_pos += 1;
+                }
+                None => break,
+            }
+        }
+        self.out_pos += 1;
+        self.last
+    }
+}
+
 #[derive(Collect, HasPrefixField)]
 #[collect(no_drop)]
 #[repr(C, align(8))]
@@ -90,6 +153,41 @@ pub struct SoundObjectData<'gc> {
 
     /// ID3Info Object
     id3: Lock<Option<Object<'gc>>>,
+
+    /// Timffle: `Sound.url` — the final URL of a sound loaded with `load()`.
+    /// Flash sets it when the first `progress` event is dispatched, not at
+    /// `open` (measured on Flash Player 32), and only the origin when
+    /// `isURLInaccessible` is true.
+    url: Lock<Option<AvmString<'gc>>>,
+
+    /// Timffle: `Sound.bytesLoaded` / `bytesTotal`.
+    bytes_loaded: Cell<u32>,
+    bytes_total: Cell<u32>,
+
+    /// Timffle: `Sound.isBuffering` — true from `load()` on, for ever (Flash
+    /// Player 32 keeps reporting true after `complete`, after `close()` and
+    /// after an `ioError`; library and ByteArray sounds report false).
+    is_buffering: Cell<bool>,
+
+    /// Timffle: `Sound.isURLInaccessible`.
+    is_url_inaccessible: Cell<bool>,
+
+    /// Timffle: `load()` opened a stream that `close()` has not closed yet.
+    /// `close()` without an open stream is `IOError #2029` in Flash, also on a
+    /// sound that finished loading and was closed once.
+    stream_open: Cell<bool>,
+
+    /// Timffle: bumped by `load()` and `close()`; a download that finishes for
+    /// an older generation (closed while loading) is dropped.
+    load_generation: Cell<u32>,
+
+    /// Timffle: the 44.1 kHz sample frame the next `extract()` without a
+    /// `startPosition` continues from.
+    extract_cursor: Cell<u32>,
+
+    /// Timffle: the decoder behind `extract()`, see `ExtractState`.
+    #[collect(require_static)]
+    extract: RefCell<Option<ExtractState>>,
 }
 
 #[derive(Collect)]
@@ -145,6 +243,73 @@ impl<'gc> SoundObject<'gc> {
         self.0.loading_state.set(value);
     }
 
+    pub fn url(self) -> Option<AvmString<'gc>> {
+        self.0.url.get()
+    }
+
+    pub fn set_url(self, mc: &Mutation<'gc>, url: Option<AvmString<'gc>>) {
+        unlock!(Gc::write(mc, self.0), SoundObjectData, url).set(url);
+    }
+
+    pub fn bytes_loaded(self) -> u32 {
+        self.0.bytes_loaded.get()
+    }
+
+    pub fn bytes_total(self) -> u32 {
+        self.0.bytes_total.get()
+    }
+
+    pub fn set_bytes(self, loaded: u32, total: u32) {
+        self.0.bytes_loaded.set(loaded);
+        self.0.bytes_total.set(total);
+    }
+
+    pub fn is_buffering(self) -> bool {
+        self.0.is_buffering.get()
+    }
+
+    pub fn is_url_inaccessible(self) -> bool {
+        self.0.is_url_inaccessible.get()
+    }
+
+    pub fn set_url_inaccessible(self, value: bool) {
+        self.0.is_url_inaccessible.set(value);
+    }
+
+    pub fn stream_open(self) -> bool {
+        self.0.stream_open.get()
+    }
+
+    pub fn load_generation(self) -> u32 {
+        self.0.load_generation.get()
+    }
+
+    /// `load()` was called: the stream is open and the sound buffers.
+    pub fn begin_load(self) -> u32 {
+        self.0.stream_open.set(true);
+        self.0.is_buffering.set(true);
+        self.0.load_generation.set(self.0.load_generation.get().wrapping_add(1));
+        self.0.loading_state.set(SoundLoadingState::Loading);
+        self.0.load_generation.get()
+    }
+
+    /// `close()`: closes the stream; a download still running is abandoned and
+    /// the object can be loaded again.
+    pub fn close_stream(self) {
+        self.0.stream_open.set(false);
+        if self.0.loading_state.get() == SoundLoadingState::Loading {
+            self.0.loading_state.set(SoundLoadingState::New);
+            self.0.load_generation.set(self.0.load_generation.get().wrapping_add(1));
+        }
+    }
+
+    /// A download ended without a sound (`ioError`): `load()` is allowed again.
+    pub fn load_failed(self) {
+        if self.0.loading_state.get() == SoundLoadingState::Loading {
+            self.0.loading_state.set(SoundLoadingState::New);
+        }
+    }
+
     /// Returns `true` if a `SoundChannel` should be returned back to the AVM2 caller.
     pub fn play(self, queued: QueuedPlay<'gc>, activation: &mut Activation<'_, 'gc>) -> bool {
         let mut sound_data = unlock!(
@@ -172,6 +337,8 @@ impl<'gc> SoundObject<'gc> {
 
     /// Attach a sound that belongs to a SWF library.
     pub fn set_sound(self, context: &mut UpdateContext<'gc>, sound: SoundHandle) {
+        let size = context.audio.get_sound_size(sound).unwrap_or(0);
+        self.set_bytes(size, size);
         self.set_sound_inner(context, sound, None);
     }
 
@@ -207,7 +374,56 @@ impl<'gc> SoundObject<'gc> {
                 panic!("Tried to replace sound {old_sound:?} with {sound:?}")
             }
         }
+        self.0.extract.replace(None);
+        self.0.extract_cursor.set(0);
         self.set_loading_state(SoundLoadingState::Loaded);
+    }
+
+    /// Timffle: `Sound.extract()` — up to `count` 44.1 kHz stereo sample frames
+    /// starting at output frame `start` (`None`: continue after the previous
+    /// call). Returns the frames; the sequential cursor ends up after them.
+    pub fn extract(
+        self,
+        context: &mut UpdateContext<'gc>,
+        start: Option<u32>,
+        count: u32,
+    ) -> Vec<[i16; 2]> {
+        let Some(handle) = self.sound_handle() else {
+            return Vec::new();
+        };
+        let start = start.unwrap_or_else(|| self.0.extract_cursor.get());
+        let mut slot = self.0.extract.borrow_mut();
+        let needs_new = match &*slot {
+            Some(state) => state.out_pos > start,
+            None => true,
+        };
+        if needs_new {
+            let Some((source, source_frames)) = context.audio.sound_samples(handle) else {
+                return Vec::new();
+            };
+            *slot = Some(ExtractState {
+                source,
+                source_frames,
+                source_pos: 0,
+                last: [0, 0],
+                out_pos: 0,
+            });
+        }
+        let state = slot.as_mut().expect("extract state was just created");
+        let total = state.total_out();
+        if start >= total || count == 0 {
+            return Vec::new();
+        }
+        let count = count.min(total - start);
+        while state.out_pos < start {
+            state.next_out();
+        }
+        let mut frames = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            frames.push(state.next_out());
+        }
+        self.0.extract_cursor.set(start + count);
+        frames
     }
 
     pub fn id3(self) -> Option<Object<'gc>> {

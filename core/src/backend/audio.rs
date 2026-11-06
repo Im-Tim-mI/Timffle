@@ -17,6 +17,13 @@ use slotmap::{Key, SlotMap, new_key_type};
 
 #[cfg(feature = "audio")]
 pub mod decoders;
+
+/// Timffle: the decoded sample frames of a registered sound, used by
+/// `flash.media.Sound.extract()`. Mono sounds yield the sample on both channels.
+pub trait SoundSampleSource: Iterator<Item = [i16; 2]> + Send + Sync {
+    /// The sample rate of the frames this source yields.
+    fn sample_rate(&self) -> u16;
+}
 pub mod swf {
     pub use swf::{
         AudioCompression, CharacterId, Sound, SoundEnvelope, SoundEnvelopePoint, SoundEvent,
@@ -183,6 +190,15 @@ pub trait AudioBackend: Any {
 
     /// Get the sound format that a given sound was added with.
     fn get_sound_format(&self, sound: SoundHandle) -> Option<&swf::SoundFormat>;
+
+    /// Timffle: a fresh decoder positioned at the first audible sample frame of a
+    /// registered sound (MP3 encoder delay already skipped) together with the
+    /// number of sample frames the sound has at its own rate. `None` when the
+    /// sound is unknown or the backend keeps no audio data; `Sound.extract()`
+    /// then extracts nothing, like a player without audio.
+    fn sound_samples(&self, _sound: SoundHandle) -> Option<(Box<dyn SoundSampleSource>, u32)> {
+        None
+    }
 
     /// Set the volume transform for a sound instance.
     fn set_sound_transform(&mut self, instance: SoundInstanceHandle, transform: SoundTransform);

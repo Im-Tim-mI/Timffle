@@ -5,16 +5,18 @@ mod font_like;
 mod font_renderer;
 mod font_set;
 mod glyph;
+mod shaping;
 mod text_render_settings;
 
 pub use atlas::{FontAtlas, FontAtlasGlyph, FontAtlases};
 pub use font_descriptor::FontDescriptor;
 pub use font_face::{FontFace, FontFileData};
-pub use font_like::{EvalParameters, FontLike, GlyphResolution};
+pub use font_like::{EvalParameters, FontLike, FteGlyphGrid, GlyphResolution};
 pub use font_renderer::FontRenderer;
 pub use font_renderer::FontRendererGlyphSource;
 pub use font_set::FontSet;
 pub use glyph::Glyph;
+pub use shaping::{OpenTypeFeatures, ShapedChar};
 pub use text_render_settings::TextRenderSettings;
 
 use crate::font::glyph::GlyphRef;
@@ -533,6 +535,33 @@ impl<'gc> Font<'gc> {
     pub fn sweep_caches(&self) {
         self.0.glyphs.sweep_caches();
     }
+
+    /// Timffle: the font face that FTE text in this font is shaped with: DefineFont4
+    /// (CFF) fonts only. Device fonts keep the per-character layout.
+    fn opentype_face(&self) -> Option<&FontFace> {
+        match (&self.0.glyphs, self.0.font_type) {
+            (GlyphSource::FontFace { face, .. }, FontType::EmbeddedCFF) => Some(face),
+            _ => None,
+        }
+    }
+
+    /// Timffle: whether FTE text in this font is shaped (see `opentype_face`).
+    pub fn supports_opentype_shaping(&self) -> bool {
+        self.opentype_face().is_some()
+    }
+
+    /// Timffle: `text` shaped with this font's OpenType tables, or `None` when it is laid
+    /// out character by character.
+    pub fn shape(&self, text: &WStr, features: OpenTypeFeatures) -> Option<Vec<ShapedChar>> {
+        self.opentype_face()?.shape(text, features)
+    }
+
+    /// Timffle: a glyph by its glyph ID, for shaped text.
+    pub fn get_glyph_by_id(&self, glyph_id: u16, character: char) -> Option<GlyphRef<'_>> {
+        self.opentype_face()?
+            .get_glyph_by_id(glyph_id, character)
+            .map(GlyphRef::Direct)
+    }
 }
 
 impl<'gc> FontLike<'gc> for Font<'gc> {
@@ -559,5 +588,9 @@ impl<'gc> FontLike<'gc> for Font<'gc> {
 
     fn font_type(&self) -> FontType {
         self.0.font_type
+    }
+
+    fn opentype_font(&self) -> Option<&Font<'gc>> {
+        self.supports_opentype_shaping().then_some(self)
     }
 }

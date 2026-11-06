@@ -1,0 +1,63 @@
+// GameInput
+isSupported true numDevices 0
+new GameInputDevice() THREW ArgumentError 2012
+new GameInputControl() THREW ArgumentError 2012
+MAX_BUFFER_SIZE 32000
+// automation
+generate ok
+generateAction(null) no error
+generateActions(null) no error
+deviceConfiguration [null]
+deviceConfiguration set null
+testAutomationConfiguration [Status = 3
+
+]
+capture defaults -1 raster null null
+capture set screen shot
+captureSource bogus THREW ArgumentError 2008
+capture bogus no error
+captureBitmapData null
+// PrintJob
+isSupported true
+orientation 0
+orientation set THREW ReferenceError 1074
+sizes 0 0 0 0
+start false
+addPage THREW Error 2057
+send returned
+// sampler
+getSampleCount -1
+getSamples undefined
+samples iterated 0
+getSize 0 0
+getInvocationCount -1
+getGetterInvocationCount -1
+getSetterInvocationCount -1
+getMasterString null null
+isGetterSetter acc false
+isGetterSetter slot false
+isGetterSetter method false
+isGetterSetter missing false
+isGetterSetter null false
+getMemberNames 
+getMemberNames dynamic 
+getMemberNames class instanceNames 
+getMemberNames class 
+getMemberNames null null
+getSavedThis bound false
+getSavedThis plain null
+getSavedThis null null
+getLexicalScopes null
+getLexicalScopes null null
+// sensors
+Accelerometer false true
+accel interval -1 THREW ArgumentError 2004
+Geolocation false true
+geo interval -1 THREW ArgumentError 2004
+// GeolocationEvent
+UPDATE update
+defaults 0 0 0 0 0 0 0 0
+values 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
+setters 9 10
+clone true update true 9 2.5 3.5 4.5 5.5 6.5 10 8.5
+[GeolocationEvent type="update" bubbles=true cancelable=false eventPhase=2 latitude=9 longitude=2.5 altitude=3.5 horizontalAccuracy=4.5 verticalAccuracy=5.5 speed=6.5 heading=10 timestamp=8.5]

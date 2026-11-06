@@ -1,14 +1,12 @@
-use crate::avm2::Activation;
-use crate::avm2::Error;
-use crate::avm2::Object;
-use crate::avm2::object::TextureObject;
+// Timffle: without the `jpegxr` feature the JPEG-XR based ATF payloads cannot
+// be decoded (the raw DXT/ETC/PVRTC payloads still work, see `atf_upload`).
+use super::atf_upload::LevelData;
+use ruffle_render::atf::ATFTextureData;
 
-pub fn do_compressed_upload<'gc>(
-    _: &mut Activation<'_, 'gc>,
-    _: TextureObject<'gc>,
-    _: Object<'gc>,
-    _: usize,
-    _: bool,
-) -> Result<(), Error<'gc>> {
-    Err("Support for compressed textures not compiled in.".into())
+pub fn decode_jpegxr_level(
+    _data: &ATFTextureData,
+    _width: u32,
+    _height: u32,
+) -> Result<LevelData, String> {
+    Err("Support for JPEG-XR compressed textures not compiled in.".into())
 }

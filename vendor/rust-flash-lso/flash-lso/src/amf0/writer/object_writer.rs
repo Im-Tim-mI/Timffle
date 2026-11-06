@@ -16,7 +16,7 @@ pub struct ObjectWriter<'a, 'b> {
 impl<'a> ObjWriter<'a> for ObjectWriter<'a, '_> {
     fn add_element(&mut self, name: &str, s: Value, inc_ref: bool) {
         if inc_ref {
-            self.parent.make_reference();
+            self.parent.primitive_reference();
         }
 
         self.elements.push(Element::new(name, Rc::new(s)));
@@ -130,6 +130,10 @@ impl<'a> ObjWriter<'a> for ObjectWriter<'a, '_> {
                 r,
             )
         }
+    }
+
+    fn primitive_reference(&mut self) {
+        self.parent.primitive_reference();
     }
 
     fn make_reference(&mut self) -> Reference {

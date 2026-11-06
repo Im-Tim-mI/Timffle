@@ -1,11 +1,13 @@
 //! Object representation for Texture3D objects
 
+use crate::avm2::Error;
 use crate::avm2::activation::Activation;
 use crate::avm2::object::script_object::ScriptObjectData;
 use crate::avm2::object::{Object, TObject};
 use gc_arena::{Collect, Gc, GcWeak};
 use ruffle_common::utils::HasPrefixField;
 use ruffle_render::backend::{Context3DTextureFormat, Texture};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::{ClassObject, Context3DObject};
@@ -25,6 +27,7 @@ impl<'gc> TextureObject<'gc> {
         handle: Rc<dyn Texture>,
         original_format: Context3DTextureFormat,
         class: ClassObject<'gc>,
+        gpu_size: u64,
     ) -> Object<'gc> {
         TextureObject(Gc::new(
             activation.gc(),
@@ -32,7 +35,8 @@ impl<'gc> TextureObject<'gc> {
                 base: ScriptObjectData::new(class),
                 context3d,
                 original_format,
-                handle,
+                handle: RefCell::new(Some(handle)),
+                gpu_size,
             },
         ))
         .into()
@@ -43,7 +47,30 @@ impl<'gc> TextureObject<'gc> {
     }
 
     pub fn handle(self) -> Rc<dyn Texture> {
-        self.0.handle.clone()
+        self.0
+            .handle
+            .borrow()
+            .clone()
+            .expect("Texture was disposed")
+    }
+
+    // Timffle: dispose() drops the GPU texture; later calls throw Error #3694.
+    pub fn is_disposed(self) -> bool {
+        self.0.handle.borrow().is_none()
+    }
+
+    pub fn check_disposed(self, activation: &mut Activation<'_, 'gc>) -> Result<(), Error<'gc>> {
+        if self.is_disposed() {
+            Err(crate::avm2::error::make_error_3694(activation))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn dispose(self) {
+        if self.0.handle.take().is_some() {
+            self.0.context3d.sub_gpu_memory(self.0.gpu_size);
+        }
     }
 
     pub fn context3d(self) -> Context3DObject<'gc> {
@@ -64,7 +91,10 @@ pub struct TextureObjectData<'gc> {
     original_format: Context3DTextureFormat,
 
     #[collect(require_static)]
-    handle: Rc<dyn Texture>,
+    handle: RefCell<Option<Rc<dyn Texture>>>,
+
+    // Timffle: bytes counted in Context3D.totalGPUMemory.
+    gpu_size: u64,
 }
 
 impl<'gc> TObject<'gc> for TextureObject<'gc> {

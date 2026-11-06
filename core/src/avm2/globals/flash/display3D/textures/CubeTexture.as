@@ -1,6 +1,8 @@
 package flash.display3D.textures {
     import flash.display.BitmapData;
+    import flash.events.Event;
     import flash.utils.ByteArray;
+    import flash.utils.setTimeout;
 
     [Ruffle(Abstract)]
     public final class CubeTexture extends TextureBase {
@@ -18,11 +20,32 @@ package flash.display3D.textures {
             miplevel:uint = 0
         );
 
+        // Timffle: async upload copies the data, uploads on a later tick and
+        // dispatches `textureReady`, exactly like Texture.
         [API("674")]
-        public native function uploadCompressedTextureFromByteArray(
+        public function uploadCompressedTextureFromByteArray(
             data:ByteArray,
             byteArrayOffset:uint,
             async:Boolean = false
+        ):void {
+            if (async) {
+                var self = this;
+                var copiedData = new ByteArray();
+                data.position = 0;
+                data.readBytes(copiedData);
+
+                setTimeout(function() {
+                    self.uploadCompressedTextureFromByteArrayInternal(copiedData, byteArrayOffset);
+                    self.dispatchEvent(new Event("textureReady"));
+                }, 0);
+            } else {
+                this.uploadCompressedTextureFromByteArrayInternal(data, byteArrayOffset);
+            }
+        }
+
+        private native function uploadCompressedTextureFromByteArrayInternal(
+            data:ByteArray,
+            byteArrayOffset:uint
         ):void;
     }
 }

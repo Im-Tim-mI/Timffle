@@ -9,9 +9,9 @@ use crate::avm2::parameters::ParametersExt;
 use crate::avm2::value::Value;
 use crate::avm2::{ArrayObject, ArrayStorage, Error};
 use crate::display_object::{AutoSizeMode, EditText, TextSelection};
+use crate::font::FontType; // Timffle
 use crate::html::TextFormat;
-use crate::string::AvmString;
-use crate::{avm2_stub_getter, avm2_stub_setter};
+use crate::string::{AvmString, WString};
 use ruffle_macros::istr;
 use swf::{Color, Point};
 
@@ -1466,22 +1466,201 @@ pub fn set_max_chars<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: wired to the flag `EditText` checks on `ClipEvent::MouseWheel`.
 pub fn get_mouse_wheel_enabled<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_getter!(activation, "flash.text.TextField", "mouseWheelEnabled");
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        return Ok(this.is_mouse_wheel_enabled().into());
+    }
+
     Ok(true.into())
 }
 
 pub fn set_mouse_wheel_enabled<'gc>(
-    activation: &mut Activation<'_, 'gc>,
-    _this: Value<'gc>,
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        this.set_mouse_wheel_enabled(args.get_bool(0));
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.useRichTextClipboard`
+pub fn get_use_rich_text_clipboard<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm2_stub_setter!(activation, "flash.text.TextField", "mouseWheelEnabled");
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        return Ok(this.use_rich_text_clipboard().into());
+    }
+
+    Ok(false.into())
+}
+
+pub fn set_use_rich_text_clipboard<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        this.set_use_rich_text_clipboard(args.get_bool(0));
+    }
+
     Ok(Value::Undefined)
+}
+
+/// Timffle: `TextField.getRawText`: the text without any markup; Flash Player 32 writes
+/// the paragraph breaks as "\n" (measured), not the "\r" of `text`.
+pub fn get_raw_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        let text: WString = this
+            .text()
+            .iter()
+            .map(|c| {
+                if c == u16::from(b'\r') {
+                    u16::from(b'\n')
+                } else {
+                    c
+                }
+            })
+            .collect();
+        return Ok(AvmString::new(activation.gc(), text).into());
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: backs `TextField.getXMLText`: the `<flashrichtext>` document of
+/// `beginIndex..endIndex`. Like Flash Player 32 (measured), a negative begin counts
+/// from 0 and an end past the text stops at its end; a begin after the (clamped)
+/// end returns null, which the AS wrapper turns into `ArgumentError #2005`.
+pub fn native_get_xml_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        let len = this.text_length() as i64;
+        let from = i64::from(args.get_i32(0)).max(0);
+        let to = i64::from(args.get_i32(1)).min(len);
+        if from > to {
+            return Ok(Value::Null);
+        }
+        let xml = this.rich_text_range(from as usize, to as usize);
+        return Ok(AvmString::new(activation.gc(), xml).into());
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: backs `TextField.insertXMLText`: replaces `beginIndex..endIndex` (either
+/// order) with the runs of a `<flashrichtext>` document. Returns 0, 1 when the text
+/// is not such a document (`Error #2138`), 2 when an index is outside the text or a
+/// run's text is not in parentheses (`RangeError #2006`), as measured in Flash 32.
+pub fn native_insert_xml_text<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(this) = this
+        .as_display_object()
+        .and_then(|this| this.as_edit_text())
+    {
+        let Some(rich_text) = args.try_get_string(2) else {
+            return Ok(1.into());
+        };
+        let runs = match crate::html::parse_flash_rich_text(&rich_text) {
+            Ok(runs) => runs,
+            Err(crate::html::RichTextError::Parse) => return Ok(1.into()),
+            Err(crate::html::RichTextError::Range) => return Ok(2.into()),
+        };
+        let (a, b) = (args.get_i32(0), args.get_i32(1));
+        let (from, to) = (a.min(b), a.max(b));
+        let len = this.text_length();
+        if from < 0 || to as usize > len {
+            return Ok(2.into());
+        }
+        this.insert_rich_text(from as usize, to as usize, &runs, activation.context);
+    }
+
+    Ok(0.into())
+}
+
+/// Timffle: `TextField.isFontCompatible`
+pub fn is_font_compatible<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    _this: Value<'gc>,
+    args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let font_name = args.get_string_non_null(activation, 0, "fontName")?;
+    let font_style = args.get_string_non_null(activation, 1, "fontStyle")?;
+    let (bold, italic) = if &font_style == b"regular" {
+        (false, false)
+    } else if &font_style == b"bold" {
+        (true, false)
+    } else if &font_style == b"italic" {
+        (false, true)
+    } else if &font_style == b"boldItalic" {
+        (true, true)
+    } else {
+        return Err(make_error_2008(activation, "fontStyle"));
+    };
+    let movie = activation.caller_movie_or_root();
+    let found = activation
+        .context
+        .library
+        .get_embedded_font_by_name(
+            &font_name.to_utf8_lossy(),
+            FontType::Embedded,
+            bold,
+            italic,
+            Some(movie),
+        )
+        .is_some();
+    Ok(found.into())
 }
 
 pub fn get_restrict<'gc>(

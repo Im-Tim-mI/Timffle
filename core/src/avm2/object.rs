@@ -71,6 +71,7 @@ mod stage_object;
 mod stylesheet_object;
 mod tab_stop_object;
 mod text_block_object;
+mod text_snapshot_object; // Timffle: flash.text.TextSnapshot
 mod textformat_object;
 mod texture_object;
 mod vector_object;
@@ -159,7 +160,8 @@ pub use crate::avm2::object::shader_data_object::{
 pub use crate::avm2::object::shared_object_object::{SharedObjectObject, SharedObjectObjectWeak};
 pub use crate::avm2::object::socket_object::{SocketObject, SocketObjectWeak, socket_allocator};
 pub use crate::avm2::object::sound_object::{
-    QueuedPlay, SoundLoadingState, SoundObject, SoundObjectHandle, SoundObjectWeak, sound_allocator,
+    EXTRACT_SAMPLE_RATE, QueuedPlay, SoundLoadingState, SoundObject, SoundObjectHandle,
+    SoundObjectWeak, sound_allocator,
 };
 pub use crate::avm2::object::soundchannel_object::{
     SoundChannelObject, SoundChannelObjectWeak, sound_channel_allocator,
@@ -175,8 +177,12 @@ pub use crate::avm2::object::stylesheet_object::{
 pub use crate::avm2::object::tab_stop_object::{
     TabStopObject, TabStopObjectWeak, tab_stop_allocator,
 };
+// Timffle: flash.text.TextSnapshot
 pub use crate::avm2::object::text_block_object::{
     TextBlockObject, TextBlockObjectWeak, text_block_allocator,
+};
+pub use crate::avm2::object::text_snapshot_object::{
+    TextSnapshotObject, TextSnapshotObjectWeak, text_snapshot_allocator,
 };
 pub use crate::avm2::object::textformat_object::{
     TextFormatObject, TextFormatObjectWeak, textformat_allocator,
@@ -244,6 +250,7 @@ use crate::font::Font;
         FontDescriptionObject(FontDescriptionObject<'gc>),
         TabStopObject(TabStopObject<'gc>),
         TextBlockObject(TextBlockObject<'gc>),
+        TextSnapshotObject(TextSnapshotObject<'gc>), // Timffle
         FontObject(FontObject<'gc>),
         LocalConnectionObject(LocalConnectionObject<'gc>),
         SharedObjectObject(SharedObjectObject<'gc>),
@@ -793,6 +800,7 @@ impl<'gc> Object<'gc> {
         pub fn as_font_description_object for FontDescriptionObject;
         pub fn as_tab_stop_object for TabStopObject;
         pub fn as_text_block_object for TextBlockObject;
+        pub fn as_text_snapshot_object for TextSnapshotObject; // Timffle
         pub fn as_font_object for FontObject;
         pub fn as_regexp_object for RegExpObject;
         pub fn as_sound_object for SoundObject;
@@ -1021,6 +1029,7 @@ define_weak_enum! {
         FontDescriptionObject(FontDescriptionObjectWeak<'gc>),
         TabStopObject(TabStopObjectWeak<'gc>),
         TextBlockObject(TextBlockObjectWeak<'gc>),
+        TextSnapshotObject(TextSnapshotObjectWeak<'gc>), // Timffle
         FontObject(FontObjectWeak<'gc>),
         LocalConnectionObject(LocalConnectionObjectWeak<'gc>),
         SharedObjectObject(SharedObjectObjectWeak<'gc>),
@@ -1043,6 +1052,35 @@ pub fn abstract_class_allocator<'gc>(
 ) -> Result<Object<'gc>, Error<'gc>> {
     let class_name = class.instance_class().name().local_name();
     Err(make_error_2012(activation, class_name))
+}
+
+/// Timffle: constructs an instance of an abstract class for the player itself.
+///
+/// `new` on such a class is #2012 before any constructor runs (Flash's stack
+/// trace shows only the caller), but the player still hands out instances
+/// (singletons, objects made by the engine). This allocates with the nearest
+/// superclass allocator that is not [`abstract_class_allocator`] and then runs
+/// the class's constructor, as `new` would have.
+pub fn construct_abstract_class<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    class: ClassObject<'gc>,
+    args: &[Value<'gc>],
+) -> Result<Object<'gc>, Error<'gc>> {
+    let abstract_allocator: crate::avm2::class::AllocatorFn = abstract_class_allocator;
+    let mut allocator: crate::avm2::class::AllocatorFn = scriptobject_allocator;
+    let mut ancestor = class.superclass_object();
+    while let Some(c) = ancestor {
+        let candidate = c.inner_class_definition().instance_allocator().0;
+        if !std::ptr::fn_addr_eq(candidate, abstract_allocator) {
+            allocator = candidate;
+            break;
+        }
+        ancestor = c.superclass_object();
+    }
+
+    let instance = allocator(class, activation)?;
+    class.call_init(instance.into(), FunctionArgs::from_slice(args), activation)?;
+    Ok(instance)
 }
 
 /// Implements a custom call handler for classes that are constructed when

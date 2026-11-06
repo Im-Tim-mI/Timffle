@@ -1,6 +1,7 @@
 /** Output for tests that double as ruffle regression tests.
  * With -D harness: lines go through H (reported to the difftest server).
- * Without: plain trace(), for ruffle's tests/swfs/.../output.txt format. */
+ * Without: plain trace(), for ruffle's tests/swfs/.../output.txt format; lines starting
+ * with "~" (timings and other run-dependent values, which compare.py ignores) are left out. */
 class Out {
 	public static function start(name:String) {
 		#if harness
@@ -12,7 +13,8 @@ class Out {
 		#if harness
 		H.log(s);
 		#else
-		flash.Lib.trace(s);
+		if (s.charAt(0) != "~")
+			flash.Lib.trace(s);
 		#end
 	}
 

@@ -1,0 +1,34 @@
+listener added in frame 1
+user event: availability = available, reason = null, driver = null
+stageVideos.length = 8
+sv is EventDispatcher: true
+viewPort = (x=0, y=0, w=0, h=0)
+viewPort is a copy: true
+zoom = (x=1, y=1)
+pan = (x=0, y=0)
+depth = 0
+videoWidth = 0, videoHeight = 0
+colorSpaces =  (length 0)
+viewPort after set = (x=10, y=20, w=300, h=200)
+viewPort x -9000 threw RangeError: Error #2006: The supplied index is out of bounds. (#2006)
+viewPort null threw TypeError #2007
+viewPort kept = (x=10, y=20, w=300, h=200)
+zoom after set = (x=2, y=3)
+zoom 0.5 threw RangeError: Error #2006: The supplied index is out of bounds. (#2006)
+zoom 9 did not throw
+zoom kept = (x=1, y=9)
+pan after set = (x=-1, y=0.5)
+pan 1.5 threw RangeError: Error #2006: The supplied index is out of bounds. (#2006)
+pan kept = (x=-1, y=0.5)
+depth after set = 3
+stageVideos[1].depth = 0
+attachNetStream(ns) ok in frame 1
+attachNetStream(null) ok
+attachCamera(null) ok
+attachAVStream(null) ok
+attachAVStream(stream) ok in frame 1
+stageVideoAvailability (enterFrames so far: 0): availability = unavailable, reason = unavailable, driver = null, target is stage: true
+renderState (enterFrames so far: 0): status = unavailable, colorSpace = null, target index = 0
+renderState (enterFrames so far: 0): status = unavailable, colorSpace = null, target index = 2
+enterFrame 1
+enterFrame 2

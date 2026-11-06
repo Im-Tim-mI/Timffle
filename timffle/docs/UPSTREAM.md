@@ -7,6 +7,7 @@ Timffle 是 Ruffle 的長期分支：`main` 分支包含 Ruffle 到 `nightly-202
 - **只用 merge 跟進上游，不要 rebase 已經推上 GitHub 的歷史。** Merge 會保留 Ruffle 每個 commit 的原作者，也讓別人的 clone 不會壞掉。
 - 上游基準記在 [`../UPSTREAM.env`](../UPSTREAM.env)（`RUFFLE_BASE`、`FLASH_LSO_BASE`），合併新版後更新它。
 - `vendor/rust-flash-lso/` 是 rust-flash-lso 的 **git subtree**（含它自己的歷史），Timffle 對它的修改是之後的 commit。
+- `vendor/winit/` 是 crates.io 的 winit 0.30.13，原封不動匯入（那個 commit 記在 `UPSTREAM.env` 的 `WINIT_BASE`），Timffle 的修改（X11 滾輪按鈕放開不再捲動，移植自上游 winit `03dad26c43`）是之後的 commit；根目錄 `Cargo.toml` 的 `[patch.crates-io]` 讓所有相依（含 egui-winit）都用這份。上游 Ruffle 升級 winit 時：若新版已含該修正（0.31 起），刪掉 `vendor/winit` 與那條 `[patch]`；否則把新版同樣原封匯入一次、再套上修正、更新 `WINIT_BASE`。
 - Timffle 自己的東西集中在 `timffle/`；對 Ruffle 原有檔案的修改盡量小而集中，減少合併衝突。
 
 ## 合併新的 Ruffle 版本
@@ -26,7 +27,7 @@ git merge nightly-YYYY-MM-DD
 | `README.ruffle.md`（上游改了 `README.md`） | Git 通常會跟著改名合併；若變成衝突，把上游的新 `README.md` 內容放進 `README.ruffle.md`，`README.md`（英文）與 `README.zh-TW.md`、`README.zh-CN.md` 保持 Timffle 的 |
 | 語系文字 `*.ftl`、`messages.json`（上游 Crowdin 翻譯更新 vs 我們換過名） | 先接受上游版本（`git checkout --theirs <檔案>`），合併完成後跑 `python3 timffle/scripts/rebrand.py` 一次換回來，再跑 `python3 timffle/scripts/sync_locales.py`：Timffle 自己的介面文字（`timffle_` 開頭的鍵，來源在 [`../locales/`](../locales/)）會放回各語言的 `messages.json`。**不要把 Timffle 的文字只寫在 `messages.json` 裡**，下次取上游版本時會消失 |
 | 上游新增了語言（`_locales/` 多一個資料夾） | `sync_locales.py` 會報錯，要求補上 `timffle/locales/<語言>.json`；照 [`../locales/README.md`](../locales/README.md) 補翻譯，機器翻譯要在 README 的「語言」段落照實說明。反過來，上游拿掉的語言要刪掉對應的檔案 |
-| `Cargo.lock`（上游升級相依） | 接受上游版本後跑 `cargo metadata --format-version 1 > /dev/null` 讓 Cargo 補上 flash-lso 的 `[patch]`；確認 `Cargo.lock` 裡 `flash-lso` 沒有 `source`（表示用的是 `vendor/` 的版本） |
+| `Cargo.lock`（上游升級相依） | 接受上游版本後跑 `cargo metadata --format-version 1 > /dev/null` 讓 Cargo 補上 flash-lso 的 `[patch]`；確認 `Cargo.lock` 裡 `flash-lso` 與 `winit` 沒有 `source`（表示用的是 `vendor/` 的版本） |
 | 上游升級了 rust-flash-lso 的版本 | 用 `git subtree pull --prefix=vendor/rust-flash-lso https://github.com/ruffle-rs/rust-flash-lso.git <新 commit>`（或 `git merge -s subtree`）跟進，再確認我們的 AMF3 修正還在／上游是否已修好，最後更新 `UPSTREAM.env` 的 `FLASH_LSO_BASE` |
 | 我們修改過的程式碼（AVM2、3D、網頁 Socket） | 一般的程式衝突；以真 Flash 的差異測試為準（[`TESTING.md`](TESTING.md)） |
 

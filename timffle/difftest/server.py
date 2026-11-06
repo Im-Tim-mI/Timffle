@@ -14,8 +14,9 @@ import time
 import urllib.parse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-HTTP_PORT = 18765
-SOCK_PORT = 18766
+# Timffle: private ports for parallel harnesses (DIFFTEST_HTTP_PORT / DIFFTEST_SOCK_PORT).
+HTTP_PORT = int(os.environ.get("DIFFTEST_HTTP_PORT", "18765"))
+SOCK_PORT = int(os.environ.get("DIFFTEST_SOCK_PORT", "18766"))
 POLICY = (b'<?xml version="1.0"?><cross-domain-policy>'
           b'<allow-access-from domain="*" to-ports="*"/></cross-domain-policy>\x00')
 
@@ -92,6 +93,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_body(b"not found", "text/plain", 404)
             with open(path, "rb") as f:
                 body = f.read()
+            chunks = int(q.get("chunks", ["1"])[0])
+            if chunks > 1:  # &chunks=<n>&cdelay=<s>: the body in n pieces, cdelay seconds apart (a download that spans frames)
+                cdelay = float(q.get("cdelay", ["0.25"])[0])
+                size = (len(body) + chunks - 1) // chunks
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-shockwave-flash")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    for i in range(chunks):
+                        self.wfile.write(body[i * size:(i + 1) * size])
+                        self.wfile.flush()
+                        time.sleep(min(cdelay, 5.0))
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
             return self.send_delayed(body, "application/x-shockwave-flash", float(q.get("delay", ["0"])[0]))
         if p == "/data/text":  # /data/text?v=<text>&delay=<s>: the text itself, after the delay
             return self.send_delayed(q.get("v", [""])[0].encode(), "text/plain", float(q.get("delay", ["0"])[0]))
@@ -99,12 +116,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_body(pattern(int(q.get("size", ["1000"])[0]), 13, 5))
         if p == "/data/404":
             return self.send_body(b"missing", "text/plain", 404)
+        if p == "/data/redirect":  # /data/redirect?to=<path or URL>[&code=302]: HTTP redirect
+            self.send_response(int(q.get("code", ["302"])[0]))
+            self.send_header("Location", q.get("to", ["/data/text?v=redirected"])[0])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         return self.send_body(b"not found", "text/plain", 404)
 
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
         body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        if u.path == "/upload":  # echo back what an upload sent (headers + body) for inspection
+            log("upload.log", "UPLOAD %s %r %r" % (self.headers.get("Content-Type"), self.headers.get("Content-Length"), body[:2000]))
+            return self.send_body(b"upload-ok", "text/plain")
         if u.path == "/report":
             runner = os.path.basename(q.get("runner", ["unknown"])[0])
             test = os.path.basename(q.get("test", ["unknown"])[0])

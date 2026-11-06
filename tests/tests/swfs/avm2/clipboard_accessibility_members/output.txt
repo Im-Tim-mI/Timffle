@@ -1,0 +1,150 @@
+// new Clipboard()
+flash.errors::IllegalOperationError #2178
+generalClipboard flash.desktop::Clipboard same=true
+// Accessibility.active
+false
+// Accessibility.updateProperties()
+flash.errors::IllegalOperationError #2014
+// Accessibility.sendEvent(this, 0, 0x8005)
+flash.errors::IllegalOperationError #2014
+// Accessibility.sendEvent(null, 0, 0)
+flash.errors::IllegalOperationError #2014
+// enterDebugger()
+returned
+// formats
+formats len=0 [] same=false
+// hasFormat(TEXT)
+false
+// hasFormat(bogus)
+false
+// hasFormat(null)
+false
+// getData(TEXT)
+SecurityError #2179
+// getData(TEXT, cloneOnly)
+SecurityError #2179
+// getData(TEXT, bogus)
+SecurityError #2179
+// getData(null)
+TypeError #1009
+// getData(bogus)
+SecurityError #2179
+// clearData(TEXT)
+returned
+// clearData(null)
+TypeError #2007
+// clear()
+returned
+// setData(TEXT, hello)
+true
+// setData(TEXT, 123)
+true
+// setData(TEXT, null)
+TypeError #2007
+// setData(null, x)
+TypeError #2007
+// setData(HTML)
+true
+// setData(URL)
+false
+// setData(RTF)
+true
+// setData(BITMAP)
+false
+// setData(FILE_LIST)
+false
+// setData(FILE_PROMISE_LIST)
+false
+// setData(custom)
+true
+// setData(custom2, false)
+true
+// formats after sets
+formats len=5 [air:text,air:html,air:rtf,custom,custom2] same=false
+// hasFormat(TEXT) after
+true
+// hasFormat(custom) after
+true
+// getData(TEXT) after
+SecurityError #2179
+// getData(custom) after
+SecurityError #2179
+// setDataHandler(TEXT, fn)
+true
+// setDataHandler(custom3, fn)
+true
+// setDataHandler(custom4, null)
+TypeError #2007
+// setDataHandler(null, fn)
+TypeError #2007
+// setDataHandler(URL, fn)
+false
+// formats after handlers
+formats len=6 [air:text,air:html,air:rtf,custom,custom2,custom3] same=false
+// clearData(TEXT) after
+returned
+// formats after clearData
+formats len=5 [air:html,air:rtf,custom,custom2,custom3] same=false
+// clear() after
+returned
+// formats after clear
+formats len=0 [] same=false
+// setData(TEXT, pasteme)
+true
+// setData(HTML) 2
+true
+// setData(RTF) 2
+true
+// setData(custom) 2
+true
+// setData(custom2, false) 2
+true
+// setDataHandler(custom3, fn) 2
+true
+// formats end
+formats len=6 [air:text,air:html,air:rtf,custom,custom2,custom3] same=false
+--- paste event type=paste bubbles=true cancelable=false target=flash.text::TextField current=flash.text::TextField tf.text=
+// formats in paste
+formats len=6 [air:text,air:html,air:rtf,custom,custom2,custom3] same=false
+// getData(TEXT)
+from-os
+// getData(TEXT, cloneOnly)
+from-os
+// getData(TEXT, bogus)
+ArgumentError #2008
+// getData(null)
+TypeError #1009
+// getData(HTML)
+<i>y</i>
+// getData(RTF)
+flash.utils::ByteArray 9 {\rtf1 y}
+// getData(bogus)
+null
+// getData(custom)
+same=true a=1
+// getData(custom, originalOnly)
+true
+// getData(custom, clonePreferred)
+same=false a=1
+// getData(custom, cloneOnly)
+same=false a=1
+// getData(custom2 not serializable, clonePreferred)
+true
+// getData(custom2 not serializable, cloneOnly)
+null
+// getData(custom3 handler)
+handler called for custom3
+from-handler-custom3
+// getData(custom3 handler, cloneOnly)
+handler called for custom3
+from-handler-custom3
+// setData(TEXT) in paste
+true
+// getData(TEXT) after write
+written in paste
+stage paste phase=3 target=flash.text::TextField
+--- after paste: tf.text=written in paste
+// getData(TEXT) after paste
+SecurityError #2179
+// hasFormat(TEXT) after paste
+true

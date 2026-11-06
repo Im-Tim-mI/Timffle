@@ -1,3 +1,4 @@
+use crate::backends::{MOUSE_LOCK_CONFINED, window_centre};
 use crate::custom_event::{OpenType, RuffleEvent};
 use crate::gui::{GuiController, MENU_HEIGHT};
 use crate::player::{LaunchOptions, PlayerController};
@@ -15,10 +16,13 @@ use ruffle_core::swf::HeaderExt;
 use ruffle_frontend_utils::content::ContentDescriptor;
 use ruffle_render::backend::ViewportDimensions;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize, Size};
-use winit::event::{ElementState, Ime, KeyEvent, Modifiers, StartCause, WindowEvent};
+use winit::event::{
+    DeviceEvent, DeviceId, ElementState, Ime, KeyEvent, Modifiers, StartCause, WindowEvent,
+};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Fullscreen, Icon, WindowAttributes, WindowId};
@@ -43,6 +47,9 @@ struct MainWindow {
     time: Instant,
     next_frame_time: Option<Instant>,
     event_loop_proxy: EventLoopProxy<RuffleEvent>,
+    /// Timffle: wheel notches vs. smooth scrolling (see `ruffle_core::wheel`).
+    wheel: ruffle_core::wheel::WheelAccumulator,
+    wheel_epoch: Instant,
 }
 
 impl MainWindow {
@@ -111,6 +118,11 @@ impl MainWindow {
                 // will fire this event at the same time as WindowEvent::MouseInput,
                 // which may cause inaccurate behavior in the movie
                 if position == self.mouse_pos {
+                    return;
+                }
+
+                if MOUSE_LOCK_CONFINED.load(Ordering::Relaxed) {
+                    self.locked_cursor_moved(position);
                     return;
                 }
 
@@ -184,14 +196,23 @@ impl MainWindow {
                     return;
                 }
 
-                use ruffle_core::events::MouseWheelDelta;
+                use ruffle_core::wheel::WheelInput;
                 use winit::event::MouseScrollDelta;
-                let delta = match delta {
-                    MouseScrollDelta::LineDelta(_, dy) => MouseWheelDelta::Lines(dy.into()),
-                    MouseScrollDelta::PixelDelta(pos) => MouseWheelDelta::Pixels(pos.y),
+                // Timffle: winit's line delta counts wheel notches (one per notch on
+                // every platform; X11 sent two before the vendored winit fix). Flash
+                // Player reports a notch as the system's lines per notch, 3 by default on
+                // Windows (`MouseEvent.delta` 3 and a TextField scrolls 3 lines, measured
+                // on Flash Player 32). Pixel deltas (macOS trackpads, Wayland touchpads)
+                // add up to whole lines first instead of sending fractions.
+                let input = match delta {
+                    MouseScrollDelta::LineDelta(_, dy) => WheelInput::Notches(f64::from(dy)),
+                    MouseScrollDelta::PixelDelta(pos) => WheelInput::Pixels(pos.y),
                 };
-                let event = PlayerEvent::MouseWheel { delta };
-                self.player.handle_event(event);
+                let time = self.wheel_epoch.elapsed().as_secs_f64() * 1000.0;
+                if let Some(delta) = self.wheel.push(input, time) {
+                    let event = PlayerEvent::MouseWheel { delta };
+                    self.player.handle_event(event);
+                }
                 self.check_redraw();
             }
             WindowEvent::CursorEntered { .. } => {
@@ -401,6 +422,46 @@ impl MainWindow {
         }
     }
 
+    /// Timffle: raw relative mouse motion. A locked pointer (`Stage.mouseLock`)
+    /// sends no `CursorMoved`; the movie gets this motion as
+    /// `MouseEvent.movementX/Y` instead (in screen pixels, as Flash Player).
+    fn mouse_motion(&mut self, dx: f64, dy: f64) {
+        if self.gui.is_context_menu_visible() || MOUSE_LOCK_CONFINED.load(Ordering::Relaxed) {
+            return;
+        }
+        self.send_locked_motion(dx, dy);
+    }
+
+    /// Timffle: the pointer is confined instead of locked (X11): the motion is
+    /// the distance from the window centre, and the pointer goes back there
+    /// (what Flash Player does on Windows).
+    fn locked_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
+        let centre = window_centre(self.gui.window());
+        self.mouse_pos = centre;
+        let (dx, dy) = (position.x - centre.x, position.y - centre.y);
+        if dx == 0.0 && dy == 0.0 {
+            return;
+        }
+        let _ = self.gui.window().set_cursor_position(centre);
+        self.send_locked_motion(dx, dy);
+    }
+
+    fn send_locked_motion(&mut self, dx: f64, dy: f64) {
+        let sent = match self.player.get() {
+            Some(mut player) => {
+                let locked = player.is_playing() && player.mouse_lock();
+                if locked {
+                    player.handle_event(PlayerEvent::MouseMoveRelative { dx, dy });
+                }
+                locked
+            }
+            None => false,
+        };
+        if sent {
+            self.check_redraw();
+        }
+    }
+
     fn check_redraw(&self) {
         let player = self.player.get();
         if player.map(|p| p.needs_render()).unwrap_or_default() || self.gui.needs_render() {
@@ -564,6 +625,8 @@ impl ApplicationHandler<RuffleEvent> for App {
                 time: Instant::now(),
                 next_frame_time: None,
                 event_loop_proxy,
+                wheel: ruffle_core::wheel::WheelAccumulator::new(),
+                wheel_epoch: Instant::now(),
             });
         }
     }
@@ -670,6 +733,12 @@ impl ApplicationHandler<RuffleEvent> for App {
                 }
             }
 
+            // Timffle: a `Mouse.registerCursor()` cursor; winit creates it on the event loop.
+            (Some(main_window), RuffleEvent::SetCustomCursor(source)) => {
+                let cursor = source.map(|source| event_loop.create_custom_cursor(source));
+                main_window.gui.set_custom_cursor(cursor);
+            }
+
             (_, RuffleEvent::ExitRequested) => {
                 event_loop.exit();
             }
@@ -688,6 +757,21 @@ impl ApplicationHandler<RuffleEvent> for App {
 
         if let Some(main_window) = &mut self.main_window {
             main_window.window_event(event_loop, event);
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        enter_runtime!(self);
+
+        if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event
+            && let Some(main_window) = &mut self.main_window
+        {
+            main_window.mouse_motion(dx, dy);
         }
     }
 

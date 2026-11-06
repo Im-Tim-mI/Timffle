@@ -19,7 +19,7 @@ use crate::events::{
     ClipEvent, ClipEventResult, ImeCursorArea, ImeEvent, ImeNotification, ImePurpose,
     PlayerNotification, TextControlCode,
 };
-use crate::font::{FontLike, FontType, TextRenderSettings};
+use crate::font::{FontLike, FontType, FteGlyphGrid, TextRenderSettings};
 use crate::html;
 use crate::html::StyleSheet;
 use crate::html::{
@@ -196,6 +196,10 @@ pub struct EditTextData<'gc> {
     /// See <https://docs.ruffle.rs/en_US/FlashPlatform/reference/actionscript/3/flash/text/engine/package-detail.html>
     /// See <https://docs.ruffle.rs/en_US/as3/dev/WS9dd7ed846a005b294b857bfa122bd808ea6-8000.html>
     is_fte: Cell<bool>,
+
+    /// Timffle: the device matrix and the snapped device origin of the TextLine that is
+    /// drawing this (FTE) field right now, set by `render_in_text_line` (see `FteGlyphGrid`).
+    fte_line_matrix: Cell<Option<FteLine>>,
 }
 
 impl EditTextData<'_> {
@@ -345,6 +349,7 @@ impl<'gc> EditText<'gc> {
                 max_chars: Cell::new(swf_tag.max_length().unwrap_or_default() as i32),
                 mouse_wheel_enabled: Cell::new(true),
                 is_fte: Cell::new(false),
+                fte_line_matrix: Cell::new(None),
                 restrict: RefCell::new(EditTextRestrict::allow_all()),
                 last_click: Cell::new(None),
                 layout_debug_boxes_flags: Cell::new(LayoutDebugBoxesFlag::empty()),
@@ -473,6 +478,176 @@ impl<'gc> EditText<'gc> {
         }
     }
 
+    /// Timffle: `TextField.useRichTextClipboard`.
+    pub fn use_rich_text_clipboard(self) -> bool {
+        self.contains_flag(EditTextFlag::USE_RICH_TEXT_CLIPBOARD)
+    }
+
+    pub fn set_use_rich_text_clipboard(self, value: bool) {
+        self.set_flag(EditTextFlag::USE_RICH_TEXT_CLIPBOARD, value);
+    }
+
+    /// Timffle: the Flash HTML of the characters `from..to` (`TextField.getXMLText`
+    /// and the rich-text clipboard). Indices past the text are clamped.
+    pub fn html_text_range(self, from: usize, to: usize) -> WString {
+        let len = self.text_length();
+        let from = from.min(len);
+        let to = to.clamp(from, len);
+        if from == 0 && to == len {
+            return self.0.text_spans.borrow().to_html(self.swf_version());
+        }
+        let mut spans = self.0.text_spans.borrow().clone();
+        spans.replace_text(to, len, WStr::empty());
+        spans.replace_text(0, from, WStr::empty());
+        spans.to_html(self.swf_version())
+    }
+
+    /// Timffle: the `<flashrichtext>` document of the characters `from..to`
+    /// (`TextField.getXMLText`; the caller clamps the range).
+    pub fn rich_text_range(self, from: usize, to: usize) -> WString {
+        let len = self.text_length();
+        let to = to.min(len);
+        let from = from.min(to);
+        let mut spans = self.0.text_spans.borrow().clone();
+        if to < len {
+            spans.replace_text(to, len, WStr::empty());
+        }
+        if from > 0 {
+            spans.replace_text(0, from, WStr::empty());
+        }
+        crate::html::rich_text::to_flash_rich_text(&spans)
+    }
+
+    /// Timffle: replaces the characters `from..to` with the runs of a
+    /// `<flashrichtext>` document (`TextField.insertXMLText`). Each run's
+    /// attributes apply on top of the previous run's format, starting from the
+    /// format at `from`.
+    pub fn insert_rich_text(
+        self,
+        from: usize,
+        to: usize,
+        runs: &[crate::html::RichTextRun],
+        context: &mut UpdateContext<'gc>,
+    ) {
+        {
+            let mut spans = self.0.text_spans.borrow_mut();
+            let len = spans.text().len();
+            let mut format = if len == 0 {
+                spans.default_format().clone()
+            } else {
+                let at = from.min(len - 1);
+                spans.get_text_format(at, at + 1)
+            };
+            let mut text = WString::new();
+            let mut ranges = Vec::new();
+            for run in runs {
+                crate::html::rich_text::apply_attributes(&mut format, &run.attributes);
+                let start = text.len();
+                text.push_str(&run.text);
+                ranges.push((start, text.len(), format.clone()));
+            }
+            spans.replace_text(from, to, &text);
+            for (start, end, format) in ranges {
+                if start < end {
+                    spans.set_text_format(from + start, from + end, &format);
+                }
+            }
+        }
+        // The field holds rich text now: `htmlText` reports the runs' formatting.
+        self.set_is_html(true);
+        *self.0.original_html_text.borrow_mut() = None;
+        self.relayout(context);
+    }
+
+    /// Timffle: replaces the characters `from..to` with HTML-formatted text,
+    /// keeping the HTML's formatting (`TextField.insertXMLText`, rich paste).
+    /// Indices past the text are clamped.
+    pub fn insert_html_text(
+        self,
+        from: usize,
+        to: usize,
+        html: &WStr,
+        context: &mut UpdateContext<'gc>,
+    ) {
+        let len = self.text_length();
+        let from = from.min(len);
+        let to = to.clamp(from, len);
+        let default_format = self.0.text_spans.borrow().default_format().clone();
+        let parsed = FormatSpans::from_html(
+            html,
+            default_format,
+            self.0.style_sheet.get().style_sheet(),
+            self.is_multiline(),
+            self.contains_flag(EditTextFlag::CONDENSE_WHITE),
+            self.swf_version(),
+        );
+        let text = parsed.text().to_owned();
+        {
+            let mut spans = self.0.text_spans.borrow_mut();
+            spans.replace_text(from, to, &text);
+            for (start, end, _, span) in parsed.iter_spans() {
+                if start < end {
+                    spans.set_text_format(from + start, from + end, &span.get_text_format());
+                }
+            }
+        }
+        self.relayout(context);
+    }
+
+    /// Timffle: after a copy/cut of `from..to`, leaves the selection's HTML on
+    /// the clipboard (`air:html`) when `useRichTextClipboard` is on, otherwise
+    /// drops any earlier `air:html` so a plain copy stays plain.
+    fn copy_rich_text(self, from: usize, to: usize, context: &mut UpdateContext<'gc>) {
+        let html = self
+            .use_rich_text_clipboard()
+            .then(|| self.html_text_range(from, to));
+        crate::avm2::globals::flash::desktop::clipboard::set_html_content(context, html);
+    }
+
+    /// Timffle: a paste with `useRichTextClipboard` on and `air:html` on the
+    /// clipboard: like `text_input` (editable check, `textInput` event, caret
+    /// after the inserted text, `change`) but the HTML's formatting is kept.
+    fn rich_text_input(self, html: WString, plain: &str, context: &mut UpdateContext<'gc>) {
+        if !self.is_editable() || self.available_chars() == 0 {
+            return;
+        }
+        let Some(selection) = self.selection() else {
+            return;
+        };
+
+        if let Some(target) = self.object2() {
+            let character_string = AvmString::new_utf8(context.gc(), plain.replace('\r', "\n"));
+            let mut activation = Avm2Activation::from_nothing(context);
+            let text_evt = Avm2EventObject::text_event(
+                &mut activation,
+                "textInput",
+                character_string,
+                true,
+                true,
+            );
+            Avm2::dispatch_event(activation.context, text_evt, target.into());
+            if text_evt.event().is_cancelled() {
+                return;
+            }
+        }
+
+        let before = self.text_length();
+        self.insert_html_text(selection.start(), selection.end(), &html, context);
+        let removed = selection.end() - selection.start();
+        let inserted = (self.text_length() + removed).saturating_sub(before);
+        self.set_selection(Some(TextSelection::for_position(
+            selection.start() + inserted,
+        )));
+
+        let mut activation = Avm1Activation::from_nothing(
+            context,
+            ActivationIdentifier::root("[Propagate Text Binding]"),
+            self.into(),
+        );
+        self.propagate_text_binding(&mut activation);
+        self.on_changed(&mut activation);
+    }
+
     pub fn set_html_text(self, text: &WStr, context: &mut UpdateContext<'gc>) {
         if self.html_text() == text {
             // Note: this check not only prevents text relayout,
@@ -584,6 +759,29 @@ impl<'gc> EditText<'gc> {
 
     pub fn is_word_wrap(self) -> bool {
         self.contains_flag(EditTextFlag::WORD_WRAP)
+    }
+
+    /// Timffle: draw the text without the field's clipping box. A TextLine (drawn
+    /// through its fallback field) does not clip its glyphs in Flash Player 32: on
+    /// visual/definefont4 the first line's "g" reaches row 71 (descender -202/1000 em
+    /// below the baseline at y 62.95), while the fallback field, only as tall as its
+    /// text and drawn moved up by its 2 px gutter, cut it off at row 69.
+    /// Timffle: draws this FTE field for a TextLine with the device matrix `line` and the
+    /// whole-pixel device origin `origin`, so that the glyphs snap to Flash's pixel grid
+    /// (see `FteGlyphGrid`).
+    pub fn render_in_text_line(
+        self,
+        context: &mut RenderContext<'_, 'gc>,
+        line: Matrix,
+        origin: (Twips, Twips),
+    ) {
+        self.0.fte_line_matrix.set(Some(FteLine { line, origin }));
+        self.render_self(context);
+        self.0.fte_line_matrix.set(None);
+    }
+
+    pub fn set_unclipped(self, unclipped: bool) {
+        self.set_flag(EditTextFlag::UNCLIPPED, unclipped);
     }
 
     pub fn set_word_wrap(self, is_word_wrap: bool, context: &mut UpdateContext<'gc>) {
@@ -870,7 +1068,14 @@ impl<'gc> EditText<'gc> {
         let autosize = self.0.autosize.get();
         let is_word_wrap = self.0.flags.get().contains(EditTextFlag::WORD_WRAP);
         let movie = self.0.shared.swf;
-        let padding = Self::GUTTER * 2;
+        // Timffle: an FTE TextLine has no gutter: the whole specified width is
+        // available to the text, so `createTextLine(width)` breaks exactly at
+        // `width`.
+        let padding = if self.is_fte() {
+            Twips::ZERO
+        } else {
+            Self::GUTTER * 2
+        };
 
         let mut text_spans = self.0.text_spans.borrow_mut();
         if self.0.flags.get().contains(EditTextFlag::PASSWORD) {
@@ -1271,11 +1476,21 @@ impl<'gc> EditText<'gc> {
             let descent = metrics.descent(params.height());
             let caret_height = ascent + descent;
             let mut caret_x = Twips::ZERO;
+            let fte_line = render_state.fte_line;
             font.evaluate(
                 text,
                 params,
                 |pos, transform, glyph, advance, x| {
                     if glyph.renderable(context) {
+                        // Timffle: FTE glyphs land on Flash's pixel grid (see `FteGlyphGrid`).
+                        let snapped;
+                        let transform = match (params.fte_grid, fte_line) {
+                            (Some(grid), Some(line)) => {
+                                snapped = Self::snap_fte_glyph(context, grid, line, transform);
+                                &snapped
+                            }
+                            _ => transform,
+                        };
                         // If it's highlighted, override the color.
                         if matches!(visible_selection, Some(visible_selection) if visible_selection.contains(start + pos)) {
                             // Set text color to white
@@ -1324,6 +1539,40 @@ impl<'gc> EditText<'gc> {
         }
 
         context.transform_stack.pop();
+    }
+
+    /// Timffle: `transform` (a glyph's transform inside the current layout box) moved so
+    /// that the glyph's device origin lands where Flash Player 32 draws it on a TextLine whose
+    /// device matrix and origin are `fte_line` (see `FteGlyphGrid`). Only for unrotated, unskewed,
+    /// unmirrored 2D lines, the only ones measured.
+    fn snap_fte_glyph(
+        context: &mut RenderContext<'_, 'gc>,
+        grid: FteGlyphGrid,
+        fte_line: FteLine,
+        transform: &Transform,
+    ) -> Transform {
+        let line = fte_line.line;
+        let top = context.transform_stack.transform();
+        let m = top.matrix;
+        if top.matrix3d.is_some()
+            || top.perspective_projection.is_some()
+            || transform.matrix3d.is_some()
+            || m.b != 0.0
+            || m.c != 0.0
+            || m.a <= 0.0
+            || m.d <= 0.0
+            || line.b != 0.0
+            || line.c != 0.0
+        {
+            return transform.clone();
+        }
+        let device = m * transform.matrix;
+        let x = grid.snap(line.tx, fte_line.origin.0, device.tx);
+        let y = FteGlyphGrid::WholePixel.snap(line.ty, fte_line.origin.1, device.ty);
+        let mut snapped = transform.clone();
+        snapped.matrix.tx += Twips::new(((x - device.tx).get() as f32 / m.a).round() as i32);
+        snapped.matrix.ty += Twips::new(((y - device.ty).get() as f32 / m.d).round() as i32);
+        snapped
     }
 
     fn render_caret(
@@ -1762,8 +2011,18 @@ impl<'gc> EditText<'gc> {
             TextControlCode::Copy => {
                 let text = &self.text()[selection.start()..selection.end()];
                 context.ui.set_clipboard_content(text.to_string());
+                // Timffle: `useRichTextClipboard`
+                self.copy_rich_text(selection.start(), selection.end(), context);
             }
             TextControlCode::Paste => 'paste: {
+                // Timffle: Flash dispatches `Event.PASTE` to the focused object
+                // first; `Clipboard.getData()` is only allowed inside that handler.
+                if let Some(target) = self.object2() {
+                    crate::avm2::globals::flash::desktop::clipboard::dispatch_paste_event(
+                        context,
+                        target.into(),
+                    );
+                }
                 let text = context.ui.clipboard_content();
                 if text.is_empty() {
                     // When the clipboard is empty, nothing is pasted
@@ -1773,11 +2032,23 @@ impl<'gc> EditText<'gc> {
                     break 'paste;
                 }
 
+                // Timffle: `useRichTextClipboard` pastes the `air:html` copy
+                // with its formatting when there is one.
+                if self.use_rich_text_clipboard()
+                    && let Some(html) =
+                        crate::avm2::globals::flash::desktop::clipboard::html_content(context)
+                {
+                    self.rich_text_input(html, &text, context);
+                    break 'paste;
+                }
+
                 self.text_input(text, context);
             }
             TextControlCode::Cut => {
                 let text = &self.text()[selection.start()..selection.end()];
                 context.ui.set_clipboard_content(text.to_string());
+                // Timffle: `useRichTextClipboard`
+                self.copy_rich_text(selection.start(), selection.end(), context);
 
                 self.replace_text(selection.start(), selection.end(), WStr::empty(), context);
                 if is_selectable {
@@ -2413,6 +2684,23 @@ impl<'gc> EditText<'gc> {
         Some(index - start_index)
     }
 
+    /// Timffle: where the first line's text starts in this field's local coordinates:
+    /// the left edge of the text area and the first line's baseline (no scrolling
+    /// applied). A `TextLine` puts its origin there.
+    pub fn first_baseline_origin(self) -> (Twips, Twips) {
+        let bounds = self.0.bounds.get();
+        let layout = self.0.layout.borrow();
+        let baseline = layout
+            .lines()
+            .first()
+            .map(|line| line.offset_y() + line.ascent())
+            .unwrap_or_default();
+        (
+            bounds.x_min + Self::GUTTER,
+            bounds.y_min + Self::GUTTER + baseline,
+        )
+    }
+
     pub fn char_bounds(self, position: usize) -> Option<Rectangle<Twips>> {
         let layout = self.0.layout.borrow();
 
@@ -2731,23 +3019,29 @@ impl<'gc> TDisplayObject<'gc> for EditText<'gc> {
             }
         }
 
-        context.commands.push_mask();
-
+        // Timffle: see `set_unclipped`.
+        let clipped = !self.0.flags.get().contains(EditTextFlag::UNCLIPPED);
         let mask_bounds = self.0.bounds.get().grow_x(-Self::GUTTER);
         let mask = Matrix::create_box_from_rectangle(&mask_bounds);
 
-        context.commands.draw_rect(
-            Color::WHITE,
-            context.transform_stack.transform().matrix * mask,
-        );
-        context.commands.activate_mask();
+        if clipped {
+            context.commands.push_mask();
+            context.commands.draw_rect(
+                Color::WHITE,
+                context.transform_stack.transform().matrix * mask,
+            );
+            context.commands.activate_mask();
+        }
 
         context.transform_stack.push(&Transform {
             matrix: self.layout_to_local_matrix(),
             ..Default::default()
         });
 
-        let mut render_state = Default::default();
+        let mut render_state = EditTextRenderState {
+            fte_line: self.0.fte_line_matrix.take(),
+            ..Default::default()
+        };
         self.render_text(context, &mut render_state);
 
         self.render_debug_boxes(
@@ -2758,12 +3052,14 @@ impl<'gc> TDisplayObject<'gc> for EditText<'gc> {
 
         context.transform_stack.pop();
 
-        context.commands.deactivate_mask();
-        context.commands.draw_rect(
-            Color::WHITE,
-            context.transform_stack.transform().matrix * mask,
-        );
-        context.commands.pop_mask();
+        if clipped {
+            context.commands.deactivate_mask();
+            context.commands.draw_rect(
+                Color::WHITE,
+                context.transform_stack.transform().matrix * mask,
+            );
+            context.commands.pop_mask();
+        }
 
         if let Some(draw_caret_command) = render_state.draw_caret_command {
             context.commands.commands.push(draw_caret_command);
@@ -3183,6 +3479,10 @@ bitflags::bitflags! {
         const HAS_BACKGROUND = 1 << 1;
         const CONDENSE_WHITE = 1 << 13;
         const ALWAYS_SHOW_SELECTION = 1 << 14;
+        /// Timffle: `TextField.useRichTextClipboard`.
+        const USE_RICH_TEXT_CLIPBOARD = 1 << 15;
+        /// Timffle: draw the text without the clipping box (a TextLine's fallback field).
+        const UNCLIPPED = 1 << 2;
 
         // The following bits need to match `swf::EditTextFlag`.
         const READ_ONLY = 1 << 3;
@@ -3671,4 +3971,14 @@ struct EditTextRenderState {
     /// Used for delaying rendering the caret, so that it's
     /// rendered outside of the text mask.
     draw_caret_command: Option<RenderCommand>,
+
+    /// Timffle: the TextLine this field draws (FTE text only).
+    fte_line: Option<FteLine>,
+}
+
+/// Timffle: a TextLine's device matrix and its device origin rounded the way Flash does.
+#[derive(Clone, Copy, Debug)]
+struct FteLine {
+    line: Matrix,
+    origin: (Twips, Twips),
 }

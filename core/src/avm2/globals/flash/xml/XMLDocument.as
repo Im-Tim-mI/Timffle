@@ -1,6 +1,4 @@
 package flash.xml {
-    import __ruffle__.stub_method;
-
     import flash.xml.XMLNode;
     import flash.xml.XMLNodeType;
 
@@ -37,9 +35,14 @@ package flash.xml {
 
             try {
                 clear();
-                var root = new XML("<xml>" + input + "</xml>");
-                for each (var child in root.children()) {
-                    appendChild(_convertXmlNode(child));
+                // Timffle: like Flash, an XML declaration and a DOCTYPE are lifted out of the
+                // input into xmlDecl/docTypeDecl; the text on either side of them stays as
+                // separate text nodes (Flash's parser handles the pieces one after another).
+                for each (var segment:String in _takeDeclarations(input)) {
+                    var root = new XML("<xml>" + segment + "</xml>");
+                    for each (var child in root.children()) {
+                        appendChild(_convertXmlNode(child));
+                    }
                 }
             } finally {
                 XML.AS3::setSettings(oldSettings);
@@ -100,9 +103,76 @@ package flash.xml {
             return new XMLNode(XMLNodeType.TEXT_NODE, text);
         }
 
+        // Timffle: Flash Player 32 (timffle/difftest/src/D47XmlProps.hx) prints xmlDecl, then
+        // docTypeDecl (each converted with String() when not null), then the child nodes in
+        // document order; a document without children prints "<>".
         override public function toString():String {
-            stub_method("flash.xml.XMLDocument", "toString");
-            return super.toString();
+            var result:String = "";
+            if (this.xmlDecl != null) {
+                result += this.xmlDecl;
+            }
+            if (this.docTypeDecl != null) {
+                result += this.docTypeDecl;
+            }
+            if (hasChildNodes()) {
+                result += super.toString();
+            } else {
+                result += "<>";
+            }
+            return result;
+        }
+
+        // Timffle: cut every `<?xml ...?>` and `<!DOCTYPE ...>` (with an optional internal
+        // subset in brackets) out of the input, remember the last of each, and return the
+        // pieces of text that were between them.
+        private function _takeDeclarations(input:String):Array {
+            var segments:Array = [];
+            var rest:String = input;
+            while (true) {
+                var declStart:int = rest.indexOf("<?xml");
+                var docStart:int = rest.indexOf("<!DOCTYPE");
+                var start:int;
+                var end:int;
+                if (declStart >= 0 && (docStart < 0 || declStart < docStart)) {
+                    end = rest.indexOf("?>", declStart);
+                    if (end < 0) {
+                        break;
+                    }
+                    end += 2;
+                    this.xmlDecl = rest.substring(declStart, end);
+                    start = declStart;
+                } else if (docStart >= 0) {
+                    var depth:int = 0;
+                    var i:int = docStart;
+                    while (i < rest.length) {
+                        var ch:String = rest.charAt(i);
+                        if (ch == "[") {
+                            depth++;
+                        } else if (ch == "]") {
+                            depth--;
+                        } else if (ch == ">" && depth <= 0) {
+                            break;
+                        }
+                        i++;
+                    }
+                    if (i >= rest.length) {
+                        break;
+                    }
+                    end = i + 1;
+                    this.docTypeDecl = rest.substring(docStart, end);
+                    start = docStart;
+                } else {
+                    break;
+                }
+                if (start > 0) {
+                    segments.push(rest.substring(0, start));
+                }
+                rest = rest.substring(end);
+            }
+            if (rest.length > 0 || segments.length == 0) {
+                segments.push(rest);
+            }
+            return segments;
         }
     }
 }

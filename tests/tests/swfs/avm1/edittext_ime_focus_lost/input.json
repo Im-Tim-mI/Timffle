@@ -6,5 +6,6 @@
   { "type": "Wait" },
   { "type": "Wait" },
   { "type": "Wait" },
+  { "type": "Wait" },
   { "type": "ImePreedit", "text": "", "cursor": null }
 ]

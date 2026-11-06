@@ -210,6 +210,63 @@ pub struct Avm2<'gc> {
 
     pub optimizer_enabled: bool,
 
+    /// Timffle: `SharedObject.defaultObjectEncoding`. Flash stores whatever
+    /// value is assigned (no validation); new shared objects serialize with
+    /// AMF0 when it is 0 and AMF3 otherwise.
+    pub shared_object_default_encoding: u32,
+
+    /// Timffle: `SharedObject.preventBackup` (an AIR/iOS setting). Flash
+    /// Player reads back `null` until a value was assigned.
+    pub shared_object_prevent_backup: Option<bool>,
+
+    /// Timffle: the player's one `IME` instance (`System.ime`), made on first use.
+    pub system_ime: Option<Object<'gc>>,
+
+    /// Timffle: the PrintJob in use (`flash.printing.PrintJob` allows one at a time),
+    /// held weakly so that a collected job frees the slot.
+    pub print_job_slot: Option<WeakObject<'gc>>,
+
+    /// Timffle: `Security.exactSettings` (default true) and whether the player has
+    /// already chosen settings with it (`SharedObject.getLocal`), after which it
+    /// may not change (`SecurityError #2054`).
+    pub security_exact_settings: bool,
+    pub security_exact_settings_used: bool,
+
+    /// Timffle: `Security.disableAVM1Loading`; read by the movie loader
+    /// (`loader.rs`), which then refuses AVM1 SWFs with `SecurityErrorEvent` #2111.
+    pub security_disable_avm1_loading: bool,
+
+    /// Timffle: the URLs given to `Security.loadPolicyFile`, each fetched once.
+    pub policy_files_requested: Vec<String>,
+
+    /// Timffle: the formats on `Clipboard.generalClipboard`, in insertion order
+    /// (see `globals::flash::desktop::clipboard`).
+    pub clipboard: Vec<globals::flash::desktop::clipboard::ClipboardEntry<'gc>>,
+
+    /// Timffle: true while the player is handling an input event from the user
+    /// (mouse, keyboard, text input). The browser plugin only lets a SWF write
+    /// the clipboard (`Clipboard.setData`, `System.setClipboard`) during that.
+    pub in_user_interaction: bool,
+
+    /// Timffle: background `ShaderJob`s (`start(false)`) waiting to run; they finish after
+    /// the current script turn (see `globals::flash::display::shader_job::run_pending`).
+    pub shader_jobs: Vec<globals::flash::display::shader_job::PendingShaderJob<'gc>>,
+
+    /// Timffle: true while an `Event.PASTE` is being dispatched; the only time
+    /// `Clipboard.getData()` is allowed in Flash Player.
+    pub in_paste_event: bool,
+
+    /// Timffle: `ObjectEncoding.dynamicPropertyWriter` (an `IDynamicPropertyWriter`), consulted
+    /// by the AMF serializer for the dynamic properties of dynamic objects.
+    pub dynamic_property_writer: Option<Object<'gc>>,
+
+    /// Timffle: every `NetStream` still alive, for `NetMonitor.listStreams()`.
+    pub net_streams: Vec<object::NetStreamObjectWeak<'gc>>,
+
+    /// Timffle: the `NetMonitor`s still alive; each gets `netStreamCreate` when a `NetStream`
+    /// is constructed.
+    pub net_monitors: Vec<WeakObject<'gc>>,
+
     /// Set while a `StackOverflowError` is being constructed. Building the error object runs
     /// ActionScript constructors, which must not trip `MAX_CALL_DEPTH` again.
     building_stack_overflow_error: bool,
@@ -263,6 +320,21 @@ impl<'gc> Avm2<'gc> {
             debug_output: false,
 
             optimizer_enabled: true,
+            shared_object_default_encoding: 3,
+            shared_object_prevent_backup: None,
+            system_ime: None,
+            print_job_slot: None,
+            security_exact_settings: true,
+            security_exact_settings_used: false,
+            security_disable_avm1_loading: false,
+            policy_files_requested: Vec::new(),
+            clipboard: Vec::new(),
+            in_user_interaction: false,
+            shader_jobs: Vec::new(),
+            in_paste_event: false,
+            dynamic_property_writer: None,
+            net_streams: Vec::new(),
+            net_monitors: Vec::new(),
             building_stack_overflow_error: false,
         }
     }

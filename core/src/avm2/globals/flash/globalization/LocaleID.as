@@ -1,67 +1,53 @@
 package flash.globalization {
-    import __ruffle__.stub_constructor;
-    import __ruffle__.stub_getter;
-    import __ruffle__.stub_method;
-
     import flash.globalization.LastOperationStatus;
 
+    // Timffle: implemented for real. Flash Player parses locale ID names
+    // with the OS locale service; here the BCP 47 / UTS #35 parser lives in
+    // locale_id.rs together with a likely-subtags table for the guessed
+    // script and region (reported with `usingFallbackWarning`, as Flash does).
     [API("667")]
     public final class LocaleID {
         public static const DEFAULT:String = "i-default";
 
+        [Ruffle(NativeAccessible)]
         private var _name:String;
 
+        [Ruffle(NativeAccessible)]
+        private var _lastOperationStatus:String = LastOperationStatus.NO_ERROR;
+
         public function LocaleID(name:String) {
-            stub_constructor("flash.globalization.LocaleID");
-            this._name = name;
+            if (name == null) {
+                throw new ArgumentError("Error #2004: One of the parameters is invalid.", 2004);
+            }
+            this.init(name);
         }
 
+        private native function init(name:String):void;
+
         public function get lastOperationStatus():String {
-            stub_getter("flash.globalization.LocaleID", "lastOperationStatus");
-            return LastOperationStatus.NO_ERROR;
+            return this._lastOperationStatus;
         }
 
         public function get name():String {
             return this._name;
         }
 
-        public static function determinePreferredLocales(
+        public static native function determinePreferredLocales(
             want:Vector.<String>,
             have:Vector.<String>,
             keyword:String = "userinterface"
-        ):Vector.<String> {
-            stub_method("flash.globalization.LocaleID", "determinePreferredLocales");
-            return null;
-        }
+        ):Vector.<String>;
 
-        public function getKeysAndValues():Object {
-            stub_method("flash.globalization.LocaleID", "getKeysAndValues");
-            return new Object();
-        }
+        public native function getKeysAndValues():Object;
 
-        public function getLanguage():String {
-            stub_method("flash.globalization.LocaleID", "getLanguage");
-            return this._name;
-        }
+        public native function getLanguage():String;
 
-        public function getRegion():String {
-            stub_method("flash.globalization.LocaleID", "getRegion");
-            return "";
-        }
+        public native function getRegion():String;
 
-        public function getScript():String {
-            stub_method("flash.globalization.LocaleID", "getScript");
-            return "";
-        }
+        public native function getScript():String;
 
-        public function getVariant():String {
-            stub_method("flash.globalization.LocaleID", "getVariant");
-            return "";
-        }
+        public native function getVariant():String;
 
-        public function isRightToLeft():Boolean {
-            stub_method("flash.globalization.LocaleID", "isRightToLeft");
-            return false;
-        }
+        public native function isRightToLeft():Boolean;
     }
 }

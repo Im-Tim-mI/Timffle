@@ -11,8 +11,8 @@ use rfd::{
     AsyncFileDialog, FileHandle, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel,
 };
 use ruffle_core::backend::ui::{
-    DialogResultFuture, FileDialogResult, FileDialogSelection, FileFilter, FontDefinition,
-    FullscreenError, LanguageIdentifier, MouseCursor, MultiDialogResultFuture,
+    CustomCursor, DialogResultFuture, FileDialogResult, FileDialogSelection, FileFilter,
+    FontDefinition, FullscreenError, LanguageIdentifier, MouseCursor, MultiDialogResultFuture,
     MultiFileDialogResult, UiBackend,
 };
 use ruffle_core::font::{FontAtlases, FontFileData, FontQuery};
@@ -21,11 +21,25 @@ use std::path::Path;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::AsyncReadExt;
 use url::Url;
+use winit::dpi::PhysicalPosition;
 use winit::event_loop::EventLoopProxy;
 use winit::raw_window_handle::HasDisplayHandle;
-use winit::window::{Fullscreen, Window};
+use winit::window::{CursorGrabMode, Fullscreen, Window};
+
+/// Timffle: `Stage.mouseLock` fell back to `CursorGrabMode::Confined` (X11 has
+/// no locked mode). X11 also delivers every raw motion event twice to a client
+/// that grabs the pointer, so the relative motion is then taken from the
+/// cursor position instead of `DeviceEvent::MouseMotion`.
+pub static MOUSE_LOCK_CONFINED: AtomicBool = AtomicBool::new(false);
+
+/// Timffle: where a confined, "locked" pointer is kept.
+pub fn window_centre(window: &Window) -> PhysicalPosition<f64> {
+    let size = window.inner_size();
+    PhysicalPosition::new(f64::from(size.width / 2), f64::from(size.height / 2))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceFontRenderer {
@@ -236,6 +250,42 @@ impl UiBackend for DesktopUiBackend {
         self.preferred_cursor = cursor;
     }
 
+    // Timffle: `Mouse.registerCursor()` cursors become winit custom cursors; they are
+    // created on the event loop (`RuffleEvent::SetCustomCursor`) and applied by the GUI
+    // controller after egui's own cursor handling. winit animates custom cursors on the
+    // web only, so the desktop shows the first frame.
+    fn supports_native_cursor(&self) -> bool {
+        true
+    }
+
+    fn set_custom_cursor(&mut self, cursor: Option<CustomCursor>) {
+        let source = match cursor {
+            Some(cursor) => {
+                let Some(frame) = cursor.frames.first() else {
+                    return;
+                };
+                let clamp = |v: u32, max: u32| v.min(max.saturating_sub(1)) as u16;
+                match winit::window::CustomCursor::from_rgba(
+                    frame.rgba.clone(),
+                    frame.width as u16,
+                    frame.height as u16,
+                    clamp(cursor.hot_spot.0, frame.width),
+                    clamp(cursor.hot_spot.1, frame.height),
+                ) {
+                    Ok(source) => Some(source),
+                    Err(e) => {
+                        tracing::warn!("Custom cursor not created: {e}");
+                        return;
+                    }
+                }
+            }
+            None => None,
+        };
+        let _ = self
+            .event_loop
+            .send_event(RuffleEvent::SetCustomCursor(source));
+    }
+
     fn clipboard_content(&mut self) -> String {
         self.clipboard.get().unwrap_or_default()
     }
@@ -251,6 +301,39 @@ impl UiBackend for DesktopUiBackend {
             None
         });
         Ok(())
+    }
+
+    // Timffle: `Stage.mouseLock` grabs the cursor; platforms without a real
+    // lock (X11) confine it to the window instead.
+    /// Timffle: `System.exit()` from a local-trusted SWF quits the player,
+    /// like the standalone Flash Player projector.
+    fn exit(&mut self, _code: u32) {
+        let _ = self.event_loop.send_event(RuffleEvent::ExitRequested);
+    }
+
+    fn set_mouse_lock(&mut self, lock: bool) -> bool {
+        if lock {
+            if self.window.set_cursor_grab(CursorGrabMode::Locked).is_ok() {
+                MOUSE_LOCK_CONFINED.store(false, Ordering::Relaxed);
+                return true;
+            }
+            if self
+                .window
+                .set_cursor_grab(CursorGrabMode::Confined)
+                .is_ok()
+            {
+                // Timffle: a confined pointer still moves; the window measures
+                // each move from the centre and warps the pointer back there
+                // (see `MainWindow::locked_cursor_moved`).
+                MOUSE_LOCK_CONFINED.store(true, Ordering::Relaxed);
+                let _ = self.window.set_cursor_position(window_centre(&self.window));
+                return true;
+            }
+            false
+        } else {
+            MOUSE_LOCK_CONFINED.store(false, Ordering::Relaxed);
+            self.window.set_cursor_grab(CursorGrabMode::None).is_ok()
+        }
     }
 
     fn display_root_movie_download_failed_message(&self, _invalid_swf: bool, _fetch_error: String) {

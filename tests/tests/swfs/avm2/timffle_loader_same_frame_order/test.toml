@@ -1,0 +1,5 @@
+# Timffle: the frame of each load event (2 fps probe). test.swf is P.as built with
+# asc.jar (`-AS3 -md -import playerglobal_import.abc -in H.as -swf P,400,300,2 P.as`;
+# H.as holds the bytes of a.swf = A.as). output.txt: the real Flash Player 32
+# debugger, twice, same output.
+num_frames = 16

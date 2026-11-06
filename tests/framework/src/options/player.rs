@@ -20,6 +20,8 @@ pub struct PlayerOptions {
     mode: Option<PlayerMode>,
     with_default_font: bool,
     device_font_renderer: FontRendererKind,
+    /// Timffle: the test host grants `Stage.mouseLock` (in full screen).
+    mouse_lock: bool,
 }
 
 impl PlayerOptions {
@@ -85,6 +87,10 @@ impl PlayerOptions {
 
     pub fn device_font_renderer(&self) -> FontRendererKind {
         self.device_font_renderer
+    }
+
+    pub fn mouse_lock(&self) -> bool {
+        self.mouse_lock
     }
 
     pub fn viewport_dimensions(&self, movie: &SwfMovieData) -> ViewportDimensions {

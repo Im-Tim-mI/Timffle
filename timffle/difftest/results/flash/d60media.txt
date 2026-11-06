@@ -1,0 +1,190 @@
+# test=d60media
+new Sound: url=null bytesLoaded=0 bytesTotal=0 isBuffering=false isURLInaccessible=false length=0
+close new THREW flash.errors::IOError #2029 Error #2029
+extract new -> 0 length=0
+extract null -> 0
+embedded: url=null bytesLoaded=4180 bytesTotal=4180 isBuffering=false isURLInaccessible=false length=1044.8979591836735 samples=46080
+close embedded THREW flash.errors::IOError #2029 Error #2029
+extract(ba,100) -> 100 length=800 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,100) again (sequential) -> 100 length=800 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10,0) -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10,5) -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10) after explicit -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10,-1) -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10,-7) -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10,1e9) -> 0 length=0 position=0 endian=bigEndian first=
+extract(ba,1e9,0) -> 46080 length=368640 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,0,0) -> 0 length=0 position=0 endian=bigEndian first=
+extract(ba,-5,0) -> 0 length=0 position=0 endian=bigEndian first=
+extract(ba,2.7,0) -> 2 length=16 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,10,2.6) -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract(ba,NaN,0) -> 0 length=0 position=0 endian=bigEndian first=
+extract(ba,10,NaN) -> 10 length=80 position=16 endian=bigEndian first=0,0,0,0
+extract into pos 4 -> 3 length=28 position=20 endian=bigEndian first=0,0,0,0
+extract into pos 8 (end) -> 3 length=32 position=24 endian=bigEndian first=0,0,0,0
+extract null embedded -> 0
+extract(ba,10,total-3) -> 3 length=24
+extract(ba,10,total) -> 0 length=0
+extract(ba,10,total+5) -> 0 length=0
+extract LE -> 2 first=0 endian=littleEndian
+whole -> 46080 floats=92160 max=0.997 mean=0.194 nonzero=91110
+pcm float stereo: url=null bytesLoaded=400 bytesTotal=400 isBuffering=false isURLInaccessible=false length=2.2675736961451247 position=800
+pcm float stereo extract -> 5 0,0,0,0,0,0,0,0,0,0
+pcm again THREW ArgumentError #2084 Error #2084
+pcm then load THREW flash.errors::IllegalOperationError #2037 Error #2037
+pcm then loadCompressed THREW ArgumentError #2084 Error #2084
+pcm short mono 22050: url=null bytesLoaded=100 bytesTotal=100 isBuffering=false isURLInaccessible=false length=2.2675736961451247 position=100
+pcm short mono extract -> 6 0,0,0,0,0,0,0,0,0,0,0,0
+pcm short BE extract -> 2 0,0,0,0 length=0.045351473922902494
+pcm too few bytes THREW ArgumentError #2084 Error #2084
+pcm from position 8 -> 3 0,0,0,0,0,0 position after=32 url=null bytesLoaded=12 bytesTotal=12 isBuffering=false isURLInaccessible=false length=0.06802721088435373
+pcm bad format THREW ArgumentError #2005 Error #2005
+pcm null format THREW TypeError #2007 Error #2007
+pcm bad rate ok: url=null bytesLoaded=4 bytesTotal=4 isBuffering=false isURLInaccessible=false length=0.06802721088435373
+pcm rate 8000: url=null bytesLoaded=32 bytesTotal=32 isBuffering=false isURLInaccessible=false length=0.9977324263038548
+pcm rate 48000: url=null bytesLoaded=32 bytesTotal=32 isBuffering=false isURLInaccessible=false length=0.15873015873015872
+pcm null bytes THREW TypeError #2007 Error #2007
+pcm zero samples THREW ArgumentError #2084 Error #2084
+pcm play -> flash.media::SoundChannel length=100
+audioPlaybackMode=null useSpeakerphoneForVoice=null
+audioPlaybackMode set voice -> voice
+audioPlaybackMode set ambient -> ambient
+audioPlaybackMode set media -> media
+audioPlaybackMode set VOICE -> VOICE
+audioPlaybackMode set bogus -> bogus
+audioPlaybackMode set  -> 
+audioPlaybackMode set null -> null
+useSpeakerphoneForVoice set true -> true
+useSpeakerphoneForVoice set false -> false
+scanHardware type=builtin.as$0::MethodClosure
+scanHardware() -> null
+avSendToURL type=builtin.as$0::MethodClosure
+avSendToURL(null,null) THREW TypeError #2007 Error #2007
+avSendToURL(null,req) THREW TypeError #2007 Error #2007
+AuthorizedFeatures type=flash.system::AuthorizedFeatures
+new AuthorizedFeatures THREW ArgumentError #2012 Error #2012
+marshallExceptions default=false available=false
+marshallExceptions after set=true
+detached c=(1,1,1,1 | 0,0,0,0)
+detached b=(0.5,0.5,2,1 | 40,10,-10,-10)
+detached a=(0.5,2,1,0.5 | 10,-20,300,5)
+attached c=(0.25,1,2,0.5 | 30,0,290,0)
+attached b=(0.25,1,2,0.5 | 30,0,290,0)
+attached a=(0.5,2,1,0.5 | 10,-20,300,5)
+root=(1,1,1,1 | 0,0,0,0)
+stage=(1,1,1,1 | 0,0,0,0)
+root tinted c=(0.0625,1,2,0.5 | 10,0,290,0)
+root tinted root=(0.25,1,1,1 | 3,0,0,0)
+same object=false
+mutate copy -> (0.25,1,2,0.5 | 30,0,290,0)
+alpha 0.5 c=(0.25,1,2,0.25 | 30,0,290,0) own=(1,1,1,0.5 | 0,0,0,0)
+transform keeps object=false
+removed c=(1,1,1,0.5 | 0,0,0,0)
+precision a own=(0.296875,1.69921875,1,1 | 0,100,0,0) b concat=(0.296875,1.69921875,1,1 | 0,100,0,0)
+offset sum b concat=(1,1,1,1 | 200,-200,0,0)
+mul b concat=(0.5,3,-128,-1 | 50,50,50,50) b own=(0.5,3,-128,-1 | 50,50,50,50)
+vss default bandwidth=-1 codec=Sorenson fps=-1 height=-1 keyFrameInterval=-1 quality=-1 width=-1
+vss set bandwidth=50000 fps=15 height=240 keyFrameInterval=5 quality=80 width=320
+kfi 0 -> 1
+kfi 500 -> 300
+kfi -1 -> -1
+kfi -7 -> 1
+mode -1 -> -1x-1@-1
+mode 0 -> 1x1@0
+mode -5 -> 1x10@0
+mode 7.5 -> 100x50@7.5
+mode NaN -> 100x50@0
+q 0,0 -> 0/0
+q 0,150 -> 0/100
+q -1,-1 -> -1/-1
+q 1000,50 -> 1000/50
+H264VideoStreamSettings type=flash.media::H264VideoStreamSettings
+h264 default codec=H264Avc level=2.1 profile=baseline bandwidth=-1 fps=-1 kfi=-1 quality=-1 -1x-1 is VSS=true
+setProfileLevel main,3.1 -> profile=main level=3.1
+setProfileLevel baseline,1b -> profile=baseline level=1b
+setProfileLevel main,5.1 -> profile=main level=5.1
+setProfileLevel MAIN,3 -> profile=MAIN level=3
+setProfileLevel high,3 THREW ArgumentError #2008 Error #2008
+setProfileLevel main,6 THREW ArgumentError #2008 Error #2008
+setProfileLevel main,3.0 THREW ArgumentError #2008 Error #2008
+setProfileLevel main,1.0 THREW ArgumentError #2008 Error #2008
+setProfileLevel null,3 THREW TypeError #1009 Error #1009
+setProfileLevel main,null THREW TypeError #1009 Error #1009
+setProfileLevel main, THREW ArgumentError #2008 Error #2008
+setProfileLevel baseline,2.2 -> profile=baseline level=2.2
+h264 after set 640x480@30 q=90 bw=0 kfi=10 codec=H264Avc
+video new videoWidth=0 videoHeight=0 w=320 h=240
+video clear on new ok
+video attachNetStream(null) on new ok
+video attachCamera(null) ok videoWidth=0
+getCamera=null
+video attachCamera(getCamera()) ok
+
+== sound load ok
+after load() (relative url): url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+load twice THREW flash.errors::IllegalOperationError #2037 Error #2037
+sound event open: url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+sound event progress: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=0 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+sound event progress: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+sound event complete: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+close after complete ok url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+close twice THREW flash.errors::IOError #2029 Error #2029
+loaded extract(ba,4,0) -> 4 length=32 position=16 endian=bigEndian first=0,0,0,0
+loaded play -> flash.media::SoundChannel
+load again after close THREW flash.errors::IllegalOperationError #2037 Error #2037
+after 300ms: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735 events=open,progress,progress,complete
+
+== sound load 404
+404 after load(): url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+404 event open: url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+404 event progress: url=http://127.0.0.1:18765/data/404 bytesLoaded=0 bytesTotal=7 isBuffering=true isURLInaccessible=false length=0
+404 event progress: url=http://127.0.0.1:18765/data/404 bytesLoaded=7 bytesTotal=7 isBuffering=true isURLInaccessible=false length=0
+404 event ioError: url=http://127.0.0.1:18765/data/404 bytesLoaded=7 bytesTotal=7 isBuffering=true isURLInaccessible=false length=0 text=Error #2032 id=2032
+close after ioError ok
+load after ioError ok
+404 event open: url=http://127.0.0.1:18765/data/404 bytesLoaded=7 bytesTotal=7 isBuffering=true isURLInaccessible=false length=0
+404 event progress: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=7 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+404 event progress: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4187 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+404 event complete: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4187 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+404 after 300ms: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4187 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+
+== sound load slow then close
+slow after load(): url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+slow play while loading -> flash.media::SoundChannel
+slow event open: url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+slow event progress: url=http://127.0.0.1:18765/asset/noise.mp3?delay=1.5 bytesLoaded=0 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+slow at 400ms: url=http://127.0.0.1:18765/asset/noise.mp3?delay=1.5 bytesLoaded=0 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+close while loading ok url=http://127.0.0.1:18765/asset/noise.mp3?delay=1.5 bytesLoaded=0 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+load after close-while-loading ok
+slow event open: url=http://127.0.0.1:18765/asset/noise.mp3?delay=1.5 bytesLoaded=0 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+slow event progress: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=0 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=0
+slow event progress: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+slow event complete: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+slow at end: url=http://127.0.0.1:18765/asset/noise.mp3 bytesLoaded=4180 bytesTotal=4180 isBuffering=true isURLInaccessible=false length=1044.8979591836735
+
+== sound load not-mp3
+notmp3 event open: url=null bytesLoaded=0 bytesTotal=0 isBuffering=true isURLInaccessible=false length=0
+notmp3 event progress: url=http://127.0.0.1:18765/data/blob?size=3000 bytesLoaded=0 bytesTotal=3000 isBuffering=true isURLInaccessible=false length=0
+notmp3 event progress: url=http://127.0.0.1:18765/data/blob?size=3000 bytesLoaded=3000 bytesTotal=3000 isBuffering=true isURLInaccessible=false length=0
+notmp3 event complete: url=http://127.0.0.1:18765/data/blob?size=3000 bytesLoaded=3000 bytesTotal=3000 isBuffering=true isURLInaccessible=false length=0
+notmp3 at end: url=http://127.0.0.1:18765/data/blob?size=3000 bytesLoaded=3000 bytesTotal=3000 isBuffering=true isURLInaccessible=false length=0
+
+== video netstream
+after attach videoWidth=0 videoHeight=0
+after play videoWidth=0 videoHeight=0
+onMetaData 320x233 video videoWidth=320 videoHeight=233
+netStatus NetStream.Play.Start videoWidth=320 videoHeight=233
+netStatus NetStream.Buffer.Full videoWidth=320 videoHeight=233
+netStatus NetStream.Buffer.Flush videoWidth=320 videoHeight=233
+netStatus NetStream.Play.Stop videoWidth=320 videoHeight=233
+netStatus NetStream.Buffer.Empty videoWidth=320 videoHeight=233
+at 1500ms videoWidth=320 videoHeight=233 w=320 h=240 time=1.045
+pixel before clear=F7F7F7
+after clear videoWidth=320 videoHeight=233
+pixel after clear=FF00FF
+pixel 300ms after clear (stream playing)=FF00FF videoWidth=320
+netStatus NetStream.Pause.Notify videoWidth=320 videoHeight=233
+after attachNetStream(null) videoWidth=320 videoHeight=233
+timer handler THREW Error#2123 SecurityError
+!! step TIMEOUT
+# done

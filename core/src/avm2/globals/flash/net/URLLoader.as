@@ -47,5 +47,12 @@ package flash.net {
             this._generation++;
             this._open = false;
         }
+
+        // Timffle: Flash's playerglobal declares this override on URLLoader
+        // (it only documents the events a URLLoader dispatches); it behaves
+        // exactly like EventDispatcher.addEventListener.
+        override public function addEventListener(type:String, listener:Function, useCapture:Boolean = false, priority:int = 0, useWeakReference:Boolean = false):void {
+            super.addEventListener(type, listener, useCapture, priority, useWeakReference);
+        }
     }
 }

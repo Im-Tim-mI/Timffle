@@ -12,6 +12,9 @@ pub const SHADER_ENTRY_POINT: &str = "main";
 
 pub const MAX_VERTEX_ATTRIBUTES: usize = 8;
 pub const MAX_TEXTURES: usize = 8;
+// Timffle: AGAL 2 fragment programs may write up to four colour outputs
+// (`oc`/`oc0` … `oc3`, Context3D.setRenderToTexture colorOutputIndex 0..3).
+pub const MAX_COLOR_OUTPUTS: usize = 4;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum VertexAttributeFormat {
@@ -24,6 +27,12 @@ pub enum VertexAttributeFormat {
 
 #[derive(Debug)]
 pub enum AgalError {
+    // Timffle: a fragment program wrote an output register above `oc3`
+    // (Flash Error #3760 "The color output index is out of range.").
+    ColorOutputOutOfRange {
+        token: usize,
+        shader_type: ShaderType,
+    },
     EmptyProgram,
     FragmentRegisterAsSource {
         operand: u8,
@@ -173,7 +182,22 @@ pub fn agal_to_naga(
     parsed: &ParsedBytecode,
     vertex_attributes: &[Option<VertexAttributeFormat>; MAX_VERTEX_ATTRIBUTES],
 ) -> Result<Module, Error> {
-    NagaBuilder::build_module(parsed, vertex_attributes)
+    // Timffle: a fragment program returns as many colour outputs as it writes.
+    NagaBuilder::build_module(parsed, vertex_attributes, parsed.color_outputs())
+}
+
+/// Timffle: like `agal_to_naga`, but a fragment program returns exactly
+/// `color_outputs` (1..=4) colour outputs at `@location(0..n)`, which must
+/// match the number of colour targets of the render pipeline. Outputs the
+/// program never writes are zero; writes to outputs above the count are
+/// dropped (Flash: "All the assigned render targets should match the outputs
+/// in the fragment program", Error #3774 with enableErrorChecking).
+pub fn agal_to_naga_with_color_outputs(
+    parsed: &ParsedBytecode,
+    vertex_attributes: &[Option<VertexAttributeFormat>; MAX_VERTEX_ATTRIBUTES],
+    color_outputs: u32,
+) -> Result<Module, Error> {
+    NagaBuilder::build_module(parsed, vertex_attributes, color_outputs)
 }
 
 pub fn extract_sampler_configs(

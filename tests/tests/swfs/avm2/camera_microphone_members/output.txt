@@ -1,0 +1,32 @@
+== Camera
+Camera.isSupported = true
+Camera.names =  (length 0)
+Camera.names is a new Array each time: true
+Camera.getCamera() = null
+Camera.getCamera("0") = null
+new Camera() did not throw
+Video.attachCamera(getCamera()) ok, videoWidth = 0
+== Microphone
+Microphone.isSupported = true
+Microphone.names =  (length 0)
+Microphone.getMicrophone() = null
+Microphone.getMicrophone(0) = null
+Microphone.getEnhancedMicrophone() = null
+new Microphone() did not throw
+== MicrophoneEnhancedOptions
+echoPath = 128
+isVoiceDetected = -1
+mode = fullDuplex
+nonLinearProcessing = true
+autoGain = false
+autoGain after set = false
+== AudioDeviceManager
+AudioDeviceManager.isSupported = true
+audioDeviceManager = [object AudioDeviceManager]
+audioDeviceManager is a singleton: true
+deviceNames =  (length 0)
+selectedDeviceIndex = 0
+set selectedDeviceIndex (no user action) threw RangeError #1125
+selectedDeviceIndex after set = 0
+new AudioDeviceManager() threw ArgumentError #2012
+hasEventListener(audioOutputChange) = false

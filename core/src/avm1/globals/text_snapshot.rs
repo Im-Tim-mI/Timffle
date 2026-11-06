@@ -26,7 +26,8 @@ impl std::fmt::Debug for TextSnapshotObject<'_> {
 
 impl<'gc> TextSnapshotObject<'gc> {
     pub fn new(context: &mut UpdateContext<'gc>, target: MovieClip<'gc>) -> Self {
-        Self(TextSnapshot::new(context, target))
+        // Timffle: `TextSnapshot::new` now takes any container.
+        Self(TextSnapshot::new(context, target.into()))
     }
 
     pub fn text_snapshot(self) -> TextSnapshot<'gc> {

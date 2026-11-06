@@ -1,12 +1,9 @@
 package flash.display {
-    import __ruffle__.stub_method;
-
     import flash.geom.Rectangle;
     import flash.geom.ColorTransform;
     import flash.geom.Point;
     import flash.geom.Matrix;
     import flash.filters.BitmapFilter;
-    import flash.filters.ShaderFilter;
     import flash.utils.ByteArray;
 
     [Ruffle(InstanceAllocator)]
@@ -198,19 +195,51 @@ package flash.display {
             alphaMultiplier:uint
         ):void;
 
+        // Timffle: Flash's rectangle arithmetic (rounding, clamping to the
+        // bitmap, per-filter growth) lives in bitmap_data.rs.
         public function generateFilterRect(sourceRect:Rectangle, filter:BitmapFilter):Rectangle {
-            // Flash always reports that a ShaderFilter affects the entire BitmapData, ignoring sourceRect.
-            if (filter is ShaderFilter) {
-                return this.rect.clone();
+            if (sourceRect == null) {
+                Error.throwError(TypeError, 2007, "sourceRect");
             }
-            stub_method("flash.display.BitmapData", "generateFilterRect");
-            return sourceRect.clone();
+            if (filter == null) {
+                Error.throwError(TypeError, 2007, "filter");
+            }
+            return this.generateFilterRectInternal(sourceRect, filter);
         }
 
+        private native function generateFilterRectInternal(sourceRect:Rectangle, filter:BitmapFilter):Rectangle;
+
+        // Timffle: PNG and JPEG encoding (image crate), JPEG XR (own encoder); the compressor is
+        // checked here like Flash does (null #2007, other objects #2004,
+        // JPEG quality above 100 RangeError #2006).
         [API("680")]
         public function encode(rect:Rectangle, compressor:Object, byteArray:ByteArray = null):ByteArray {
-            stub_method("flash.display.BitmapData", "encode");
-            return null;
+            if (compressor == null) {
+                Error.throwError(TypeError, 2007, "compressor");
+            }
+            var kind:int;
+            var param:int = 0;
+            if (compressor is PNGEncoderOptions) {
+                kind = 0;
+                param = PNGEncoderOptions(compressor).fastCompression ? 1 : 0;
+            } else if (compressor is JPEGEncoderOptions) {
+                kind = 1;
+                var quality:uint = JPEGEncoderOptions(compressor).quality;
+                if (quality > 100) {
+                    Error.throwError(RangeError, 2006);
+                }
+                param = quality;
+            } else if (compressor is JPEGXREncoderOptions) {
+                // Timffle: JPEG XR (own encoder); the options are checked natively, after the
+                // rectangle, in Flash's order.
+                var xr:JPEGXREncoderOptions = JPEGXREncoderOptions(compressor);
+                return this.encodeInternal(rect, 2, xr.quantization, byteArray, xr.colorSpace, xr.trimFlexBits);
+            } else {
+                Error.throwError(ArgumentError, 2004);
+            }
+            return this.encodeInternal(rect, kind, param, byteArray, null, 0);
         }
+
+        private native function encodeInternal(rect:Rectangle, kind:int, param:uint, byteArray:ByteArray, colorSpace:String, trimFlexBits:uint):ByteArray;
     }
 }

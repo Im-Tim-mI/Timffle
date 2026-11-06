@@ -375,6 +375,12 @@ export class InnerPlayer {
             "webkitfullscreenchange",
             this.fullScreenChange.bind(this),
         );
+        // Timffle: Stage.mouseLock — tell the player when the browser releases
+        // (Escape, leaving full screen) or grants the pointer lock.
+        document.addEventListener(
+            "pointerlockchange",
+            this.pointerLockChange.bind(this),
+        );
 
         this.instance = null;
         this.newZipWriter = null;
@@ -1289,6 +1295,44 @@ export class InnerPlayer {
         } else if (document.webkitCancelFullScreen) {
             document.webkitCancelFullScreen();
         }
+    }
+
+    /**
+     * Timffle: lock or release the mouse pointer for `Stage.mouseLock`.
+     * The lock goes on the canvas so that mouse events keep reaching it.
+     *
+     * @param lock Whether to lock (true) or release (false) the pointer.
+     * @returns Whether the request could be made.
+     */
+    setMouseLock(lock: boolean): boolean {
+        const canvas = this.container.querySelector("canvas");
+        if (lock) {
+            if (!canvas || typeof canvas.requestPointerLock !== "function") {
+                return false;
+            }
+            try {
+                const result = canvas.requestPointerLock() as unknown;
+                if (result instanceof Promise) {
+                    result.catch(() => this.instance?.set_mouse_lock(false));
+                }
+            } catch {
+                return false;
+            }
+            return true;
+        }
+        if (this.shadow.pointerLockElement === canvas) {
+            document.exitPointerLock();
+        }
+        return true;
+    }
+
+    /**
+     * Timffle: the pointer lock changed; report the new state to the player.
+     */
+    private pointerLockChange(): void {
+        const canvas = this.container.querySelector("canvas");
+        const locked = !!canvas && this.shadow.pointerLockElement === canvas;
+        this.instance?.set_mouse_lock(locked);
     }
 
     /**

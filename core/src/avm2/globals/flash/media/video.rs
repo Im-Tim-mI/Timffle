@@ -3,7 +3,6 @@ use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::flash::display::display_object::initialize_for_allocator;
 use crate::avm2::parameters::ParametersExt;
 use crate::avm2::{Activation, ClassObject, Object, Value};
-use crate::avm2_stub_method;
 use crate::bitmap::is_size_valid;
 use crate::display_object::Video;
 
@@ -92,14 +91,56 @@ pub fn attach_net_stream<'gc>(
         if let Some(stream) = stream {
             video.attach_netstream(activation.context, stream);
         } else {
-            // TODO attachNetStream(null) should clear the current stream
-            avm2_stub_method!(
-                activation,
-                "flash.media.Video",
-                "attachNetStream",
-                "with null argument"
-            );
+            // Timffle: `attachNetStream(null)` disconnects the stream; the
+            // last image goes away, `videoWidth`/`videoHeight` stay (Flash 32).
+            video.detach_netstream(activation.context);
         }
+    }
+
+    Ok(Value::Undefined)
+}
+
+/// Timffle: `Video.videoWidth` — the width of the video stream's frames.
+pub fn get_video_width<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(video) = this.as_display_object().and_then(|dobj| dobj.as_video()) {
+        return Ok(video.video_size().0.into());
+    }
+
+    Ok(0.into())
+}
+
+/// Timffle: `Video.videoHeight` — the height of the video stream's frames.
+pub fn get_video_height<'gc>(
+    _activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(video) = this.as_display_object().and_then(|dobj| dobj.as_video()) {
+        return Ok(video.video_size().1.into());
+    }
+
+    Ok(0.into())
+}
+
+/// Timffle: `Video.clear()` — drops the image currently shown; the stream
+/// stays attached and its next frame shows again.
+pub fn clear<'gc>(
+    activation: &mut Activation<'_, 'gc>,
+    this: Value<'gc>,
+    _args: FunctionArgs<'_, 'gc>,
+) -> Result<Value<'gc>, Error<'gc>> {
+    let this = this.as_object().unwrap();
+
+    if let Some(video) = this.as_display_object().and_then(|dobj| dobj.as_video()) {
+        video.clear(activation.context);
     }
 
     Ok(Value::Undefined)

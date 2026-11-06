@@ -4,6 +4,8 @@ pub mod atf;
 pub mod backend;
 pub mod bitmap;
 pub mod blend;
+// Timffle: CPU codecs for Stage3D compressed/packed texture formats.
+pub mod compressed;
 pub mod error;
 pub mod filters;
 pub mod lines;

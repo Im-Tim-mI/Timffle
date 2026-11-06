@@ -1,1 +1,5 @@
-num_ticks = 8
+# Timffle: timers run before the tick's frames (26335), so frame 1 runs at player
+# time 1000 ms (1 fps) and each setTimeout fires at the start of the tick after the
+# one it fired at the end of before: one more Wait before the last preedit event
+# (input.json) and one more tick keep events, frames and timers in the same order.
+num_ticks = 9
