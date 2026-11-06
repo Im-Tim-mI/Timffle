@@ -4,6 +4,11 @@ import {
     FLASH7_AND_8_MIMETYPE,
     FLASH_MOVIE_MIMETYPE,
 } from "./flash-identifiers.js";
+import {
+    currentFlashIdentity,
+    notePluginVersionRead,
+    watchFlashRefusal,
+} from "./flash-identity.js";
 
 /**
  * Replacement object for `MimeTypeArray` that lets us install new fake mime
@@ -131,6 +136,9 @@ class RufflePlugin extends RuffleMimeTypeArray implements Plugin {
     }
 
     get description(): string {
+        // Timffle: a page that reads the version may refuse it
+        // (flash-identity.ts).
+        notePluginVersionRead();
         return this.#description;
     }
 
@@ -153,24 +161,6 @@ class RufflePlugin extends RuffleMimeTypeArray implements Plugin {
     get [Symbol.for("ruffle.plugin")](): boolean {
         return true;
     }
-}
-
-/**
- * Timffle: the file name a real Flash Player plugin had in Chrome on this
- * platform. Some websites only accept a plugin whose file name looks like a
- * real Flash Player (a `.dll` or `.plugin`).
- *
- * @returns The plugin file name for this platform.
- */
-function flashPluginFilename(): string {
-    const platform = (navigator.platform || "").toLowerCase();
-    if (platform.startsWith("win")) {
-        return "pepflashplayer.dll";
-    }
-    if (platform.startsWith("mac")) {
-        return "PepperFlashPlayer.plugin";
-    }
-    return "libpepflashplayer.so";
 }
 
 /**
@@ -249,15 +239,15 @@ class RufflePluginArray implements PluginArray {
 /**
  * A fake plugin designed to trigger Flash detection scripts.
  *
- * Timffle: it reports version 34 (the last regional Flash Player release)
- * instead of 32 (the last global one). Some websites send version 32 to a
- * "please upgrade" page because the global Flash Player stopped running in
- * 2021; any check for a minimum version still passes with 34.
+ * Timffle: it reports Flash Player 32 with the file name of the real Flash
+ * Player for Chrome on every platform; a page that refuses 32 is loaded once
+ * more as Flash Player 34 (see flash-identity.ts).
  */
+const IDENTITY = currentFlashIdentity();
 export const FLASH_PLUGIN = new RufflePlugin(
     "Shockwave Flash",
-    "Shockwave Flash 34.0 r0",
-    flashPluginFilename(),
+    IDENTITY.description,
+    IDENTITY.filename,
 );
 
 FLASH_PLUGIN.install({
@@ -323,6 +313,9 @@ export function installPlugin(plugin: RufflePlugin): void {
 
     const plugins = navigator.plugins;
     plugins.install!(plugin);
+    if (plugin === FLASH_PLUGIN) {
+        watchFlashRefusal();
+    }
 
     if (
         plugin.length > 0 &&

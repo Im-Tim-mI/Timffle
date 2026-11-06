@@ -53,6 +53,7 @@ pub struct RuffleInstanceBuilder {
     pub(crate) log_level: tracing::Level,
     pub(crate) max_execution_duration: Duration,
     pub(crate) player_version: Option<u8>,
+    pub(crate) version_string: Option<String>,
     pub(crate) preferred_renderer: Option<String>, // TODO: Enumify?
     pub(crate) open_url_mode: OpenUrlMode,
     pub(crate) allow_networking: NetworkingAccessMode,
@@ -93,6 +94,7 @@ impl Default for RuffleInstanceBuilder {
             log_level: tracing::Level::ERROR,
             max_execution_duration: Duration::from_secs_f64(15.0),
             player_version: None,
+            version_string: None,
             preferred_renderer: None,
             open_url_mode: OpenUrlMode::Allow,
             allow_networking: NetworkingAccessMode::All,
@@ -278,6 +280,13 @@ impl RuffleInstanceBuilder {
     #[wasm_bindgen(js_name = "setPlayerVersion")]
     pub fn set_player_version(&mut self, value: Option<u8>) {
         self.player_version = value;
+    }
+
+    /// Timffle: the whole Flash version string movies see, e.g.
+    /// `WIN 32,0,0,465` (`$version`, `Capabilities.version`).
+    #[wasm_bindgen(js_name = "setVersionString")]
+    pub fn set_version_string(&mut self, value: Option<String>) {
+        self.version_string = value;
     }
 
     #[wasm_bindgen(js_name = "setPreferredRenderer")]
@@ -778,6 +787,7 @@ impl RuffleInstanceBuilder {
             .with_letterbox(self.letterbox)
             .with_max_execution_duration(self.max_execution_duration)
             .with_player_version(self.player_version)
+            .with_version_string(self.version_string.clone())
             .with_player_runtime(self.player_runtime)
             .with_compatibility_rules(self.compatibility_rules.clone())
             .with_quality(self.quality)

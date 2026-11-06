@@ -266,6 +266,10 @@ pub struct SystemProperties {
     pub cpu_architecture: CpuArchitecture,
     /// The highest supported h264 decoder level
     pub idc_level: String,
+    /// Timffle: the whole version string (`$version`, `Capabilities.version`),
+    /// e.g. `WIN 32,0,0,465`, set by the web player. `None` keeps Ruffle's
+    /// `<platform> <player version>,0,0,0`.
+    pub version_string: Option<String>,
 }
 
 impl SystemProperties {
@@ -288,10 +292,14 @@ impl SystemProperties {
             os: OperatingSystem::Linux,
             cpu_architecture: CpuArchitecture::X86,
             idc_level: "5.1".into(),
+            version_string: None,
         }
     }
 
     pub fn get_version_string(&self, player_version: u8) -> String {
+        if let Some(version) = &self.version_string {
+            return version.clone();
+        }
         format!(
             "{} {},0,0,0",
             self.manufacturer.get_platform_name(),

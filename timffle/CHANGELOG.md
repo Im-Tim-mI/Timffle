@@ -2,6 +2,15 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26347 — 2026-11-06（main）
+
+**Flash 外掛先報 32，網站不收才自動換 34 再載一次**（tim：初次載入用 Flash 32、檔名全平台 `pepflashplayer.dll`、遊戲內版本 `WIN 32,0,0,465`；載入失敗就改用 34 再載入一次，要做成通用的，不要寫死特定網站）。小幫手仍是 **1.4.1**，不必重裝。
+
+- **第一次載入**（新檔 `web/packages/core/src/flash-identity.ts`，`plugin-polyfill.ts` 使用）：外掛名稱 `Shockwave Flash`、描述 `Shockwave Flash 32.0 r0`、檔名在所有平台都是 `pepflashplayer.dll`（26346 依平台給 `.plugin`／`.so`，已拿掉；Linux 也不會再被要求升級）。
+- **網站不收 32 時**：網頁讀了外掛版本、把剛放進去的 Flash 內容（有 SWF 網址的 `<embed>`／`<object>` 或 Timffle 播放器元素）在 2 秒內又拿掉、0.5 秒後頁面上沒有任何 Flash 內容、使用者也沒操作過這一頁，就把這個來源記成 34（`sessionStorage` 的 `timffle.flashVersion`，只在這個分頁的工作階段有效）並重新載入一次：描述 `Shockwave Flash 34.0 r0`、檔名同上。只重試一次，34 也不收就不再重載；`sessionStorage` 不能寫時也不重載（避免無限迴圈）。Flash 內容在頁面上待滿 5 秒就停止偵測。不看網址、不針對任何網站。
+- **遊戲內看到的版本**（`core/src/system_properties.rs` 的 `version_string`、`player.rs` 的 `with_version_string`、`web/src/builder.rs` 的 `setVersionString`、`internal/builder.ts`）：網頁播放器的 `Capabilities.version`、AVM1 的 `$version` 與 `System.capabilities.version` 改成 `WIN 32,0,0,465`，換成 34 後是 `WIN 34,0,0,465`；影片的播放器版本（`playerVersion`）跟著是 32 或 34。設定裡明確指定 `playerVersion` 時用那個數字。桌面版不變。
+- **驗證**：core 單元測試 98 通過（新增 `test/flash-identity.ts`），擴充功能單元測試 327 通過；Chrome 155 無頭實測：陸版 `http://mole.61.com/` 第一次被換成升級頁 → 自動以 34 重新載入 → `Client.swf` 開始載入；台服首頁維持 32、沒有重載；本機測試頁（版本是 32 就把 embed 換掉）同樣自動換 34；擴充功能內建播放器跑 `t0hello` 得到 `version=WIN 32,0,0,465`。**沒驗證**：換成 34 之後影片實際讀到的 `WIN 34,0,0,465`（無頭環境點不開網頁內嵌播放器，程式路徑與 32 相同）、陸版登入與 Socket、Firefox。
+
 ## 0.8.0.26346 — 2026-11-06（main）
 
 **兩個網站載入問題**（tim：插件載入後網頁上方的導覽條不見；希望陸版摩爾莊園能載入）。小幫手仍是 **1.4.1**，不必重裝。兩項都對所有網站一樣，沒有針對特定網站的程式。

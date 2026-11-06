@@ -33,6 +33,11 @@ pub fn get_version<'gc>(
     _this: Value<'gc>,
     _args: FunctionArgs<'_, 'gc>,
 ) -> Result<Value<'gc>, Error<'gc>> {
+    // Timffle: a version string set by the embedder wins (see
+    // `SystemProperties::version_string`).
+    if let Some(version) = &activation.context.system.version_string {
+        return Ok(AvmString::new_utf8(activation.gc(), version).into());
+    }
     let os = match activation.avm2().player_runtime {
         PlayerRuntime::FlashPlayer => "WIN",
         PlayerRuntime::AIR => {
