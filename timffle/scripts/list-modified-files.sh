@@ -17,6 +17,7 @@ cd "$REPO"
 
 git cat-file -e "$RUFFLE_BASE^{commit}" 2>/dev/null || { echo "list-modified-files: $RUFFLE_BASE is not in this clone" >&2; exit 1; }
 git cat-file -e "$FLASH_LSO_BASE^{commit}" 2>/dev/null || { echo "list-modified-files: $FLASH_LSO_BASE is not in this clone" >&2; exit 1; }
+git cat-file -e "$WINIT_BASE^{commit}" 2>/dev/null || { echo "list-modified-files: $WINIT_BASE is not in this clone" >&2; exit 1; }
 
 status() {
   awk -F '\t' '{
@@ -45,7 +46,7 @@ To see a change: \`git log -p ${RUFFLE_BASE%"${RUFFLE_BASE#????????????}"}..HEAD
 |---|---|
 HEADER
 # Copies of modified files (e.g. Ruffle's README.md kept as README.ruffle.md) are reported as such.
-git diff --no-renames -C --name-status "$RUFFLE_BASE" HEAD -- . ':(exclude)timffle' ':(exclude)vendor/rust-flash-lso' \
+git diff --no-renames -C --name-status "$RUFFLE_BASE" HEAD -- . ':(exclude)timffle' ':(exclude)vendor/rust-flash-lso' ':(exclude)vendor/winit' \
   | LC_ALL=C sort -t "$(printf '\t')" -k2 | status
 
 cat <<HEADER
@@ -57,3 +58,13 @@ cat <<HEADER
 HEADER
 git diff --no-renames --name-status "$FLASH_LSO_BASE^{tree}" "HEAD:vendor/rust-flash-lso" \
   | awk -F '\t' 'BEGIN { OFS = "\t" } { $2 = "vendor/rust-flash-lso/" $2; print }' | LC_ALL=C sort -k2 | status
+
+cat <<HEADER
+
+## winit in \`vendor/winit/\` (crates.io 0.30.13, imported unchanged in \`${WINIT_BASE%"${WINIT_BASE#????????????}"}\`, $WINIT_URL)
+
+| Change | File |
+|---|---|
+HEADER
+git diff --no-renames --name-status "$WINIT_BASE:vendor/winit" "HEAD:vendor/winit" \
+  | awk -F '\t' 'BEGIN { OFS = "\t" } { $2 = "vendor/winit/" $2; print }' | LC_ALL=C sort -k2 | status

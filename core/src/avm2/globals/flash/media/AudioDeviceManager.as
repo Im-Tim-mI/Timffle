@@ -4,9 +4,10 @@ package flash.media {
     // Timffle: audio output device selection (Flash Player 27+ on Windows and
     // macOS). This player plays through the one output the browser or
     // operating system gives it and has no device enumeration, so it answers
-    // like Flash Player with an empty device list: `isSupported` false, no
-    // device names, no selected device (-1), and never an `audioOutputChange`
-    // event. The singleton exists through `audioDeviceManager`; the
+    // like Flash Player 32 with an empty device list (measured on a machine
+    // without audio devices): `isSupported` true, no device names,
+    // `selectedDeviceIndex` 0, and never an `audioOutputChange` event. The
+    // singleton exists through `audioDeviceManager`; the
     // constructor is `ArgumentError #2012` (measured on Flash Player 32,
     // tests/tests/swfs/avm2/stagevideo_bounds). Flash Player 32 accepts a new
     // `selectedDeviceIndex` outside a mouse or keyboard event too (it does not
@@ -35,7 +36,7 @@ package flash.media {
         }
 
         public static function get isSupported():Boolean {
-            return false;
+            return true;
         }
 
         public function get deviceNames():Array {
@@ -43,7 +44,7 @@ package flash.media {
         }
 
         public function get selectedDeviceIndex():int {
-            return -1;
+            return 0;
         }
 
         public function set selectedDeviceIndex(value:int):void {

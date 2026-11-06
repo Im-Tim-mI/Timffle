@@ -1,12 +1,12 @@
 package flash.media {
     import flash.events.EventDispatcher;
 
-    // Timffle: Flash Player on a machine without a microphone. This player
-    // has no audio capture pipeline on any platform, so `isSupported` is
-    // false, `names` is empty and `getMicrophone()`/`getEnhancedMicrophone()`
-    // return null (the AS3 reference: null "if no microphones are installed"
-    // and "when enhanced audio fails to initialize"). Flash Player 32 reports
-    // `isSupported` true on a desktop; this player keeps false.
+    // Timffle: Flash Player on a desktop without a microphone. This player
+    // has no audio capture pipeline on any platform, so `names` is empty and
+    // `getMicrophone()`/`getEnhancedMicrophone()` return null (the AS3
+    // reference: null "if no microphones are installed" and "when enhanced
+    // audio fails to initialize"). `isSupported` is true, as Flash Player 32
+    // reports on a desktop with or without audio devices (measured).
     //
     // `new Microphone()` does not throw in Flash Player 32: it makes a
     // Microphone attached to no device, which answers 0, false or null from
@@ -30,7 +30,7 @@ package flash.media {
 
         [API("667")]
         public static function get isSupported():Boolean {
-            return false;
+            return true;
         }
 
         public static function get names():Array {

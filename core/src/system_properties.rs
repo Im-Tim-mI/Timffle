@@ -326,8 +326,10 @@ impl SystemProperties {
             // (audio, MP3, streaming and embedded video, the built-in Speex/H.264 encoders,
             // TLS, 32-bit processes) are set. AV_HARDWARE, LOCAL_FILE_READ and WINDOW_LESS
             // mean "not administratively disabled" (`avHardwareDisable` etc. are their
-            // negation). Unset: ACCESSIBILITY (no accessibility bridge), IME (IME.isSupported
-            // is false), PRINTING (no PrintJob), SCREEN_BROADCAST/SCREEN_PLAYBACK (FMS
+            // negation). PRINTING is set as on a desktop Flash Player 32 (true with or
+            // without a printer, measured; PrintJob.start() answers as a cancelled print
+            // dialog). Unset: ACCESSIBILITY (no accessibility bridge), IME (IME.isSupported
+            // is false), SCREEN_BROADCAST/SCREEN_PLAYBACK (FMS
             // screen sharing; desktop Flash Player 32 reports both false), DEBUGGER (this is
             // a release player) and ACROBAT_EMBEDDED -- exactly what Flash Player reports on
             // a machine without those features.
@@ -343,6 +345,7 @@ impl SystemProperties {
                 | SystemCapabilities::AV_HARDWARE
                 | SystemCapabilities::LOCAL_FILE_READ
                 | SystemCapabilities::WINDOW_LESS
+                | SystemCapabilities::PRINTING
                 | if cfg!(any(target_pointer_width = "64", target_family = "wasm")) {
                     // A 64-bit player, or the browser plug-in: the OS runs 64-bit processes.
                     SystemCapabilities::PROCESS_64_BIT

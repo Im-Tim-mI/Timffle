@@ -13,3 +13,4 @@ Verifies `Mouse.registerCursor` and `Stage.mouseLock` in the desktop player on a
    blue right); move outside (`warp.py :73 900 700`) and back to check it is applied again.
 5. For `lock.swf`: `python3 xinput.py :73 click 200 150` (enters full screen and sets mouseLock), then
    `python3 xinput.py :73 grab` must print `AlreadyGrabbed`, and `xinput.py :73 move 30 -20` produces mouseMove traces.
+6. Mouse wheel: `python3 xinput.py :73 wheel down 2 <x> <y>` sends two notches (one press + release of button 5 each; `up` = button 4). Flash Player 32 and the desktop player both report one `mouseWheel` per notch with `delta` -3 (+3 up).

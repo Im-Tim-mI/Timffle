@@ -39,7 +39,8 @@ members = [
     "tools/fuzzer",
     "tools/stub-report",
 ]
-# vendor/rust-flash-lso is its own workspace (patched flash-lso, see [patch] below).
+# vendor/rust-flash-lso is its own workspace and vendor/winit a patched crates.io crate
+# (see [patch] below).
 exclude = ["vendor"]
 default-members = ["desktop"]
 resolver = "2"
@@ -214,3 +215,9 @@ codegen-units = 64
 # https://github.com/ruffle-rs/rust-flash-lso at the pinned rev 61b7172 plus that fix.
 [patch."https://github.com/ruffle-rs/rust-flash-lso"]
 flash-lso = { path = "vendor/rust-flash-lso/flash-lso" }
+
+# Local fix for X11 mouse wheels: winit 0.30 sent a MouseWheel for the press and for the
+# release of buttons 4-7, two scroll steps per notch. vendor/winit is the crates.io
+# winit 0.30.13 plus the backported upstream fix (winit 03dad26c43).
+[patch.crates-io]
+winit = { path = "vendor/winit" }

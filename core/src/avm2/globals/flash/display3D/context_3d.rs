@@ -1039,9 +1039,9 @@ pub fn get_total_gpu_memory<'gc>(
     Ok((context.total_gpu_memory().min(i32::MAX as u64) as i32).into())
 }
 
-// Timffle: `driverInfo` — composed by the renderer from the graphics adapter in
-// use ("<API> (<mode>) Vendor=... Version=... Renderer=..."); "Disposed" once
-// dispose() was called, like Flash.
+// Timffle: `driverInfo` — the graphics API the renderer uses, as Flash names it
+// ("Vulkan", "DirectX12", "WebGPU", ...; "Software Hw_disabled=unavailable" on a
+// CPU adapter), never the GPU model; "Disposed" once dispose() was called, like Flash.
 pub fn get_driver_info<'gc>(
     activation: &mut Activation<'_, 'gc>,
     this: Value<'gc>,

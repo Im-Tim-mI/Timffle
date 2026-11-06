@@ -372,8 +372,8 @@ pub trait Context3D: Any {
 
     fn present(&mut self);
 
-    // Timffle: the string Flash exposes as Context3D.driverInfo, composed from the
-    // graphics adapter actually in use.
+    // Timffle: the string Flash exposes as Context3D.driverInfo: the graphics API in
+    // use (no vendor, model or driver version).
     fn driver_info(&self) -> String;
 }
 

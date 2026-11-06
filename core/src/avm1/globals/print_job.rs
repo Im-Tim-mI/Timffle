@@ -34,13 +34,15 @@ fn constructor<'gc>(
     Ok(Value::Undefined)
 }
 
+// Timffle: this player has no printing; `start()` answers like Flash Player when the
+// user cancels the print dialog (false), without showing anything
+// (`System.capabilities.hasPrinting` is true, as on a desktop Flash Player).
 fn start<'gc>(
-    activation: &mut Activation<'_, 'gc>,
+    _activation: &mut Activation<'_, 'gc>,
     _this: Object<'gc>,
     _args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    avm1_stub!(activation, "PrintJob", "start");
-    Ok(Value::Undefined)
+    Ok(false.into())
 }
 
 fn add_page<'gc>(

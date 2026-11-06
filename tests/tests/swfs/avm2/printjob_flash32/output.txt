@@ -1,0 +1,36 @@
+Camera.isSupported = true (boolean)
+Microphone.isSupported = true (boolean)
+AudioDeviceManager.isSupported = true (boolean)
+PrintJob.isSupported = true (boolean)
+Capabilities.hasPrinting = true (boolean)
+Camera.names.length = 0 (number)
+Camera.getCamera() = null (object)
+first new PrintJob() = [object PrintJob] (object)
+orientation = 0 (string)
+paperHeight = 0 (number)
+paperWidth = 0 (number)
+pageHeight = 0 (number)
+pageWidth = 0 (number)
+second new PrintJob() while the first is in use threw [class IllegalOperationError] #2141
+addPage(sprite) threw [class Error] #2057
+addPage(sprite, rect, options, 1) threw [class Error] #2057
+addPage(null) threw [class Error] #2057
+send() = returned (string)
+paperHeight after send = 0 (number)
+orientation after send = null (object)
+new PrintJob() after send = [object PrintJob] (object)
+send() of that job = returned (string)
+start() (dialog cancelled) = false (boolean)
+paperHeight = 0 (number)
+paperWidth = 0 (number)
+pageHeight = 0 (number)
+pageWidth = 0 (number)
+orientation = null (object)
+addPage(sprite) threw [class Error] #2057
+new PrintJob() after the failed start = [object PrintJob] (object)
+start() again = false (boolean)
+send() = returned (string)
+new PrintJob() while that one is in use threw [class IllegalOperationError] #2141
+its send() = returned (string)
+new PrintJob() after it was sent = [object PrintJob] (object)
+done

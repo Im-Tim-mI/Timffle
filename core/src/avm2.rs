@@ -222,6 +222,10 @@ pub struct Avm2<'gc> {
     /// Timffle: the player's one `IME` instance (`System.ime`), made on first use.
     pub system_ime: Option<Object<'gc>>,
 
+    /// Timffle: the PrintJob in use (`flash.printing.PrintJob` allows one at a time),
+    /// held weakly so that a collected job frees the slot.
+    pub print_job_slot: Option<WeakObject<'gc>>,
+
     /// Timffle: `Security.exactSettings` (default true) and whether the player has
     /// already chosen settings with it (`SharedObject.getLocal`), after which it
     /// may not change (`SecurityError #2054`).
@@ -319,6 +323,7 @@ impl<'gc> Avm2<'gc> {
             shared_object_default_encoding: 3,
             shared_object_prevent_backup: None,
             system_ime: None,
+            print_job_slot: None,
             security_exact_settings: true,
             security_exact_settings_used: false,
             security_disable_avm1_loading: false,
