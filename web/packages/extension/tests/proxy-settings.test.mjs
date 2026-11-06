@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+    applyInstalledDefaults,
     getProxySettings,
     replaceProxySettings,
     sameProxySettings,
@@ -11,6 +12,8 @@ import {
 import {
     DEFAULT_ALLOWED_ORIGINS,
     DEFAULTS_VERSION,
+    INSTALLED_DEFAULTS_KEY,
+    LEGACY_DEFAULT_ORIGINS,
     defaultProxySettings,
     resolveSocketAccess,
     setSocketChoice,
@@ -26,7 +29,12 @@ const X = "https://x.example";
 
 /** A storage area with the delays of the real one; `onWrite` runs after each write. */
 function install({ locks = false } = {}) {
-    const state = { stored: undefined, writes: 0, lockRequests: [] };
+    const state = {
+        stored: undefined,
+        extra: {},
+        writes: 0,
+        lockRequests: [],
+    };
     globalThis.browser = {
         storage: {
             local: {
@@ -34,15 +42,23 @@ function install({ locks = false } = {}) {
                     const copy = JSON.parse(
                         JSON.stringify(state.stored ?? null),
                     );
+                    const extra = JSON.parse(JSON.stringify(state.extra));
                     await new Promise((r) => setImmediate(r));
-                    return copy === null ? {} : { socketProxySettings: copy };
+                    return copy === null
+                        ? extra
+                        : { ...extra, socketProxySettings: copy };
                 },
                 async set(items) {
                     await new Promise((r) => setImmediate(r));
                     state.writes++;
-                    state.stored = JSON.parse(
-                        JSON.stringify(items.socketProxySettings),
-                    );
+                    for (const [key, value] of Object.entries(items)) {
+                        const copy = JSON.parse(JSON.stringify(value));
+                        if (key === "socketProxySettings") {
+                            state.stored = copy;
+                        } else {
+                            state.extra[key] = copy;
+                        }
+                    }
                 },
                 async remove() {
                     state.stored = undefined;
@@ -102,7 +118,7 @@ test("fresh settings allow no website", async () => {
     assert.equal(state.writes, 0);
 });
 
-test("never-edited default lists of earlier releases are read as empty in both modes", async () => {
+test("installed users' lists of earlier releases are read as saved", async () => {
     const proxyUrl =
         "ws://127.0.0.1:18770/connect?host={host}&port={port}&token=T";
     const v1 = ["https://mole.61.com.tw", "http://mole.61.com.tw"];
@@ -110,10 +126,10 @@ test("never-edited default lists of earlier releases are read as empty in both m
         `https://${name}.61.com.tw`,
         `http://${name}.61.com.tw`,
     ]);
-    for (const [list, extra] of [
-        // One list, no defaultsVersion, no separate proxy list.
-        [v1, {}],
-        [v2, { proxyOrigins: v2, deniedOrigins: [X], defaultsVersion: 2 }],
+    for (const [list, extra, expected] of [
+        // One list, no defaultsVersion: the first releases' list grows as before.
+        [v1, {}, v2],
+        [v2, { proxyOrigins: v2, deniedOrigins: [X], defaultsVersion: 2 }, v2],
     ]) {
         for (const mode of ["helper", "websocket"]) {
             const state = install();
@@ -125,30 +141,54 @@ test("never-edited default lists of earlier releases are read as empty in both m
                 ...extra,
             };
             const settings = await getProxySettings();
-            assert.deepEqual(settings.allowedOrigins, []);
-            assert.deepEqual(settings.proxyOrigins, []);
+            assert.deepEqual(settings.allowedOrigins, expected);
+            assert.deepEqual(settings.proxyOrigins, expected);
             assert.deepEqual(settings.deniedOrigins, extra.deniedOrigins ?? []);
-            assert.equal(settings.defaultsVersion, DEFAULTS_VERSION);
-            // No former default site gets sockets without being asked.
-            for (const origin of list) {
-                assert.equal(resolveSocketAccess(settings, origin), undefined);
+            for (const origin of expected) {
+                assert.equal(resolveSocketAccess(settings, origin)?.mode, mode);
             }
-            // Reading writes nothing.
             assert.equal(state.writes, 0);
-            if (mode === "helper") {
-                // The next save keeps what was read.
-                const saved = await saveProxySettings(settings);
-                assert.deepEqual(saved, settings);
-                assert.deepEqual(await getProxySettings(), saved);
-            } else {
-                // A custom proxy needs the user to add a website first.
-                await assert.rejects(
-                    saveProxySettings(settings),
-                    /origins_required/u,
-                );
-            }
         }
     }
+});
+
+test("a new installation is marked and keeps the empty list", async () => {
+    const state = install();
+    await applyInstalledDefaults("install");
+    assert.equal(state.stored, undefined);
+    assert.equal(state.extra[INSTALLED_DEFAULTS_KEY], DEFAULTS_VERSION);
+    assert.deepEqual((await getProxySettings()).allowedOrigins, []);
+    // Its later updates add nothing.
+    await applyInstalledDefaults("update");
+    assert.equal(state.stored, undefined);
+    assert.deepEqual((await getProxySettings()).allowedOrigins, []);
+});
+
+test("an update of an older installation that never saved keeps its sites", async () => {
+    const state = install();
+    await applyInstalledDefaults("update");
+    const settings = await getProxySettings();
+    assert.deepEqual(settings.allowedOrigins, [...LEGACY_DEFAULT_ORIGINS]);
+    assert.deepEqual(settings.proxyOrigins, [...LEGACY_DEFAULT_ORIGINS]);
+    assert.equal(socketPermission(settings, "https://mole.61.com.tw"), "allow");
+    assert.equal(socketPermission(settings, X), "ask");
+    // Only once: a second update changes nothing.
+    const writes = state.writes;
+    await applyInstalledDefaults("update");
+    assert.equal(state.writes, writes);
+});
+
+test("an update never changes settings the user saved", async () => {
+    const state = install();
+    const mine = {
+        ...defaultProxySettings(),
+        allowedOrigins: [X],
+        proxyOrigins: [X],
+    };
+    state.stored = mine;
+    await applyInstalledDefaults("update");
+    assert.deepEqual(state.stored, mine);
+    assert.equal(state.writes, 0);
 });
 
 test("an allow-list the user edited is read as saved", async () => {

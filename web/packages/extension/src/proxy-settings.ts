@@ -1,6 +1,9 @@
 import {
     defaultProxySettings,
     DEFAULTS_VERSION,
+    INSTALLED_DEFAULTS_KEY,
+    installedDefaultsAction,
+    legacyDefaultSettings,
     PROXY_STORAGE_KEY,
     upgradeLegacyDefaults,
     validateProxySettings,
@@ -106,6 +109,36 @@ export function replaceProxySettings(
             throw new SettingsConflictError();
         }
         return next;
+    });
+}
+
+/**
+ * Called from `runtime.onInstalled`. A new installation is marked as starting
+ * with the empty default list; an older installation that is updated and never
+ * saved socket settings gets the site list it has been using saved, so an
+ * update never takes a website away from an installed user.
+ */
+export async function applyInstalledDefaults(reason: string): Promise<void> {
+    await withSettingsLock(async () => {
+        const data = await browser.storage.local.get([
+            PROXY_STORAGE_KEY,
+            INSTALLED_DEFAULTS_KEY,
+        ]);
+        const action = installedDefaultsAction(
+            reason,
+            data[PROXY_STORAGE_KEY] !== undefined,
+            data[INSTALLED_DEFAULTS_KEY] !== undefined,
+        );
+        if (action === "mark") {
+            await browser.storage.local.set({
+                [INSTALLED_DEFAULTS_KEY]: DEFAULTS_VERSION,
+            });
+        } else if (action === "keep-legacy") {
+            await browser.storage.local.set({
+                [PROXY_STORAGE_KEY]: legacyDefaultSettings(),
+                [INSTALLED_DEFAULTS_KEY]: 2,
+            });
+        }
     });
 }
 

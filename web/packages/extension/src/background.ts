@@ -5,6 +5,7 @@ import {
     openOnboardPage,
 } from "./utils";
 import { isMessage } from "./messages";
+import { applyInstalledDefaults } from "./proxy-settings";
 import { registerSocketBridge } from "./socket-bridge-background";
 
 /**
@@ -339,6 +340,13 @@ browser.storage.onChanged.addListener(async (changes, namespace) => {
 });
 
 async function handleInstalled(details: chrome.runtime.InstalledDetails) {
+    try {
+        // New installations start with no allowed website; updates keep the
+        // site list an older installation has been using.
+        await applyInstalledDefaults(details.reason);
+    } catch (error) {
+        console.error("Timffle: could not store the socket defaults", error);
+    }
     if (
         details.reason === browser.runtime.OnInstalledReason.INSTALL &&
         !(await hasAllUrlsPermission())

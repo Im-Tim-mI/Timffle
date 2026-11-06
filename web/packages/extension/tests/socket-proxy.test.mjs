@@ -13,6 +13,9 @@ import {
     mergeSocketProxies,
     resolveSocketAccess,
     upgradeLegacyDefaults,
+    installedDefaultsAction,
+    legacyDefaultSettings,
+    LEGACY_DEFAULT_ORIGINS,
     DEFAULTS_VERSION,
     DEFAULT_ALLOWED_ORIGINS,
     HELPER_PROXY_URL,
@@ -84,125 +87,56 @@ test("a game page URL with a path maps to its origin", () => {
         "helper",
     );
 });
-test("never-edited default lists of releases 1 and 2 become empty", () => {
+// Installed users keep the sites they had; only new installations start empty.
+test("an untouched first-release list still grows to the release 2 list", () => {
+    for (const legacy of [
+        V1_DEFAULTS,
+        [...V1_DEFAULTS].reverse(),
+        [...V1_DEFAULTS, V1_DEFAULTS[0]],
+    ]) {
+        const upgraded = upgradeLegacyDefaults({
+            enabled: true,
+            mode: "helper",
+            proxyUrl: "",
+            allowedOrigins: legacy,
+            proxyOrigins: legacy,
+            deniedOrigins: [],
+        });
+        assert.deepEqual(upgraded.allowedOrigins, V2_DEFAULTS);
+        assert.deepEqual(upgraded.proxyOrigins, V2_DEFAULTS);
+        assert.equal(upgraded.defaultsVersion, 2);
+        assert.equal(socketPermission(upgraded, V2_DEFAULTS[2]), "allow");
+    }
+    assert.deepEqual([...LEGACY_DEFAULT_ORIGINS], V2_DEFAULTS);
+});
+test("installed users' lists are never emptied or trimmed by an update", () => {
     for (const defaultsVersion of [undefined, 1, 2]) {
-        for (const legacy of [
-            V1_DEFAULTS,
-            [...V1_DEFAULTS].reverse(),
-            [...V1_DEFAULTS, V1_DEFAULTS[0]],
+        const lists = [
             V2_DEFAULTS,
             [...V2_DEFAULTS].reverse(),
-        ]) {
-            const saved = {
-                enabled: true,
-                mode: "helper",
-                proxyUrl: "",
-                allowedOrigins: legacy,
-                proxyOrigins: legacy,
-                deniedOrigins: [],
-            };
-            if (defaultsVersion !== undefined) {
-                saved.defaultsVersion = defaultsVersion;
-            }
-            const upgraded = upgradeLegacyDefaults(saved);
-            const what = `${defaultsVersion} ${legacy.join(" ")}`;
-            assert.deepEqual(upgraded.allowedOrigins, [], what);
-            assert.deepEqual(upgraded.proxyOrigins, [], what);
-            assert.equal(upgraded.defaultsVersion, DEFAULTS_VERSION, what);
-            assert.equal(upgraded.mode, "helper", what);
-            // The former default sites are now asked about.
-            assert.equal(socketPermission(upgraded, legacy[0]), "ask", what);
-        }
-    }
-    // The connection method and the proxy URL belong to the user.
-    const manual = upgradeLegacyDefaults({
-        enabled: false,
-        mode: "websocket",
-        proxyUrl: url,
-        allowedOrigins: V2_DEFAULTS,
-        proxyOrigins: V2_DEFAULTS,
-        deniedOrigins: [],
-        defaultsVersion: 2,
-    });
-    assert.deepEqual(manual.allowedOrigins, []);
-    assert.deepEqual(manual.proxyOrigins, []);
-    assert.equal(manual.enabled, false);
-    assert.equal(manual.mode, "websocket");
-    assert.equal(manual.proxyUrl, url);
-});
-test("legacy settings with a custom proxy and the untouched default list give its URL to nobody", () => {
-    // Saved before there were two lists: one Mole-only list, no defaultsVersion.
-    const stored = {
-        enabled: true,
-        mode: "websocket",
-        proxyUrl: url,
-        allowedOrigins: V1_DEFAULTS,
-    };
-    const validated = validateProxySettings(stored);
-    assert.equal(validated.valid, true);
-    const upgraded = upgradeLegacyDefaults(validated.settings);
-    assert.deepEqual(upgraded.allowedOrigins, []);
-    assert.deepEqual(upgraded.proxyOrigins, []);
-    for (const origin of [...V2_DEFAULTS, GAME]) {
-        assert.equal(
-            applyProxySettings({}, upgraded, origin).socketProxy,
-            undefined,
-            origin,
-        );
-    }
-});
-test("an upgrade judges each list on its own and never replaces one the user changed", () => {
-    const mine = [GAME];
-    const base = {
-        enabled: true,
-        mode: "websocket",
-        proxyUrl: url,
-        deniedOrigins: [],
-        defaultsVersion: 2,
-    };
-    // Only the list that receives the proxy's URL was changed: it keeps
-    // exactly its sites, however the other one is treated.
-    const proxy = upgradeLegacyDefaults({
-        ...base,
-        allowedOrigins: V2_DEFAULTS,
-        proxyOrigins: mine,
-    });
-    assert.deepEqual(proxy.proxyOrigins, mine);
-    assert.deepEqual(proxy.allowedOrigins, []);
-    const helper = upgradeLegacyDefaults({
-        ...base,
-        allowedOrigins: mine,
-        proxyOrigins: V1_DEFAULTS,
-    });
-    assert.deepEqual(helper.allowedOrigins, mine);
-    assert.deepEqual(helper.proxyOrigins, []);
-});
-test("lists the user edited are kept, whatever release saved them", () => {
-    const base = {
-        enabled: true,
-        mode: "helper",
-        proxyUrl: "",
-        deniedOrigins: [],
-    };
-    for (const defaultsVersion of [undefined, 1, 2]) {
-        for (const allowedOrigins of [
-            [V1_DEFAULTS[0]],
-            [V1_DEFAULTS[1]],
             V2_DEFAULTS.slice(0, 6),
             [...V1_DEFAULTS, GAME],
             [...V2_DEFAULTS, GAME],
             [GAME],
             [],
-        ]) {
+        ];
+        if (defaultsVersion !== undefined) {
+            // Saved on purpose with a version: stays Mole-only.
+            lists.push(V1_DEFAULTS);
+        }
+        for (const list of lists) {
             const saved = {
-                ...base,
-                allowedOrigins,
-                proxyOrigins: allowedOrigins,
+                enabled: true,
+                mode: "helper",
+                proxyUrl: "",
+                allowedOrigins: list,
+                proxyOrigins: list,
+                deniedOrigins: ["https://no.example"],
             };
             if (defaultsVersion !== undefined) {
                 saved.defaultsVersion = defaultsVersion;
             }
-            assert.deepEqual(upgradeLegacyDefaults(saved), saved);
+            assert.equal(upgradeLegacyDefaults(saved), saved);
         }
     }
 });
@@ -221,46 +155,31 @@ test("settings saved with defaults version 3 or later are never changed", () => 
             assert.equal(upgradeLegacyDefaults(saved), saved);
         }
     }
-    // Saved again on purpose: the former default sites stay allowed, in
-    // both lists, and nothing else is.
-    const deliberate = {
-        enabled: true,
-        mode: "helper",
-        proxyUrl: "",
-        allowedOrigins: V1_DEFAULTS,
-        proxyOrigins: V1_DEFAULTS,
-        deniedOrigins: [],
-        defaultsVersion: DEFAULTS_VERSION,
-    };
-    assert.equal(socketPermission(deliberate, V1_DEFAULTS[0]), "allow");
-    assert.equal(resolveSocketAccess(deliberate, GAME), undefined);
-    const deliberateProxy = { ...deliberate, mode: "websocket", proxyUrl: url };
-    assert.equal(upgradeLegacyDefaults(deliberateProxy), deliberateProxy);
-    assert.equal(
-        applyProxySettings({}, deliberateProxy, GAME).socketProxy,
-        undefined,
-    );
 });
-test("an upgrade never touches the deny list", () => {
-    for (const legacy of [V1_DEFAULTS, V2_DEFAULTS]) {
-        const deniedOrigins = ["https://no.example", "http://no.example"];
-        const upgraded = upgradeLegacyDefaults({
-            enabled: true,
-            mode: "helper",
-            proxyUrl: "",
-            allowedOrigins: legacy,
-            proxyOrigins: legacy,
-            deniedOrigins,
-            defaultsVersion: 2,
-        });
-        assert.deepEqual(upgraded.allowedOrigins, []);
-        assert.equal(upgraded.deniedOrigins, deniedOrigins);
-        assert.deepEqual(deniedOrigins, [
-            "https://no.example",
-            "http://no.example",
-        ]);
-        assert.equal(socketPermission(upgraded, "https://no.example"), "deny");
-    }
+test("a new installation is marked; an old one that never saved keeps its sites", () => {
+    assert.equal(installedDefaultsAction("install", false, false), "mark");
+    assert.equal(installedDefaultsAction("install", true, false), "mark");
+    assert.equal(installedDefaultsAction("install", false, true), "none");
+    // Updated from a release that allowed sites by default, nothing saved.
+    assert.equal(
+        installedDefaultsAction("update", false, false),
+        "keep-legacy",
+    );
+    // Saved settings are the user's; a marked installation started empty.
+    assert.equal(installedDefaultsAction("update", true, false), "none");
+    assert.equal(installedDefaultsAction("update", false, true), "none");
+    assert.equal(
+        installedDefaultsAction("chrome_update", false, false),
+        "none",
+    );
+    const legacy = legacyDefaultSettings();
+    assert.deepEqual(legacy.allowedOrigins, V2_DEFAULTS);
+    assert.deepEqual(legacy.proxyOrigins, V2_DEFAULTS);
+    assert.equal(legacy.mode, "helper");
+    assert.equal(legacy.enabled, true);
+    assert.equal(validateProxySettings(legacy).valid, true);
+    assert.equal(socketPermission(legacy, V2_DEFAULTS[6]), "allow");
+    assert.equal(socketPermission(legacy, GAME), "ask");
 });
 test("defaultsVersion survives validation only as a positive integer", () => {
     const base = { ...settings, mode: "helper", proxyUrl: "" };
