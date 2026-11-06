@@ -58,6 +58,20 @@ python3 verify_flash_goldens.py                       # 只檢查最新一次 Fl
 
 比對時會忽略以 `~` 開頭的行（計時、版本、各播放器容許不同的原始數值）。一個黃金答案**至少要跑兩次真 Flash**確認輸出穩定才存。
 
+### 讓 Flash 用測試框架的裝置字型（錄影像黃金圖）
+
+Rust 測試框架在 `with_default_font = true` 時把所有內建名稱（`_sans`、`_serif`、`_typewriter`、日文的）都畫成 Ruffle 內嵌的 Noto Sans 子集（`core/assets/notosans.subset.ttf.gz`，只有 regular）。Wine 下的 Flash 原本用系統的 Arial 替代字型（Liberation Sans），用真 Flash 錄 `output.expected.png` 時，裝置字就會因為字型不同而多出幾千個離群點。錄之前在**自己的** prefix 裝同一個字型：
+
+```sh
+WINE_DIR=/path/to/wine/bin ./install_test_fonts.sh /path/to/your-wineprefix
+```
+
+- `make_test_fonts.py`（不需要第三方模組）從子集做出兩個檔：`NotoSans-TestRegular.ttf`（`usWinAscent/Descent` 改成 Ruffle 用的 ascender／descender 1069／293；合併過數學符號的子集原本是 3105／2550，GDI 用這兩個值排行）與 `NotoSans-TestBold.ttf`（同樣的輪廓，標成粗體：框架要粗體也是畫 regular，GDI 才不會自己加粗）。家族名是 `Timffle Test Sans`，不和主機 fontconfig 的完整 Noto Sans（輪廓不同、有真的粗體）混在一起。
+- 腳本把兩個檔複製到 `drive_c/windows/Fonts`、寫進 `HKLM\Software\Microsoft\Windows NT\CurrentVersion\Fonts`，再在 `HKLM\…\FontSubstitutes` 與 `HKCU\Software\Wine\Fonts\Replacements` 把 Arial、Times New Roman、Courier New、Verdana、Tahoma、Helvetica、Times、Courier 與 MS Gothic／Mincho 系列指到它。這會改變那個 prefix 裡所有程式的字，**不要對共用的 prefix 跑**。
+- 驗證：Flash 32 的 `TextField.getLineMetrics` 對 `_sans`、`_serif`、`_typewriter`、Arial 等名稱（一般與粗體）都回與 `Timffle Test Sans` 相同的寬度與 ascent／descent（9 px 的 "Simple Stage3D Sprite Demo v1 - 49 created"：寬 183、ascent 10、descent 3；Liberation Sans 是 188／8／2）。
+- 剩下的差異是點陣化：Flash 用提示＋反鋸齒的字形畫裝置字（與 `stage.quality` 無關，LOW 也一樣），測試框架在 `quality = "low"` 下畫無反鋸齒的輪廓。影像比對沒有遮罩，這部分仍由 `max_outliers` 容納。
+- 用過的錄製：`avm2/stage3d_bitmap`、`avm2/away3d_advanced_shallow_water_demo`（2026-11-06，各自的 `test.toml` 有方法）。
+
 ### 新增一個測試
 
 1. 在 `src/` 放一個 Haxe 類別：`H.init("測試名")` → 一連串 `H.log("…")` → `H.done()`。想當 Ruffle 自身回歸測試用的，改用 `Out.start/line/finish`（`-D harness` 時走回報，否則是 `trace`，格式對得上 Ruffle 的 `output.txt`）。
