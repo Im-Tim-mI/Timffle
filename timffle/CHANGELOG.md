@@ -7,7 +7,7 @@
 **PRO_bata 併入 main**（tim：將 PRO_bata 併進 main）。下面是 PRO_bata 上原本「未發布」的全部內容，加上 main 的 26345～26347。Loader 的建構時機以 PRO_bata 的版本為準（`enterFrame` 之後建構，取代 26344 的預載步驟做法）；測試 `loader_try_click_root`、`xml_appendchild_swf_v21` 與 `from_shumway/as3-loader/events/loader-events` 採 PRO_bata 的結果。小幫手仍是 **1.4.1**。
 
 - **「Timffle 對 Ruffle 的修補」圖表**（併入 `chart-100` 分支）：合併後在 main 上重跑 Ruffle 的 `stub-report`：4,560 項全部實作、0 缺少、0 空殼（100%）；3D 與網路兩組都是 100%；補齊 799 個 API；黃金答案 47 份。清單多了「外掛先報 Flash 32，網站不收就自動改報 34」。
-- **合併時的取捨**：`core/src/player.rs` 自動合併時把 26344 的 `preload_inner` 帶回來，已改回 PRO_bata 的版本，只留 26347 的 `with_version_string`；`Capabilities.version` 的覆寫接到 PRO_bata 新的 `version_string()`。合併後的引擎（`core`、`render`、`web/src`）與 PRO_bata `e3433aa85` 只差 26347 的版本字串。
+- **合併時的取捨**：`core/src/player.rs` 自動合併時把 26344 的 `preload_inner` 帶回來，已改回 PRO_bata 的版本，只留 26347 的 `with_version_string`；`Capabilities.version` 的覆寫接到 PRO_bata 新的 `version_string()`。合併後的引擎（`core`、`render`、`web/src`）與 PRO_bata `6b84cc91e` 只差 26347 的版本字串。
 - **驗證**：`cargo check -p ruffle_core`、擴充功能單元測試 327 通過；Chrome 155 無頭：陸版 `http://mole.61.com/` 自動改報 34 並載入 `Client.swf`；擴充功能內建播放器 `t0hello` 得到 `WIN 32,0,0,465`。完整的 Ruffle 測試套件沒有在合併後重跑（PRO_bata 上一次是 GT 720 上 4,684 通過、0 失敗）。
 
 ### PRO_bata：API 補齊
