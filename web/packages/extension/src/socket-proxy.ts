@@ -40,42 +40,42 @@ export interface ProxySettings {
 }
 
 /**
- * Sites that may use sockets out of the box: Taomee Taiwan's 摩爾莊園 (mole),
- * 賽爾號 (seer), 小花仙 (hua) and 彈彈堂 (ddt), each over HTTP and HTTPS.
+ * Websites that may use sockets out of the box: none. Every website is asked
+ * on first use (socket helper mode) or has to be added by the user (custom
+ * WebSocket proxy mode).
  */
-export const DEFAULT_ALLOWED_ORIGINS = [
-    "https://mole.61.com.tw",
-    "http://mole.61.com.tw",
-    "https://seer.61.com.tw",
-    "http://seer.61.com.tw",
-    "https://hua.61.com.tw",
-    "http://hua.61.com.tw",
-    "https://ddt.61.com.tw",
-    "http://ddt.61.com.tw",
-];
+export const DEFAULT_ALLOWED_ORIGINS: readonly string[] = [];
 
-/** Bumped whenever `DEFAULT_ALLOWED_ORIGINS` gains sites. */
-export const DEFAULTS_VERSION = 2;
+/** Bumped whenever `DEFAULT_ALLOWED_ORIGINS` changes. */
+export const DEFAULTS_VERSION = 3;
 
 /**
- * Default site lists of earlier releases. A saved list that is still exactly
- * one of them (and was saved before `defaultsVersion` existed) was never
- * edited by the user, so it follows the new defaults.
+ * Default site lists of earlier releases (versions 1 and 2). A saved list
+ * that is still exactly one of them, in settings saved before version 3, was
+ * never chosen by the user, so it follows the current defaults.
  */
 const LEGACY_DEFAULT_ORIGINS: readonly (readonly string[])[] = [
     ["https://mole.61.com.tw", "http://mole.61.com.tw"],
+    [
+        "https://mole.61.com.tw",
+        "http://mole.61.com.tw",
+        "https://seer.61.com.tw",
+        "http://seer.61.com.tw",
+        "https://hua.61.com.tw",
+        "http://hua.61.com.tw",
+        "https://ddt.61.com.tw",
+        "http://ddt.61.com.tw",
+    ],
 ];
 
 /**
  * Brings never-edited settings from an older release up to the current
- * default site list. Anything the user chose (a different list, or any
- * settings saved by this release or later) is returned unchanged, so an
- * explicit Mole-only list stays Mole-only once it is saved again.
+ * default site list (which is empty). Anything the user chose (a list with
+ * any other content, or any settings saved by this release or later) is
+ * returned unchanged, so a list the user saved is never emptied.
  *
  * Each of the two allow-lists is judged on its own, and a list that is not an
- * earlier default is never replaced. Settings saved before the lists were
- * separated have one list's sites in both, so a never-edited list is upgraded
- * in both modes.
+ * earlier default is never replaced. The deny list is never touched.
  */
 export function upgradeLegacyDefaults(settings: ProxySettings): ProxySettings {
     if ((settings.defaultsVersion ?? 0) >= DEFAULTS_VERSION) {

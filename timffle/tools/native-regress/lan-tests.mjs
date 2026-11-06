@@ -243,7 +243,7 @@ try{
   await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()');
   await chrome.eval(opts.sessionId,'chrome.storage.sync.set({autostart:true,autoplay:"on",unmuteOverlay:"hidden",allowScriptAccess:true,preferredRenderer:"canvas"})');
   // The LAN website and the same server by a name are always allowed; the "asked" sites are not listed at all.
-  await setSettings({enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:[lanOrigin,nameOrigin,...['mole','seer','hua','ddt'].flatMap(h=>['https://'+h+'.61.com.tw','http://'+h+'.61.com.tw'])],proxyOrigins:[],deniedOrigins:[],defaultsVersion:2});
+  await setSettings({enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:[lanOrigin,nameOrigin],proxyOrigins:[],deniedOrigins:[],defaultsVersion:3});
   // Pages loaded before the extension has registered its page-world scripts never get Ruffle; wait for the registration.
   add('page-world-scripts-registered',!!await until(async()=>(await withServiceWorker(sw=>chrome.eval(sw,'chrome.scripting.getRegisteredContentScripts().then(r=>r.map(x=>x.id).sort().join())'))).includes('ruffle'),20000));
  }

@@ -192,7 +192,8 @@ try{
  const r5=await probe(t3,25000);
  add('always-allow-connects',good(r5),{r5});
  const s2=await settingsNow();
- add('always-allow-is-saved',s2.allowedOrigins.includes(origin)&&!s2.deniedOrigins.includes(origin)&&s2.allowedOrigins.includes('https://mole.61.com.tw'),{s2});
+ // Fresh settings allow no website, so the answer is the only entry.
+ add('always-allow-is-saved',s2.allowedOrigins.length===1&&s2.allowedOrigins[0]===origin&&!s2.deniedOrigins.includes(origin),{s2});
  await close(t3.targetId);
  const t4=await fixtureTab(origin,'');
  const r6=await probe(t4,25000);
@@ -310,12 +311,12 @@ try{
  pop=await openPopup(blank);ps=await popupState(pop);
  add('popup-has-no-socket-section-for-non-websites',ps.visible===false,{ps});
  await closePopup(pop);await close(blank.targetId);
- await setSettings({enabled:false,mode:'helper',proxyUrl:'',allowedOrigins:['https://mole.61.com.tw'],deniedOrigins:[]});
+ await setSettings({enabled:false,mode:'helper',proxyUrl:'',allowedOrigins:['https://game.example'],deniedOrigins:[]});
  const off=await fixtureTab(origin,'bare=1');await chrome.wait(off.sessionId,'document.readyState==="complete"');await delay(600);
  pop=await openPopup(off);ps=await popupState(pop);
  add('popup-says-sockets-are-off-and-offers-nothing',ps.visible&&ps.sites.length===1&&ps.sites[0].state===T('timffle_popup_off')&&ps.sites[0].allow===null&&ps.sites[0].select===null,{ps});
  await closePopup(pop);
- await setSettings({enabled:true,mode:'websocket',proxyUrl:'ws://127.0.0.1:1/connect?host={host}&port={port}',allowedOrigins:['https://mole.61.com.tw'],deniedOrigins:[]});
+ await setSettings({enabled:true,mode:'websocket',proxyUrl:'ws://127.0.0.1:1/connect?host={host}&port={port}',allowedOrigins:['https://game.example'],deniedOrigins:[]});
  await delay(500);
  pop=await openPopup(off);ps=await popupState(pop);
  add('popup-with-a-custom-proxy-says-it-never-asks',ps.visible&&ps.sites[0].state===T('timffle_popup_proxy_not_allowed')&&ps.sites[0].allow!==null,{ps});

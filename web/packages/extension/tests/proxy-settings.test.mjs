@@ -91,36 +91,89 @@ test("saving returns the settings as they are stored", async () => {
     );
 });
 
-test("settings stored by a release before the default list grew follow the new defaults in both modes", async () => {
+test("fresh settings allow no website", async () => {
+    const state = install();
+    const settings = await getProxySettings();
+    assert.deepEqual(settings, defaultProxySettings());
+    assert.deepEqual(settings.allowedOrigins, []);
+    assert.deepEqual(settings.proxyOrigins, []);
+    assert.deepEqual(DEFAULT_ALLOWED_ORIGINS, []);
+    assert.equal(socketPermission(settings, "https://game.example"), "ask");
+    assert.equal(state.writes, 0);
+});
+
+test("never-edited default lists of earlier releases are read as empty in both modes", async () => {
     const proxyUrl =
         "ws://127.0.0.1:18770/connect?host={host}&port={port}&token=T";
-    for (const mode of ["helper", "websocket"]) {
-        const state = install();
-        // One Mole-only list, no defaultsVersion, no separate proxy list.
-        state.stored = {
-            enabled: true,
-            mode,
-            proxyUrl: mode === "websocket" ? proxyUrl : "",
-            allowedOrigins: ["https://mole.61.com.tw", "http://mole.61.com.tw"],
-        };
-        const settings = await getProxySettings();
-        assert.deepEqual(settings.allowedOrigins, DEFAULT_ALLOWED_ORIGINS);
-        assert.deepEqual(settings.proxyOrigins, DEFAULT_ALLOWED_ORIGINS);
-        assert.equal(settings.defaultsVersion, DEFAULTS_VERSION);
-        // Whichever way sockets are reached, every default site gets it.
-        for (const origin of DEFAULT_ALLOWED_ORIGINS) {
-            assert.equal(resolveSocketAccess(settings, origin)?.mode, mode);
+    const v1 = ["https://mole.61.com.tw", "http://mole.61.com.tw"];
+    const v2 = ["mole", "seer", "hua", "ddt"].flatMap((name) => [
+        `https://${name}.61.com.tw`,
+        `http://${name}.61.com.tw`,
+    ]);
+    for (const [list, extra] of [
+        // One list, no defaultsVersion, no separate proxy list.
+        [v1, {}],
+        [v2, { proxyOrigins: v2, deniedOrigins: [X], defaultsVersion: 2 }],
+    ]) {
+        for (const mode of ["helper", "websocket"]) {
+            const state = install();
+            state.stored = {
+                enabled: true,
+                mode,
+                proxyUrl: mode === "websocket" ? proxyUrl : "",
+                allowedOrigins: list,
+                ...extra,
+            };
+            const settings = await getProxySettings();
+            assert.deepEqual(settings.allowedOrigins, []);
+            assert.deepEqual(settings.proxyOrigins, []);
+            assert.deepEqual(settings.deniedOrigins, extra.deniedOrigins ?? []);
+            assert.equal(settings.defaultsVersion, DEFAULTS_VERSION);
+            // No former default site gets sockets without being asked.
+            for (const origin of list) {
+                assert.equal(resolveSocketAccess(settings, origin), undefined);
+            }
+            // Reading writes nothing.
+            assert.equal(state.writes, 0);
+            if (mode === "helper") {
+                // The next save keeps what was read.
+                const saved = await saveProxySettings(settings);
+                assert.deepEqual(saved, settings);
+                assert.deepEqual(await getProxySettings(), saved);
+            } else {
+                // A custom proxy needs the user to add a website first.
+                await assert.rejects(
+                    saveProxySettings(settings),
+                    /origins_required/u,
+                );
+            }
         }
-        // Reading writes nothing; the next save keeps what was read.
-        assert.equal(state.writes, 0);
-        const saved = await saveProxySettings(settings);
-        assert.deepEqual(saved, settings);
-        assert.deepEqual(await getProxySettings(), saved);
     }
 });
 
+test("an allow-list the user edited is read as saved", async () => {
+    const state = install();
+    state.stored = {
+        enabled: true,
+        mode: "helper",
+        proxyUrl: "",
+        allowedOrigins: ["https://mole.61.com.tw", X],
+        proxyOrigins: [X],
+        deniedOrigins: [],
+        defaultsVersion: 2,
+    };
+    const settings = await getProxySettings();
+    assert.deepEqual(settings.allowedOrigins, ["https://mole.61.com.tw", X]);
+    assert.deepEqual(settings.proxyOrigins, [X]);
+    assert.equal(settings.defaultsVersion, 2);
+});
+
 test("comparing settings looks at every field and the order of the lists", () => {
-    const a = defaultProxySettings();
+    const a = {
+        ...defaultProxySettings(),
+        allowedOrigins: [X, "https://y.example"],
+        proxyOrigins: [X],
+    };
     assert.equal(sameProxySettings(a, structuredClone(a)), true);
     for (const change of [
         { enabled: false },
