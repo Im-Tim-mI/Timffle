@@ -2,3 +2,12 @@ num_ticks = 400
 
 [player_options]
 with_audio = true
+
+# Test.as is compiled by the test framework (asc). Its output.txt was recorded with this
+# Test.as in Flash Player 32 (Wine, timffle/difftest/as3_flash.py, two runs identical).
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32

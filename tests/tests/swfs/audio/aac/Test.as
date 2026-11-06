@@ -1,5 +1,6 @@
 ﻿package {
 	import flash.display.MovieClip;
+	import flash.events.Event;
 	import flash.media.Video;
 	import flash.net.NetStream;
 	import flash.net.NetConnection;
@@ -12,8 +13,10 @@
 	public class Test extends MovieClip {
 		// Every tone has this frequency, regardless of channel count and sampling rate.
 		static const FREQ = 444.0;
+		// Seconds into each tone (NetStream.time) at which the spectrum is captured.
+		static const MEASURE_AT = 0.7;
 
-		public static function startTone(mc:MovieClip, file:String) {
+		public static function startTone(mc:MovieClip, file:String) : NetStream {
 			trace("Starting tone:", file);
 
 			var connection:NetConnection = new NetConnection();
@@ -29,6 +32,7 @@
 			var video = new Video();
 			video.attachNetStream(stream);
 			mc.addChild(video);
+			return stream;
 		}
 
 		public static function measureChannel(ba: ByteArray) : Point {
@@ -129,29 +133,39 @@
 				(function(mc:MovieClip, i:int) {
 
 					setTimeout(function(e){
-						startTone(mc, flvs[i]);
+						var stream:NetStream = startTone(mc, flvs[i]);
+
+						// Measure at a fixed position of the tone (0.7 s into the 1 s file, by
+						// NetStream.time) instead of a fixed delay after play(): the delay put
+						// the capture window wherever the player's timer and frame order left it,
+						// and the AAC tone's small amplitude ripple made the wave check pass or
+						// fail depending on that phase.
+						var onFrame:Function = function(e) {
+							if (stream.time < MEASURE_AT) {
+								return;
+							}
+							mc.removeEventListener(Event.ENTER_FRAME, onFrame);
+							trace("Measuring...");
+
+							var ba:ByteArray = new ByteArray();
+							// We could use the `FFTMode` parameter, if it wasn't buggy
+							// to the degree that it's mathematically almost meaningless.
+							SoundMixer.computeSpectrum(ba);
+
+							var ampl = captureToneAmplitude(ba);
+							if (i >= 3) {
+								ampl *= Math.pow(10, 3/20); // compensating for the stereo upmix power division
+							}
+
+							if (ampl >= 0.95 && ampl <= 1.05) {
+								trace("PASS");
+							}
+							else {
+								trace("FAIL");
+							}
+						};
+						mc.addEventListener(Event.ENTER_FRAME, onFrame);
 					}, i*2000);
-
-					setTimeout(function(e){
-						trace("Measuring...");
-
-						var ba:ByteArray = new ByteArray();
-						// We could use the `FFTMode` parameter, if it wasn't buggy
-						// to the degree that it's mathematically almost meaningless.
-						SoundMixer.computeSpectrum(ba);
-
-						var ampl = captureToneAmplitude(ba);
-						if (i >= 3) {
-							ampl *= Math.pow(10, 3/20); // compensating for the stereo upmix power division
-						}
-
-						if (ampl >= 0.95 && ampl <= 1.05) {
-							trace("PASS");
-						}
-						else {
-							trace("FAIL");
-						}
-					}, i*2000 + 800);
 
 				})(this, i);
 			}
