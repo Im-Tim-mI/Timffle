@@ -65,7 +65,7 @@
     "timffle_options_example": "Példa:",
     "timffle_options_allowed_helper": "Mindig engedélyezett webhelyforrások (soronként egy)",
     "timffle_options_allowed_proxy": "Az egyéni proxyt használható webhelyforrások (soronként egy; megkapják a proxy URL-jét és a tokent)",
-    "timffle_options_allowed_help": "Csak pontos HTTP/HTTPS-források (séma, gazda, opcionális port); nem lehet * vagy útvonal. A Taomee játékai – 摩爾莊園, 賽爾號, 小花仙 és 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw és ddt.61.com.tw, mindegyik HTTP-n és HTTPS-en is) – alapértelmezés szerint engedélyezettek. A beágyazott lejátszók a keretük forrását használják; az önálló lejátszó az SWF URL-jének forrását. A helyi fájlok soha nem kapnak socketet.",
+    "timffle_options_allowed_help": "Csak pontos HTTP/HTTPS-források (séma, gazda, opcionális port); nem lehet * vagy útvonal. Alapértelmezés szerint egyetlen webhely sincs ezen a listán. A beágyazott lejátszók a keretük forrását használják; az önálló lejátszó az SWF URL-jének forrását. A helyi fájlok soha nem kapnak socketet.",
     "timffle_options_proxy_list_help": "Az egyéni proxynak saját listája van, a segédétől külön: ha egy webhelynek engedélyezed a segéd használatát, az soha nem kapja meg a proxy tokenjét. Ha módot váltasz, ez a mező a kiválasztott mód listáját mutatja.",
     "timffle_options_denied": "Mindig letiltott webhelyforrások (soronként egy)",
     "timffle_options_denied_help": "Ezektől a webhelyektől soha nem kérdez, és soha nem kapnak socketet, egyik kapcsolódási módban sem. Egy webhely nem szerepelhet mindkét listán.",

@@ -366,7 +366,7 @@
         "message": "Özel proxy'yi kullanabilecek site kaynakları (her satıra bir tane; proxy URL'sini ve token'ı alırlar)"
     },
     "timffle_options_allowed_help": {
-        "message": "Yalnızca tam HTTP/HTTPS kaynakları (şema, ana makine, isteğe bağlı bağlantı noktası); * veya yol olmaz. Taomee'nin 摩爾莊園, 賽爾號, 小花仙 ve 彈彈堂 oyunları (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw ve ddt.61.com.tw, her biri HTTP ve HTTPS üzerinden) varsayılan olarak izinlidir. Gömülü oynatıcılar çerçevelerinin kaynağını kullanır; bağımsız oynatıcı SWF URL'sinin kaynağını kullanır. Yerel dosyalar asla soket almaz."
+        "message": "Yalnızca tam HTTP/HTTPS kaynakları (şema, ana makine, isteğe bağlı bağlantı noktası); * veya yol olmaz. Varsayılan olarak bu listede hiçbir web sitesi yoktur. Gömülü oynatıcılar çerçevelerinin kaynağını kullanır; bağımsız oynatıcı SWF URL'sinin kaynağını kullanır. Yerel dosyalar asla soket almaz."
     },
     "timffle_options_proxy_list_help": {
         "message": "Özel proxy'nin yardımcıdan ayrı, kendine ait bir listesi vardır: bir sitenin yardımcıyı kullanmasına izin vermek ona proxy'nin token'ını asla vermez. Bağlantı yöntemini değiştirdiğinizde bu kutu seçtiğiniz yöntemin listesini gösterir."

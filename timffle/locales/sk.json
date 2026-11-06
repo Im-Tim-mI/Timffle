@@ -65,7 +65,7 @@
     "timffle_options_example": "Príklad:",
     "timffle_options_allowed_helper": "Vždy povolené pôvody lokalít (jeden na riadok)",
     "timffle_options_allowed_proxy": "Pôvody lokalít, ktoré smú používať vlastné proxy (jeden na riadok; dostanú adresu URL proxy a token)",
-    "timffle_options_allowed_help": "Iba presné pôvody HTTP/HTTPS (schéma, hostiteľ, voliteľný port); žiadne * ani cesty. Hry Taomee 摩爾莊園, 賽爾號, 小花仙 a 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw a ddt.61.com.tw, každá cez HTTP aj HTTPS) sú predvolene povolené. Vložené prehrávače používajú pôvod svojho rámca; samostatný prehrávač používa pôvod adresy URL súboru SWF. Lokálne súbory nikdy nedostanú sokety.",
+    "timffle_options_allowed_help": "Iba presné pôvody HTTP/HTTPS (schéma, hostiteľ, voliteľný port); žiadne * ani cesty. V predvolenom nastavení nie je v tomto zozname žiadna webová stránka. Vložené prehrávače používajú pôvod svojho rámca; samostatný prehrávač používa pôvod adresy URL súboru SWF. Lokálne súbory nikdy nedostanú sokety.",
     "timffle_options_proxy_list_help": "Vlastné proxy má vlastný zoznam, oddelený od zoznamu pomocníka: keď lokalite povolíte používať pomocníka, nikdy tým nezíska token proxy. Keď prepnete spôsob pripojenia, toto pole zobrazí zoznam zvoleného spôsobu.",
     "timffle_options_denied": "Vždy zamietnuté pôvody lokalít (jeden na riadok)",
     "timffle_options_denied_help": "Na tieto lokality sa nikdy nepýtame a nikdy nedostanú sokety, pri žiadnom spôsobe pripojenia. Lokalita nemôže byť v oboch zoznamoch.",

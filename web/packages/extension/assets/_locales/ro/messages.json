@@ -366,7 +366,7 @@
         "message": "Origini de site care pot folosi proxy-ul personalizat (una pe rând; primesc URL-ul proxy-ului și tokenul)"
     },
     "timffle_options_allowed_help": {
-        "message": "Doar origini HTTP/HTTPS exacte (schemă, gazdă, port opțional); fără * sau căi. Jocurile Taomee 摩爾莊園, 賽爾號, 小花仙 și 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw și ddt.61.com.tw, fiecare prin HTTP și HTTPS) sunt permise în mod implicit. Playerele încorporate folosesc originea cadrului lor; playerul independent folosește originea URL-ului SWF. Fișierele locale nu primesc niciodată socketuri."
+        "message": "Doar origini HTTP/HTTPS exacte (schemă, gazdă, port opțional); fără * sau căi. În mod implicit, această listă nu conține niciun site web. Playerele încorporate folosesc originea cadrului lor; playerul independent folosește originea URL-ului SWF. Fișierele locale nu primesc niciodată socketuri."
     },
     "timffle_options_proxy_list_help": {
         "message": "Proxy-ul personalizat are o listă proprie, separată de cea a asistentului: dacă permiți unui site să folosească asistentul, acesta nu primește niciodată tokenul proxy-ului. Când schimbi metoda de conectare, această casetă arată lista metodei alese."

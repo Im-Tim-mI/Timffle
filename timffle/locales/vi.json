@@ -65,7 +65,7 @@
     "timffle_options_example": "Ví dụ:",
     "timffle_options_allowed_helper": "Nguồn gốc trang web luôn được cho phép (mỗi dòng một mục)",
     "timffle_options_allowed_proxy": "Nguồn gốc trang web được phép dùng proxy tùy chỉnh (mỗi dòng một mục; chúng nhận URL proxy và token)",
-    "timffle_options_allowed_help": "Chỉ nhận nguồn gốc HTTP/HTTPS chính xác (giao thức, máy chủ, cổng tùy chọn); không dùng * hoặc đường dẫn. Các trò chơi của Taomee 摩爾莊園, 賽爾號, 小花仙 và 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw và ddt.61.com.tw, mỗi trò qua cả HTTP và HTTPS) được cho phép theo mặc định. Trình phát nhúng dùng nguồn gốc của khung chứa nó; trình phát độc lập dùng nguồn gốc của URL SWF. Tệp cục bộ không bao giờ được cấp socket.",
+    "timffle_options_allowed_help": "Chỉ nhận nguồn gốc HTTP/HTTPS chính xác (giao thức, máy chủ, cổng tùy chọn); không dùng * hoặc đường dẫn. Theo mặc định, danh sách này không có trang web nào. Trình phát nhúng dùng nguồn gốc của khung chứa nó; trình phát độc lập dùng nguồn gốc của URL SWF. Tệp cục bộ không bao giờ được cấp socket.",
     "timffle_options_proxy_list_help": "Proxy tùy chỉnh có danh sách riêng, tách biệt với danh sách của trình hỗ trợ: cho phép một trang web dùng trình hỗ trợ không bao giờ trao cho nó token của proxy. Khi bạn đổi phương thức kết nối, ô này hiển thị danh sách của phương thức bạn chọn.",
     "timffle_options_denied": "Nguồn gốc trang web luôn bị từ chối (mỗi dòng một mục)",
     "timffle_options_denied_help": "Các trang web này không bao giờ bị hỏi và không bao giờ được cấp socket, ở cả hai phương thức kết nối. Một trang web không thể nằm trong cả hai danh sách.",

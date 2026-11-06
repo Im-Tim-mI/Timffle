@@ -65,7 +65,7 @@
     "timffle_options_example": "Eksempel:",
     "timffle_options_allowed_helper": "Alltid tillatte nettstedsopphav (ett per linje)",
     "timffle_options_allowed_proxy": "Nettstedsopphav som kan bruke den egne proxyen (ett per linje; de får proxyens URL og tokenet)",
-    "timffle_options_allowed_help": "Bare nøyaktige HTTP/HTTPS-opphav (skjema, vert, valgfri port); ingen * eller stier. Taomees spill 摩爾莊園, 賽爾號, 小花仙 og 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw og ddt.61.com.tw, hvert over både HTTP og HTTPS) er tillatt som standard. Innebygde spillere bruker opphavet til rammen sin; den frittstående spilleren bruker opphavet til SWF-URL-en. Lokale filer får aldri sockets.",
+    "timffle_options_allowed_help": "Bare nøyaktige HTTP/HTTPS-opphav (skjema, vert, valgfri port); ingen * eller stier. Som standard står ingen nettsteder på denne listen. Innebygde spillere bruker opphavet til rammen sin; den frittstående spilleren bruker opphavet til SWF-URL-en. Lokale filer får aldri sockets.",
     "timffle_options_proxy_list_help": "Den egne proxyen har sin egen liste, atskilt fra hjelperens: å la et nettsted bruke hjelperen gir det aldri proxyens token. Når du bytter tilkoblingsmetode, viser dette feltet listen for metoden du valgte.",
     "timffle_options_denied": "Alltid avslåtte nettstedsopphav (ett per linje)",
     "timffle_options_denied_help": "Disse nettstedene blir aldri spurt og får aldri sockets, uansett tilkoblingsmetode. Et nettsted kan ikke stå på begge listene.",

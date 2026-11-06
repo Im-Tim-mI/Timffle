@@ -366,7 +366,7 @@
         "message": "Website-Origins, die den eigenen Proxy nutzen dürfen (eine pro Zeile; sie erhalten die Proxy-URL und das Token)"
     },
     "timffle_options_allowed_help": {
-        "message": "Nur genaue HTTP/HTTPS-Origins (Schema, Host, optional Port); kein * und keine Pfade. Die Spiele von Taomee – 摩爾莊園, 賽爾號, 小花仙 und 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw und ddt.61.com.tw, jeweils über HTTP und HTTPS) – sind standardmäßig erlaubt. Eingebettete Player verwenden den Origin ihres Frames; der eigenständige Player verwendet den Origin der SWF-URL. Lokale Dateien erhalten nie Sockets."
+        "message": "Nur genaue HTTP/HTTPS-Origins (Schema, Host, optional Port); kein * und keine Pfade. Standardmäßig steht keine Website auf dieser Liste. Eingebettete Player verwenden den Origin ihres Frames; der eigenständige Player verwendet den Origin der SWF-URL. Lokale Dateien erhalten nie Sockets."
     },
     "timffle_options_proxy_list_help": {
         "message": "Der eigene Proxy hat eine eigene Liste, getrennt von der des Hilfsprogramms: Wenn Sie einer Website das Hilfsprogramm erlauben, erhält sie nie das Token des Proxys. Wenn Sie die Verbindungsmethode wechseln, zeigt dieses Feld die Liste der gewählten Methode."
