@@ -195,8 +195,16 @@ impl MainWindow {
 
                 use ruffle_core::events::MouseWheelDelta;
                 use winit::event::MouseScrollDelta;
+                // Timffle: winit's line delta counts wheel notches (one per notch on
+                // every platform; X11 sent two before the vendored winit fix). Flash
+                // Player reports a notch as the system's lines per notch, 3 by default on
+                // Windows (`MouseEvent.delta` 3 and a TextField scrolls 3 lines, measured
+                // on Flash Player 32), so a notch is 3 lines here.
+                const LINES_PER_NOTCH: f64 = 3.0;
                 let delta = match delta {
-                    MouseScrollDelta::LineDelta(_, dy) => MouseWheelDelta::Lines(dy.into()),
+                    MouseScrollDelta::LineDelta(_, dy) => {
+                        MouseWheelDelta::Lines(f64::from(dy) * LINES_PER_NOTCH)
+                    }
                     MouseScrollDelta::PixelDelta(pos) => MouseWheelDelta::Pixels(pos.y),
                 };
                 let event = PlayerEvent::MouseWheel { delta };

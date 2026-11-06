@@ -1080,16 +1080,24 @@ impl EventProcessor {
             // those. In practice, even clicky scroll wheels appear to be reported by
             // evdev (and XInput2 in turn) as axis motion, so we don't otherwise
             // special-case these button presses.
-            4..=7 => WindowEvent::MouseWheel {
-                device_id,
-                delta: match event.detail {
-                    4 => MouseScrollDelta::LineDelta(0.0, 1.0),
-                    5 => MouseScrollDelta::LineDelta(0.0, -1.0),
-                    6 => MouseScrollDelta::LineDelta(1.0, 0.0),
-                    7 => MouseScrollDelta::LineDelta(-1.0, 0.0),
-                    _ => unreachable!(),
+            // Timffle: one wheel notch is a press and a release of the button; only the
+            // press scrolls (backport of upstream winit 03dad26c43, "x11: ignore mouse
+            // scroll button release events", not in any 0.30 release). Without it a
+            // device without smooth-scroll valuators (XTest, VNC/remote desktop servers)
+            // scrolled twice per notch.
+            4..=7 => match state {
+                ElementState::Pressed => WindowEvent::MouseWheel {
+                    device_id,
+                    delta: match event.detail {
+                        4 => MouseScrollDelta::LineDelta(0.0, 1.0),
+                        5 => MouseScrollDelta::LineDelta(0.0, -1.0),
+                        6 => MouseScrollDelta::LineDelta(1.0, 0.0),
+                        7 => MouseScrollDelta::LineDelta(-1.0, 0.0),
+                        _ => unreachable!(),
+                    },
+                    phase: TouchPhase::Moved,
                 },
-                phase: TouchPhase::Moved,
+                ElementState::Released => return,
             },
             8 => WindowEvent::MouseInput { device_id, state, button: MouseButton::Back },
 

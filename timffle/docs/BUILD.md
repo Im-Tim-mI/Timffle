@@ -1,6 +1,6 @@
 # 從原始碼建置
 
-本 repo 包含建置所需的全部原始碼（Ruffle、修補過的 rust-flash-lso、Timffle 的擴充功能與小幫手），不需要另外下載或套補丁。建置分三步：建置擴充功能（含 WebAssembly 核心）→ 交叉編譯連線小幫手 → 封裝發行 ZIP。每一步都有腳本，**在 repo 根目錄執行**；腳本只在 Unix 殼層（Linux、macOS、WSL）測試過。
+本 repo 包含建置所需的全部原始碼（Ruffle、修補過的 rust-flash-lso 與 winit、Timffle 的擴充功能與小幫手），不需要另外下載或套補丁。建置分三步：建置擴充功能（含 WebAssembly 核心）→ 交叉編譯連線小幫手 → 封裝發行 ZIP。每一步都有腳本，**在 repo 根目錄執行**；腳本只在 Unix 殼層（Linux、macOS、WSL）測試過。
 
 ## 1. 需要的工具
 
