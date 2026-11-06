@@ -2,6 +2,15 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26346 — 2026-11-06（main）
+
+**兩個網站載入問題**（tim：插件載入後網頁上方的導覽條不見；希望陸版摩爾莊園能載入）。小幫手仍是 **1.4.1**，不必重裝。兩項都對所有網站一樣，沒有針對特定網站的程式。
+
+- **HTTPS 網頁裡用 HTTP 嵌入的框架改用 HTTPS 再載一次**（新檔 `web/packages/extension/src/mixed-frames.ts`，`content.ts` 呼叫）：Chrome 會擋掉 HTTPS 網頁裡所有 HTTP 的 `<iframe>`／`<frame>`（混合內容），畫面上只剩空白。這**不是插件造成的**：沒裝插件的 Chrome 也一樣（實測：台服首頁 `https://mole.61.com.tw/` 的導覽條 `http://mole.61.com.tw/topbar/top_bar.html` 被擋，主控台 `Mixed Content … This request has been blocked`）。現在插件把這種框架的網址改成 `https://` 重新載入；反正原本就被擋，伺服器沒有 HTTPS 也不會更糟。只在插件對該頁啟用時生效。
+- **Flash 外掛改報 34.0、檔名照真的 Flash Player**（`web/packages/core/src/plugin-polyfill.ts`）：有些網站把 Flash 32（全球版最後一版，2021 年起停用）一律導到「請升級 Flash」頁，還會檢查外掛檔名是不是 `.dll`／`.plugin`。陸版摩爾莊園 `http://mole.61.com/` 就是這樣，原本裝了插件會跳到 `upgrade.html`，現在能載入到遊戲開始畫面（Chrome 155 無頭實測）。外掛描述改為 `Shockwave Flash 34.0 r0`，檔名依平台：Windows `pepflashplayer.dll`、macOS `PepperFlashPlayer.plugin`、其他 `libpepflashplayer.so`；任何「至少某版本」的檢查照樣通過。SWF 內的 `Capabilities.version` 不變。
+- **Ruffle 怎麼認出自己的外掛**：原本靠檔名 `ruffle.js`，現在改看外掛物件上的標記 `Symbol.for("ruffle.plugin")`（`polyfills.ts` 的 `isFlashEnabledBrowser`）；Firefox 的舊路徑改看外掛陣列有沒有 `install`（`content.ts`）。
+- **驗證**：擴充功能單元測試 327 通過（新增 `mixed-frames.test.mjs`）。
+
 ## 0.8.0.26345 — 2026-11-06（main）
 
 **預設不再允許任何網站使用 Socket 連線**（tim：從現在起不預設放行任何網站，淘米台灣的四個遊戲也一樣，讓使用者自己決定）。小幫手仍是 **1.4.1**，不必重裝。

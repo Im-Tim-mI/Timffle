@@ -141,6 +141,36 @@ class RufflePlugin extends RuffleMimeTypeArray implements Plugin {
     override get [Symbol.toStringTag](): string {
         return "Plugin";
     }
+
+    /**
+     * Timffle: marks the plugin objects made by this polyfill, so Ruffle can
+     * tell them from a real Flash Player without relying on the file name.
+     * `Symbol.for` is shared by every script of the page, whichever bundle
+     * checks it (see `isFlashEnabledBrowser` in polyfills.ts).
+     *
+     * @returns Always true.
+     */
+    get [Symbol.for("ruffle.plugin")](): boolean {
+        return true;
+    }
+}
+
+/**
+ * Timffle: the file name a real Flash Player plugin had in Chrome on this
+ * platform. Some websites only accept a plugin whose file name looks like a
+ * real Flash Player (a `.dll` or `.plugin`).
+ *
+ * @returns The plugin file name for this platform.
+ */
+function flashPluginFilename(): string {
+    const platform = (navigator.platform || "").toLowerCase();
+    if (platform.startsWith("win")) {
+        return "pepflashplayer.dll";
+    }
+    if (platform.startsWith("mac")) {
+        return "PepperFlashPlayer.plugin";
+    }
+    return "libpepflashplayer.so";
 }
 
 /**
@@ -218,11 +248,16 @@ class RufflePluginArray implements PluginArray {
 
 /**
  * A fake plugin designed to trigger Flash detection scripts.
+ *
+ * Timffle: it reports version 34 (the last regional Flash Player release)
+ * instead of 32 (the last global one). Some websites send version 32 to a
+ * "please upgrade" page because the global Flash Player stopped running in
+ * 2021; any check for a minimum version still passes with 34.
  */
 export const FLASH_PLUGIN = new RufflePlugin(
     "Shockwave Flash",
-    "Shockwave Flash 32.0 r0",
-    "ruffle.js",
+    "Shockwave Flash 34.0 r0",
+    flashPluginFilename(),
 );
 
 FLASH_PLUGIN.install({
