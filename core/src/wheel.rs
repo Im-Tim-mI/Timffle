@@ -63,6 +63,9 @@ pub struct WheelAccumulator {
     smooth_gesture: bool,
     /// Whether the last event sent in this gesture was handled by the movie.
     last_handled: bool,
+    /// Direction of the current gesture (sign of its lines), 0 before the
+    /// first movement.
+    direction: f64,
 }
 
 impl WheelAccumulator {
@@ -121,6 +124,7 @@ impl WheelAccumulator {
         if !continues {
             self.pending = 0.0;
             self.last_handled = false;
+            self.direction = 0.0;
             if !matches!(input, WheelInput::Pixels(_)) {
                 self.smooth_gesture = false;
             }
@@ -129,16 +133,23 @@ impl WheelAccumulator {
             return None;
         }
         // Reversing direction starts over instead of first undoing the
-        // unsent fraction.
-        if self.pending != 0.0 && self.pending.signum() != lines.signum() {
+        // unsent fraction (or paying back the line sent early).
+        let first_movement = self.direction != lines.signum();
+        if first_movement {
             self.pending = 0.0;
+            self.direction = lines.signum();
         }
 
         self.pending += lines;
         // The epsilon keeps ten 0.1-line steps from summing to 0.999….
-        let whole = (self.pending + self.pending.signum() * 1e-9).trunc();
+        let mut whole = (self.pending + self.pending.signum() * 1e-9).trunc();
         if whole == 0.0 {
-            return None;
+            if !(first_movement && matches!(input, WheelInput::Pixels(_))) {
+                return None;
+            }
+            // First movement of a smooth gesture: send a line now and owe
+            // the rest of it.
+            whole = self.direction;
         }
         self.pending -= whole;
         Some(MouseWheelDelta::Lines(whole))
@@ -221,15 +232,32 @@ mod tests {
     }
 
     #[test]
+    fn first_movement_sends_a_line_at_once() {
+        let mut acc = WheelAccumulator::new();
+        // macOS sends a 0 px "began" event first.
+        assert_eq!(acc.push(WheelInput::Pixels(0.0), 0.0), None);
+        assert_eq!(lines(acc.push(WheelInput::Pixels(5.0), 16.0)), Some(1.0));
+        // The early line is owed: the next line goes out at 40 px total.
+        assert_eq!(acc.push(WheelInput::Pixels(30.0), 32.0), None);
+        assert_eq!(lines(acc.push(WheelInput::Pixels(5.0), 48.0)), None);
+        assert_eq!(lines(acc.push(WheelInput::Pixels(40.0), 64.0)), Some(1.0));
+    }
+
+    #[test]
     fn fraction_is_dropped_after_pause_and_on_reverse() {
         let mut acc = WheelAccumulator::new();
-        assert_eq!(acc.push(WheelInput::Pixels(30.0), 0.0), None);
-        // A pause drops the 30 px.
-        assert_eq!(acc.push(WheelInput::Pixels(30.0), 1000.0), None);
-        // Reversing drops them too.
-        assert_eq!(acc.push(WheelInput::Pixels(-30.0), 1016.0), None);
+        assert_eq!(lines(acc.push(WheelInput::Pixels(30.0), 0.0)), Some(1.0));
+        assert_eq!(acc.push(WheelInput::Pixels(30.0), 16.0), None);
+        // A pause drops the 20 px: the new gesture starts with a line.
+        assert_eq!(lines(acc.push(WheelInput::Pixels(30.0), 1000.0)), Some(1.0));
+        // Reversing starts over too.
         assert_eq!(
-            lines(acc.push(WheelInput::Pixels(-30.0), 1032.0)),
+            lines(acc.push(WheelInput::Pixels(-10.0), 1016.0)),
+            Some(-1.0)
+        );
+        assert_eq!(acc.push(WheelInput::Pixels(-30.0), 1032.0), None);
+        assert_eq!(
+            lines(acc.push(WheelInput::Pixels(-40.0), 1048.0)),
             Some(-1.0)
         );
     }
@@ -239,7 +267,7 @@ mod tests {
         let mut acc = WheelAccumulator::new();
         assert!(acc.push(WheelInput::Pixels(50.0), 0.0).is_some());
         acc.set_handled(true);
-        assert_eq!(acc.push(WheelInput::Pixels(10.0), 16.0), None);
+        assert_eq!(acc.push(WheelInput::Pixels(5.0), 16.0), None);
         assert!(acc.gesture_handled(16.0));
         assert!(!acc.gesture_handled(2000.0));
     }
