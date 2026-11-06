@@ -65,7 +65,7 @@
     "timffle_options_example": "Exempel:",
     "timffle_options_allowed_helper": "Alltid tillåtna webbplatsursprung (ett per rad)",
     "timffle_options_allowed_proxy": "Webbplatsursprung som får använda den egna proxyn (ett per rad; de får proxyns URL och token)",
-    "timffle_options_allowed_help": "Bara exakta HTTP/HTTPS-ursprung (schema, värd, valfri port); inga * eller sökvägar. Taomees spel 摩爾莊園, 賽爾號, 小花仙 och 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw och ddt.61.com.tw, vart och ett via HTTP och HTTPS) är tillåtna som standard. Inbäddade spelare använder ursprunget för sin ram; den fristående spelaren använder ursprunget för SWF-URL:en. Lokala filer får aldrig sockets.",
+    "timffle_options_allowed_help": "Bara exakta HTTP/HTTPS-ursprung (schema, värd, valfri port); inga * eller sökvägar. Som standard finns ingen webbplats i den här listan. Inbäddade spelare använder ursprunget för sin ram; den fristående spelaren använder ursprunget för SWF-URL:en. Lokala filer får aldrig sockets.",
     "timffle_options_proxy_list_help": "Den egna proxyn har en egen lista, skild från hjälparens: att låta en webbplats använda hjälparen ger den aldrig proxyns token. När du byter anslutningsmetod visar den här rutan listan för den metod du valde.",
     "timffle_options_denied": "Alltid nekade webbplatsursprung (ett per rad)",
     "timffle_options_denied_help": "Dessa webbplatser tillfrågas aldrig och får aldrig sockets, oavsett anslutningsmetod. En webbplats kan inte finnas i båda listorna.",

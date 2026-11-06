@@ -366,7 +366,7 @@
         "message": "可使用自訂代理的網站來源（每行一個；這些網站會取得代理網址與 token）"
     },
     "timffle_options_allowed_help": {
-        "message": "僅接受完整 HTTP/HTTPS 來源（協定、主機、選用連接埠），不接受 * 或路徑。預設允許淘米的摩爾莊園、賽爾號、小花仙、彈彈堂（mole.61.com.tw、seer.61.com.tw、hua.61.com.tw、ddt.61.com.tw，各含 HTTP 與 HTTPS）。內嵌播放器依所在頁框的來源；獨立播放器依 SWF URL 的來源。本機檔案不使用 Socket 連線。"
+        "message": "僅接受完整 HTTP/HTTPS 來源（協定、主機、選用連接埠），不接受 * 或路徑。預設清單是空的，不允許任何網站。內嵌播放器依所在頁框的來源；獨立播放器依 SWF URL 的來源。本機檔案不使用 Socket 連線。"
     },
     "timffle_options_proxy_list_help": {
         "message": "自訂代理有自己的清單，和連線小幫手的清單分開：讓網站使用連線小幫手，不會讓它拿到代理的 token；切換連線方式時，這裡顯示的是目前方式的清單。"

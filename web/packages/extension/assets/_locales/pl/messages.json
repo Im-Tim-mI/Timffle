@@ -366,7 +366,7 @@
         "message": "Źródła witryn, które mogą używać własnego serwera proxy (po jednym w wierszu; otrzymują adres URL serwera proxy i token)"
     },
     "timffle_options_allowed_help": {
-        "message": "Tylko dokładne źródła HTTP/HTTPS (schemat, host, opcjonalny port); bez * i ścieżek. Gry Taomee 摩爾莊園, 賽爾號, 小花仙 i 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw i ddt.61.com.tw, każda przez HTTP i HTTPS) są domyślnie dozwolone. Osadzone odtwarzacze używają źródła swojej ramki; samodzielny odtwarzacz używa źródła adresu URL pliku SWF. Pliki lokalne nigdy nie dostają socketów."
+        "message": "Tylko dokładne źródła HTTP/HTTPS (schemat, host, opcjonalny port); bez * i ścieżek. Domyślnie ta lista nie zawiera żadnej witryny. Osadzone odtwarzacze używają źródła swojej ramki; samodzielny odtwarzacz używa źródła adresu URL pliku SWF. Pliki lokalne nigdy nie dostają socketów."
     },
     "timffle_options_proxy_list_help": {
         "message": "Własny serwer proxy ma własną listę, oddzieloną od listy pomocnika: zezwolenie witrynie na używanie pomocnika nigdy nie daje jej tokenu serwera proxy. Po zmianie metody połączenia to pole pokazuje listę wybranej metody."

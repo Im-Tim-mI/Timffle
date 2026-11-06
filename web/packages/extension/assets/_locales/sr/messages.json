@@ -354,7 +354,7 @@
         "message": "Porekla veb-sajtova koja smeju da koriste sopstveni proxy (jedno po redu; dobijaju URL proxyja i token)"
     },
     "timffle_options_allowed_help": {
-        "message": "Samo tačna HTTP/HTTPS porekla (šema, host, opcioni port); bez * i putanja. Taomeeove igre 摩爾莊園, 賽爾號, 小花仙 i 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw i ddt.61.com.tw, svaka preko HTTP-a i HTTPS-a) podrazumevano su dozvoljene. Ugrađeni plejeri koriste poreklo svog okvira; samostalni plejer koristi poreklo URL-a SWF datoteke. Lokalne datoteke nikad ne dobijaju socketove."
+        "message": "Samo tačna HTTP/HTTPS porekla (šema, host, opcioni port); bez * i putanja. Podrazumevano se na ovoj listi ne nalazi nijedan veb-sajt. Ugrađeni plejeri koriste poreklo svog okvira; samostalni plejer koristi poreklo URL-a SWF datoteke. Lokalne datoteke nikad ne dobijaju socketove."
     },
     "timffle_options_proxy_list_help": {
         "message": "Sopstveni proxy ima svoju listu, odvojenu od liste pomoćnika: dozvoljavanje veb-sajtu da koristi pomoćnik nikad mu ne daje token proxyja. Kad promenite način povezivanja, ovo polje prikazuje listu izabranog načina."

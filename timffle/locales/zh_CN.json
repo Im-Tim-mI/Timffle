@@ -65,7 +65,7 @@
     "timffle_options_example": "示例：",
     "timffle_options_allowed_helper": "一律允许的网站来源（每行一个）",
     "timffle_options_allowed_proxy": "可使用自定义代理的网站来源（每行一个；这些网站会获得代理网址和 token）",
-    "timffle_options_allowed_help": "仅接受完整的 HTTP/HTTPS 来源（协议、主机、可选端口），不接受 * 或路径。默认允许淘米的摩尔庄园、赛尔号、小花仙、弹弹堂（mole.61.com.tw、seer.61.com.tw、hua.61.com.tw、ddt.61.com.tw，各含 HTTP 与 HTTPS）。内嵌播放器依据所在框架的来源；独立播放器依据 SWF URL 的来源。本地文件不使用 Socket 连接。",
+    "timffle_options_allowed_help": "仅接受完整的 HTTP/HTTPS 来源（协议、主机、可选端口），不接受 * 或路径。默认列表是空的，不允许任何网站。内嵌播放器依据所在框架的来源；独立播放器依据 SWF URL 的来源。本地文件不使用 Socket 连接。",
     "timffle_options_proxy_list_help": "自定义代理有自己的列表，和连接助手的列表分开：让网站使用连接助手，不会让它获得代理的 token；切换连接方式时，这里显示的是当前方式的列表。",
     "timffle_options_denied": "一律拒绝的网站来源（每行一个）",
     "timffle_options_denied_help": "这些网站不会被询问，也不能使用 Socket 连接（两种连接方式都一样）。同一个网站不能同时出现在“允许”和“拒绝”列表中。",

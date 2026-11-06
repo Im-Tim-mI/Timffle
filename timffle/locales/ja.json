@@ -65,7 +65,7 @@
     "timffle_options_example": "例：",
     "timffle_options_allowed_helper": "常に許可するウェブサイトのオリジン（1 行に 1 つ）",
     "timffle_options_allowed_proxy": "カスタムプロキシを使用できるウェブサイトのオリジン（1 行に 1 つ。プロキシの URL と token が渡されます）",
-    "timffle_options_allowed_help": "完全な HTTP/HTTPS オリジンのみ（スキーム、ホスト、省略可能なポート）。* やパスは使えません。Taomee のゲーム 摩爾莊園、賽爾號、小花仙、彈彈堂（mole.61.com.tw、seer.61.com.tw、hua.61.com.tw、ddt.61.com.tw。それぞれ HTTP と HTTPS）は、初期設定で許可されています。埋め込みプレーヤーはフレームのオリジンを使い、単独のプレーヤーは SWF の URL のオリジンを使います。ローカルファイルにはソケットは与えられません。",
+    "timffle_options_allowed_help": "完全な HTTP/HTTPS オリジンのみ（スキーム、ホスト、省略可能なポート）。* やパスは使えません。初期設定では、このリストにウェブサイトは入っていません。埋め込みプレーヤーはフレームのオリジンを使い、単独のプレーヤーは SWF の URL のオリジンを使います。ローカルファイルにはソケットは与えられません。",
     "timffle_options_proxy_list_help": "カスタムプロキシには、ヘルパーとは別の専用リストがあります。ヘルパーの使用を許可しても、プロキシの token がそのウェブサイトに渡されることはありません。接続方法を切り替えると、この欄には選んだ方法のリストが表示されます。",
     "timffle_options_denied": "常に拒否するウェブサイトのオリジン（1 行に 1 つ）",
     "timffle_options_denied_help": "これらのウェブサイトには確認を行わず、どちらの接続方法でもソケットを与えません。同じウェブサイトを両方のリストに入れることはできません。",

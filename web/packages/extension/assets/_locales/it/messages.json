@@ -366,7 +366,7 @@
         "message": "Origini dei siti che possono usare il proxy personalizzato (una per riga; ricevono l'URL del proxy e il token)"
     },
     "timffle_options_allowed_help": {
-        "message": "Solo origini HTTP/HTTPS esatte (schema, host, porta facoltativa); niente * né percorsi. I giochi di Taomee 摩爾莊園, 賽爾號, 小花仙 e 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw e ddt.61.com.tw, ciascuno via HTTP e HTTPS) sono consentiti per impostazione predefinita. I lettori incorporati usano l'origine del loro frame; il lettore autonomo usa l'origine dell'URL dello SWF. I file locali non ottengono mai i socket."
+        "message": "Solo origini HTTP/HTTPS esatte (schema, host, porta facoltativa); niente * né percorsi. Per impostazione predefinita, questo elenco non contiene alcun sito web. I lettori incorporati usano l'origine del loro frame; il lettore autonomo usa l'origine dell'URL dello SWF. I file locali non ottengono mai i socket."
     },
     "timffle_options_proxy_list_help": {
         "message": "Il proxy personalizzato ha un elenco proprio, separato da quello del programma di supporto: consentire a un sito il programma di supporto non gli dà mai il token del proxy. Quando cambi il metodo di connessione, questa casella mostra l'elenco del metodo scelto."

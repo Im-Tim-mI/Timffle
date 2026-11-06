@@ -286,8 +286,8 @@
         "description": "Label of the same text box while the custom WebSocket proxy is selected."
     },
     "timffle_options_allowed_help": {
-        "message": "Exact HTTP/HTTPS origins only (scheme, host, optional port); no * or paths. Taomee's 摩爾莊園, 賽爾號, 小花仙 and 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw and ddt.61.com.tw, each over HTTP and HTTPS) are allowed by default. Embedded players use their frame's origin; the standalone player uses the SWF URL's origin. Local files never get sockets.",
-        "description": "Keep the four game names in Chinese characters exactly as written, and keep the host names."
+        "message": "Exact HTTP/HTTPS origins only (scheme, host, optional port); no * or paths. No website is on this list by default. Embedded players use their frame's origin; the standalone player uses the SWF URL's origin. Local files never get sockets.",
+        "description": "Help text under the box of always-allowed websites. The list really is empty by default: every website is asked about the first time."
     },
     "timffle_options_proxy_list_help": {
         "message": "The custom proxy has a list of its own, apart from the helper's: letting a website use the helper never gives it the proxy's token. When you switch the connection method, this box shows the list of the method you chose."

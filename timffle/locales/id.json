@@ -65,7 +65,7 @@
     "timffle_options_example": "Contoh:",
     "timffle_options_allowed_helper": "Origin situs yang selalu diizinkan (satu per baris)",
     "timffle_options_allowed_proxy": "Origin situs yang boleh menggunakan proxy kustom (satu per baris; mereka menerima URL proxy dan token)",
-    "timffle_options_allowed_help": "Hanya origin HTTP/HTTPS yang persis (skema, host, port opsional); tanpa * atau jalur. Game Taomee 摩爾莊園, 賽爾號, 小花仙, dan 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw, dan ddt.61.com.tw, masing-masing lewat HTTP dan HTTPS) diizinkan secara default. Pemutar tersemat menggunakan origin frame-nya; pemutar mandiri menggunakan origin URL SWF. File lokal tidak pernah mendapat socket.",
+    "timffle_options_allowed_help": "Hanya origin HTTP/HTTPS yang persis (skema, host, port opsional); tanpa * atau jalur. Secara default, daftar ini tidak berisi situs web apa pun. Pemutar tersemat menggunakan origin frame-nya; pemutar mandiri menggunakan origin URL SWF. File lokal tidak pernah mendapat socket.",
     "timffle_options_proxy_list_help": "Proxy kustom memiliki daftar sendiri, terpisah dari daftar pembantu: mengizinkan situs menggunakan pembantu tidak pernah memberinya token proxy. Saat Anda mengganti metode koneksi, kotak ini menampilkan daftar metode yang Anda pilih.",
     "timffle_options_denied": "Origin situs yang selalu ditolak (satu per baris)",
     "timffle_options_denied_help": "Situs-situs ini tidak pernah ditanya dan tidak pernah mendapat socket, pada kedua metode koneksi. Sebuah situs tidak boleh ada di kedua daftar.",

@@ -65,7 +65,7 @@
     "timffle_options_example": "Esimerkki:",
     "timffle_options_allowed_helper": "Aina sallitut sivustojen lähteet (yksi per rivi)",
     "timffle_options_allowed_proxy": "Sivustojen lähteet, jotka saavat käyttää omaa välityspalvelinta (yksi per rivi; ne saavat välityspalvelimen URL:n ja tokenin)",
-    "timffle_options_allowed_help": "Vain täsmälliset HTTP/HTTPS-lähteet (skeema, isäntä, valinnainen portti); ei * -merkkiä eikä polkuja. Taomeen pelit 摩爾莊園, 賽爾號, 小花仙 ja 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw ja ddt.61.com.tw, kukin sekä HTTP:n että HTTPS:n kautta) on oletuksena sallittu. Upotetut soittimet käyttävät kehyksensä lähdettä; erillinen soitin käyttää SWF-URL:n lähdettä. Paikalliset tiedostot eivät koskaan saa socketeja.",
+    "timffle_options_allowed_help": "Vain täsmälliset HTTP/HTTPS-lähteet (skeema, isäntä, valinnainen portti); ei * -merkkiä eikä polkuja. Oletuksena luettelossa ei ole yhtään sivustoa. Upotetut soittimet käyttävät kehyksensä lähdettä; erillinen soitin käyttää SWF-URL:n lähdettä. Paikalliset tiedostot eivät koskaan saa socketeja.",
     "timffle_options_proxy_list_help": "Omalla välityspalvelimella on oma luettelonsa, erillään apuohjelman luettelosta: kun sallit sivustolle apuohjelman käytön, se ei koskaan saa välityspalvelimen tokenia. Kun vaihdat yhteystapaa, tämä kenttä näyttää valitun tavan luettelon.",
     "timffle_options_denied": "Aina estetyt sivustojen lähteet (yksi per rivi)",
     "timffle_options_denied_help": "Näiltä sivustoilta ei koskaan kysytä, eivätkä ne koskaan saa socketeja kummallakaan yhteystavalla. Sivusto ei voi olla molemmissa luetteloissa.",

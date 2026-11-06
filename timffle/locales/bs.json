@@ -65,7 +65,7 @@
     "timffle_options_example": "Primjer:",
     "timffle_options_allowed_helper": "Uvijek dozvoljena porijekla web-stranica (jedno po redu)",
     "timffle_options_allowed_proxy": "Porijekla web-stranica koja smiju koristiti vlastiti proxy (jedno po redu; dobivaju URL proxyja i token)",
-    "timffle_options_allowed_help": "Samo tačna HTTP/HTTPS porijekla (šema, host, opcionalni port); bez * i putanja. Taomeeove igre 摩爾莊園, 賽爾號, 小花仙 i 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw i ddt.61.com.tw, svaka preko HTTP-a i HTTPS-a) podrazumijevano su dozvoljene. Ugrađeni playeri koriste porijeklo svog okvira; samostalni player koristi porijeklo URL-a SWF datoteke. Lokalne datoteke nikad ne dobivaju socketove.",
+    "timffle_options_allowed_help": "Samo tačna HTTP/HTTPS porijekla (šema, host, opcionalni port); bez * i putanja. Prema zadanim postavkama na ovoj listi nema nijedne web stranice. Ugrađeni playeri koriste porijeklo svog okvira; samostalni player koristi porijeklo URL-a SWF datoteke. Lokalne datoteke nikad ne dobivaju socketove.",
     "timffle_options_proxy_list_help": "Vlastiti proxy ima svoju listu, odvojenu od liste pomoćnika: dozvoljavanje web-stranici da koristi pomoćnik nikad joj ne daje token proxyja. Kad promijenite način povezivanja, ovo polje prikazuje listu odabranog načina.",
     "timffle_options_denied": "Uvijek odbijena porijekla web-stranica (jedno po redu)",
     "timffle_options_denied_help": "O ovim web-stranicama se nikad ne pita i one nikad ne dobivaju socketove, ni u jednom načinu povezivanja. Web-stranica ne može biti na obje liste.",
