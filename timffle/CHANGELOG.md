@@ -2,6 +2,10 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 未發布
+
+- **Adreno 手機在 WebGL 上破圖**（tim 回報：陸版 `http://mole.61.com/` 的「登录」鈕懸停／按住出現雜訊、本地私服首頁整片橫條）：http 網頁沒有 WebGPU，改用 wgpu-webgl；在 Adreno 840（POCO F8 Ultra、Android WebView 158）上只要開多重取樣（畫質中／高）就畫錯——高是雜訊與橫條、中是錯位的直條，畫質低與 Ruffle 自己的 `webgl` 繪製器都正常。延後解析（26327）在 WebGL 上改回每次都解析的實驗版仍然破圖，不是它造成的。`render/wgpu/src/utils.rs` 的 `supported_sample_count` 在 GL 後端且顯示卡名稱含 Adreno 時回 1（不做多重取樣；Stage3D 的 antiAlias 也一樣）。只依顯示卡判斷，與網站無關。實機驗證：私服首頁與陸版登录鈕（一般／懸停／按住）在畫質高都正常。根本原因（wgpu GL 後端或 Adreno 驅動）還沒找到；找到能保留抗鋸齒的做法後再改。
+
 ## 0.8.0.26348 — 2026-11-06（main：併入 PRO_bata）
 
 **PRO_bata 併入 main**（tim：將 PRO_bata 併進 main）。下面是 PRO_bata 上原本「未發布」的全部內容，加上 main 的 26345～26347。Loader 的建構時機以 PRO_bata 的版本為準（`enterFrame` 之後建構，取代 26344 的預載步驟做法）；測試 `loader_try_click_root`、`xml_appendchild_swf_v21` 與 `from_shumway/as3-loader/events/loader-events` 採 PRO_bata 的結果。小幫手仍是 **1.4.1**。
