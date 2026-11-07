@@ -15,7 +15,12 @@ const settings = (mode = "helper", enabled = true) => ({ ...defaultProxySettings
 
 /** Every state the section can be in for the website, with the catalog key that describes it. */
 function states() {
-    const proxy = { ...settings("websocket"), proxyUrl: "ws://127.0.0.1:1/c?host={host}&port={port}" };
+    // A custom proxy needs at least one website; SITE is not one of them.
+    const proxy = {
+        ...settings("websocket"),
+        proxyUrl: "ws://127.0.0.1:1/c?host={host}&port={port}",
+        proxyOrigins: ["https://other.example"],
+    };
     return [
         [describeSite(settings("helper", false), SITE), "timffle_popup_off"],
         [describeSite(setSocketChoice(settings(), SITE, "allow"), SITE), "timffle_popup_always_allowed"],

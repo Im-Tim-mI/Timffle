@@ -65,7 +65,7 @@
     "timffle_options_example": "Exemple:",
     "timffle_options_allowed_helper": "Orígens de llocs sempre permesos (un per línia)",
     "timffle_options_allowed_proxy": "Orígens de llocs que poden utilitzar el proxy personalitzat (un per línia; reben l'URL del proxy i el token)",
-    "timffle_options_allowed_help": "Només orígens HTTP/HTTPS exactes (esquema, amfitrió, port opcional); sense * ni camins. Els jocs de Taomee 摩爾莊園, 賽爾號, 小花仙 i 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw i ddt.61.com.tw, cadascun per HTTP i HTTPS) estan permesos de manera predeterminada. Els reproductors incrustats utilitzen l'origen del seu marc; el reproductor independent utilitza l'origen de l'URL del SWF. Els fitxers locals mai no reben sockets.",
+    "timffle_options_allowed_help": "Només orígens HTTP/HTTPS exactes (esquema, amfitrió, port opcional); sense * ni camins. De manera predeterminada, aquesta llista no conté cap lloc web. Els reproductors incrustats utilitzen l'origen del seu marc; el reproductor independent utilitza l'origen de l'URL del SWF. Els fitxers locals mai no reben sockets.",
     "timffle_options_proxy_list_help": "El proxy personalitzat té una llista pròpia, separada de la de l'assistent: permetre que un lloc utilitzi l'assistent mai no li dona el token del proxy. Quan canvies el mètode de connexió, aquest quadre mostra la llista del mètode triat.",
     "timffle_options_denied": "Orígens de llocs sempre denegats (un per línia)",
     "timffle_options_denied_help": "Aquests llocs mai no es consulten ni reben sockets, amb cap dels dos mètodes de connexió. Un lloc no pot ser a les dues llistes.",

@@ -40,10 +40,21 @@ export interface ProxySettings {
 }
 
 /**
- * Sites that may use sockets out of the box: Taomee Taiwan's 摩爾莊園 (mole),
- * 賽爾號 (seer), 小花仙 (hua) and 彈彈堂 (ddt), each over HTTP and HTTPS.
+ * Websites that may use sockets out of the box for a new installation: none.
+ * Every website is asked on first use (socket helper mode) or has to be added
+ * by the user (custom WebSocket proxy mode).
  */
-export const DEFAULT_ALLOWED_ORIGINS = [
+export const DEFAULT_ALLOWED_ORIGINS: readonly string[] = [];
+
+/** Bumped whenever `DEFAULT_ALLOWED_ORIGINS` changes. */
+export const DEFAULTS_VERSION = 3;
+
+/**
+ * The site list that installations made before version 3 used without saving
+ * anything (defaults version 2). Users who update keep it: the empty default
+ * list is for new installations only (see `installedDefaultsAction`).
+ */
+export const LEGACY_DEFAULT_ORIGINS: readonly string[] = [
     "https://mole.61.com.tw",
     "http://mole.61.com.tw",
     "https://seer.61.com.tw",
@@ -54,31 +65,24 @@ export const DEFAULT_ALLOWED_ORIGINS = [
     "http://ddt.61.com.tw",
 ];
 
-/** Bumped whenever `DEFAULT_ALLOWED_ORIGINS` gains sites. */
-export const DEFAULTS_VERSION = 2;
-
-/**
- * Default site lists of earlier releases. A saved list that is still exactly
- * one of them (and was saved before `defaultsVersion` existed) was never
- * edited by the user, so it follows the new defaults.
- */
-const LEGACY_DEFAULT_ORIGINS: readonly (readonly string[])[] = [
-    ["https://mole.61.com.tw", "http://mole.61.com.tw"],
+/** The default list of the first releases (defaults version 1). */
+const FIRST_DEFAULT_ORIGINS: readonly string[] = [
+    "https://mole.61.com.tw",
+    "http://mole.61.com.tw",
 ];
 
 /**
- * Brings never-edited settings from an older release up to the current
- * default site list. Anything the user chose (a different list, or any
- * settings saved by this release or later) is returned unchanged, so an
- * explicit Mole-only list stays Mole-only once it is saved again.
+ * Settings saved before defaults versioning existed keep following the list
+ * they were installed with: a list that is still exactly the first releases'
+ * default grows to the version 2 list, as it did before version 3. Anything
+ * else, and any settings saved with a defaults version, is returned
+ * unchanged, so an installed user's lists are never emptied or trimmed.
  *
- * Each of the two allow-lists is judged on its own, and a list that is not an
- * earlier default is never replaced. Settings saved before the lists were
- * separated have one list's sites in both, so a never-edited list is upgraded
- * in both modes.
+ * Each of the two allow-lists is judged on its own. The deny list is never
+ * touched.
  */
 export function upgradeLegacyDefaults(settings: ProxySettings): ProxySettings {
-    if ((settings.defaultsVersion ?? 0) >= DEFAULTS_VERSION) {
+    if (settings.defaultsVersion !== undefined) {
         return settings;
     }
     const allowedOrigins = upgradeLegacyList(settings.allowedOrigins);
@@ -90,22 +94,58 @@ export function upgradeLegacyDefaults(settings: ProxySettings): ProxySettings {
               ...settings,
               allowedOrigins,
               proxyOrigins,
-              defaultsVersion: DEFAULTS_VERSION,
+              defaultsVersion: 2,
           };
 }
 
 /**
- * The current defaults if `list` is exactly an earlier release's, else `list`
- * itself.
+ * The version 2 list if `list` is exactly the first releases' default, else
+ * `list` itself.
  */
 function upgradeLegacyList(list: string[]): string[] {
     const saved = new Set(list);
-    const untouched = LEGACY_DEFAULT_ORIGINS.some(
-        (legacy) =>
-            legacy.length === saved.size &&
-            legacy.every((origin) => saved.has(origin)),
-    );
-    return untouched ? [...DEFAULT_ALLOWED_ORIGINS] : list;
+    const untouched =
+        FIRST_DEFAULT_ORIGINS.length === saved.size &&
+        FIRST_DEFAULT_ORIGINS.every((origin) => saved.has(origin));
+    return untouched ? [...LEGACY_DEFAULT_ORIGINS] : list;
+}
+
+/**
+ * Storage key written when this extension is installed by a release whose
+ * default list is empty. Its absence on an update means the installation is
+ * older than that.
+ */
+export const INSTALLED_DEFAULTS_KEY = "timffleInstalledDefaultsVersion";
+
+/**
+ * What to store when the extension is installed or updated:
+ * - "mark": a new installation; note that it started with the empty list.
+ * - "keep-legacy": an update of an installation that never saved socket
+ *   settings and predates the empty list; it has been using
+ *   `LEGACY_DEFAULT_ORIGINS` implicitly, so they are saved for it.
+ * - "none": anything else (saved settings are always kept as they are).
+ */
+export function installedDefaultsAction(
+    reason: string,
+    hasSavedSettings: boolean,
+    hasInstallMark: boolean,
+): "mark" | "keep-legacy" | "none" {
+    if (reason === "install") {
+        return hasInstallMark ? "none" : "mark";
+    }
+    if (reason === "update" && !hasSavedSettings && !hasInstallMark) {
+        return "keep-legacy";
+    }
+    return "none";
+}
+
+/** The settings an installation from before version 3 has been using. */
+export function legacyDefaultSettings(): ProxySettings {
+    return {
+        ...defaultProxySettings(),
+        allowedOrigins: [...LEGACY_DEFAULT_ORIGINS],
+        proxyOrigins: [...LEGACY_DEFAULT_ORIGINS],
+    };
 }
 
 /**

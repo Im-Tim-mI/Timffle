@@ -4,13 +4,17 @@
 
 ## 啟動
 
-- macOS：雙擊 `start-mole.command`。第一次若被系統擋下，在 Finder 對它按右鍵 →「打開」。
-- Windows：雙擊 `start-mole.cmd`。
-- Linux 或手動：在此目錄開終端機執行
+代理只接受你在啟動時指定的網站來源（遊戲網站的協定＋主機＋選用連接埠，例如 `https://game.example`），沒有預設的網站。
+
+- Linux／macOS：在此目錄開終端機執行 `sh start-relay.sh https://game.example`。macOS 也可以在終端機執行 `./start-relay.command https://game.example`；第一次若被系統擋下，在 Finder 對它按右鍵 →「打開」。不帶網址直接雙擊 `start-relay.command` 或 `start-relay.cmd` 時，會先問要允許的網站來源。
+- Windows：在此目錄開命令提示字元執行 `start-relay.cmd https://game.example`。
+- 手動：
 
 ```sh
-node relay.mjs --origin https://mole.61.com.tw --origin http://mole.61.com.tw
+node relay.mjs --origin https://game.example --origin http://game.example
 ```
+
+網站同時有 http 與 https 版時，兩個都要列出（每個 `--origin` 一個來源）。
 
 保留終端機視窗；Ctrl+C 停止。預設只監聽 `127.0.0.1:18770`。第一次啟動會產生驗證權杖，寫入此目錄的 `connection.json`（Linux/macOS 權限 0600）；之後啟動沿用同一個權杖，擴充功能設定只需填一次。終端機會顯示 `Proxy URL unchanged`（設定不用改）或 `New proxy URL`（需重貼）。要換新權杖時加 `--new-token`，再把新的 `proxyUrl` 貼回擴充功能。不要分享此檔或將它一起壓縮。
 
@@ -18,10 +22,10 @@ node relay.mjs --origin https://mole.61.com.tw --origin http://mole.61.com.tw
 
 1. 載入這次修正版擴充功能後，開啟它的設定頁。
 2. 在「Socket 代理」區啟用代理。將 `connection.json` 的 `proxyUrl` 值貼入 WebSocket 網址模板（保留 `{host}` 與 `{port}`）。
-3. 允許的網站來源一行一個，必須和啟動參數一致，例如 `https://mole.61.com.tw`、`http://mole.61.com.tw`。
+3. 允許的網站來源一行一個，必須和啟動參數一致，例如 `https://game.example`、`http://game.example`。這份清單預設是空的；自訂代理模式不會詢問，沒列出的網站一律拒絕。
 4. 進階選項的「Device font renderer」預設就是 `Canvas`（伺服器名稱等中文才會顯示），不用改；除非你自己選過 `Embedded`，那樣中文會消失。
-5. 儲存並重新整理遊戲頁。從官網 `https://mole.61.com.tw/` 進入，不直接開 Client.swf（會被遊戲判定為非法客戶端）。輸入 http 網址時 Chrome 會自動升級成 https。
-6. 第一次按登入時，Chrome 會詢問是否允許 mole.61.com.tw 存取這台裝置上的其他應用程式／本機網路，請按「允許」。沒有允許時 Chrome 會擋下連線（主控台顯示 `ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`），遊戲連不上伺服器。若曾按過封鎖，到網址列左側的網站設定改回允許後重新整理。不要停用瀏覽器安全檢查。
+5. 儲存並重新整理遊戲頁。從遊戲官網的網頁進入，不要直接開遊戲的 SWF 檔（有些遊戲會判定為非法客戶端，而且網站來源也會不同）。輸入 http 網址時 Chrome 可能自動升級成 https。
+6. 第一次按登入時，Chrome 會詢問是否允許該遊戲網站存取這台裝置上的其他應用程式／本機網路，請按「允許」。沒有允許時 Chrome 會擋下連線（主控台顯示 `ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`），遊戲連不上伺服器。若曾按過封鎖，到網址列左側的網站設定改回允許後重新整理。不要停用瀏覽器安全檢查。
 
 ## 動態目的地與限制
 

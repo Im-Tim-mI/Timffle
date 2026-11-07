@@ -65,7 +65,7 @@
     "timffle_options_example": "Voorbeeld:",
     "timffle_options_allowed_helper": "Altijd toegestane website-origins (één per regel)",
     "timffle_options_allowed_proxy": "Website-origins die de eigen proxy mogen gebruiken (één per regel; ze krijgen de proxy-URL en het token)",
-    "timffle_options_allowed_help": "Alleen exacte HTTP/HTTPS-origins (schema, host, optionele poort); geen * of paden. De games van Taomee 摩爾莊園, 賽爾號, 小花仙 en 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw en ddt.61.com.tw, elk via HTTP en HTTPS) zijn standaard toegestaan. Ingebedde spelers gebruiken de origin van hun frame; de zelfstandige speler gebruikt de origin van de SWF-URL. Lokale bestanden krijgen nooit sockets.",
+    "timffle_options_allowed_help": "Alleen exacte HTTP/HTTPS-origins (schema, host, optionele poort); geen * of paden. Standaard staat er geen enkele website op deze lijst. Ingebedde spelers gebruiken de origin van hun frame; de zelfstandige speler gebruikt de origin van de SWF-URL. Lokale bestanden krijgen nooit sockets.",
     "timffle_options_proxy_list_help": "De eigen proxy heeft een eigen lijst, los van die van de helper: een website de helper laten gebruiken geeft hem nooit het token van de proxy. Als je de verbindingsmethode wisselt, toont dit vak de lijst van de gekozen methode.",
     "timffle_options_denied": "Altijd geweigerde website-origins (één per regel)",
     "timffle_options_denied_help": "Bij deze websites wordt nooit gevraagd en ze krijgen nooit sockets, met beide verbindingsmethoden. Een website kan niet op beide lijsten staan.",

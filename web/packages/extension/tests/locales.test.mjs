@@ -274,29 +274,14 @@ test("the example of a website on the local network keeps its address, written l
 const GAME_NAMES = ["摩爾莊園", "賽爾號", "小花仙", "彈彈堂"];
 const GAME_NAMES_SIMPLIFIED = ["摩尔庄园", "赛尔号", "小花仙", "弹弹堂"];
 
-test("the list of default websites names the games and the hosts that really are the defaults", () => {
-    const hosts = [
-        ...new Set(
-            DEFAULT_ALLOWED_ORIGINS.map((origin) => new URL(origin).hostname),
-        ),
-    ];
-    assert.equal(hosts.length, 4);
+test("the help for the allowed websites names no website as allowed by default, as there is none", () => {
+    assert.deepEqual(DEFAULT_ALLOWED_ORIGINS, []);
     for (const language of languages) {
         const text = message(language, "timffle_options_allowed_help");
-        for (const host of hosts) {
-            assert.ok(text.includes(host), `${language}: ${host}`);
+        assert.doesNotMatch(text, /61\.com\.tw/u, `${language}: hosts`);
+        for (const name of [...GAME_NAMES, ...GAME_NAMES_SIMPLIFIED]) {
+            assert.ok(!text.includes(name), `${language}: ${name}`);
         }
-        for (const name of language === "zh_CN"
-            ? GAME_NAMES_SIMPLIFIED
-            : GAME_NAMES) {
-            assert.ok(text.includes(name), `${language}: ${name}`);
-        }
-        // Nothing else that looks like a host of the games.
-        assert.deepEqual(
-            [...new Set(text.match(/[a-z]+\.61\.com\.tw/gu))].sort(),
-            [...hosts].sort(),
-            `${language}: hosts`,
-        );
     }
 });
 

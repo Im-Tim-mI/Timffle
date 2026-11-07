@@ -14,6 +14,7 @@ import {
     getOptions,
 } from "./utils";
 import { isMessage } from "./messages";
+import { upgradeInsecureFrames } from "./mixed-frames";
 import { clearReloadFlag } from "./startup-options";
 import {
     askSocketProxies,
@@ -163,16 +164,26 @@ function isXMLDocument(): boolean {
         return;
     }
 
+    // Frames an HTTPS page still embeds over HTTP were blocked; ask again
+    // over HTTPS (mixed-frames.ts).
+    upgradeInsecureFrames();
+
     // We must run the plugin polyfill before any flash detection scripts.
     // Unfortunately, this might still be too late for some websites (issue #969).
     // NOTE: The script code injected here is the compiled form of
     // plugin-polyfill.ts. It is injected by tools/inject_plugin_polyfill.ts
     // which just search-and-replaces for this particular string.
     // On browsers which support ExecutionWorld MAIN this will be done earlier.
+    // Timffle: the polyfill's plugin array has an `install` method, a real
+    // one does not (the plugin's file name now looks like a real Flash
+    // Player's, so it cannot tell them apart).
     if (
         navigator.wrappedJSObject &&
-        navigator.wrappedJSObject.plugins.namedItem("Shockwave Flash")
-            ?.filename !== "ruffle.js"
+        typeof (
+            navigator.wrappedJSObject.plugins as PluginArray & {
+                install?: unknown;
+            }
+        ).install !== "function"
     ) {
         injectScriptRaw("%PLUGIN_POLYFILL_SOURCE%");
         await injectScriptURL(browser.runtime.getURL("dist/ruffle.js"));

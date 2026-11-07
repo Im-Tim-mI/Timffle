@@ -53,6 +53,11 @@ fn host(runtime: PlayerRuntime) -> Host {
 }
 
 fn version_string(activation: &mut Activation<'_, '_>) -> String {
+    // Timffle: a version string set by the embedder wins (see
+    // `SystemProperties::version_string`).
+    if let Some(version) = &activation.context.system.version_string {
+        return version.clone();
+    }
     let host = host(activation.avm2().player_runtime);
     format!(
         "{} {},0,0,0",

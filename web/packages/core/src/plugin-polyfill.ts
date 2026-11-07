@@ -4,6 +4,11 @@ import {
     FLASH7_AND_8_MIMETYPE,
     FLASH_MOVIE_MIMETYPE,
 } from "./flash-identifiers.js";
+import {
+    currentFlashIdentity,
+    notePluginVersionRead,
+    watchFlashRefusal,
+} from "./flash-identity.js";
 
 /**
  * Replacement object for `MimeTypeArray` that lets us install new fake mime
@@ -131,6 +136,9 @@ class RufflePlugin extends RuffleMimeTypeArray implements Plugin {
     }
 
     get description(): string {
+        // Timffle: a page that reads the version may refuse it
+        // (flash-identity.ts).
+        notePluginVersionRead();
         return this.#description;
     }
 
@@ -140,6 +148,18 @@ class RufflePlugin extends RuffleMimeTypeArray implements Plugin {
 
     override get [Symbol.toStringTag](): string {
         return "Plugin";
+    }
+
+    /**
+     * Timffle: marks the plugin objects made by this polyfill, so Ruffle can
+     * tell them from a real Flash Player without relying on the file name.
+     * `Symbol.for` is shared by every script of the page, whichever bundle
+     * checks it (see `isFlashEnabledBrowser` in polyfills.ts).
+     *
+     * @returns Always true.
+     */
+    get [Symbol.for("ruffle.plugin")](): boolean {
+        return true;
     }
 }
 
@@ -218,11 +238,16 @@ class RufflePluginArray implements PluginArray {
 
 /**
  * A fake plugin designed to trigger Flash detection scripts.
+ *
+ * Timffle: it reports Flash Player 32 with the file name of the real Flash
+ * Player for Chrome on every platform; a page that refuses 32 is loaded once
+ * more as Flash Player 34 (see flash-identity.ts).
  */
+const IDENTITY = currentFlashIdentity();
 export const FLASH_PLUGIN = new RufflePlugin(
     "Shockwave Flash",
-    "Shockwave Flash 32.0 r0",
-    "ruffle.js",
+    IDENTITY.description,
+    IDENTITY.filename,
 );
 
 FLASH_PLUGIN.install({
@@ -288,6 +313,9 @@ export function installPlugin(plugin: RufflePlugin): void {
 
     const plugins = navigator.plugins;
     plugins.install!(plugin);
+    if (plugin === FLASH_PLUGIN) {
+        watchFlashRefusal();
+    }
 
     if (
         plugin.length > 0 &&

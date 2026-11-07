@@ -65,7 +65,7 @@
     "timffle_options_example": "Primer:",
     "timffle_options_allowed_helper": "Vedno dovoljeni izvori spletnih mest (eden na vrstico)",
     "timffle_options_allowed_proxy": "Izvori spletnih mest, ki smejo uporabljati lasten proxy (eden na vrstico; prejmejo URL proxyja in token)",
-    "timffle_options_allowed_help": "Samo točni izvori HTTP/HTTPS (shema, gostitelj, izbirna vrata); brez * ali poti. Igre Taomee 摩爾莊園, 賽爾號, 小花仙 in 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw in ddt.61.com.tw, vsaka prek HTTP in HTTPS) so privzeto dovoljene. Vdelani predvajalniki uporabljajo izvor svojega okvirja; samostojni predvajalnik uporablja izvor URL-ja datoteke SWF. Lokalne datoteke nikoli ne dobijo socketov.",
+    "timffle_options_allowed_help": "Samo točni izvori HTTP/HTTPS (shema, gostitelj, izbirna vrata); brez * ali poti. Privzeto na tem seznamu ni nobenega spletnega mesta. Vdelani predvajalniki uporabljajo izvor svojega okvirja; samostojni predvajalnik uporablja izvor URL-ja datoteke SWF. Lokalne datoteke nikoli ne dobijo socketov.",
     "timffle_options_proxy_list_help": "Lasten proxy ima svoj seznam, ločen od seznama pomočnika: če spletnemu mestu dovolite uporabo pomočnika, ne dobi tokena proxyja. Ko zamenjate način povezave, to polje prikaže seznam izbranega načina.",
     "timffle_options_denied": "Vedno zavrnjeni izvori spletnih mest (eden na vrstico)",
     "timffle_options_denied_help": "Teh spletnih mest se nikoli ne vpraša in nikoli ne dobijo socketov, pri nobenem načinu povezave. Spletno mesto ne more biti na obeh seznamih.",

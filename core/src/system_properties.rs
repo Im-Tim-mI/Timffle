@@ -313,6 +313,10 @@ pub struct SystemProperties {
     pub touchscreen_type: TouchscreenType,
     /// The highest supported h264 decoder level
     pub idc_level: String,
+    /// Timffle: the whole version string (`$version`, `Capabilities.version`),
+    /// e.g. `WIN 32,0,0,465`, set by the web player. `None` keeps Ruffle's
+    /// `<platform> <player version>,0,0,0`.
+    pub version_string: Option<String>,
 }
 
 impl SystemProperties {
@@ -382,10 +386,14 @@ impl SystemProperties {
             touchscreen_type: TouchscreenType::None,
             // Flash Player 32's software H.264 decoder level on desktop.
             idc_level: "5.1".into(),
+            version_string: None,
         }
     }
 
     pub fn get_version_string(&self, player_version: u8) -> String {
+        if let Some(version) = &self.version_string {
+            return version.clone();
+        }
         format!(
             "{} {},0,0,0",
             self.manufacturer.get_platform_name(),

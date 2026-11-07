@@ -65,7 +65,7 @@
     "timffle_options_example": "Exemplo:",
     "timffle_options_allowed_helper": "Orixes de sitios sempre permitidas (unha por liña)",
     "timffle_options_allowed_proxy": "Orixes de sitios que poden usar o proxy personalizado (unha por liña; reciben o URL do proxy e o token)",
-    "timffle_options_allowed_help": "Só orixes HTTP/HTTPS exactas (esquema, host, porto opcional); sen * nin rutas. Os xogos de Taomee 摩爾莊園, 賽爾號, 小花仙 e 彈彈堂 (mole.61.com.tw, seer.61.com.tw, hua.61.com.tw e ddt.61.com.tw, cada un por HTTP e HTTPS) están permitidos de forma predeterminada. Os reprodutores incrustados usan a orixe do seu marco; o reprodutor independente usa a orixe do URL do SWF. Os ficheiros locais nunca reciben sockets.",
+    "timffle_options_allowed_help": "Só orixes HTTP/HTTPS exactas (esquema, host, porto opcional); sen * nin rutas. De forma predeterminada, esta lista non contén ningún sitio web. Os reprodutores incrustados usan a orixe do seu marco; o reprodutor independente usa a orixe do URL do SWF. Os ficheiros locais nunca reciben sockets.",
     "timffle_options_proxy_list_help": "O proxy personalizado ten unha lista propia, separada da do asistente: permitir que un sitio use o asistente nunca lle dá o token do proxy. Ao cambiar o método de conexión, esta caixa mostra a lista do método escollido.",
     "timffle_options_denied": "Orixes de sitios sempre denegadas (unha por liña)",
     "timffle_options_denied_help": "A estes sitios nunca se lles pregunta e nunca reciben sockets, con ningún dos dous métodos de conexión. Un sitio non pode estar nas dúas listas.",

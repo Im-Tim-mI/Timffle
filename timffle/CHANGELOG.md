@@ -2,7 +2,21 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
-## 未發布（PRO_bata：API 補齊）
+## 0.8.0.26349 — 2026-11-07（Adreno 手機在 WebGL 上破圖）
+
+小幫手仍是 **1.4.1**。
+
+- **Adreno 手機在 WebGL 上破圖**（tim 回報：陸版 `http://mole.61.com/` 的「登录」鈕懸停／按住出現雜訊、本地私服首頁整片橫條）：http 網頁沒有 WebGPU，改用 wgpu-webgl；在 Adreno 840（POCO F8 Ultra、Android WebView 158）上只要開多重取樣（畫質中／高）就畫錯——高是雜訊與橫條、中是錯位的直條；畫質低與 Ruffle 自己的 `webgl` 繪製器正常。**原因**：wgpu 的 GL 後端在每個 render pass 結束時用 `glBlitFramebuffer` 把多重取樣 renderbuffer 解析到貼圖，之後立刻把同一個 draw／copy framebuffer 改接到別的 renderbuffer 與貼圖；Adreno 驅動延後執行的 blit 因此讀寫到錯的附件。在手機上用頁面載入前注入的 WebGL 攔截測過：blit 時裁切都是整張（不是裁切問題）、沒有 invalidate；blit 之前或之後加 `gl.flush()` 都會正常。**修正**：`vendor/wgpu-hal`（crates.io 30.0.1，`[patch.crates-io]` 套用）加 `Workarounds::FLUSH_AFTER_MULTISAMPLE_RESOLVE`，顯示卡名稱含 Adreno 時在解析的 blit 後 `flush`；保留多重取樣（同一天先做的「Adreno 不做多重取樣」暫時做法已拿掉）。只依顯示卡判斷，與網站無關。延後解析（26327）在 WebGL 上改回每次都解析的實驗版仍然破圖，不是它造成的。實機驗證（畫質高）：私服首頁、陸版登录鈕一般／懸停正常；按住那張截圖因 USB 斷線沒拍到。另外量到：私服首頁 28 秒內 `renderbufferStorageMultisample` 約 1,700 次（多重取樣緩衝在 GL 上一直重建），是效能問題，沒有處理。
+
+## 0.8.0.26348 — 2026-11-06（main：併入 PRO_bata）
+
+**PRO_bata 併入 main**（tim：將 PRO_bata 併進 main）。下面是 PRO_bata 上原本「未發布」的全部內容，加上 main 的 26345～26347。Loader 的建構時機以 PRO_bata 的版本為準（`enterFrame` 之後建構，取代 26344 的預載步驟做法）；測試 `loader_try_click_root`、`xml_appendchild_swf_v21` 與 `from_shumway/as3-loader/events/loader-events` 採 PRO_bata 的結果。小幫手仍是 **1.4.1**。
+
+- **「Timffle 對 Ruffle 的修補」圖表**（併入 `chart-100` 分支）：合併後在 main 上重跑 Ruffle 的 `stub-report`：4,560 項全部實作、0 缺少、0 空殼（100%）；3D 與網路兩組都是 100%；補齊 799 個 API；黃金答案 47 份。清單多了「外掛先報 Flash 32，網站不收就自動改報 34」。
+- **合併時的取捨**：`core/src/player.rs` 自動合併時把 26344 的 `preload_inner` 帶回來，已改回 PRO_bata 的版本，只留 26347 的 `with_version_string`；`Capabilities.version` 的覆寫接到 PRO_bata 新的 `version_string()`。合併後的引擎（`core`、`render`、`web/src`）與 PRO_bata `6b84cc91e` 只差 26347 的版本字串。
+- **驗證**：`cargo check -p ruffle_core`、擴充功能單元測試 327 通過；Chrome 155 無頭：陸版 `http://mole.61.com/` 自動改報 34 並載入 `Client.swf`；擴充功能內建播放器 `t0hello` 得到 `WIN 32,0,0,465`。完整的 Ruffle 測試套件沒有在合併後重跑（PRO_bata 上一次是 GT 720 上 4,684 通過、0 失敗）。
+
+### PRO_bata：API 補齊
 
 把 Ruffle `stub-report` 量到的 Flash Player API 缺口補齊到 0 缺少、0 空殼（起點 2026-11-04：4,560 項、354 缺少、421 空殼 = 82.59 %）。每一批附回歸測試；瀏覽器沒有的功能做成「沒有該功能的機器上 Flash 的行為」。細節見 [`docs/CHANGES-FROM-RUFFLE.md`](docs/CHANGES-FROM-RUFFLE.md)「API 補齊」。
 
@@ -73,6 +87,34 @@
 - **`NetStream` 的預設值照真 Flash 32（`connect(null)`）**：`bufferTime` 未設時讀 0、小於 0.1（含負數）變 0.1、NaN／無限大變 4294967.295、`play()` 把 0 變 0.1（AVM1 `setBufferTime` 同一套，緩衝實際仍是 0.1，`Buffer.Full` 時機不變）；`audioSampleAccess`／`videoSampleAccess` 讀寫丟 `ArgumentError #2154`；`multicast*` 六個設定讀回 0、設值無效；串流的 `farNonce`／`nearNonce` 是空字串；`MicrophoneEnhancedOptions.autoGain` 設值無效。新測試 `avm2/timffle_netstream_defaults`、`avm1/timffle_netstream_buffertime`（真 Flash 錄）。
 - **下載結果送達的影格照真 Flash 32**：請求在某一幀裡發出，結果在那一幀 `exitFrame` 之後才送；在影格之間發出（另一個下載的 `complete` 裡、計時器…）的，等下一幀之後；根 SWF 第一幀發出的，等第 2 幀之後（Loader、URLLoader、URLStream、Sound、AVM1 LoadVars／XML／MovieClipLoader／loadMovie；`loadBytes` 與 NetStream 不受影響）；`enterFrame` 裡呼叫的 `loadBytes` 下一幀才建構；AVM2 Loader 下載的 AVM1 影片加入後立刻 `init`／`complete`；影格之間送給還沒人聽的名稱的 LocalConnection 訊息，下一幀連上的接收端仍收得到。`large_preload_from_url`、`loader_events_2`、`mixed_avm/avm2_loads_avm1_events`、`from_shumway/avm1/moviecliploader` 拿掉 known_failure；70 支既有測試只加了影格數（另 3 支點擊測試的輸入延後一幀）。新測試 `avm1/timffle_request_delivery_first_frame`、`_later_frame`（真 Flash 錄）。
 - **同一幀到齊的 Loader、內容名稱與根 LoaderInfo 的事件照真 Flash 32**：幾個 Loader 同一幀到齊時，**後**呼叫 `load()`／`loadBytes()` 的先建構、先收 `init`／`complete`；內容的 `instanceN` 名字在呼叫 `load()`／`loadBytes()` 時就取；根 SWF 的 LoaderInfo 在 `init` 與 `complete` 之間收到一次 `progress`（全部位元組），沒有 `httpStatus`。`from_shumway/as3-loader/events/loader-events` 拿掉 known_failure；新測試 `avm2/timffle_loader_same_frame_order`、`_reload` 與送達影格的 AVM2 探針 `avm2/timffle_request_delivery_first`、`_later`、`_child`（真 Flash 錄）。
+
+## 0.8.0.26347 — 2026-11-06（main）
+
+**Flash 外掛先報 32，網站不收才自動換 34 再載一次**（tim：初次載入用 Flash 32、檔名全平台 `pepflashplayer.dll`、遊戲內版本 `WIN 32,0,0,465`；載入失敗就改用 34 再載入一次，要做成通用的，不要寫死特定網站）。小幫手仍是 **1.4.1**，不必重裝。
+
+- **第一次載入**（新檔 `web/packages/core/src/flash-identity.ts`，`plugin-polyfill.ts` 使用）：外掛名稱 `Shockwave Flash`、描述 `Shockwave Flash 32.0 r0`、檔名在所有平台都是 `pepflashplayer.dll`（26346 依平台給 `.plugin`／`.so`，已拿掉；Linux 也不會再被要求升級）。
+- **網站不收 32 時**：網頁讀了外掛版本、把剛放進去的 Flash 內容（有 SWF 網址的 `<embed>`／`<object>` 或 Timffle 播放器元素）在 2 秒內又拿掉、0.5 秒後頁面上沒有任何 Flash 內容、使用者也沒操作過這一頁，就把這個來源記成 34（`sessionStorage` 的 `timffle.flashVersion`，只在這個分頁的工作階段有效）並重新載入一次：描述 `Shockwave Flash 34.0 r0`、檔名同上。只重試一次，34 也不收就不再重載；`sessionStorage` 不能寫時也不重載（避免無限迴圈）。Flash 內容在頁面上待滿 5 秒就停止偵測。不看網址、不針對任何網站。
+- **遊戲內看到的版本**（`core/src/system_properties.rs` 的 `version_string`、`player.rs` 的 `with_version_string`、`web/src/builder.rs` 的 `setVersionString`、`internal/builder.ts`）：網頁播放器的 `Capabilities.version`、AVM1 的 `$version` 與 `System.capabilities.version` 改成 `WIN 32,0,0,465`，換成 34 後是 `WIN 34,0,0,465`；影片的播放器版本（`playerVersion`）跟著是 32 或 34。設定裡明確指定 `playerVersion` 時用那個數字。桌面版不變。
+- **驗證**：core 單元測試 98 通過（新增 `test/flash-identity.ts`），擴充功能單元測試 327 通過；Chrome 155 無頭實測：陸版 `http://mole.61.com/` 第一次被換成升級頁 → 自動以 34 重新載入 → `Client.swf` 開始載入；台服首頁維持 32、沒有重載；本機測試頁（版本是 32 就把 embed 換掉）同樣自動換 34；擴充功能內建播放器跑 `t0hello` 得到 `version=WIN 32,0,0,465`。**沒驗證**：換成 34 之後影片實際讀到的 `WIN 34,0,0,465`（無頭環境點不開網頁內嵌播放器，程式路徑與 32 相同）、陸版登入與 Socket、Firefox。
+
+## 0.8.0.26346 — 2026-11-06（main）
+
+**兩個網站載入問題**（tim：插件載入後網頁上方的導覽條不見；希望陸版摩爾莊園能載入）。小幫手仍是 **1.4.1**，不必重裝。兩項都對所有網站一樣，沒有針對特定網站的程式。
+
+- **HTTPS 網頁裡用 HTTP 嵌入的框架改用 HTTPS 再載一次**（新檔 `web/packages/extension/src/mixed-frames.ts`，`content.ts` 呼叫）：Chrome 會擋掉 HTTPS 網頁裡所有 HTTP 的 `<iframe>`／`<frame>`（混合內容），畫面上只剩空白。這**不是插件造成的**：沒裝插件的 Chrome 也一樣（實測：台服首頁 `https://mole.61.com.tw/` 的導覽條 `http://mole.61.com.tw/topbar/top_bar.html` 被擋，主控台 `Mixed Content … This request has been blocked`）。現在插件把這種框架的網址改成 `https://` 重新載入；反正原本就被擋，伺服器沒有 HTTPS 也不會更糟。只在插件對該頁啟用時生效。
+- **Flash 外掛改報 34.0、檔名照真的 Flash Player**（`web/packages/core/src/plugin-polyfill.ts`）：有些網站把 Flash 32（全球版最後一版，2021 年起停用）一律導到「請升級 Flash」頁，還會檢查外掛檔名是不是 `.dll`／`.plugin`。陸版摩爾莊園 `http://mole.61.com/` 就是這樣，原本裝了插件會跳到 `upgrade.html`，現在能載入到遊戲開始畫面（Chrome 155 無頭實測）。外掛描述改為 `Shockwave Flash 34.0 r0`，檔名依平台：Windows `pepflashplayer.dll`、macOS `PepperFlashPlayer.plugin`、其他 `libpepflashplayer.so`；任何「至少某版本」的檢查照樣通過。SWF 內的 `Capabilities.version` 不變。
+- **Ruffle 怎麼認出自己的外掛**：原本靠檔名 `ruffle.js`，現在改看外掛物件上的標記 `Symbol.for("ruffle.plugin")`（`polyfills.ts` 的 `isFlashEnabledBrowser`）；Firefox 的舊路徑改看外掛陣列有沒有 `install`（`content.ts`）。
+- **驗證**：擴充功能單元測試 327 通過（新增 `mixed-frames.test.mjs`）。
+
+## 0.8.0.26345 — 2026-11-06（main）
+
+**預設不再允許任何網站使用 Socket 連線**（tim：從現在起不預設放行任何網站，淘米台灣的四個遊戲也一樣，讓使用者自己決定）。小幫手仍是 **1.4.1**，不必重裝。
+
+- **預設清單改成空的**：連線小幫手與自訂 WebSocket 代理兩種方式的「一律允許」清單，預設都不再有摩爾莊園、賽爾號、小花仙、彈彈堂（`mole`／`seer`／`hua`／`ddt.61.com.tw`，各含 http 與 https）。連線小幫手模式下，每個網站第一次要開 Socket 時都會跳出詢問視窗（拒絕（建議）／允許／一律拒絕／一律允許）；自訂代理模式不詢問，要使用者自己把網站加進代理的清單。
+- **已安裝的使用者不受影響**（tim：所有已安裝用戶的白名單保留，不清除，只針對新用戶）：存過的清單原樣保留；從沒存過設定的舊安裝，更新時（`runtime.onInstalled` 的 `update`）把它一直在用的八個來源存下來，所以更新後照樣不必詢問。新安裝會寫一個標記 `timffleInstalledDefaultsVersion`，之後的更新不會再補。最早一版只有摩爾莊園兩個來源、又從沒存過版本的清單，照以前的規則補成八個。想移除可以到設定裡刪掉。
+- **文字與說明**：設定頁「一律允許」清單下的說明改成「預設清單是空的」（`timffle_options_allowed_help`，36 種語言）；`README.md`、`README.zh-TW.md`、`README.zh-CN.md` 拿掉「淘米台灣的遊戲開箱即用」的標語、功能條目、快速開始的官網步驟與各遊戲的支援表，改寫成一般的 Flash 線上遊戲工具（打開遊戲網站 → 第一次連線時 Timffle 詢問 → 由你選擇），並補上舊版更新的規則；發行包裡的 `helper/README.zh-TW.txt`、`timffle/relay/README.zh-TW.md`（啟動腳本改成帶網站來源參數，例如 `start-relay.sh https://game.example`，原本的 `start-mole.*` 改名為 `start-relay.*`）、`timffle/docs/ARCHITECTURE.md` 與 `timffle/locales/README.md` 同步更新。
+- **NOTICE.md**：拿掉與淘米和那四個遊戲名稱相關的聲明（tim：刪除）。
+- **驗證**：擴充功能單元測試 325 通過（新增：新安裝只寫標記、舊安裝更新時補存清單且只補一次、存過的設定不動、清單永不被清空）；`tsc`、`sync_locales.py --check`、`rebrand.py --check` 通過；`ask-tests.mjs` 67/67（新安裝）。
 
 ## 0.8.0.26344 — 2026-11-05（main）
 

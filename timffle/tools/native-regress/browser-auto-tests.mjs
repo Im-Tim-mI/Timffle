@@ -90,22 +90,27 @@ try{
  const opts=await chrome.tab('chrome-extension://'+ID+'/options.html');
  await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()');
  const defaults=await chrome.eval(opts.sessionId,'({enabled:document.querySelector("#socket-proxy-enabled").checked,helper:document.querySelector("#socket-proxy-mode-helper").checked,urlHidden:document.querySelector("#socket-proxy-websocket-fields").hidden,origins:document.querySelector("#socket-proxy-origins").value})');
- add('zero-manual-configuration-defaults',defaults.enabled&&defaults.helper&&defaults.urlHidden&&defaults.origins===['mole','seer','hua','ddt'].flatMap(h=>['https://'+h+'.61.com.tw','http://'+h+'.61.com.tw']).join('\n'),{defaults});
+ add('zero-manual-configuration-defaults',defaults.enabled&&defaults.helper&&defaults.urlHidden&&defaults.origins==='',{defaults});
 
- // A settings object saved by the Mole-only release (no defaultsVersion) follows the new defaults; a list saved by this release stays as saved.
+ // An allow-list that is still the default of an earlier release (Mole-only, or the four Taomee sites) and was saved before
+ // defaults version 3 was never chosen by the user: it becomes empty. Any other list, and anything saved with version 3, stays as saved.
  const optionsFor=async(stored)=>{
   await chrome.eval(opts.sessionId,'chrome.storage.local.set({socketProxySettings:'+JSON.stringify(stored)+'})');
   const tab=await chrome.tab('chrome-extension://'+ID+'/options.html');
   await chrome.wait(tab.sessionId,'(()=>{const s=document.querySelector("#socket-proxy-status");return s&&s.dataset.state})()');
   const v=await chrome.eval(tab.sessionId,'document.querySelector("#socket-proxy-origins").value');
   await chrome.send('Target.closeTarget',{targetId:tab.targetId});return v;};
- const legacy={enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:['https://mole.61.com.tw','http://mole.61.com.tw']};
+ const v1=['https://mole.61.com.tw','http://mole.61.com.tw'];
+ const v2=['mole','seer','hua','ddt'].flatMap(h=>['https://'+h+'.61.com.tw','http://'+h+'.61.com.tw']);
+ const legacy={enabled:true,mode:'helper',proxyUrl:'',allowedOrigins:v1};
  const upgraded=await optionsFor(legacy);
- add('legacy-default-list-upgrades',upgraded===defaults.origins,{upgraded});
- const kept=await optionsFor({...legacy,defaultsVersion:2});
- add('list-saved-by-this-release-is-kept',kept==='https://mole.61.com.tw\nhttp://mole.61.com.tw',{kept});
- const custom=await optionsFor({...legacy,allowedOrigins:['https://mole.61.com.tw','http://mole.61.com.tw','https://x.example']});
- add('customized-list-is-kept',custom==='https://mole.61.com.tw\nhttp://mole.61.com.tw\nhttps://x.example',{custom});
+ add('legacy-default-list-upgrades',upgraded==='',{upgraded});
+ const upgraded2=await optionsFor({...legacy,allowedOrigins:v2,proxyOrigins:v2,deniedOrigins:['https://no.example'],defaultsVersion:2});
+ add('four-site-default-list-upgrades',upgraded2==='',{upgraded2});
+ const kept=await optionsFor({...legacy,defaultsVersion:3});
+ add('list-saved-by-this-release-is-kept',kept===v1.join('\n'),{kept});
+ const custom=await optionsFor({...legacy,allowedOrigins:['https://game.example','http://game.example'],defaultsVersion:2});
+ add('customized-list-is-kept',custom==='https://game.example\nhttp://game.example',{custom});
  await chrome.eval(opts.sessionId,'chrome.storage.local.remove("socketProxySettings")');
 
  const status=await chrome.wait(opts.sessionId,'(()=>{const s=document.querySelector("#socket-helper-status");return s&&s.dataset.state&&s.dataset.state!=="checking"&&s.textContent!=='+JSON.stringify(T('timffle_helper_checking'))+'?{text:s.textContent,state:s.dataset.state}:false})()',12000);
@@ -586,7 +591,7 @@ try{
  }
  const shot=await chrome.send('Page.captureScreenshot',{format:'png'},opts.sessionId);await fs.writeFile(path.join(output,'options.png'),Buffer.from(shot.data,'base64'));
  const setOrigins=async(origins)=>{await chrome.eval(opts.sessionId,'(()=>{document.querySelector("#socket-proxy-origins").value='+JSON.stringify(origins.join('\n'))+';document.querySelector("#socket-proxy-form").requestSubmit();})()');await chrome.wait(opts.sessionId,'(async()=>{const x=(await chrome.storage.local.get("socketProxySettings")).socketProxySettings;return x&&JSON.stringify(x.allowedOrigins)==='+JSON.stringify(JSON.stringify(origins))+'})()');};
- await setOrigins([origin,'https://mole.61.com.tw','http://mole.61.com.tw']);
+ await setOrigins([origin,'https://game.example','http://game.example']);
  await chrome.eval(opts.sessionId,'chrome.storage.sync.set({autostart:true,autoplay:"on",unmuteOverlay:"hidden",allowScriptAccess:true,preferredRenderer:"canvas"})');
  const settings=await chrome.eval(opts.sessionId,'(async()=>({local:(await chrome.storage.local.get("socketProxySettings")).socketProxySettings,synced:(await chrome.storage.sync.get("socketProxySettings")).socketProxySettings??null}))()');
  add('settings-local-not-synced',settings.local.mode==='helper'&&settings.synced===null&&settings.local.proxyUrl==='');
@@ -614,8 +619,8 @@ try{
   add('send-queue-bounded',flooded.errors===1&&flooded.state===3&&flooded.buffered<=1048576,{flooded});
   const capped=await chrome.eval(bare.sessionId,'new Promise(resolve=>{window.__sockets=[];let open=0,error=0;for(let i=0;i<24;i++){const s=new WebSocket('+JSON.stringify(base+held.port)+');window.__sockets.push(s);s.onopen=()=>open++;s.onerror=()=>error++;}setTimeout(()=>resolve({open,error}),1500);})');
   add('native-process-cap',capped.open>0&&capped.open<=16&&capped.error>0&&countHelpers()<=16,{capped,processes:countHelpers()});
-  await setOrigins(['https://mole.61.com.tw','http://mole.61.com.tw']);await until(()=>countHelpers()===0);add('settings-revocation-closes-sockets',countHelpers()===0);
-  await setOrigins([origin,'https://mole.61.com.tw','http://mole.61.com.tw']);
+  await setOrigins(['https://game.example','http://game.example']);await until(()=>countHelpers()===0);add('settings-revocation-closes-sockets',countHelpers()===0);
+  await setOrigins([origin,'https://game.example','http://game.example']);
   const nav=await chrome.tab(origin+'/?bare');await chrome.wait(nav.sessionId,'window.RufflePlayer?.config?.socketProxy?.length');await chrome.eval(nav.sessionId,'new Promise(resolve=>{window.__s=new WebSocket('+JSON.stringify(base+held.port)+');window.__s.onopen=()=>resolve(true);window.__s.onerror=()=>resolve(false);})');
   add('native-starts-on-demand',countHelpers()>0);await chrome.send('Page.navigate',{url:'about:blank'},nav.sessionId);await until(()=>countHelpers()===0);add('navigation-stops-native',countHelpers()===0);await chrome.send('Target.closeTarget',{targetId:bare.targetId});await chrome.send('Target.closeTarget',{targetId:nav.targetId});
  }else if(mode==='production'){

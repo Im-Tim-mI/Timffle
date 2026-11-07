@@ -1,4 +1,5 @@
 import type { RuffleInstanceBuilder } from "../../dist/ruffle_web.js";
+import { currentFlashIdentity, flashVersionString } from "../flash-identity.js";
 import {
     BaseLoadOptions,
     Duration,
@@ -89,9 +90,13 @@ export function configureBuilder(
             parseDuration(config.maxExecutionDuration),
         );
     }
-    if (isExplicit(config.playerVersion)) {
-        builder.setPlayerVersion(config.playerVersion);
-    }
+    // Timffle: movies see the Flash Player the page was told about
+    // (flash-identity.ts), e.g. `WIN 32,0,0,465`.
+    const playerVersion = isExplicit(config.playerVersion)
+        ? config.playerVersion
+        : currentFlashIdentity().major;
+    builder.setPlayerVersion(playerVersion);
+    builder.setVersionString(flashVersionString(playerVersion));
     if (isExplicit(config.preferredRenderer)) {
         builder.setPreferredRenderer(config.preferredRenderer);
     }

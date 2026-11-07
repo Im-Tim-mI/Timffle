@@ -3185,6 +3185,7 @@ pub struct PlayerBuilder {
     gamepad_button_mapping: HashMap<GamepadButton, KeyCode>,
     player_version: Option<u8>,
     player_runtime: PlayerRuntime,
+    version_string: Option<String>,
     player_mode: PlayerMode,
     quality: StageQuality,
     page_url: Option<String>,
@@ -3242,6 +3243,7 @@ impl PlayerBuilder {
             gamepad_button_mapping: HashMap::new(),
             player_version: None,
             player_runtime: PlayerRuntime::default(),
+            version_string: None,
             player_mode: PlayerMode::default(),
             quality: StageQuality::High,
             page_url: None,
@@ -3424,6 +3426,13 @@ impl PlayerBuilder {
     /// Configures the target player version.
     pub fn with_player_version(mut self, version: Option<u8>) -> Self {
         self.player_version = version;
+        self
+    }
+
+    /// Timffle: configures the whole Flash version string movies see
+    /// (`$version`, `Capabilities.version`), e.g. `WIN 32,0,0,465`.
+    pub fn with_version_string(mut self, version: Option<String>) -> Self {
+        self.version_string = version;
         self
     }
 
@@ -3639,7 +3648,10 @@ impl PlayerBuilder {
                 // TODO: AVM1 and AVM2 use separate RNGs (though algorithm is same), so this is technically incorrect.
                 // See: https://github.com/ruffle-rs/ruffle/issues/20244
                 rng: AvmRng::default(),
-                system: SystemProperties::new(language),
+                system: SystemProperties {
+                    version_string: self.version_string.clone(),
+                    ..SystemProperties::new(language)
+                },
                 page_url: self.page_url.clone(),
                 transform_stack: TransformStack::new(),
                 instance_counter: 0,

@@ -30,11 +30,12 @@ function isFlashEnabledBrowser(): boolean {
     if ("favorFlash" in globalConfig && globalConfig["favorFlash"] === false) {
         return false;
     }
-    // Otherwise, check for pre-existing Flash support.
-    return (
-        (navigator.plugins.namedItem("Shockwave Flash")?.filename ??
-            "ruffle.js") !== "ruffle.js"
-    );
+    // Otherwise, check for pre-existing Flash support. Timffle: Ruffle's own
+    // plugin is recognised by its marker, not by its file name (which looks
+    // like a real Flash Player's, see plugin-polyfill.ts).
+    const plugin = navigator.plugins.namedItem("Shockwave Flash") as
+        (Plugin & { [key: symbol]: unknown }) | null;
+    return !!plugin && plugin[Symbol.for("ruffle.plugin")] !== true;
 }
 
 /**
