@@ -265,6 +265,11 @@ bitflags::bitflags! {
         const MESA_I915_SRGB_SHADER_CLEAR = 1 << 0;
         /// Buffer map must emulated because it is not supported natively
         const EMULATE_BUFFER_MAP = 1 << 1;
+        /// Timffle: Adreno drivers (seen on an Adreno 840 through Android
+        /// WebView's WebGL 2) can let the multisample resolve blit run after
+        /// the framebuffers it uses have been re-attached, so the resolved
+        /// texture gets garbage. A flush right after the blit avoids it.
+        const FLUSH_AFTER_MULTISAMPLE_RESOLVE = 1 << 2;
     }
 }
 

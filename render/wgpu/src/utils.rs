@@ -185,14 +185,6 @@ pub fn supported_sample_count(
     mut sample_count: u32,
     format: wgpu::TextureFormat,
 ) -> u32 {
-    // Timffle: multisampled rendering through WebGL draws garbage on Adreno
-    // GPUs (seen on an Adreno 840 phone: noise or shifted strips over the
-    // stage at medium/high quality, correct without multisampling), so those
-    // render without it.
-    let info = adapter.get_info();
-    if info.backend == wgpu::Backend::Gl && info.name.to_ascii_lowercase().contains("adreno") {
-        return 1;
-    }
     let features = adapter.get_texture_format_features(format).flags;
 
     // Keep halving the sample count until we get one that's supported - or 1 (no multisampling)

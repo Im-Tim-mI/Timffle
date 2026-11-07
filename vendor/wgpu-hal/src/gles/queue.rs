@@ -1187,6 +1187,13 @@ impl super::Queue {
                         glow::NEAREST,
                     )
                 };
+                if self
+                    .shared
+                    .workarounds
+                    .contains(super::Workarounds::FLUSH_AFTER_MULTISAMPLE_RESOLVE)
+                {
+                    unsafe { gl.flush() };
+                }
                 unsafe { gl.bind_framebuffer(glow::READ_FRAMEBUFFER, None) };
                 unsafe { gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo)) };
             }

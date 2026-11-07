@@ -920,6 +920,10 @@ impl super::Adapter {
         );
 
         let r = renderer.to_lowercase();
+        // Timffle: see [`super::Workarounds::FLUSH_AFTER_MULTISAMPLE_RESOLVE`].
+        if r.contains("adreno") {
+            workarounds.set(super::Workarounds::FLUSH_AFTER_MULTISAMPLE_RESOLVE, true);
+        }
         // Check for Mesa sRGB clear bug. See
         // [`super::PrivateCapabilities::MESA_I915_SRGB_SHADER_CLEAR`].
         if context.is_owned()
