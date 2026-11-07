@@ -2,7 +2,9 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
-## 未發布
+## 0.8.0.26349 — 2026-11-07（Adreno 手機在 WebGL 上破圖）
+
+小幫手仍是 **1.4.1**。
 
 - **Adreno 手機在 WebGL 上破圖**（tim 回報：陸版 `http://mole.61.com/` 的「登录」鈕懸停／按住出現雜訊、本地私服首頁整片橫條）：http 網頁沒有 WebGPU，改用 wgpu-webgl；在 Adreno 840（POCO F8 Ultra、Android WebView 158）上只要開多重取樣（畫質中／高）就畫錯——高是雜訊與橫條、中是錯位的直條；畫質低與 Ruffle 自己的 `webgl` 繪製器正常。**原因**：wgpu 的 GL 後端在每個 render pass 結束時用 `glBlitFramebuffer` 把多重取樣 renderbuffer 解析到貼圖，之後立刻把同一個 draw／copy framebuffer 改接到別的 renderbuffer 與貼圖；Adreno 驅動延後執行的 blit 因此讀寫到錯的附件。在手機上用頁面載入前注入的 WebGL 攔截測過：blit 時裁切都是整張（不是裁切問題）、沒有 invalidate；blit 之前或之後加 `gl.flush()` 都會正常。**修正**：`vendor/wgpu-hal`（crates.io 30.0.1，`[patch.crates-io]` 套用）加 `Workarounds::FLUSH_AFTER_MULTISAMPLE_RESOLVE`，顯示卡名稱含 Adreno 時在解析的 blit 後 `flush`；保留多重取樣（同一天先做的「Adreno 不做多重取樣」暫時做法已拿掉）。只依顯示卡判斷，與網站無關。延後解析（26327）在 WebGL 上改回每次都解析的實驗版仍然破圖，不是它造成的。實機驗證（畫質高）：私服首頁、陸版登录鈕一般／懸停正常；按住那張截圖因 USB 斷線沒拍到。另外量到：私服首頁 28 秒內 `renderbufferStorageMultisample` 約 1,700 次（多重取樣緩衝在 GL 上一直重建），是效能問題，沒有處理。
 
