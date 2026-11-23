@@ -1,0 +1,19 @@
+# Timffle: needs a renderer (BitmapData.draw and the stage picture); run with
+# --features imgtests. The stage (550x400) is shown at 2.1436x, a fractional
+# scale like a phone's, and must show no line between the 9-slice regions.
+num_frames = 1
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32
+
+[image_comparisons.output]
+tolerance = 0
+max_outliers = 0
+
+[player_options]
+with_renderer = { optional = false, quality = "high" }
+viewport_dimensions = { width = 1179, height = 858, scale_factor = 1.0 }

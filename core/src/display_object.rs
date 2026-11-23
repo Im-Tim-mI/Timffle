@@ -1539,6 +1539,11 @@ struct ScalingGridRegion {
     /// Matrix to push on top of the object's own transform: it cancels the
     /// object's scale and applies the region's stretch/translation instead.
     matrix: Matrix,
+    /// Column (0..3) and row (0..3) of the region in the 3x3 grid. The
+    /// region's left/right edges are grid edges `col` and `col + 1`, its
+    /// top/bottom edges are grid edges `row` and `row + 1`.
+    col: usize,
+    row: usize,
 }
 
 /// The per-axis mapping of a 9-slice grid: three segments (outer, centre, outer)
@@ -1611,12 +1616,14 @@ fn scaling_grid_regions<'gc>(this: DisplayObject<'gc>) -> Option<Vec<ScalingGrid
     let xs = scaling_grid_axis(bounds.x_min, bounds.x_max, grid.x_min, grid.x_max, sx);
     let ys = scaling_grid_axis(bounds.y_min, bounds.y_max, grid.y_min, grid.y_max, sy);
     let mut regions = Vec::with_capacity(9);
-    for (y0, y1, ay, by) in ys {
-        for (x0, x1, ax, bx) in xs {
+    for (row, (y0, y1, ay, by)) in ys.into_iter().enumerate() {
+        for (col, (x0, x1, ax, bx)) in xs.into_iter().enumerate() {
             if x1 <= x0 || y1 <= y0 || ax == 0.0 || ay == 0.0 {
                 continue;
             }
             regions.push(ScalingGridRegion {
+                col,
+                row,
                 clip: Rectangle {
                     x_min: x0,
                     x_max: x1,
@@ -1658,12 +1665,35 @@ fn child_follows_scaling_grid<'gc>(child: DisplayObject<'gc>) -> bool {
     base.matrix3d.get().is_none() && m.b == 0.0 && m.c == 0.0
 }
 
+/// The four grid edges along one axis, in whole target pixels. An edge is
+/// snapped the first time a region touching it is rendered; the region on the
+/// other side of the edge then reuses that value.
+#[derive(Default)]
+struct SnappedEdges([Option<f64>; 4]);
+
+impl SnappedEdges {
+    fn snap(&mut self, index: usize, edge: f64) -> f64 {
+        *self.0[index].get_or_insert_with(|| edge.round())
+    }
+}
+
 /// Renders `draw` once per grid region, under the region's transform and clip.
 fn render_in_scaling_grid_regions<'gc>(
     context: &mut RenderContext<'_, 'gc>,
     regions: &[ScalingGridRegion],
     mut draw: impl FnMut(&mut RenderContext<'_, 'gc>),
 ) {
+    // Neighbouring regions meet on a shared grid edge, but each region's mask
+    // is placed by its own matrix (with offsets truncated to twips), so in the
+    // target the two copies of that edge can differ by a fraction of a pixel:
+    // anti-aliasing samples in between belong to neither mask and what is
+    // behind shows through as a thin line. When the target is axis-aligned,
+    // every grid edge is snapped to a whole target pixel instead, and both
+    // regions sharing an edge use the same snapped value (edges are identified
+    // by their index in the grid, never by comparing coordinates), so the
+    // masks tile exactly: no gap and no overlap.
+    let mut xs = SnappedEdges::default();
+    let mut ys = SnappedEdges::default();
     for region in regions {
         context.transform_stack.push(&Transform {
             matrix: region.matrix,
@@ -1671,8 +1701,21 @@ fn render_in_scaling_grid_regions<'gc>(
             perspective_projection: None,
             matrix3d: None,
         });
-        let rect_mat = context.transform_stack.transform().matrix
+        let mut rect_mat = context.transform_stack.transform().matrix
             * Matrix::create_box_from_rectangle(&region.clip);
+        if rect_mat.b == 0.0 && rect_mat.c == 0.0 {
+            // The box maps the unit square (1 px = 20 twips) to the region.
+            let x0 = rect_mat.tx.to_pixels();
+            let y0 = rect_mat.ty.to_pixels();
+            let x0s = xs.snap(region.col, x0);
+            let x1s = xs.snap(region.col + 1, x0 + rect_mat.a as f64);
+            let y0s = ys.snap(region.row, y0);
+            let y1s = ys.snap(region.row + 1, y0 + rect_mat.d as f64);
+            rect_mat.a = (x1s - x0s) as f32;
+            rect_mat.d = (y1s - y0s) as f32;
+            rect_mat.tx = Twips::from_pixels(x0s);
+            rect_mat.ty = Twips::from_pixels(y0s);
+        }
         context.commands.push_mask();
         // The color doesn't matter, as this is a mask.
         context.commands.draw_rect(Color::WHITE, rect_mat);
