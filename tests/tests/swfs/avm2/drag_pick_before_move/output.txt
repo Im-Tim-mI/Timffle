@@ -1,0 +1,7 @@
+ready
+move 300,200 target=dragged stick=300,200
+down target=dragged
+move 300,215 target=target stick=300,215
+move 300,222 target=upper stick=300,222
+move 300,240 target=target stick=300,240
+up target=upper stick=300,240

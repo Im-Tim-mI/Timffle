@@ -1523,10 +1523,21 @@ impl Player {
                 Point::ZERO
             };
 
-            // Update the dragged object here to keep it constantly in sync with the mouse position.
-            self.mutate_with_update_context(|context| {
-                Self::update_drag(context);
-            });
+            // Timffle: the dragged object is moved to the new mouse position inside
+            // `update_mouse_state`, after the object under the mouse was picked and
+            // before any mouse event runs. Flash Player 32 picks with the dragged
+            // object still at its previous position, so a fast move can reach the
+            // object below a dragged object that has `mouseEnabled = false` (a game
+            // where a dragged stick must touch a target); handlers see the new position.
+            // AVM1 keeps the upstream order (drag first): its `_droptarget` timing
+            // is pinned by real-Flash tests (avm1/hitarea_remove_owner_drag).
+            let update_drag_after_pick = self
+                .mutate_with_update_context(|context| context.stage.movie().is_action_script_3());
+            if !update_drag_after_pick {
+                self.mutate_with_update_context(|context| {
+                    Self::update_drag(context);
+                });
+            }
 
             let is_mouse_moved = if mouse_locked {
                 movement.is_some_and(|(dx, dy)| dx != 0.0 || dy != 0.0)
@@ -1539,6 +1550,7 @@ impl Player {
             let mouse_state_changed = self.update_mouse_state(
                 changed_mouse_buttons,
                 is_mouse_moved,
+                update_drag_after_pick,
                 &mut player_event_handled,
             );
             self.mutate_with_update_context(|context| context.mouse_data.movement = None);
@@ -1549,7 +1561,12 @@ impl Player {
             // sends mouseOut/rollOut to the object under the pointer right away.
             if !mouse_locked
                 && self.mouse_lock()
-                && self.update_mouse_state(EnumSet::empty(), false, &mut player_event_handled)
+                && self.update_mouse_state(
+                    EnumSet::empty(),
+                    false,
+                    false,
+                    &mut player_event_handled,
+                )
             {
                 self.needs_render = true;
             }
@@ -1581,7 +1598,12 @@ impl Player {
         }
 
         if let InputEvent::MouseLeave = event
-            && self.update_mouse_state(changed_mouse_buttons, true, &mut player_event_handled)
+            && self.update_mouse_state(
+                changed_mouse_buttons,
+                true,
+                false,
+                &mut player_event_handled,
+            )
         {
             self.needs_render = true;
         }
@@ -1691,6 +1713,7 @@ impl Player {
         &mut self,
         changed_mouse_buttons: EnumSet<MouseButton>,
         is_mouse_moved: bool,
+        update_drag_after_pick: bool,
         player_event_handled: &mut bool,
     ) -> bool {
         let mut new_cursor = self.mouse_cursor;
@@ -1718,6 +1741,10 @@ impl Player {
             } else {
                 None
             };
+            // Timffle: see `handle_input_event` — pick first, then move the dragged object.
+            if update_drag_after_pick {
+                Self::update_drag(context);
+            }
             let mut events: smallvec::SmallVec<[(InteractiveObject<'_>, ClipEvent); 2]> =
                 Default::default();
 
@@ -2650,7 +2677,7 @@ impl Player {
         self.mutate_with_update_context(|context| {
             Self::update_drag(context);
         });
-        self.update_mouse_state(EnumSet::empty(), false, &mut false);
+        self.update_mouse_state(EnumSet::empty(), false, false, &mut false);
 
         // GC
         let full = std::mem::take(&mut self.full_gc_requested);
