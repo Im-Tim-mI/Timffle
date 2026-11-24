@@ -729,12 +729,24 @@ impl RuffleHandle {
                             // reaches what is below it. Replay them all, in order,
                             // placed relative to the delivered event (their own
                             // `offsetX/Y` are not reliable in every browser).
+                            // `getCoalescedEvents` exists only in secure contexts
+                            // (https, localhost); on a plain http game site the
+                            // event has no such method, and calling it would throw
+                            // inside the core lock and stop the player for good.
                             let base_x = js_event.offset_x();
                             let base_y = js_event.offset_y();
                             let client_x = f64::from(js_event.client_x());
                             let client_y = f64::from(js_event.client_y());
                             let mut replayed = false;
-                            for sample in js_event.get_coalesced_events().iter() {
+                            let samples = js_sys::Reflect::get(
+                                &js_event,
+                                &JsValue::from_str("getCoalescedEvents"),
+                            )
+                            .ok()
+                            .filter(|f| f.is_function())
+                            .map(|_| js_event.get_coalesced_events())
+                            .unwrap_or_default();
+                            for sample in samples.iter() {
                                 let Some(sample) = sample.dyn_ref::<PointerEvent>() else {
                                     continue;
                                 };
