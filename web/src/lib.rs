@@ -710,18 +710,48 @@ impl RuffleHandle {
                             // position is frozen and only `movementX/Y` change; Flash
                             // reports that motion in screen pixels, the browser in
                             // CSS pixels.
-                            let event = if core.mouse_lock() {
-                                PlayerEvent::MouseMoveRelative {
+                            if core.mouse_lock() {
+                                core.handle_event(PlayerEvent::MouseMoveRelative {
                                     dx: f64::from(js_event.movement_x()) * dpr,
                                     dy: f64::from(js_event.movement_y()) * dpr,
-                                }
-                            } else {
-                                PlayerEvent::MouseMove {
-                                    x: js_event.offset_x() * dpr,
-                                    y: js_event.offset_y() * dpr,
-                                }
-                            };
-                            core.handle_event(event);
+                                });
+                                return;
+                            }
+                            // Timffle: the browser delivers one `pointermove` per
+                            // animation frame and folds the pointer samples it got
+                            // in between into `getCoalescedEvents()`. Flash Player
+                            // gets every sample from the system, and a movie sees
+                            // each as a `mouseMove`: a drawing app draws through
+                            // them, and an object carried with the mouse is
+                            // hit-tested where it was drawn last (see
+                            // `Player::drag_pick_uses_previous_position`), so the
+                            // samples between two frames decide whether the pointer
+                            // reaches what is below it. Replay them all, in order,
+                            // placed relative to the delivered event (their own
+                            // `offsetX/Y` are not reliable in every browser).
+                            let base_x = js_event.offset_x();
+                            let base_y = js_event.offset_y();
+                            let client_x = f64::from(js_event.client_x());
+                            let client_y = f64::from(js_event.client_y());
+                            let mut replayed = false;
+                            for sample in js_event.get_coalesced_events().iter() {
+                                let Some(sample) = sample.dyn_ref::<PointerEvent>() else {
+                                    continue;
+                                };
+                                let x = base_x + (f64::from(sample.client_x()) - client_x);
+                                let y = base_y + (f64::from(sample.client_y()) - client_y);
+                                core.handle_event(PlayerEvent::MouseMove {
+                                    x: x * dpr,
+                                    y: y * dpr,
+                                });
+                                replayed = true;
+                            }
+                            if !replayed {
+                                core.handle_event(PlayerEvent::MouseMove {
+                                    x: base_x * dpr,
+                                    y: base_y * dpr,
+                                });
+                            }
                         });
                         if instance.has_focus {
                             js_event.prevent_default();

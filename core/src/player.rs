@@ -2354,6 +2354,18 @@ impl Player {
         });
 
         RUNNING_FRAME.set(false);
+        // Timffle: the position the mouse events up to the next frame pick the
+        // dragged object at (`drag_pick_uses_previous_position`) is where this
+        // frame left it, i.e. where it is drawn. Only here, once per movie frame:
+        // taking it in every `update` call refreshed it on every tick of the
+        // browser's animation loop (60 Hz) as well, so a 24 fps movie's dragged
+        // object lagged the pointer by 17 ms instead of 42 ms, and a slid stick
+        // still covered the pointer that Flash Player lets reach the object below.
+        self.mutate_with_update_context(|context| {
+            if let Some(drag) = context.drag_object.as_mut() {
+                drag.snapshot_pick_position();
+            }
+        });
         self.needs_render = true;
         DeliveryGate::frame_ran(&self.delivery_gate);
     }
@@ -2753,10 +2765,6 @@ impl Player {
         // Update mouse state (check for new hovered button, etc.)
         self.mutate_with_update_context(|context| {
             Self::update_drag(context);
-            // Timffle: the position the next frame's mouse events pick against.
-            if let Some(drag) = context.drag_object.as_mut() {
-                drag.snapshot_pick_position();
-            }
         });
         self.update_mouse_state(EnumSet::empty(), false, false, &mut false);
 
