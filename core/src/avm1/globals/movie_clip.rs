@@ -1315,12 +1315,12 @@ pub fn start_drag_impl<'gc>(
         Default::default()
     };
 
-    let drag_object = crate::player::DragObject {
+    let drag_object = crate::player::DragObject::new(
         display_object,
-        last_mouse_position: *activation.context.mouse_position,
+        *activation.context.mouse_position,
         lock_center,
         constraint,
-    };
+    );
     *activation.context.drag_object = Some(drag_object);
 }
 

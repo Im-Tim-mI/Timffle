@@ -3,9 +3,12 @@ import flash.events.MouseEvent;
 import flash.text.TextField;
 
 // A dragged object with mouseEnabled = false still covers the pointer in its
-// parent (the upper layer, mouseEnabled = true). Flash picks the object under the mouse
-// with the dragged object at its previous position, then moves it, then runs
-// the handlers: a move that leaves the old position reaches the object below.
+// parent (the upper layer, mouseEnabled = true). For a startDrag(lockCenter = true)
+// drag with the button held, Flash picks the object under the mouse with the dragged
+// object where it was last rendered, then moves it, then runs the handlers: a move
+// that leaves the old position reaches the object below. (With the button up, or
+// with startDrag(false), the moved object is picked: drag_released_pick_moved,
+// drag_offset_pick_moved.)
 class Test {
   static var tf:TextField; static var lines:Array<String> = [];
   static function log(s:String) { flash.Lib.trace(s); lines.push(s); if (lines.length > 9) lines.shift(); tf.text = lines.join("\n"); }

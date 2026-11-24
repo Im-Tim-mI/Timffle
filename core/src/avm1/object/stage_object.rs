@@ -533,7 +533,17 @@ fn set_name<'gc>(
 }
 
 fn drop_target<'gc>(activation: &mut Activation<'_, 'gc>, this: DisplayObject<'gc>) -> Value<'gc> {
-    match this.as_movie_clip().and_then(|mc| mc.drop_target()) {
+    // Timffle: `_droptarget` names a movie clip; when the object under the mouse
+    // is a button (or text) the path of its nearest movie clip is returned, as
+    // Flash Player 32 does (`/below`, not `/below/instance1`).
+    let mut target = this.as_movie_clip().and_then(|mc| mc.drop_target());
+    while let Some(object) = target
+        && object.as_movie_clip().is_none()
+        && let Some(parent) = object.parent()
+    {
+        target = Some(parent);
+    }
+    match target {
         Some(target) => AvmString::new(activation.gc(), target.slash_path()).into(),
         None if activation.swf_version() < 6 => Value::Undefined,
         None => istr!("").into(),

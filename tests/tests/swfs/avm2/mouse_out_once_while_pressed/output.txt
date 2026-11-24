@@ -1,0 +1,22 @@
+ready
+move 30,30 target=null
+move 300,200 target=box
+rollOver box t=box
+mouseOver box t=box
+down box
+move 300,260 target=below
+mouseOut box t=box
+rollOut box t=box
+rollOver below t=below
+mouseOver below t=below
+move 300,200 target=box
+mouseOut below t=below
+rollOut below t=below
+rollOver box t=box
+mouseOver box t=box
+move 300,260 target=below
+mouseOut box t=box
+rollOut box t=box
+rollOver below t=below
+mouseOver below t=below
+up below

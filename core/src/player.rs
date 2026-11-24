@@ -1188,6 +1188,33 @@ impl Player {
             .get_mouse_down_buttons()
             .symmetric_difference(prev_mouse_buttons);
 
+        // Timffle: the mouse position is updated before anything runs for this
+        // event. Flash Player 32 runs the AVM1 `onMouseMove` broadcast
+        // (`Mouse` listeners, `onClipEvent(mouseMove)`) with the new `_xmouse`
+        // and the dragged object still at its previous position; upstream read
+        // the previous event's position there.
+        let prev_mouse_position = self.mouse_position;
+        if let InputEvent::MouseMove { x, y }
+        | InputEvent::MouseDown { x, y, .. }
+        | InputEvent::MouseUp { x, y, .. } = event
+        {
+            let inverse_view_matrix =
+                self.mutate_with_update_context(|context| context.stage.inverse_view_matrix());
+            if !mouse_locked {
+                self.mouse_position_stale = false;
+            }
+            self.mouse_position = if !mouse_locked {
+                inverse_view_matrix * Point::from_pixels(x, y)
+            } else if movement.is_some() {
+                // Timffle: the motion vector in stage coordinates (no translation).
+                Point::ZERO
+                    + (inverse_view_matrix * Point::from_pixels(x, y)
+                        - inverse_view_matrix * Point::ZERO)
+            } else {
+                Point::ZERO
+            };
+        }
+
         if cfg!(feature = "avm_debug") {
             match event {
                 InputEvent::KeyDown {
@@ -1502,37 +1529,19 @@ impl Player {
         });
 
         // Update mouse state.
-        if let InputEvent::MouseMove { x, y }
-        | InputEvent::MouseDown { x, y, .. }
-        | InputEvent::MouseUp { x, y, .. } = event
+        if let InputEvent::MouseMove { .. }
+        | InputEvent::MouseDown { .. }
+        | InputEvent::MouseUp { .. } = event
         {
-            let inverse_view_matrix =
-                self.mutate_with_update_context(|context| context.stage.inverse_view_matrix());
-            let prev_mouse_position = self.mouse_position;
-            if !mouse_locked {
-                self.mouse_position_stale = false;
-            }
-            self.mouse_position = if !mouse_locked {
-                inverse_view_matrix * Point::from_pixels(x, y)
-            } else if movement.is_some() {
-                // Timffle: the motion vector in stage coordinates (no translation).
-                Point::ZERO
-                    + (inverse_view_matrix * Point::from_pixels(x, y)
-                        - inverse_view_matrix * Point::ZERO)
-            } else {
-                Point::ZERO
-            };
-
-            // Timffle: the dragged object is moved to the new mouse position inside
-            // `update_mouse_state`, after the object under the mouse was picked and
-            // before any mouse event runs. Flash Player 32 picks with the dragged
-            // object still at its previous position, so a fast move can reach the
-            // object below a dragged object that has `mouseEnabled = false` (a game
-            // where a dragged stick must touch a target); handlers see the new position.
-            // AVM1 keeps the upstream order (drag first): its `_droptarget` timing
-            // is pinned by real-Flash tests (avm1/hitarea_remove_owner_drag).
-            let update_drag_after_pick = self
-                .mutate_with_update_context(|context| context.stage.movie().is_action_script_3());
+            // Timffle: for a `startDrag(lockCenter = true)` drag the dragged object
+            // is moved to the new mouse position inside `update_mouse_state`, after
+            // the object under the mouse was picked and before any mouse event runs
+            // (see `drag_pick_uses_previous_position`). A fast move can then reach
+            // the object below a dragged object that has `mouseEnabled = false` (a
+            // game where a dragged stick must touch a target); handlers see the new
+            // position. Every other drag keeps the upstream order (move first).
+            let update_drag_after_pick =
+                self.mutate_with_update_context(Self::drag_pick_uses_previous_position);
             if !update_drag_after_pick {
                 self.mutate_with_update_context(|context| {
                     Self::update_drag(context);
@@ -1648,6 +1657,36 @@ impl Player {
         false
     }
 
+    /// Timffle: whether this mouse event picks the object under the mouse with
+    /// the dragged object still at its previous position (Flash Player 32,
+    /// measured with real mouse input on AVM1 and AVM2 content): only for a
+    /// `startDrag(lockCenter = true)` drag, and only while the left button is
+    /// held in AVM2 (with the button up the moved object is picked, so the
+    /// carried object keeps covering what is below it); in AVM1 the button
+    /// state does not matter, but the dragged clip must itself be a button-mode
+    /// clip (a plain clip whose child button is hit is picked where it moved
+    /// to). A drag that keeps the grab offset (`lockCenter = false`) is always
+    /// picked at its new position. Scripts see the new position in every case.
+    fn drag_pick_uses_previous_position(context: &mut UpdateContext<'_>) -> bool {
+        let Some((lock_center, display_object)) = context
+            .drag_object
+            .as_ref()
+            .map(|drag| (drag.lock_center, drag.display_object))
+        else {
+            return false;
+        };
+        if !lock_center {
+            return false;
+        }
+        if display_object.movie().is_action_script_3() {
+            context.input.is_mouse_down(MouseButton::Left)
+        } else {
+            display_object
+                .as_movie_clip()
+                .is_some_and(|clip| clip.is_button_mode(context))
+        }
+    }
+
     /// Update dragged object, if any.
     pub fn update_drag(context: &mut UpdateContext<'_>) {
         if context.mouse_data.updating_drop_target {
@@ -1731,17 +1770,42 @@ impl Player {
         let needs_render = self.mutate_with_update_context(|context| {
             // Objects may be hovered using Tab,
             // skip mouse hover when it's not necessary.
+            // Timffle: while a `startDrag` is active the object under the mouse is
+            // re-evaluated on every frame even when the mouse did not move (Flash
+            // Player 32 does that for the carried object: the frame after a fast
+            // move, the object it slid over gets `rollOut` again).
             let mut skip_mouse_hover = !is_mouse_moved
                 && changed_mouse_buttons.is_empty()
                 && context.mouse_data.hovered.is_some()
-                && !mouse_locked;
+                && !mouse_locked
+                && context.drag_object.is_none();
 
+            // Timffle: see `handle_input_event` — pick with the dragged object where
+            // it was at the end of the last frame, then move it.
+            let restore_drag_position = if update_drag_after_pick {
+                context.drag_object.as_ref().map(|drag| {
+                    let object = drag.display_object;
+                    let current = Point::new(object.x(), object.y());
+                    if current != drag.pick_position {
+                        object.set_x(drag.pick_position.x);
+                        object.set_y(drag.pick_position.y);
+                    }
+                    (object, current)
+                })
+            } else {
+                None
+            };
             let new_over_object = if mouse_in_stage {
                 run_mouse_pick(context, true)
             } else {
                 None
             };
-            // Timffle: see `handle_input_event` — pick first, then move the dragged object.
+            if let Some((object, current)) = restore_drag_position
+                && Point::new(object.x(), object.y()) != current
+            {
+                object.set_x(current.x);
+                object.set_y(current.y);
+            }
             if update_drag_after_pick {
                 Self::update_drag(context);
             }
@@ -1838,7 +1902,15 @@ impl Player {
                 // mouseOut/rollOut, with buttonDown still true).
                 if context.input.is_mouse_down(MouseButton::Left) && !mouse_locked {
                     context.mouse_data.hovered = new_over_object;
-                    if let Some(down_object) = context.mouse_data.pressed {
+                    // Timffle: AVM1 only. For AVM2 content `DragOut`/`DragOver` map to
+                    // the same `mouseOut`/`rollOut` (`mouseOver`/`rollOver`) that the
+                    // `RollOut`/`RollOver` below already dispatch, so the pressed
+                    // object got them twice, and in the wrong order on the way back
+                    // (Flash Player 32 sends each once: out of the old object, then
+                    // over the new one).
+                    if let Some(down_object) = context.mouse_data.pressed
+                        && !down_object.as_displayobject().movie().is_action_script_3()
+                    {
                         if InteractiveObject::option_ptr_eq(
                             context.mouse_data.pressed,
                             cur_over_object,
@@ -2043,12 +2115,17 @@ impl Player {
                             // The new object is rolled over immediately.
                             if let Some(over_object) = context.mouse_data.hovered {
                                 new_cursor = over_object.mouse_cursor(context);
-                                events.push((
-                                    over_object,
-                                    ClipEvent::RollOver {
-                                        from: cur_over_object,
-                                    },
-                                ));
+                                // Timffle: AVM1 only; AVM2 content already got
+                                // `rollOver` while the button was held (Flash
+                                // Player 32 sends nothing more at the release).
+                                if !over_object.as_displayobject().movie().is_action_script_3() {
+                                    events.push((
+                                        over_object,
+                                        ClipEvent::RollOver {
+                                            from: cur_over_object,
+                                        },
+                                    ));
+                                }
 
                                 // Timffle: Flash's `trackAsMenu` (MovieClip / SimpleButton in
                                 // AVM2): the object under the mouse gets `click` although the
@@ -2676,6 +2753,10 @@ impl Player {
         // Update mouse state (check for new hovered button, etc.)
         self.mutate_with_update_context(|context| {
             Self::update_drag(context);
+            // Timffle: the position the next frame's mouse events pick against.
+            if let Some(drag) = context.drag_object.as_mut() {
+                drag.snapshot_pick_position();
+            }
         });
         self.update_mouse_state(EnumSet::empty(), false, false, &mut false);
 
@@ -3823,6 +3904,36 @@ pub struct DragObject<'gc> {
     /// The bounding rectangle where the clip will be maintained.
     #[collect(require_static)]
     pub constraint: Rectangle<Twips>,
+
+    /// Timffle: the dragged object's position (parent coordinates) as of the last
+    /// frame. A `lockCenter` drag picks the object under the mouse with the
+    /// dragged object at this position (Flash Player 32 hit-tests it where it
+    /// was last rendered, so every move within one frame is tested against the
+    /// same old position; see `Player::drag_pick_uses_previous_position`).
+    #[collect(require_static)]
+    pub pick_position: Point<Twips>,
+}
+
+impl<'gc> DragObject<'gc> {
+    pub fn new(
+        display_object: DisplayObject<'gc>,
+        last_mouse_position: Point<Twips>,
+        lock_center: bool,
+        constraint: Rectangle<Twips>,
+    ) -> Self {
+        Self {
+            display_object,
+            last_mouse_position,
+            lock_center,
+            constraint,
+            pick_position: Point::new(display_object.x(), display_object.y()),
+        }
+    }
+
+    /// Timffle: remember where the dragged object is at the end of a frame.
+    pub fn snapshot_pick_position(&mut self) {
+        self.pick_position = Point::new(self.display_object.x(), self.display_object.y());
+    }
 }
 
 fn run_mouse_pick<'gc>(

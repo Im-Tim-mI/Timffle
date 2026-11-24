@@ -1,0 +1,14 @@
+ready
+move 30,30 target=null stick=300,200
+up target=null stick=300,200 -> stopDrag
+move 300,200 target=dragged stick=300,200
+rollOver dragged
+down target=dragged stick shifted to 300,215
+rollOut dragged
+rollOver target stick=300,215
+move 300,215 target=target stick=300,230
+move 300,230 target=target stick=300,245
+move 300,245 target=target stick=300,260
+move 300,330 target=null stick=300,345
+rollOut target
+up target=null stick=300,345 -> stopDrag

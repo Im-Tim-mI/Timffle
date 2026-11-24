@@ -1,0 +1,24 @@
+ready
+move 30,30 drag=300,200
+mouseDown 30,30
+mouseUp 30,30
+move 300,200 drag=300,200
+rollOver drag
+mouseDown 300,200
+press drag -> startDrag
+mouseUp 300,200
+release drag (still dragging) drag=300,200
+move 300,215 drag=300,200
+rollOut drag
+rollOver below drag=300,215
+rollOut below
+rollOver drag
+move 300,222 drag=300,215
+move 300,240 drag=300,222
+rollOut drag
+rollOver below drag=300,240
+rollOut below
+rollOver drag
+move 300,330 drag=300,240
+rollOut drag
+rollOver drag
