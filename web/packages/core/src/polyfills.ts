@@ -32,10 +32,18 @@ function isFlashEnabledBrowser(): boolean {
     }
     // Otherwise, check for pre-existing Flash support. Timffle: Ruffle's own
     // plugin is recognised by its marker, not by its file name (which looks
-    // like a real Flash Player's, see plugin-polyfill.ts).
+    // like a real Flash Player's, see plugin-polyfill.ts). A page that ships
+    // its own copy of Ruffle has usually installed that copy's plugin first,
+    // under the file name every Ruffle build used: "ruffle.js". That is not
+    // Flash either, and the page is still played by this source (see the
+    // extension's page-ruffle.ts).
     const plugin = navigator.plugins.namedItem("Shockwave Flash") as
         (Plugin & { [key: symbol]: unknown }) | null;
-    return !!plugin && plugin[Symbol.for("ruffle.plugin")] !== true;
+    return (
+        !!plugin &&
+        plugin[Symbol.for("ruffle.plugin")] !== true &&
+        plugin.filename !== "ruffle.js"
+    );
 }
 
 /**

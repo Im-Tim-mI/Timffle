@@ -3,6 +3,7 @@ import { Message } from "./messages";
 import { mergeSocketProxies } from "./socket-proxy";
 import { installSocketBridge } from "./socket-bridge-page";
 import { armSocketBridge } from "./socket-bridge-arm";
+import { keepTimffleInSlot, type RuffleSlot } from "./page-ruffle";
 
 /**
  *
@@ -64,6 +65,13 @@ function handleMessage(message: Message) {
             }
             setCurrentScriptURL(publicPath);
             Setup.installRuffle("extension");
+            // Timffle: the page may ship its own (usually old) Ruffle; the
+            // extension plays the page regardless, see page-ruffle.ts.
+            keepTimffleInSlot(window, window.RufflePlayer as RuffleSlot, {
+                socketProxy: message.config.socketProxy,
+                openInNewTab,
+                sourceName: "extension",
+            });
             return {};
         }
         case "settings": {
