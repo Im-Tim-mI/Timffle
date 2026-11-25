@@ -2,6 +2,12 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26352 — 2026-11-25（網站自帶 Ruffle 的頁面一律由 Timffle 播放）
+
+小幫手仍是 **1.4.1**。
+
+- **網站自己帶了一份 Ruffle 時，Timffle 沒有接手**（tim 回報：遊戲天堂 i-gamer.net 的頁面交不給 Timffle）。那類頁面在 `<head>` 載入自己的 `ruffle/ruffle.js`（i-gamer 是 2022-11-28 的 nightly，自報版本 `0.1.0`，還沒有 `socketProxy`），遊戲本身只是普通的 object/embed。**原因有兩個，都是上游 Ruffle 兩份不同版本在同一頁互不相認的老問題**：（1）每一版 Ruffle 都把自己的 `PublicAPI` 放進 `window.RufflePlayer`，遇到已經有東西時只在「是自己這個類別的實例」才沿用，擴充功能與頁面的類別永遠不是同一個，於是誰後執行誰就蓋掉對方：在 i-gamer 是頁面的舊 Ruffle 蓋掉擴充功能（頁面上只剩 `local=0.1.0` 一個來源，遊戲用四年前的核心跑）；在本機重現頁（頁面腳本先跑）則是兩邊都不播、embed 原樣留著。（2）頁面的 Ruffle 先裝了假的「Shockwave Flash」外掛（檔名 `ruffle.js`），我們的 polyfill 看到有 Flash 外掛就以為瀏覽器真的支援 Flash、不替換 embed。**修正（tim 決定：一律由 Timffle 播放，不提供切換）**：擴充功能安裝後把 `window.RufflePlayer` 改成存取器（`web/packages/extension/src/page-ruffle.ts`）：頁面之後指派自己的 API 進來時，吸收它帶的設定（頁面值優先；`publicPath` 不收，擴充功能自己載 wasm；`socketProxy` 照原本的規則合併，頁面精確對應在前、擴充功能的在後；`openInNewTab` 永遠是我們的），把它的 `invoked` 設成 true 讓它的 `init()` 不再執行（任何版本都有這個欄位），槽位仍回傳我們的 API；頁面腳本先跑的情況（我們的 API 建在它上面、複製到它的來源與 `invoked`，它甚至可能已呼叫我們的 `superseded()`）則只保留 `extension` 來源、重新武裝我們的 init，並把 `superseded` 換成空函式。核心的 `isFlashEnabledBrowser` 多認一種：檔名 `ruffle.js` 的「Shockwave Flash」外掛是某個 Ruffle 裝的，不是 Flash。驗證：6 個新單元測試（`page-ruffle.test.mjs`：頁面 API 蓋進來、純設定物件、socketProxy 合併、頁面先跑的重新武裝、指派自己或 null 不變、靜音）＋擴充功能全部 339 個單元測試通過；無頭 Chrome + 擴充功能：本機重現頁（真的 i-gamer 2022 ruffle.js + wasm + 頁面設定 `autoplay/quality/publicPath`）26351 兩邊都不播，本版由 Timffle 播（來源只剩 `extension`，`quality: high` 被保留、`publicPath` 沒收）；沒有自帶 Ruffle 的對照頁行為不變；真的 i-gamer 668 頁 26351 是頁面的舊 Ruffle 在播，本版是 Timffle 在播（有 fps 方塊、SWF 50 fps）。限制：頁面的 Ruffle 若在我們載入前就已經把 embed 換成它的播放器，那些元素不會再換回來（擴充功能在 `document_start` 注入，實測兩個順序都沒遇到）；頁面自帶的 Ruffle 比 Timffle 新時也一樣由 Timffle 播。
+
 ## 0.8.0.26351 — 2026-11-24（真滑鼠拖曳：判斷位置每幀一次、補回瀏覽器合併掉的滑鼠取樣）
 
 小幫手仍是 **1.4.1**。
