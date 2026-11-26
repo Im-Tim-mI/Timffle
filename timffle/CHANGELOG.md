@@ -2,6 +2,18 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26359 — 2026-11-26（字寬表：斜體、6～130 px 全部實測、合成粗體／斜體；`text` 設相同字串的 Flash 規則）
+
+小幫手仍是 **1.4.1**。
+
+- **tim 的四項**：斜體要實測；`text` 設成相同字串時改成依照 Flash 原版；MingLiU 粗體重音字母如果比 Flash 寬要改；48 px 以上要實測。
+- **第四份普查**（`fontsurvey/Survey4.hx`，Flash 32、Windows 11、裝有日韓字型）：57 個字型 × 斜體 6～48 px × ASCII／Latin-1（有粗體檔的字型加量粗斜體）、49～130 px 每個字級的一般與粗體 ASCII／Latin-1、每個字級每種樣式的 `getLineMetrics`，共 32,501 行。`TextFormat.size` 到 130 都正常，沒有上限。
+- **量到的事**：(1) 49 px 以上 hinting 仍然影響字寬——Arial 49～130 px 的 ASCII 有 12% 的字與線性取整不同、Times New Roman 17%、Verdana 3%；中文字型沒有差。行高規則（VDMX／`usWin` 取整）到 130 px 都成立（11,710 筆全對）。(2) 有斜體檔的字型（Arial、Times New Roman、Verdana、Georgia、Trebuchet MS、Comic Sans MS、Segoe UI、Calibri、Meiryo）用斜體字面的字寬；**沒有斜體檔的字型，Windows 的合成斜體在部分字級也會改變字寬**（Gulim、Dotum、Batang、Gungsuh 43 個字級裡 15 個不同，MingLiU 也有），不是單純歪斜。(3) MingLiU 的合成粗體不是「一般加 1 px」：重音字母多半比加 1 窄（例如 12 px 的 Ç 是 8，不是 10）；Yu Mincho、Gulim、Batang 的粗體幾乎每個字都和一般加 1 不同。
+- **表**（格式第 3 版，zlib 523 KB，100 個字體）：範圍擴到 **6～130 px**，ASCII／Latin-1 在這整段都用 Flash 實測值；新增斜體與粗斜體字面（Arial、Times New Roman、Courier New、Verdana、Georgia、Segoe UI、Calibri、Trebuchet MS、Comic Sans MS、Meiryo、Meiryo UI）；對 Windows 自己合成的樣式建立「合成字面」（MingLiU／Yu Mincho／Gulim／Batang 粗體，MingLiU／Gulim／Dotum／Batang／Gungsuh 斜體，MingLiU／Gulim／Batang 粗斜體）：預設值是底字面的 hinted 字寬（粗體加 1 px），實測不同的字逐一記下。產生時以 145 萬筆（survey4）＋ 68.7 萬筆（survey3）實測逐字驗證：survey4 與粗體普查 0 筆不同，survey3 只剩 FontLink 字型的韓文。MingLiU 粗體重音字母因此全對（之前 Timffle 比 Flash 寬 1～2 px）。
+- **`text` 設成相同字串**（`core/src/display_object/edit_text.rs`）：用真 Flash 量（`fontsurvey/probe-sametext/`，16 步）：相同字串本身不重排、保留原有逐段格式（上游的判斷正確），**但只要中間指派過 `defaultTextFormat`（即使值相同），下一次設相同字串就會像新文字一樣整段套用預設格式**。Timffle 現在照這條規則：`set_new_text_format` 標記 `DEFAULT_FORMAT_REASSIGNED`，`set_text`／`set_html_text` 清掉它，有標記時相同字串也重排。`htmlText` 設相同字串仍不重排（Flash 同）。
+- **驗證**：核心單元測試 157 個通過；Linux 上用 26359 跑 survey4（32,501 行）與 survey3（18,310 行）逐字比對 Windows Flash（結果見文件第 4 節）；探針 `probe-sametext` 在 Timffle 上 16 步與 Flash 相同。表與平台無關（26357／26358 已在 Windows、Linux、macOS 三平台證明輸出逐位元組相同），本版只在 Linux 實測。
+- **沒做／已知**：Courier 點陣字型；FontLink 字型裡的韓文；Arial Narrow；130 px 以上用線性取整；斜體與大字級只量了 ASCII／Latin-1，希臘西里爾在這些樣式／字級用 FreeType 推算。
+
 ## 0.8.0.26358 — 2026-11-26（字寬表補齊：全部字級實測、行高、日韓字型、韓文）
 
 小幫手仍是 **1.4.1**。
