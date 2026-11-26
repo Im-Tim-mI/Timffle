@@ -2,6 +2,13 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26355 — 2026-11-26（找不到的裝置字型改用 Flash 真正的替代字型：Times）
+
+小幫手仍是 **1.4.1**。
+
+- **26353 的替代字型選錯了**（tim：調查 Mac 的 FlashBrowser2 是怎麼處理的）。FlashBrowser2 是 Electron 11（Chrome 87，x86_64 經 Rosetta）加上隨附的 Mac 版 Pepper Flash **32.0.0.303**，沒有字型設定、沒有 mms.cfg，所以它的行為就是 Mac 版 Flash Player 本身。直接在它裡面跑探針（`timffle-work/drag-pick-probe/fontid/`：每種字型名稱畫同一段字，比對點陣圖雜湊和逐字 `getCharBoundaries`）：**SimSun、宋体、SimHei、Microsoft YaHei、PMingLiU、亂取的名字，全部和 `Times` 畫出來一模一樣，也等於 `_serif`**（「abc 123 ABC」14 px 逐字 6,7,6,4,7,7,7,4,11,9,10，總寬 76）；`_sans` 才是 Helvetica（8,8,7,4,…，總寬 82）。也就是說 Flash 找不到裝置字型時用的是 `_serif` 預設（Mac 是 Times，Windows 是 Times New Roman），不是 26353 假設的 Arial／Helvetica。14 px 的空格兩者都是 4 px，所以許願池看不出差別，但英文字母寬度差很多（a 是 6 對 8），大字級的空格也會差。**修正**：`with_flash_substitute` 接上的改為 `"Times New Roman", Times, serif`。驗證：本機 Timffle 26355 的探針，不存在的字型逐字 6,7,6,4,7,7,7,4,10,9,9、總寬 76，和 Mac Flash 相同（A、C 差 1 px 是 Liberation Serif 與 Mac Times 的差異）；**tim 的 MacBook 上**同一探針：26354 不存在的字型是 8,8,7,4,8,8,8,4,9,9,10、總寬 83（Arial），26355 是 6,7,6,4,7,7,7,4,10,9,9、總寬 76，與 FlashBrowser2 裡的 Flash（76）一致。
+- **`_sans`、`_serif`、`_typewriter` 也照 Flash 的對應**：Timffle 原本把它們交給瀏覽器的通用家族 `sans-serif`／`serif`／`monospace`，但瀏覽器的通用家族跟著網頁語言走，中文頁面在 Mac Chrome 上 `sans-serif` 是蘋方、`serif` 是宋體-簡，英文字和空格都比 Flash 寬（同一探針：Timffle `_sans` 8,8,8,5,6,8,8,5、總寬 85、空格 5 px；Flash `_sans` = Helvetica 8,8,7,4、總寬 82、空格 4 px；Timffle `_serif` = 宋體-簡 7,7,6,4、77；Flash = Times 76）。現在 canvas 字型字串先列 Flash 的對應字型（Arial、Helvetica／Times New Roman、Times／Courier New、Courier），通用家族留在最後當後備；中文仍由瀏覽器的 CJK 後備字型畫。Windows 的 Chrome 本來就把通用家族對到 Arial／Times New Roman／Courier New，不受影響。驗證（tim 的 MacBook，本版）：`_sans` 8,8,7,4,8,8,8,4,9,9,10、總寬 83（Flash 的 Helvetica 是 82，差在 Arial 與 Helvetica 的 A/C）；`_serif` 6,7,6,4,7,7,7,4,10,9,9、總寬 76（Flash 76）。tim 的標準：寬度一樣即可，不要求逐像素相同。
+
 ## 0.8.0.26354 — 2026-11-26（不換行空格 `&nbsp;` 的自動換行規則）
 
 小幫手仍是 **1.4.1**。
