@@ -215,17 +215,20 @@ impl CanvasFontRenderer {
     /// Timffle: a device font the browser does not have is drawn with Flash
     /// Player's substitute, not the browser's.
     ///
-    /// Flash Player draws text in a missing device font with its default
-    /// sans-serif font (Arial on Windows, Helvetica on macOS) for the Latin
-    /// glyphs and a CJK font for the ideographs. The browser, given an
-    /// unknown family, picks its own default instead, and the two differ in
-    /// the advance of the ASCII glyphs: the Mole wishing-pool dialog pads a
-    /// line with twenty `&nbsp;` in SimSun 14 px, which Flash draws 4 px
-    /// each (0.28 em, the Arial/Helvetica space) and the browser's fallback
-    /// 5 px, so a character Flash hides under a control came out from under
-    /// it. Ideographs are 1 em wide in every CJK font and stay with whatever
-    /// CJK font the browser falls back to. An installed font, an aliased one
-    /// and the generic families are left alone.
+    /// Flash Player draws text in a missing device font with its `_serif`
+    /// default (Times on macOS, Times New Roman on Windows) for the Latin
+    /// glyphs and a CJK font for the ideographs. Measured in Flash Player
+    /// 32.0.0.303 on macOS: SimSun, 宋体, SimHei, Microsoft YaHei, PMingLiU
+    /// and a made-up name all render byte-identically to `Times` and to
+    /// `_serif` ("abc 123 ABC" at 14 px: 6,7,6,4,7,7,7,4,11,9,10 px), while
+    /// `_sans` is Helvetica (8,8,7,4,…). The browser, given an unknown family,
+    /// picks its own default instead, and the two differ in the advance of
+    /// the ASCII glyphs: the Mole wishing-pool dialog pads a line with twenty
+    /// `&nbsp;` in SimSun 14 px, which Flash draws 4 px each and the
+    /// browser's fallback 5 px, so a character Flash hides under a control
+    /// came out from under it. Ideographs are 1 em wide in every CJK font and
+    /// stay with whatever CJK font the browser falls back to. An installed
+    /// font, an aliased one and the generic families are left alone.
     fn with_flash_substitute(
         ctx: &OffscreenCanvasRenderingContext2d,
         font_str: String,
@@ -234,7 +237,7 @@ impl CanvasFontRenderer {
         if Self::is_generic_family(font_family) || Self::is_installed(ctx, &font_str)? {
             return Ok(font_str);
         }
-        Ok(format!("{font_str}, Arial, Helvetica, sans-serif"))
+        Ok(format!("{font_str}, \"Times New Roman\", Times, serif"))
     }
 
     /// Whether the browser has the font itself rather than a fallback: text
@@ -266,8 +269,21 @@ impl CanvasFontRenderer {
 
         // Generic family keywords lose their meaning when quoted: the browser
         // would look for a font literally named "sans-serif" instead.
+        //
+        // Timffle: the generic families stand for Flash's `_sans`, `_serif`
+        // and `_typewriter`, which Flash Player maps to Arial/Helvetica,
+        // Times New Roman/Times and Courier New/Courier (measured in Flash
+        // Player 32 on macOS: `_sans` = Helvetica, `_serif` = Times). The
+        // browser's own generic families depend on the page language instead:
+        // on a Chinese page macOS Chrome draws `sans-serif` with PingFang and
+        // `serif` with Songti, whose Latin glyphs and spaces are wider. Name
+        // Flash's fonts first and keep the generic family as the fallback.
         let font_family = if Self::is_generic_family(font_family) {
-            font_family.to_owned()
+            match font_family {
+                "sans-serif" => "Arial, Helvetica, sans-serif".to_owned(),
+                "serif" => "\"Times New Roman\", Times, serif".to_owned(),
+                _ => "\"Courier New\", Courier, monospace".to_owned(),
+            }
         } else {
             // Escape font family properly
             JSON::stringify(&JsValue::from_str(font_family))
