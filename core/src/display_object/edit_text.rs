@@ -445,12 +445,18 @@ impl<'gc> EditText<'gc> {
     }
 
     pub fn set_text(self, text: &WStr, context: &mut UpdateContext<'gc>) {
-        if self.text() == text {
+        if self.text() == text && !self.contains_flag(EditTextFlag::DEFAULT_FORMAT_REASSIGNED) {
             // Note: this check not only prevents text relayout,
             // but it also has observable effects, because text
             // format is not being reset to the default format.
+            //
+            // Timffle: measured in Flash Player 32: the same text keeps its
+            // formats *unless* `defaultTextFormat` was assigned (even the same
+            // value) since the text was last set; then the text is replaced and
+            // takes the default format like any new text.
             return;
         }
+        self.set_flag(EditTextFlag::DEFAULT_FORMAT_REASSIGNED, false);
 
         if self.0.style_sheet.get().is_some() {
             // When CSS is set, text will always be treated as HTML.
@@ -659,6 +665,7 @@ impl<'gc> EditText<'gc> {
             return;
         }
 
+        self.set_flag(EditTextFlag::DEFAULT_FORMAT_REASSIGNED, false);
         if self.is_effectively_html() {
             self.0.parse_html(text);
             self.relayout(context);
@@ -677,6 +684,9 @@ impl<'gc> EditText<'gc> {
 
     pub fn set_new_text_format(self, tf: TextFormat) {
         self.0.text_spans.borrow_mut().set_default_format(tf);
+        // Timffle: the next `text` assignment replaces the text even when it is
+        // unchanged (see `set_text`).
+        self.set_flag(EditTextFlag::DEFAULT_FORMAT_REASSIGNED, true);
     }
 
     pub fn text_format(self, from: usize, to: usize) -> TextFormat {
@@ -3483,6 +3493,9 @@ bitflags::bitflags! {
         const USE_RICH_TEXT_CLIPBOARD = 1 << 15;
         /// Timffle: draw the text without the clipping box (a TextLine's fallback field).
         const UNCLIPPED = 1 << 2;
+        /// Timffle: `defaultTextFormat` was assigned since the text was last set, so
+        /// assigning the same text again re-applies it (Flash Player behaviour).
+        const DEFAULT_FORMAT_REASSIGNED = 1 << 7;
 
         // The following bits need to match `swf::EditTextFlag`.
         const READ_ONLY = 1 << 3;

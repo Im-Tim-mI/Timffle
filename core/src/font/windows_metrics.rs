@@ -51,8 +51,9 @@ static TABLE_Z: &[u8] = include_bytes!("windows_metrics.bin.z");
 
 /// Smallest pixel size with hinted advances in the table.
 const MIN_PPEM: u32 = 6;
-/// Largest pixel size with hinted advances in the table.
-const MAX_PPEM: u32 = 48;
+/// Largest pixel size with hinted advances in the table (Flash was surveyed up
+/// to 130 px; TextFormat.size has no cap there).
+const MAX_PPEM: u32 = 130;
 
 /// The family Windows Flash uses for a name it has no font for.
 pub const MISSING_FAMILY: &str = "times new roman";
@@ -114,6 +115,11 @@ struct Face {
     name: String,
     bold: bool,
     italic: bool,
+    /// A face Windows synthesizes from `base` (GDI emboldening and/or
+    /// slanting): its `deltas` hold only the measured advances that differ
+    /// from the base face's hinted advance (plus one pixel when bold).
+    synthetic: bool,
+    base: Option<u16>,
     substitute: Substitute,
     units_per_em: u32,
     /// Sorted code points (BMP).
@@ -146,9 +152,8 @@ impl Face {
         self.code_points.binary_search(&cp).ok()
     }
 
-    /// The advance of `c` at `ppem` pixels per em, if the face has the glyph.
-    fn advance(&self, c: char, ppem: u32) -> Option<u32> {
-        let index = self.index_of(c)?;
+    /// The stored (hinted or measured) advance of glyph `index` at `ppem`.
+    fn delta(&self, index: usize, ppem: u32) -> Option<u32> {
         if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
             && let Ok(at) = self.deltas.binary_search_by_key(&(ppem as u8), |(p, _)| *p)
             && let Ok(d) = self.deltas[at]
@@ -156,6 +161,15 @@ impl Face {
                 .binary_search_by_key(&(index as u16), |(i, _)| *i)
         {
             return Some(u32::from(self.deltas[at].1[d].1));
+        }
+        None
+    }
+
+    /// The advance of `c` at `ppem` pixels per em, if the face has the glyph.
+    fn advance(&self, c: char, ppem: u32) -> Option<u32> {
+        let index = self.index_of(c)?;
+        if let Some(advance) = self.delta(index, ppem) {
+            return Some(advance);
         }
         Some(round_half_up(
             u32::from(self.linear[index]),
@@ -212,7 +226,7 @@ impl Table {
             data: &data,
             pos: 0,
         };
-        if r.bytes(4)? != b"TFWM" || r.u8()? != 2 {
+        if r.bytes(4)? != b"TFWM" || r.u8()? != 3 {
             return Err("bad header".into());
         }
         let count = r.u16()? as usize;
@@ -230,8 +244,12 @@ impl Table {
                 _ => Substitute::CjkSerif,
             };
             let units_per_em = u32::from(r.u16()?);
-            let _min = r.u8()?;
-            let _max = r.u8()?;
+            let min = u32::from(r.u8()?);
+            let max = u32::from(r.u8()?);
+            if min != MIN_PPEM || max != MAX_PPEM {
+                return Err("size range mismatch".into());
+            }
+            let base = r.u16()?;
             let n = r.u16()? as usize;
             let code_points = (0..n).map(|_| r.u16()).collect::<Result<Vec<_>, _>>()?;
             let linear = (0..n).map(|_| r.u16()).collect::<Result<Vec<_>, _>>()?;
@@ -255,6 +273,8 @@ impl Table {
                 name,
                 bold: flags & 1 != 0,
                 italic: flags & 2 != 0,
+                synthetic: flags & 4 != 0,
+                base: (base != 0xFFFF).then_some(base),
                 substitute,
                 units_per_em,
                 code_points,
@@ -365,9 +385,34 @@ impl Table {
             // Ideographs and Hangul are 1 em in every font (Korean fonts' own
             // Hangul included); a pixel more when emboldened synthetically,
             // which the CJK font standing in for a Latin font always is.
-            let real_cjk_bold = face.bold && face.is_cjk();
+            let real_cjk_bold = face.bold && !face.synthetic && face.is_cjk();
             return Some(ppem + u32::from(bold && !real_cjk_bold));
         }
+        if face.synthetic {
+            // GDI's emboldening/slanting of the base face: the measured
+            // exceptions, else the base's hinted advance (plus one when bold).
+            if let Some(index) = face.index_of(c)
+                && let Some(advance) = face.delta(index, ppem)
+            {
+                return Some(advance);
+            }
+            let base = self.faces.get(usize::from(face.base?))?;
+            let extra = face.bold && !base.bold;
+            return self.advance_in(family, base, extra, c, ppem);
+        }
+        self.advance_in(family, face, synthetic_bold, c, ppem)
+    }
+
+    /// `advance` for a concrete face; `synthetic_bold` adds the emboldening pixel.
+    fn advance_in(
+        &self,
+        family: &str,
+        face: &Face,
+        synthetic_bold: bool,
+        c: char,
+        ppem: u32,
+    ) -> Option<u32> {
+        let bold = synthetic_bold || face.bold;
         if is_greek_or_cyrillic(c) && family == "leelawadee ui" {
             // Windows links Leelawadee UI's Greek and Cyrillic to a 1 em font.
             return Some(ppem + u32::from(bold));
