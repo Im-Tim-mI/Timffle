@@ -271,7 +271,7 @@ impl CanvasFontRenderer {
         // would look for a font literally named "sans-serif" instead.
         //
         // Timffle: the generic families stand for Flash's `_sans`, `_serif`
-        // and `_typewriter`, which Flash Player maps to Arial/Helvetica,
+        // and `_typewriter`, which Flash Player maps to Helvetica/Arial,
         // Times New Roman/Times and Courier New/Courier (measured in Flash
         // Player 32 on macOS: `_sans` = Helvetica, `_serif` = Times). The
         // browser's own generic families depend on the page language instead:
@@ -280,7 +280,7 @@ impl CanvasFontRenderer {
         // Flash's fonts first and keep the generic family as the fallback.
         let font_family = if Self::is_generic_family(font_family) {
             match font_family {
-                "sans-serif" => "Arial, Helvetica, sans-serif".to_owned(),
+                "sans-serif" => "Helvetica, Arial, sans-serif".to_owned(),
                 "serif" => "\"Times New Roman\", Times, serif".to_owned(),
                 _ => "\"Courier New\", Courier, monospace".to_owned(),
             }
