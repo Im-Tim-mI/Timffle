@@ -55,9 +55,9 @@ Flash 內容用「裝置字型」（沒有內嵌字型檔、只寫字型名稱�
 
 | 平台 | 字形字型 | 26356 | 26357 |
 | --- | --- | --- | --- |
-| Windows 11（真字型） | 系統字型 | 53 個字型中 10 個全對 | （見發行說明） |
-| Linux（Liberation／Noto） | fontconfig 別名與後備 | 2 個全對（Courier New、`_typewriter`） | （見發行說明） |
-| macOS | Helvetica／Times／Songti 等 | 同 Linux 的情形 | （見發行說明） |
+| Windows 11（真字型） | 系統字型 | 53 個字型中 10 個全對 | 52 個全對（Courier 除外）；韓文只有 Arial Black、Segoe UI、Malgun Gothic 相同 |
+| Linux（Liberation／Noto） | fontconfig 別名與後備 | 2 個全對（Courier New、`_typewriter`） | 52 個全對（Courier 除外）；韓文全部不同 |
+| macOS 26（MacBook Pro） | Helvetica／Times／Songti 等 | 同 Linux 的情形 | 52 個全對（Courier 除外）；韓文全部不同 |
 | Android／ChromeOS | Roboto／Noto | 無 Arial、Times、SimSun，全部用後備字型 | 字寬由表決定，與平台無關；字形為 Noto／Roboto |
 
 ## 5. 已知差異與限制
