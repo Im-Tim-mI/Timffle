@@ -194,6 +194,18 @@ struct Face {
     /// emboldened fallback), and the line metrics of that emboldened text.
     hangul_bold: Vec<u16>,
     lines_bold: Vec<(u16, u16)>,
+    /// The measured width of the face's kana and ideographs per ppem when they
+    /// all share one (0 = unknown, use the rules): monospace CJK fonts are twice
+    /// their half width (odd sizes round up), font-linked fonts scale the linked
+    /// font, and GDI's emboldening does not always add exactly one pixel.
+    cjk: Vec<u16>,
+    /// The same for bold text when the family has no bold face.
+    cjk_bold: Vec<u16>,
+    /// The measured width of the face's kana and full-width forms per ppem when
+    /// they all share one (0 = unknown): font-linked fonts (Tahoma, …) scale
+    /// the linked font, so 11 px text gets 12 px glyphs.
+    fw: Vec<u16>,
+    fw_bold: Vec<u16>,
 }
 
 impl Face {
@@ -231,6 +243,25 @@ impl Face {
             &self.hangul_bold
         } else {
             &self.hangul
+        };
+        if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
+            && let Some(&w) = table.get((ppem - MIN_PPEM) as usize)
+            && w != 0
+        {
+            return Some(u32::from(w));
+        }
+        None
+    }
+
+    /// The uniform measured width of the face's ideographs (`c` an ideograph)
+    /// or kana/full-width forms (any other `c`) at `ppem`, when the survey found
+    /// one (`synthetic_bold`: emboldened text of a family without a bold face).
+    fn uniform(&self, c: char, ppem: u32, synthetic_bold: bool) -> Option<u32> {
+        let table = match (is_ideograph(c), synthetic_bold) {
+            (true, false) => &self.cjk,
+            (true, true) => &self.cjk_bold,
+            (false, false) => &self.fw,
+            (false, true) => &self.fw_bold,
         };
         if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
             && let Some(&w) = table.get((ppem - MIN_PPEM) as usize)
@@ -319,7 +350,7 @@ impl Table {
             data: &data,
             pos: 0,
         };
-        if r.bytes(4)? != b"TFWM" || r.u8()? != 4 {
+        if r.bytes(4)? != b"TFWM" || r.u8()? != 5 {
             return Err("bad header".into());
         }
         let count = r.u16()? as usize;
@@ -360,6 +391,18 @@ impl Table {
             let lines_bold = (0..=(MAX_PPEM - MIN_PPEM))
                 .map(|_| Ok((r.u16()?, r.u16()?)))
                 .collect::<Result<Vec<_>, String>>()?;
+            let cjk = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| r.u16())
+                .collect::<Result<Vec<_>, String>>()?;
+            let cjk_bold = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| r.u16())
+                .collect::<Result<Vec<_>, String>>()?;
+            let fw = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| r.u16())
+                .collect::<Result<Vec<_>, String>>()?;
+            let fw_bold = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| r.u16())
+                .collect::<Result<Vec<_>, String>>()?;
             let n_ppem = r.u8()? as usize;
             let mut deltas = Vec::with_capacity(n_ppem);
             for _ in 0..n_ppem {
@@ -388,6 +431,10 @@ impl Table {
                 hangul,
                 hangul_bold,
                 lines_bold,
+                cjk,
+                cjk_bold,
+                fw,
+                fw_bold,
             });
         }
         Ok(Table { faces, by_family })
@@ -511,6 +558,26 @@ impl Table {
                 }
             }
         }
+        if is_ideograph(c) || is_japanese_or_fullwidth(c) {
+            // The measured width of this very glyph at this size first, then
+            // the face's uniform width for its kind at this size (see
+            // `Face::uniform`).
+            if let Some(index) = face.index_of(c)
+                && let Some(advance) = face.delta(index, ppem)
+            {
+                return Some(advance + u32::from(synthetic_bold));
+            }
+            if let Some(w) = face.uniform(c, ppem, bold && !face.bold) {
+                return Some(w);
+            }
+            if face.synthetic
+                && let Some(b) = face.base
+                && let Some(base) = self.faces.get(usize::from(b))
+                && let Some(w) = base.uniform(c, ppem, face.bold && !base.bold)
+            {
+                return Some(w);
+            }
+        }
         if is_ideograph(c) || is_hangul(c) {
             // Ideographs and Hangul are 1 em in every font (Korean fonts' own
             // Hangul included); a pixel more when emboldened synthetically,
@@ -527,35 +594,40 @@ impl Table {
                 return Some(advance);
             }
             let base = self.faces.get(usize::from(face.base?))?;
-            let extra = face.bold && !base.bold;
-            return self.advance_in(family, base, extra, c, ppem);
+            let extra = face.bold && !base.bold && !base.is_heavy();
+            return self.advance_in(family, base, extra, bold, c, ppem);
         }
-        self.advance_in(family, face, synthetic_bold, c, ppem)
+        self.advance_in(family, face, synthetic_bold, bold, c, ppem)
     }
 
-    /// `advance` for a concrete face; `synthetic_bold` adds the emboldening pixel.
+    /// `advance` for a concrete face; `synthetic_bold` adds the emboldening
+    /// pixel to the face's own glyphs, `bold` (the text's weight) decides how
+    /// the fallback fonts are emboldened — Arial Black's own glyphs are not
+    /// widened for bold text, the kana MS PGothic lends it still are.
     fn advance_in(
         &self,
         family: &str,
         face: &Face,
         synthetic_bold: bool,
+        bold: bool,
         c: char,
         ppem: u32,
     ) -> Option<u32> {
-        let bold = synthetic_bold || face.bold;
         // A measured width for this very glyph and size beats every rule below
         // (surveyed fallback glyphs the font itself lacks, Leelawadee's Greek…).
+        // A zero-advance glyph (a combining mark) stays zero when emboldened.
+        let embolden = |advance: u32| advance + u32::from(synthetic_bold && advance != 0);
         if let Some(index) = face.index_of(c)
             && let Some(advance) = face.delta(index, ppem)
         {
-            return Some(advance + u32::from(synthetic_bold));
+            return Some(embolden(advance));
         }
         if is_kana(c) && KANA_FROM_PGOTHIC.contains(&family) {
             let (pgothic, _) = self.face(JAPANESE_FALLBACK, false, false)?;
             return pgothic.advance(c, ppem).map(|a| a + u32::from(bold));
         }
         if let Some(advance) = face.advance(c, ppem) {
-            return Some(advance + u32::from(synthetic_bold));
+            return Some(embolden(advance));
         }
         // Scripts the font lacks: Flash's Windows fallbacks, emboldened
         // synthetically when the text is bold (neither has a bold face).
@@ -566,7 +638,9 @@ impl Table {
                 JAPANESE_FALLBACK
             }
         } else if is_thai(c) {
-            THAI_FALLBACK
+            // Thai in bold text comes from Leelawadee UI's real bold face.
+            let (leelawadee, _) = self.face(THAI_FALLBACK, bold, false)?;
+            return leelawadee.advance(c, ppem);
         } else if is_greek_or_cyrillic(c) && family == "leelawadee ui" {
             // Windows links Leelawadee UI's missing Greek and Cyrillic to a 1 em font.
             return Some(ppem + u32::from(bold));

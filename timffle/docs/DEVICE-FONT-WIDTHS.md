@@ -11,6 +11,7 @@ Flash 內容用「裝置字型」（沒有內嵌字型檔、只寫字型名稱�
 - **基準**：Adobe Flash Player 32.0.0.465（standalone debug projector），Windows 11 繁體中文版。26357 的普查用預設字型（未另裝 Office 字型；有 msgothic、YuGothic、malgun、Noto Sans CJK 可變字型）；26358 的全尺寸普查前裝上了 Windows 的**日文與韓文補充字型**（`Language.Fonts.Jpan`／`Kore`：Meiryo、MS Mincho、Yu Mincho、Gulim、Batang、Dotum、Gungsuh），所以基準是「裝了日韓字型的繁中 Windows 11」。
 - **探針** `Survey.hx`：一個 `TextField`（不內嵌字型、不自動換行），對 **53 個字型名稱 × 5 個字級（12/14/16/20/24 px）× 12 組字串**（ASCII 全部可印字元、Latin-1 重音字母、`&nbsp;`、希臘、西里爾、繁中、簡中、日文假名與漢字、韓文、泰文、全形字元、常見標點符號），記下整串的 `textWidth` 和每個字單獨的 `textWidth`。第二份探針 `Survey2.hx` 量**粗體**字寬和每個字型每個字級的 `getLineMetrics`（ascent／descent／height）。
 - **對照**：同一個 SWF 用 Timffle 在 Windows（真 SimSun 等字型）與 Linux（Liberation、Noto 字型）無頭 Chrome 裡跑，再用 `compare.py`／`analyze.py` 逐字比對。
+- **第六份探針** `Survey6.hx`（26361）：每個字型在 survey3 沒量的字級（6～255 px）一般與粗體的 `&nbsp;`／標點／日文／韓文／全形／泰文字串、每個字型每個字級每種樣式其餘的大寫希臘／西里爾字母（`greek2`／`cyrillic2`）、Courier 粗體與粗斜體的全部字串與行高：268,643 行。
 - **第五份探針** `Survey5.hx`（26360）：每個字型 6～255 px 一般與粗體的單一諺文寬度（`K=` 行）、131～255 px 的 ASCII／Latin-1、49～255 px 的希臘／西里爾、斜體（含粗斜體）49～255 px 的 ASCII／Latin-1 與 6～255 px 的希臘／西里爾、對應字級各樣式的行高：183,765 行。
 - **第四份探針** `Survey4.hx`（26359）：57 個字型 × 斜體 6～48 px × ASCII／Latin-1（有粗體檔的加量粗斜體）、49～130 px 每個字級的一般與粗體 ASCII／Latin-1、每個字級每種樣式的 `getLineMetrics`，加上 `text` 設相同字串的語意探針：32,501 行。`TextFormat.size` 到 130 都正常。
 - **第三份探針** `Survey3.hx`（26358）：57 個字型名稱 × **每個字級 6～48 px** × ASCII／Latin-1／希臘／西里爾（粗體另量 ASCII／Latin-1），加上每個字型在 12～24 px 的 `&nbsp;`／標點／日／韓／全形／泰文，以及每個字型每個字級一般與粗體的 `getLineMetrics`：18,310 行。
@@ -31,10 +32,15 @@ Flash 內容用「裝置字型」（沒有內嵌字型檔、只寫字型名稱�
 10b. **FontLink 字型裡的韓文**：Tahoma、Microsoft Sans Serif、Lucida Sans Unicode、MS Gothic／PGothic／Mincho／PMincho、NSimSun 自己沒有諺文，Windows 依登錄檔 `FontLink\SystemLink` 的清單（PMingLiU、SimSun、MS PMincho、Batang、微軟正黑體 UI……）補字並縮放，寬度隨字級不規則，但同一字級內每個諺文寬度相同；其他字型的諺文都是 1 em。
 11. **`text` 設成相同字串**（`fontsurvey/probe-sametext/`，16 步）：相同字串本身不重排、保留逐段格式；但只要中間指派過 `defaultTextFormat`（即使值相同），下一次設相同字串就整段套用預設格式。`htmlText` 設相同字串不重排。
 12. **SimSun／NSimSun／MS Gothic**：ASCII 與 Latin-1 字母半形（0.5 em），`&nbsp;`、希臘、西里爾、全形、大多數標點 1 em（例外：`•©®™£¥` 半形）。所以許願池那 20 個 `&nbsp;` 在 SimSun 14 px 是 280 px，超過 275 px 的欄寬而換行，「個摩」到下一行——這就是 Windows Flash 看不到「摩」的真正原因（Mac 版 Flash 則是因為用 Times 把整行縮短）。
+13. **等寬中日韓字型的漢字在奇數字級是「半形的兩倍」**（26361）：MingLiU、DFKai-SB、MS Gothic、MS Mincho、NSimSun、SimHei、KaiTi、FangSong、GulimChe、DotumChe、BatangChe 的漢字與全形字元是半形字寬的兩倍，奇數字級無條件進位（7 px 是 8、15 px 是 16、101 px 是 102）；偶數字級、以及其他字型（SimSun、PMingLiU、微軟正黑體、Meiryo、Gulim……）都是 1 em。MingLiU／PMingLiU／DFKai-SB 裡 Big5 以外的漢字（例如「仮」）在奇數字級仍是 1 em（這類字由 hinting 程式決定寬度，FreeType 算不出，只能實測）。
+14. **FontLink 字型裡的假名、全形字元與漢字會被縮放**（26361）：Tahoma、Microsoft Sans Serif、Lucida Sans Unicode 連結的 MingLiU 以 GDI 自己算的字級補字——11 px 的文字補成 12 px 的字、13 px 補成 15 px（7、9、25、33 px 等則等於字級），同一字級內每個字相同；韓文同理（第 10b 條）。
+15. **合成粗體的漢字不一定加 1 px**（26361）：Gulim、Dotum、Batang、Gungsuh、Yu Mincho 沒有粗體檔，GDI 合成的粗體漢字在 6～50 px 比一般寬 1 px、51～100 px 相同、101～150 px 窄 1 px、151～200 px 窄 2 px、201～250 px 窄 3 px、251～255 px 窄 4 px。
+16. **Arial Black 的粗體**（26361）：本身的字（拉丁、希臘、西里爾）不加寬，補字的假名、全形、漢字、韓文仍照補字字型（沒有粗體檔）加 1 px。**泰文的粗體**：補字用 Leelawadee UI 真正的粗體字面，不是一般字面加 1 px。
+
 
 ## 3. Timffle 的做法（26357）
 
-- `core/src/font/windows_metrics.rs` 內建字寬表 `windows_metrics.bin.z`（26360：格式第 4 版，zlib 1.96 MB，121 個字體——含斜體、粗斜體、「合成字面」（Windows 自己合成的樣式以底字面的 hinted 字寬（粗體加 1 px）為預設，實測不同的字逐一記下）、純實測字面（Courier）、每個字級的諺文寬度；由 `fontsurvey/gen_metrics.py` 從字型檔的 `hdmx` 表、FreeType v35 和上述實測產生，**只含字寬數字，沒有字形**）。每個字體（family × 粗體 × 斜體）存每個字的線性寬度（字型單位）、**6～255 px** 每個字級裡與線性取整不同的 hinted 寬度（ASCII／Latin-1／希臘／西里爾在所有字級、所有樣式都以 Flash 實測值寫入；其他符號以 FreeType v35 推算），每個字級的 ascent／descent 與諺文寬度；255 px 以上寬度用線性取整、行高用 `usWin` 值取整。
+- `core/src/font/windows_metrics.rs` 內建字寬表 `windows_metrics.bin.z`（26361：格式第 5 版，zlib 5.11 MB，152 個字體——每個字體另記 6～255 px 每個字級的漢字寬度與假名／全形寬度（一般與合成粗體各一；第 2 節第 13～16 條的規則就是靠這些值），普查量到的每個字（含補字的假名、泰文、希臘、西里爾）逐字以實測值寫入；26360：格式第 4 版，zlib 1.96 MB，121 個字體——含斜體、粗斜體、「合成字面」（Windows 自己合成的樣式以底字面的 hinted 字寬（粗體加 1 px）為預設，實測不同的字逐一記下）、純實測字面（Courier）、每個字級的諺文寬度；由 `fontsurvey/gen_metrics.py` 從字型檔的 `hdmx` 表、FreeType v35 和上述實測產生，**只含字寬數字，沒有字形**）。每個字體（family × 粗體 × 斜體）存每個字的線性寬度（字型單位）、**6～255 px** 每個字級裡與線性取整不同的 hinted 寬度（ASCII／Latin-1／希臘／西里爾在所有字級、所有樣式都以 Flash 實測值寫入；其他符號以 FreeType v35 推算），每個字級的 ascent／descent 與諺文寬度；255 px 以上寬度用線性取整、行高用 `usWin` 值取整。
 - 行高（`core/src/font.rs` `FontMetrics::ascent`／`descent`）：裝置字型的 `FontMetrics` 帶著表裡的字面，每次依字級查 GDI 的整數 ascent／descent，`getLineMetrics`、行距、基線位置都用它；字形改成相對基線擺放（`Glyph::rendered_at_baseline`），所以表的 ascent 直接決定字形的位置。
 - 排版（`core/src/font/font_like.rs`）：裝置字型的每個字先查表（名稱先依第 2 節第 3 條解析，找不到的用 Times New Roman；漢字 1 em；假名／全形／泰文依第 6 條補字；粗體依第 7 條），查到就用它、不做 kerning；表裡沒有的字（韓文、少見符號）才退回瀏覽器量的寬度取整。只有網頁版（擴充功能、Timffle Browser）開啟這張表；桌面版與測試不受影響。
 - 字形（`web/src/ui/canvas_font_renderer.rs`）：名稱解析後，瀏覽器有那個字型就用它畫；是 Windows 字型但瀏覽器沒有（Linux 的 Verdana、Mac 的 SimSun）就用同類字型畫（sans→Arial/Helvetica，serif→Times，等寬→Courier New，中文字型保留名稱讓瀏覽器以 CJK 後備字型畫）；Windows 沒有的名稱（含中文名稱）一律用 Times New Roman 畫，和 Windows Flash 相同。行高也照解析後的名稱查既有的 Windows 行高表。
@@ -70,6 +76,8 @@ Flash 內容用「裝置字型」（沒有內嵌字型檔、只寫字型名稱�
 | Linux（Liberation／Noto） | fontconfig 別名與後備 | 2 個全對（Courier New、`_typewriter`） | 52 個全對（Courier 除外）；韓文全部不同 |
 | macOS 26（MacBook Pro） | Helvetica／Times／Songti 等 | 同 Linux 的情形 | 52 個全對（Courier 除外）；韓文全部不同 |
 
+26361（表格式第 5 版）：產表時以五份普查共 1,490 萬筆（survey2～6）逐字驗證 0 筆不同、行高與諺文 0 筆不同；Timffle 26361 在 Linux 跑 survey6（268,643 行）與 survey3（18,310 行）逐字比對 Windows Flash：survey6 的 500 筆行高全部相同，字寬除 Arial Narrow（刻意近似）與 Courier 粗體／粗斜體段落（第 5 節：Flash 程序內歷史相依的補字字型、未實測的合成斜體補字）外全部相同（改版前 survey6 有 191 個字型樣式、79,713 行不同）；survey3 與 26360 相同（只有 Arial Narrow 與 Courier 的歷史相依補字行）。
+
 26360（表格式第 4 版）：Windows 與 Linux 各跑 survey3／4／5（23.4 萬行）與 `text` 語意探針，除 Arial Narrow（刻意近似）外與 Windows Flash 全部相同。
 
 26358 的全尺寸普查（`Survey3.hx`，18,310 行，含行高）：Windows、Linux、macOS 三個平台的 Timffle 輸出逐位元組相同；與 Windows Flash 比對，11,514 行一般字寬只有 Courier 與第 5 節列的韓文例外不同，4,472 筆行高全部相同（粗體行高見第 5 節探針限制），粗體字寬只有 MingLiU 的重音字母不同。
@@ -81,6 +89,10 @@ Flash 內容用「裝置字型」（沒有內嵌字型檔、只寫字型名稱�
 - **MingLiU／PMingLiU**：這兩個是靠 hinting 程式產生字形的「tricky」字型，FreeType 算不出 GDI 的字寬；6～130 px 的 ASCII／Latin-1 已全部用實測值寫入（26359 起粗體、斜體也是）。
 - **Courier**：26360 起 ASCII 與行高用實測值（6～255 px）；26361 起 ASCII 以外的字照第 2 節第 10a 條**整段換補字字型**（新程序的選擇）。Flash 自己的補字字型選擇有歷史相依性（同一程序裡沿用先前載入過的補字字型），Timffle 不可能重現，只模仿剛啟動的播放器；「€ 與泰文同段」的例外未模仿；字形仍由瀏覽器的 Courier New 畫，只有寬度換成補字字型的。
 - **泰文組合符號**單獨量時 Flash 給它一個寬度，表裡是 0（放在字母後面時 Flash 也是 0）。
+- **MingLiU／PMingLiU／DFKai-SB 裡 Big5 以外的漢字**在奇數字級比 Big5 的漢字窄 1 px（第 2 節第 13 條）；表只記了普查量到的那幾個字（「仮」），其他 Big5 以外的字在奇數字級用 Big5 的寬度（多 1 px）。
+- **Courier 粗斜體的整段補字**：補字字型（MS PGothic、Arial……）在 Flash 裡也被合成斜體，合成斜體會改變部分字級的字寬（第 2 節第 9 條），而假名、標點等在斜體下沒有實測（斜體普查只量了 ASCII／Latin-1／希臘／西里爾），所以 Courier 粗斜體段落裡的假名（13 px 的「イ」差 1 px）與 80 px 以上的「€£¥」等用 FreeType 推算，可能差 1 px。
+- **Courier 的希臘／西里爾段**：survey6 在同一個 Flash 程序裡先量了假名，之後 Courier 的希臘／西里爾段落被 Flash 以 MS PGothic（1 em）補字——這是第 10a 條說的歷史相依，Timffle 照剛啟動的播放器用 Arial。
+- **有粗體檔的中日韓字型裡沒有的漢字**（例如微軟正黑體粗體裡的「仮」）：Flash 由連結字型補字並合成粗體（多 1 px），Timffle 沒有各字型的字集表，把每個漢字都當成字型自己的（1 em），只有普查量到的字例外。
 - **Arial Narrow**（隨 Office 安裝，基準電腦沒有）無法實測：表裡用線性字寬相同的 Liberation Sans Narrow 近似（hinting 不是 Arial Narrow 的，差 1 px 的字會有），對應裝了 Office 的 Windows；沒裝 Office 的 Windows 上 Flash 畫的是 Times New Roman。**使用者自己安裝、但不在表裡的字型**（例如 Noto Sans TC）在 Timffle 裡一律是 Times New Roman。沒裝日韓補充字型的 Windows 上，Flash 把 Meiryo、Gulim 等當成找不到；Timffle 一律當成有裝。
 - **255 px 以上**用線性字寬取整、行高用 `usWin` 取整；**非整數字級**四捨五入到整數 px 查表。ASCII／Latin-1／希臘／西里爾以外的符號（標點、箭頭、全形字等）在斜體與 49 px 以上是 FreeType 推算值。
 - **`text` 設相同字串**：26359 起照第 2 節第 11 條（之前 Timffle 一律不重排；上游 Ruffle 仍是如此）。

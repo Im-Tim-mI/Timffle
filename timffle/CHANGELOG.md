@@ -2,7 +2,7 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
-## 0.8.0.26361 — 2026-11-27（Courier 點陣字型的整段補字規則）
+## 0.8.0.26361 — 2026-11-27（Courier 點陣字型的整段補字規則；字寬表第 5 版：非拉丁字串 6～255 px 全部實測）
 
 小幫手仍是 **1.4.1**。
 
@@ -11,6 +11,8 @@
 - **實作**：`windows_metrics::run_fallback`（段的補字字型與字級）、`device_advance_in`；`FontLike::evaluate` 對裝置字型整段決定一次（`EvalParameters::device_run`），版面（`html/layout.rs`）跨「只有顏色不同」的 span 合併成段再決定，並把結果存進 `LayoutBox`，游標、點選、換行都用同一個決定。
 - **驗證**：14 個字元類別各一個新 Flash 程序的檢查（`check-*.swf`：21 個字級 × 4 種樣式 × 6 種字串，含行高），Timffle 26361 在 Linux 上逐字比對（結果見文件第 4 節）；核心單元測試 158 個通過。
 - **未模仿／已知**：Flash 的歷史相依選擇；「€ 與泰文同段」兩種順序都是 Leelawadee UI（第一個字規則會給 Arial）；字形仍由瀏覽器的 Courier New 畫。
+- **第六份普查（`fontsurvey/Survey6.hx`，268,643 行）**：每個字型在 6～255 px 其餘字級一般與粗體的 `&nbsp;`／標點／日文／韓文／全形／泰文字串、每種樣式其餘的大寫希臘／西里爾字母、Courier 粗體與粗斜體。量到四條新規則（文件第 2 節第 13～16 條）：等寬中日韓字型（MingLiU、DFKai-SB、MS Gothic、MS Mincho、NSimSun、SimHei、KaiTi、FangSong、GulimChe／DotumChe／BatangChe）的漢字與全形字在**奇數字級是半形的兩倍**（7 px 是 8），不是 1 em；FontLink 字型（Tahoma、Microsoft Sans Serif、Lucida Sans Unicode）的假名／全形／漢字**隨 GDI 算的字級縮放**（11 px 補成 12 px 的字）；Gulim／Dotum／Batang／Gungsuh／Yu Mincho **合成粗體的漢字**只有 50 px 以下才加 1 px，101 px 起反而變窄；Arial Black 的粗體本身的字不加寬但補字的字加；泰文的粗體用 Leelawadee UI 的粗體字面。
+- **字寬表第 5 版**：每個字體多記 6～255 px 每個字級的「漢字寬度」與「假名／全形寬度」（一般與合成粗體各一，普查裡同類字全同寬時才記），作為該字型所有未普查漢字／假名／全形字的寬度；普查量到的每個字（含補字的假名、泰文、希臘、西里爾）都以實測值逐字寫入，產表最後一步把規則仍算錯的任何實測字補成逐字例外，所以五份普查（survey2～6，1,490 萬筆）在產表時逐字驗證 **0 筆不同**；規則只決定沒普查到的字。另修正：Arial Black 粗體裡補字的泰文現在用 Leelawadee UI 粗體字面（之前用一般字面）；合成粗體不再把零寬度的泰文組合符號加成 1 px（粗體泰文字串比 Flash 寬的原因）。
 
 ## 0.8.0.26360 — 2026-11-26（字寬表補到底：Courier 點陣字型、FontLink 字型的韓文、Arial Narrow、6～255 px、斜體與大字級的希臘西里爾）
 
