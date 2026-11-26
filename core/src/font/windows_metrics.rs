@@ -139,6 +139,10 @@ struct Face {
     /// The measured width of a Hangul syllable per ppem (0 = unknown, use 1 em):
     /// font-linked fonts (Tahoma, MS Gothic, …) scale the linked Korean font.
     hangul: Vec<u16>,
+    /// The same for bold text when the family has no bold face (GDI's
+    /// emboldened fallback), and the line metrics of that emboldened text.
+    hangul_bold: Vec<u16>,
+    lines_bold: Vec<(u16, u16)>,
 }
 
 impl Face {
@@ -169,10 +173,16 @@ impl Face {
         None
     }
 
-    /// The measured Hangul width at `ppem`, when the survey has one.
-    fn hangul(&self, ppem: u32) -> Option<u32> {
+    /// The measured Hangul width at `ppem`, when the survey has one
+    /// (`synthetic_bold`: for emboldened text of a family without a bold face).
+    fn hangul(&self, ppem: u32, synthetic_bold: bool) -> Option<u32> {
+        let table = if synthetic_bold {
+            &self.hangul_bold
+        } else {
+            &self.hangul
+        };
         if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
-            && let Some(&w) = self.hangul.get((ppem - MIN_PPEM) as usize)
+            && let Some(&w) = table.get((ppem - MIN_PPEM) as usize)
             && w != 0
         {
             return Some(u32::from(w));
@@ -186,8 +196,9 @@ impl Face {
         if let Some(advance) = self.delta(index, ppem) {
             return Some(advance);
         }
-        if self.linear[index] == 0 {
-            // Measured only (bitmap Courier): nothing known at this size.
+        if self.linear[index] == 0xFFFF {
+            // Surveyed-only glyph (no font file, or a glyph the font lacks):
+            // nothing known at this size.
             return None;
         }
         Some(round_half_up(
@@ -199,7 +210,14 @@ impl Face {
 
     /// GDI's ascent and descent in pixels at `ppem` (`None` when unknown: a
     /// measured-only face at a size the survey did not reach).
-    fn line_metrics(&self, ppem: u32) -> Option<(u32, u32)> {
+    fn line_metrics(&self, ppem: u32, synthetic_bold: bool) -> Option<(u32, u32)> {
+        if synthetic_bold
+            && (MIN_PPEM..=MAX_PPEM).contains(&ppem)
+            && let Some(&(a, d)) = self.lines_bold.get((ppem - MIN_PPEM) as usize)
+            && (a, d) != (0, 0)
+        {
+            return Some((u32::from(a), u32::from(d)));
+        }
         if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
             && let Some(&(a, d)) = self.lines.get((ppem - MIN_PPEM) as usize)
             && (a, d) != (0, 0)
@@ -285,6 +303,12 @@ impl Table {
             let hangul = (0..=(MAX_PPEM - MIN_PPEM))
                 .map(|_| r.u16())
                 .collect::<Result<Vec<_>, String>>()?;
+            let hangul_bold = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| r.u16())
+                .collect::<Result<Vec<_>, String>>()?;
+            let lines_bold = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| Ok((r.u16()?, r.u16()?)))
+                .collect::<Result<Vec<_>, String>>()?;
             let n_ppem = r.u8()? as usize;
             let mut deltas = Vec::with_capacity(n_ppem);
             for _ in 0..n_ppem {
@@ -311,6 +335,8 @@ impl Table {
                 win_descent,
                 lines,
                 hangul,
+                hangul_bold,
+                lines_bold,
             });
         }
         Ok(Table { faces, by_family })
@@ -372,8 +398,8 @@ impl Table {
         italic: bool,
         ppem: u32,
     ) -> Option<(u32, u32)> {
-        let (face, _) = self.face(family, bold, italic)?;
-        face.line_metrics(ppem)
+        let (face, synthetic_bold) = self.face(family, bold, italic)?;
+        face.line_metrics(ppem, synthetic_bold)
     }
 
     /// The table face a device font resolves to, for [`line_metrics_for`];
@@ -384,9 +410,11 @@ impl Table {
         }
         let table = table();
         let family = table.resolve(descriptor.name()).family();
-        let (face, _) = table.face(family, descriptor.bold(), descriptor.italic())?;
+        let (face, synthetic_bold) = table.face(family, descriptor.bold(), descriptor.italic())?;
         let index = table.faces.iter().position(|f| std::ptr::eq(f, face))?;
-        Some(FaceHandle(index as u16))
+        Some(FaceHandle(
+            index as u16 | if synthetic_bold { 0x8000 } else { 0 },
+        ))
     }
 
     /// Which browser family should draw a Windows font the browser lacks.
@@ -411,14 +439,22 @@ impl Table {
         if is_hangul(c) {
             // The measured width of the (linked) Korean font at this size when
             // the survey has one, else 1 em like the ideographs.
-            if let Some(w) = face.hangul(ppem) {
+            if synthetic_bold && let Some(w) = face.hangul(ppem, true) {
+                return Some(w);
+            }
+            if let Some(w) = face.hangul(ppem, false) {
                 return Some(w + u32::from(synthetic_bold));
             }
             if face.synthetic
                 && let Some(base) = self.faces.get(usize::from(face.base?))
-                && let Some(w) = base.hangul(ppem)
             {
-                return Some(w + u32::from(face.bold && !base.bold));
+                let emboldened = face.bold && !base.bold;
+                if emboldened && let Some(w) = base.hangul(ppem, true) {
+                    return Some(w);
+                }
+                if let Some(w) = base.hangul(ppem, false) {
+                    return Some(w + u32::from(emboldened));
+                }
             }
         }
         if is_ideograph(c) || is_hangul(c) {
@@ -505,8 +541,8 @@ pub fn line_metrics_for(handle: FaceHandle, height: Twips) -> Option<(Twips, Twi
     if !(1.0..=4096.0).contains(&ppem) {
         return None;
     }
-    let face = table().faces.get(usize::from(handle.0))?;
-    let (a, d) = face.line_metrics(ppem as u32)?;
+    let face = table().faces.get(usize::from(handle.0 & 0x7FFF))?;
+    let (a, d) = face.line_metrics(ppem as u32, handle.0 & 0x8000 != 0)?;
     Some((
         Twips::from_pixels(f64::from(a)),
         Twips::from_pixels(f64::from(d)),
