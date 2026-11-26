@@ -499,10 +499,6 @@ impl Table {
         {
             return Some(advance + u32::from(synthetic_bold));
         }
-        if is_greek_or_cyrillic(c) && family == "leelawadee ui" {
-            // Windows links Leelawadee UI's Greek and Cyrillic to a 1 em font.
-            return Some(ppem + u32::from(bold));
-        }
         if is_kana(c) && KANA_FROM_PGOTHIC.contains(&family) {
             let (pgothic, _) = self.face(JAPANESE_FALLBACK, false, false)?;
             return pgothic.advance(c, ppem).map(|a| a + u32::from(bold));
@@ -520,6 +516,9 @@ impl Table {
             }
         } else if is_thai(c) {
             THAI_FALLBACK
+        } else if is_greek_or_cyrillic(c) && family == "leelawadee ui" {
+            // Windows links Leelawadee UI's missing Greek and Cyrillic to a 1 em font.
+            return Some(ppem + u32::from(bold));
         } else if is_greek_or_cyrillic(c) {
             GREEK_CYRILLIC_FALLBACK
         } else if face.is_cjk() && u32::from(c) < 0x3000 {
