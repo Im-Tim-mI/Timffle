@@ -751,6 +751,10 @@ impl RuffleInstanceBuilder {
 
         let (renderer, canvas) = self.create_renderer().await?;
 
+        // Timffle: device text takes the widths Flash Player on Windows gives
+        // it, whatever font the browser draws it with (`font::windows_metrics`).
+        ruffle_core::font::windows_metrics::set_enabled(true);
+
         let mut builder = PlayerBuilder::new()
             .with_boxed_renderer(renderer)
             .with_boxed_audio(self.create_audio_backend(log_subscriber.clone()))

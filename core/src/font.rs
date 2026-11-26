@@ -7,6 +7,7 @@ mod font_set;
 mod glyph;
 mod shaping;
 mod text_render_settings;
+pub mod windows_metrics;
 
 pub use atlas::{FontAtlas, FontAtlasGlyph, FontAtlases};
 pub use font_descriptor::FontDescriptor;

@@ -209,8 +209,20 @@ pub trait FontLike<'gc> {
             if let Some(resolution) = self.resolve_glyph(c) {
                 let glyph = resolution.glyph;
                 let scale = params.height.get() as f32 / resolution.font.scale();
+                // Timffle: device text advances by the whole-pixel width Flash
+                // Player on Windows gives the glyph (GDI's hinted advance, no
+                // kerning), whatever font draws it; see `font::windows_metrics`.
+                let windows_advance = if self.font_type() == FontType::Device {
+                    crate::font::windows_metrics::device_advance(
+                        resolution.font.descriptor(),
+                        c,
+                        params.height,
+                    )
+                } else {
+                    None
+                };
                 let mut advance = glyph.advance();
-                if kerning_enabled {
+                if kerning_enabled && windows_advance.is_none() {
                     let next_char = char_indices.peek().map(|(_, ch)| *ch);
                     let kerning = next_char
                         .map(|ch| self.get_kerning_offset(c, ch))
@@ -218,8 +230,9 @@ pub trait FontLike<'gc> {
                     advance += kerning;
                 }
                 let twips_advance = if self.font_type() == FontType::Device {
-                    let unspaced_advance =
-                        round_to_pixel(Twips::new((advance.get() as f32 * scale) as i32));
+                    let unspaced_advance = windows_advance.unwrap_or_else(|| {
+                        round_to_pixel(Twips::new((advance.get() as f32 * scale) as i32))
+                    });
                     let spaced_advance =
                         unspaced_advance + params.letter_spacing.round_to_pixel_ties_even();
                     if spaced_advance > Twips::ZERO {

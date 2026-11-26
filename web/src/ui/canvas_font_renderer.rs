@@ -47,18 +47,14 @@ impl CanvasFontRenderer {
 
     /// Windows fonts that Flash content asks for by name and that are missing
     /// on most devices, with the ascent and descent (in em) Windows lays their
-    /// lines out with: the SimSun family (its Chinese names included), Microsoft
-    /// YaHei and the Latin fonts the games use. See [`Self::line_metrics`].
+    /// lines out with: the SimSun family, Microsoft YaHei and the Latin fonts
+    /// the games use. See [`Self::line_metrics`]. Names are the ones
+    /// `windows_metrics::Table::resolve` produces (lower-case English).
     const WINDOWS_FONTS: &[WindowsFont] = &[
         WindowsFont {
-            names: &[
-                "simsun",
-                "nsimsun",
-                "\u{5B8B}\u{4F53}",
-                "\u{5B8B}\u{9AD4}",
-                "\u{65B0}\u{5B8B}\u{4F53}",
-                "\u{65B0}\u{5B8B}\u{9AD4}",
-            ],
+            // Windows Flash does not know SimSun by its Chinese names (宋体,
+            // 新宋体): those render as Times New Roman there (26357).
+            names: &["simsun", "nsimsun"],
             ascent: 220.0 / 256.0,
             descent: 36.0 / 256.0,
             even_if_installed: true,
@@ -184,12 +180,25 @@ impl CanvasFontRenderer {
         font_family: &str,
     ) -> Result<(f64, f64), JsValue> {
         let font_str = Self::to_font_str(italic, bold, Self::SIZE_PX, font_family);
-        let name = font_family.trim().to_lowercase();
+        // Timffle: the name as Windows Flash resolves it (localized and unknown
+        // names are Times New Roman there, see `with_flash_substitute`).
+        let resolution = if Self::is_generic_family(font_family) {
+            None
+        } else {
+            Some(ruffle_core::font::windows_metrics::table().resolve(font_family))
+        };
+        let name = resolution
+            .map(|r| r.family().to_owned())
+            .unwrap_or_else(|| font_family.trim().to_lowercase());
         let windows_font = Self::WINDOWS_FONTS
             .iter()
             .find(|font| font.names.contains(&name.as_str()));
         if let Some(font) = windows_font {
-            if font.even_if_installed || !Self::is_installed(ctx, &font_str)? {
+            let missing = matches!(
+                resolution,
+                Some(ruffle_core::font::windows_metrics::Resolution::Missing)
+            );
+            if font.even_if_installed || missing || !Self::is_installed(ctx, &font_str)? {
                 return Ok((font.ascent * Self::SIZE_PX, font.descent * Self::SIZE_PX));
             }
         }
@@ -212,32 +221,64 @@ impl CanvasFontRenderer {
         }
     }
 
-    /// Timffle: a device font the browser does not have is drawn with Flash
-    /// Player's substitute, not the browser's.
+    /// Timffle: the glyphs of a device font are drawn with the font Flash Player
+    /// on Windows would use, and only when the browser has it.
     ///
-    /// Flash Player draws text in a missing device font with its `_serif`
-    /// default (Times on macOS, Times New Roman on Windows) for the Latin
-    /// glyphs and a CJK font for the ideographs. Measured in Flash Player
-    /// 32.0.0.303 on macOS: SimSun, 宋体, SimHei, Microsoft YaHei, PMingLiU
-    /// and a made-up name all render byte-identically to `Times` and to
-    /// `_serif` ("abc 123 ABC" at 14 px: 6,7,6,4,7,7,7,4,11,9,10 px), while
-    /// `_sans` is Helvetica (8,8,7,4,…). The browser, given an unknown family,
-    /// picks its own default instead, and the two differ in the advance of
-    /// the ASCII glyphs: the Mole wishing-pool dialog pads a line with twenty
-    /// `&nbsp;` in SimSun 14 px, which Flash draws 4 px each and the
-    /// browser's fallback 5 px, so a character Flash hides under a control
-    /// came out from under it. Ideographs are 1 em wide in every CJK font and
-    /// stay with whatever CJK font the browser falls back to. An installed
-    /// font, an aliased one and the generic families are left alone.
+    /// Windows Flash finds fonts by their English family name only: a localized
+    /// name (宋体, 新細明體, 微軟正黑體 …) or a name Windows has no font for is
+    /// drawn with Times New Roman (`_serif`), whatever fonts the machine has;
+    /// `Helvetica`/`Times`/`Courier` are Arial/Times New Roman/Courier New
+    /// (`ruffle_core::font::windows_metrics`, surveyed in Flash Player 32 on
+    /// Windows 11). The glyph *widths* come from that module's table on every
+    /// platform; this only picks the font that draws the glyph shapes:
+    ///
+    /// * a Windows font the browser has (installed, or the same-metrics alias
+    ///   fontconfig maps the name to): the browser's font;
+    /// * a Windows font the browser lacks (Verdana on Linux, SimSun on macOS):
+    ///   a browser font of the same class (sans, serif, monospace; CJK fonts
+    ///   keep their name so the browser's CJK fallback draws the ideographs);
+    /// * anything else: Times New Roman, like Windows Flash.
+    ///
+    /// Measured in Flash Player 32.0.0.303 on macOS too: SimSun, 宋体, SimHei,
+    /// Microsoft YaHei, PMingLiU and a made-up name render byte-identically to
+    /// `Times` ("abc 123 ABC" at 14 px: 6,7,6,4,7,7,7,4,11,9,10), `_sans` is
+    /// Helvetica. The browser, given an unknown family, would pick its own
+    /// default instead (the Mole wishing-pool dialog pads a line with twenty
+    /// `&nbsp;` in SimSun 14 px: Flash hides a character under a control that
+    /// the browser's wider default let out).
     fn with_flash_substitute(
         ctx: &OffscreenCanvasRenderingContext2d,
         font_str: String,
         font_family: &str,
     ) -> Result<String, JsValue> {
-        if Self::is_generic_family(font_family) || Self::is_installed(ctx, &font_str)? {
+        use ruffle_core::font::windows_metrics::{Resolution, Substitute};
+        if Self::is_generic_family(font_family) {
             return Ok(font_str);
         }
-        Ok(format!("{font_str}, \"Times New Roman\", Times, serif"))
+        let table = ruffle_core::font::windows_metrics::table();
+        let family = match table.resolve(font_family) {
+            Resolution::Known(family) => family,
+            Resolution::Missing => return Ok(Self::missing_font_str(&font_str)),
+        };
+        if Self::is_installed(ctx, &font_str)? {
+            return Ok(font_str);
+        }
+        let fallback = match table.substitute(family) {
+            Substitute::Sans => "Arial, Helvetica, sans-serif",
+            Substitute::Serif => "\"Times New Roman\", Times, serif",
+            Substitute::Mono => "\"Courier New\", Courier, monospace",
+            Substitute::CjkSans => "sans-serif",
+            Substitute::CjkSerif => "serif",
+        };
+        Ok(format!("{font_str}, {fallback}"))
+    }
+
+    /// The font string for a name Windows Flash has no font for: Times New
+    /// Roman (and never the font the browser might have under that name).
+    fn missing_font_str(font_str: &str) -> String {
+        // `font_str` is `<style> <size>px <family>`; keep the style and size.
+        let (prefix, _) = font_str.split_once("px ").unwrap_or((font_str, ""));
+        format!("{prefix}px \"Times New Roman\", Times, serif")
     }
 
     /// Whether the browser has the font itself rather than a fallback: text
