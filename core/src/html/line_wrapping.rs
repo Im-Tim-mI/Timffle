@@ -91,7 +91,10 @@ pub fn wrap_line<'gc, T: FontLike<'gc>>(
             // So given "a  b ", the checked words are:
             // - word: "a  ", trimmed_word: "a",
             // - word: "  b ", trimmed_word: "  b",
-            word.trim_end()
+            // Timffle: no-break spaces join that trailing run when it holds a
+            // real space, and also hang at the start of a line (see
+            // `trim_hanging`).
+            trim_hanging(word, is_start_of_line)
         } else {
             // The swf7 difference is that every space is a break point
             //  and we only trim the final space,
@@ -128,7 +131,14 @@ pub fn wrap_line<'gc, T: FontLike<'gc>>(
 
                 let mut last_fitting_end = 0;
                 for (frag_end, _) in trimmed_word.char_indices() {
-                    let width = font.measure(&trimmed_word[..frag_end], params);
+                    let fragment = &trimmed_word[..frag_end];
+                    // Timffle: trailing no-break spaces of a fragment hang.
+                    let fragment = if swf8 {
+                        trim_hanging(fragment, true)
+                    } else {
+                        fragment
+                    };
+                    let width = font.measure(fragment, params);
                     if width > remaining_width {
                         break;
                     }
@@ -153,6 +163,38 @@ pub fn wrap_line<'gc, T: FontLike<'gc>>(
     None
 }
 
+/// U+00A0 NO-BREAK SPACE.
+const NBSP: u16 = 0xA0;
+
+/// Timffle: the part of a word (SWF 8+) that counts for line width.
+///
+/// Measured in Flash Player 32 with SimSun (where U+00A0 is a full em wide)
+/// and Arial: the trailing whitespace of a line hangs past the margin, and a
+/// trailing run of no-break spaces hangs with it when the run also holds a
+/// real space ("投 " followed by twenty U+00A0 stays on its line). A run of
+/// no-break spaces alone right after a glyph counts ("投" followed by twenty
+/// U+00A0 moves to the next line as a whole), except at the start of a line,
+/// where it hangs too (`nbsp_hangs`), and so a word wider than the line is
+/// split after its no-break spaces rather than inside them.
+fn trim_hanging(word: &WStr, nbsp_hangs: bool) -> &WStr {
+    let is_space = |c: u16| ruffle_wstr::utils::swf_is_whitespace(c) || c == NBSP;
+    let mut end = word.len();
+    let mut has_real_space = false;
+    while end > 0 {
+        let c = word.at(end - 1);
+        if !is_space(c) {
+            break;
+        }
+        has_real_space |= c != NBSP;
+        end -= 1;
+    }
+    if has_real_space || nbsp_hangs {
+        &word[..end]
+    } else {
+        word
+    }
+}
+
 /// Find the text indices delimiting (ending) non-breakable spans of text.
 // IMO way more readable the way it is rn
 #[allow(clippy::if_same_then_else)]
@@ -170,6 +212,12 @@ fn find_allowed_breaks(text: &WStr, swf8: bool) -> Vec<usize> {
         let curr = curr.unwrap_or(FALLBACK);
         if swf8 && curr == ' ' {
             // in swf>=8, only last space is a break
+            continue;
+        }
+        if swf8 && curr == '\u{A0}' {
+            // Timffle: Flash Player never breaks before a no-break space,
+            // not even after a space or a CJK character. After one, only the
+            // CJK rule below allows a break.
             continue;
         }
         if prev == ' ' {
@@ -408,5 +456,38 @@ mod tests {
 
             assert_eq!(None, breakpoint5);
         });
+    }
+
+    /// Timffle: no-break space rules measured in Flash Player 32 (SimSun and
+    /// Arial, `timffle-work/drag-pick-probe/nbspwrap`).
+    fn units(s: &str) -> Vec<u16> {
+        s.encode_utf16().collect()
+    }
+
+    #[test]
+    fn nbsp_is_never_a_break_before() {
+        // "投" then three no-break spaces then "個": no break between the CJK
+        // character and the no-break space, one before "個".
+        let text = units("\u{6295}\u{A0}\u{A0}\u{A0}\u{500B}");
+        assert_eq!(find_allowed_breaks(WStr::from_units(&text[..]), true), vec![4, 5]);
+        // "a b" with the space replaced: "ab", space, no-break spaces, "cd".
+        let text = units("ab \u{A0}\u{A0}cd");
+        assert_eq!(find_allowed_breaks(WStr::from_units(&text[..]), true), vec![7]);
+        // Latin after a no-break space stays glued.
+        let text = units("ab\u{A0}cd");
+        assert_eq!(find_allowed_breaks(WStr::from_units(&text[..]), true), vec![5]);
+    }
+
+    #[test]
+    fn nbsp_hangs_with_a_real_space_or_at_line_start() {
+        let with_space = units("\u{6295} \u{A0}\u{A0}");
+        let word = WStr::from_units(&with_space[..]);
+        assert_eq!(trim_hanging(word, false).len(), 1);
+        let alone = units("\u{6295}\u{A0}\u{A0}");
+        let word = WStr::from_units(&alone[..]);
+        assert_eq!(trim_hanging(word, false).len(), 3);
+        assert_eq!(trim_hanging(word, true).len(), 1);
+        let plain = units("ab  ");
+        assert_eq!(trim_hanging(WStr::from_units(&plain[..]), false).len(), 2);
     }
 }
