@@ -2,6 +2,12 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26353 — 2026-11-26（找不到的裝置字型：英文與空格改用 Flash 的替代字型）
+
+小幫手仍是 **1.4.1**。
+
+- **許願池對話框多出一個「摩」字**（tim 回報：愛心廣場許願池「我要投 [輸入框] 摩」，Flash 沒有那個「摩」；兩邊都是 Mac）：`resource/map/Map_10002.swf` 的那個文字欄是 SimSun 14 px 的 HTML 文字，第二行是「我要投」+ 1 個空格 + **20 個 `&nbsp;`** + 「個摩」，「個摩」兩字在 Flash 裡也在第一行，只是藏在輸入框和箭頭底下。**原因**：Mac 沒有 SimSun，Flash 找不到裝置字型時用它自己的預設字型畫英文和空格（Mac 是 Helvetica、Windows 是 Arial，空格 0.278 em，14 px 下是 4 px），中文另外用系統中文字型；Timffle 把字型名稱原樣交給 Chrome 的 canvas，Chrome 找不到就用它自己的預設字型，空格 0.34～0.35 em，取整後 5 px，21 個空格多 21 px，「摩」就被推到箭頭右邊。這是通用問題：任何指定了使用者沒裝的字型、又靠空格或英文排版的內容都會偏。**修正**（`web/src/ui/canvas_font_renderer.rs` `with_flash_substitute`）：字型不是 CSS 通用家族、瀏覽器也沒有（沿用既有的 `is_installed` 探測）時，canvas 字型字串後面接上 `Arial, Helvetica, sans-serif`，英文與空格由 Flash 同款的替代字型量與畫，中文照舊由瀏覽器的 CJK 後備字型畫（每個 CJK 字型的漢字都是 1 em，不受影響）；已安裝或被系統別名代替的字型不變。驗證：自製與遊戲相同欄位的探針 SWF 逐字印 `getCharBoundaries`（`timffle-work/drag-pick-probe/wishtext/`）：真 Flash 32（Wine）空格 4 px、第二行 154 px；Linux Timffle 修前修後都是 4 px／154 px（SimSun 被 fontconfig 別名成 Noto Serif CJK，走「已安裝」路徑，本來就對）；**tim 的 MacBook**（節點上無頭 Chrome）26352 空格 5 px、第二行 175 px，26353 空格 4 px、154 px；canvas 直接量：Mac 上不存在的字型空格 0.337 em，加替代字型後 0.278 em。沒驗到 Windows：Windows 節點的 exec 回 `custom-env-not-supported`（節點版本 2026.9.8-1 太舊）；Windows 多半裝有 SimSun，走的是「已安裝」路徑，本修正不會改變它。
+
 ## 0.8.0.26352 — 2026-11-25（網站自帶 Ruffle 的頁面一律由 Timffle 播放）
 
 小幫手仍是 **1.4.1**。
