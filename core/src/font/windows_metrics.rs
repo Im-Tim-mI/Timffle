@@ -439,11 +439,14 @@ impl Table {
         if is_hangul(c) {
             // The measured width of the (linked) Korean font at this size when
             // the survey has one, else 1 em like the ideographs.
-            if synthetic_bold && let Some(w) = face.hangul(ppem, true) {
+            // The linked Korean font is emboldened for any bold request the
+            // family itself cannot serve (Arial Black included).
+            let emboldened = bold && !face.bold;
+            if emboldened && let Some(w) = face.hangul(ppem, true) {
                 return Some(w);
             }
             if let Some(w) = face.hangul(ppem, false) {
-                return Some(w + u32::from(synthetic_bold));
+                return Some(w + u32::from(emboldened));
             }
             if face.synthetic
                 && let Some(base) = self.faces.get(usize::from(face.base?))
