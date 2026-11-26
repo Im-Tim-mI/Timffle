@@ -12,7 +12,7 @@ pub mod windows_metrics;
 pub use atlas::{FontAtlas, FontAtlasGlyph, FontAtlases};
 pub use font_descriptor::FontDescriptor;
 pub use font_face::{FontFace, FontFileData};
-pub use font_like::{EvalParameters, FontLike, FteGlyphGrid, GlyphResolution};
+pub use font_like::{DeviceRun, EvalParameters, FontLike, FteGlyphGrid, GlyphResolution};
 pub use font_renderer::FontRenderer;
 pub use font_renderer::FontRendererGlyphSource;
 pub use font_set::FontSet;
@@ -603,6 +603,10 @@ impl<'gc> FontLike<'gc> for Font<'gc> {
             metrics.windows_face = windows_metrics::Table::face_handle(&self.0.descriptor);
         }
         metrics
+    }
+
+    fn primary_font(&self) -> Font<'gc> {
+        *self
     }
 
     fn scale(&self) -> f32 {

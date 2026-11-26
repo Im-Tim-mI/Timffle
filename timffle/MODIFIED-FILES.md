@@ -410,6 +410,7 @@ To see a change: `git log -p 46fec3f1b2e6..HEAD -- <path>`.
 | added by Timffle | `core/src/font/windows_metrics.rs` |
 | changed | `core/src/frame_lifecycle.rs` |
 | changed | `core/src/html.rs` |
+| changed | `core/src/html/layout.rs` |
 | changed | `core/src/html/line_wrapping.rs` |
 | added by Timffle | `core/src/html/rich_text.rs` |
 | changed | `core/src/html/test.rs` |

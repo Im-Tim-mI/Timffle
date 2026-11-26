@@ -86,6 +86,10 @@ impl<'gc> FontLike<'gc> for FontSet<'gc> {
         self.0.main_font.metrics()
     }
 
+    fn primary_font(&self) -> Font<'gc> {
+        self.0.main_font
+    }
+
     fn scale(&self) -> f32 {
         self.0.main_font.scale()
     }

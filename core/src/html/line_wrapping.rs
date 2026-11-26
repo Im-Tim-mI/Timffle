@@ -259,6 +259,7 @@ mod tests {
             color: swf::Color::BLACK,
             opentype: None,
             fte_grid: None,
+            device_run: crate::font::DeviceRun::FromText,
         }
     }
 
@@ -469,13 +470,22 @@ mod tests {
         // "投" then three no-break spaces then "個": no break between the CJK
         // character and the no-break space, one before "個".
         let text = units("\u{6295}\u{A0}\u{A0}\u{A0}\u{500B}");
-        assert_eq!(find_allowed_breaks(WStr::from_units(&text[..]), true), vec![4, 5]);
+        assert_eq!(
+            find_allowed_breaks(WStr::from_units(&text[..]), true),
+            vec![4, 5]
+        );
         // "a b" with the space replaced: "ab", space, no-break spaces, "cd".
         let text = units("ab \u{A0}\u{A0}cd");
-        assert_eq!(find_allowed_breaks(WStr::from_units(&text[..]), true), vec![7]);
+        assert_eq!(
+            find_allowed_breaks(WStr::from_units(&text[..]), true),
+            vec![7]
+        );
         // Latin after a no-break space stays glued.
         let text = units("ab\u{A0}cd");
-        assert_eq!(find_allowed_breaks(WStr::from_units(&text[..]), true), vec![5]);
+        assert_eq!(
+            find_allowed_breaks(WStr::from_units(&text[..]), true),
+            vec![5]
+        );
     }
 
     #[test]

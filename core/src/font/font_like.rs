@@ -1,4 +1,5 @@
 use crate::font::glyph::GlyphRef;
+use crate::font::windows_metrics;
 use crate::font::{Font, FontMetrics, FontType, Glyph, OpenTypeFeatures};
 use crate::html::TextSpan;
 use crate::prelude::*;
@@ -32,6 +33,22 @@ pub struct EvalParameters {
     /// Timffle: how the glyphs snap to the device pixel grid (`flash.text.engine` text in
     /// an embedded CFF font only; `None` draws them where the layout puts them).
     pub fte_grid: Option<FteGlyphGrid>,
+
+    /// Timffle: the font Windows Flash sets the whole run in instead of the requested
+    /// device font (bitmap Courier with non-ASCII text), see
+    /// `windows_metrics::run_fallback`; the layout decides it over the whole run (which
+    /// may span several colour spans) and passes it down, other callers let `evaluate`
+    /// decide from the text it is given.
+    pub device_run: DeviceRun,
+}
+
+/// Timffle: see `EvalParameters::device_run`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeviceRun {
+    /// Decide from the evaluated text alone.
+    FromText,
+    /// Decided by the layout over the whole run.
+    Known(Option<windows_metrics::RunFallback>),
 }
 
 /// Timffle: how Flash Player 32 puts the glyphs of a `flash.text.engine` line set in an
@@ -76,6 +93,15 @@ impl EvalParameters {
             color,
             opentype: span.font.opentype,
             fte_grid: span.font.fte_grid,
+            device_run: DeviceRun::FromText,
+        }
+    }
+
+    /// Timffle: the same parameters with the run's device-font fallback decided.
+    pub fn with_device_run(self, run: Option<windows_metrics::RunFallback>) -> Self {
+        Self {
+            device_run: DeviceRun::Known(run),
+            ..self
         }
     }
 
@@ -112,6 +138,9 @@ pub trait FontLike<'gc> {
     fn get_kerning_offset(&self, left: char, right: char) -> Twips;
 
     fn metrics(&self) -> FontMetrics;
+
+    /// Timffle: the font the text asked for (a font set's main font).
+    fn primary_font(&self) -> Font<'gc>;
 
     fn scale(&self) -> f32;
 
@@ -204,6 +233,21 @@ pub trait FontLike<'gc> {
         let kerning_enabled =
             self.has_kerning_info() && (self.font_type().is_device() || params.kerning);
 
+        // Timffle: the font Windows Flash sets this whole run in instead (bitmap
+        // Courier with non-ASCII text), see `windows_metrics::run_fallback`.
+        let device_run = if self.font_type() == FontType::Device {
+            match params.device_run {
+                DeviceRun::Known(run) => run,
+                DeviceRun::FromText => windows_metrics::run_fallback(
+                    self.primary_font().descriptor(),
+                    text,
+                    params.height,
+                ),
+            }
+        } else {
+            None
+        };
+
         let mut x = Twips::ZERO;
         while let Some((pos, c)) = char_indices.next() {
             if let Some(resolution) = self.resolve_glyph(c) {
@@ -213,10 +257,11 @@ pub trait FontLike<'gc> {
                 // Player on Windows gives the glyph (GDI's hinted advance, no
                 // kerning), whatever font draws it; see `font::windows_metrics`.
                 let windows_advance = if self.font_type() == FontType::Device {
-                    crate::font::windows_metrics::device_advance(
+                    windows_metrics::device_advance_in(
                         resolution.font.descriptor(),
                         c,
                         params.height,
+                        device_run,
                     )
                 } else {
                     None

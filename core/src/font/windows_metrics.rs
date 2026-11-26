@@ -33,6 +33,7 @@
 //! survey itself. Only advance widths are stored, no outlines.
 
 use crate::font::FontDescriptor;
+use crate::string::WStr;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -78,6 +79,56 @@ const THAI_FALLBACK: &str = "leelawadee ui";
 /// The family whose Greek and Cyrillic glyphs stand in for fonts lacking them
 /// (DFKai-SB, Microsoft JhengHei).
 const GREEK_CYRILLIC_FALLBACK: &str = "arial";
+
+/// Windows' bitmap font Courier (`coure.fon`): GDI cannot mix glyphs of other
+/// fonts into a raster font, so when a run of Courier text has a character the
+/// bitmap font lacks (anything outside ASCII), Flash Player sets the *whole
+/// run* (same font, size, bold and italic on one line; colour does not split
+/// it) in a fallback font instead, chosen by the script of the first such
+/// character, at `max(size, 13)` px (13 px is Courier's smallest strike).
+/// Measured in Flash 32 (`fontsurvey/probe-courier/`): Hangul → Gulim, Thai →
+/// Leelawadee UI, bopomofo → SimSun, ideographs, kana, CJK symbols, full-width
+/// forms, arrows, mathematical operators and geometric shapes → MS PGothic,
+/// everything else (Latin-1 and Latin Extended letters, Greek, Cyrillic,
+/// Hebrew, Arabic, general punctuation, currency and letterlike symbols) →
+/// Arial. Those are the choices of a freshly started player; Flash reuses
+/// whichever of these fallback fonts it has already realised when a later run
+/// needs a glyph that font also has (so Greek after kana comes out in MS
+/// PGothic), which no deterministic table can follow — Timffle always uses the
+/// fresh-player choice. The line metrics stay Courier's own.
+const BITMAP_FAMILY: &str = "courier";
+/// Courier's smallest bitmap strike: the fallback fonts are never set smaller.
+const BITMAP_MIN_FALLBACK_PPEM: u32 = 13;
+const KOREAN_FALLBACK: &str = "gulim";
+const BOPOMOFO_FALLBACK: &str = "simsun";
+
+/// The font a whole run of bitmap-Courier text is set in instead (see
+/// [`BITMAP_FAMILY`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RunFallback {
+    family: &'static str,
+    ppem: u32,
+}
+
+/// The fallback family for a run of bitmap Courier whose first non-ASCII
+/// character is `c`.
+fn bitmap_fallback_family(c: char) -> &'static str {
+    let cp = u32::from(c);
+    if is_hangul(c) {
+        KOREAN_FALLBACK
+    } else if is_thai(c) {
+        THAI_FALLBACK
+    } else if matches!(cp, 0x3100..=0x312F | 0x31A0..=0x31BF) {
+        BOPOMOFO_FALLBACK
+    } else if is_ideograph(c)
+        || is_japanese_or_fullwidth(c)
+        || matches!(cp, 0x2190..=0x2BFF | 0x2E80..=0x2FFF | 0x3190..=0x319F | 0xAC00..=0xD7AF)
+    {
+        JAPANESE_FALLBACK
+    } else {
+        GREEK_CYRILLIC_FALLBACK
+    }
+}
 
 /// Which browser font family should draw the glyphs of a Windows font the
 /// browser does not have (the widths come from the table either way).
@@ -622,6 +673,77 @@ fn lookup_device_advance(descriptor: &FontDescriptor, c: char, height: Twips) ->
         .map(|px| Twips::from_pixels(f64::from(px)))
 }
 
+/// Whether `descriptor` names Windows' bitmap Courier, whose text is laid out
+/// run by run (see [`run_fallback`]); `false` when the switch is off.
+pub fn is_bitmap_font(descriptor: &FontDescriptor) -> bool {
+    ENABLED.load(Ordering::Relaxed) && table().resolve(descriptor.name()).family() == BITMAP_FAMILY
+}
+
+/// The font Windows Flash sets a whole run of device text in instead of the
+/// requested one: bitmap Courier with a character outside ASCII in the run
+/// (see [`BITMAP_FAMILY`]). `None` for every other font, or when the run is
+/// plain ASCII, or when the switch is off.
+pub fn run_fallback(
+    descriptor: &FontDescriptor,
+    text: &WStr,
+    height: Twips,
+) -> Option<RunFallback> {
+    if !ENABLED.load(Ordering::Relaxed) {
+        return None;
+    }
+    lookup_run_fallback(descriptor, text, height)
+}
+
+/// [`run_fallback`] without the enable switch.
+fn lookup_run_fallback(
+    descriptor: &FontDescriptor,
+    text: &WStr,
+    height: Twips,
+) -> Option<RunFallback> {
+    let table = table();
+    if table.resolve(descriptor.name()).family() != BITMAP_FAMILY {
+        return None;
+    }
+    let ppem = height.to_pixels().round();
+    if !(1.0..=4096.0).contains(&ppem) {
+        return None;
+    }
+    let first = text
+        .chars()
+        .map(|c| c.unwrap_or(char::REPLACEMENT_CHARACTER))
+        .find(|&c| u32::from(c) >= 0x80)?;
+    Some(RunFallback {
+        family: bitmap_fallback_family(first),
+        ppem: (ppem as u32).max(BITMAP_MIN_FALLBACK_PPEM),
+    })
+}
+
+/// [`device_advance`] for a glyph of a run that Windows Flash set in `run`'s
+/// fallback font (every glyph of the run, ASCII included, takes that font's
+/// width at the run's size); without a run fallback, the glyph's own font.
+pub fn device_advance_in(
+    descriptor: &FontDescriptor,
+    c: char,
+    height: Twips,
+    run: Option<RunFallback>,
+) -> Option<Twips> {
+    let Some(run) = run else {
+        return device_advance(descriptor, c, height);
+    };
+    if !ENABLED.load(Ordering::Relaxed) {
+        return None;
+    }
+    table()
+        .advance(
+            run.family,
+            descriptor.bold(),
+            descriptor.italic(),
+            c,
+            run.ppem,
+        )
+        .map(|px| Twips::from_pixels(f64::from(px)))
+}
+
 struct Reader<'a> {
     data: &'a [u8],
     pos: usize,
@@ -809,6 +931,114 @@ mod tests {
             Some((9.0, 2.0))
         );
         set_enabled(false);
+    }
+
+    #[test]
+    fn bitmap_courier_sets_whole_runs_in_a_fallback_font() {
+        use crate::string::WString;
+        let courier = FontDescriptor::from_parts("Courier", false, false);
+        let run = |text: &str, px: f64| {
+            lookup_run_fallback(&courier, &WString::from_utf8(text), Twips::from_pixels(px))
+        };
+        // Plain ASCII stays in the bitmap font; another font never switches.
+        assert_eq!(run("abc 123", 14.0), None);
+        assert_eq!(
+            lookup_run_fallback(
+                &FontDescriptor::from_parts("Courier New", false, false),
+                &WString::from_utf8("abc안"),
+                Twips::from_pixels(14.0)
+            ),
+            None
+        );
+        // The first non-ASCII character picks the font; sizes below 13 px are set at 13.
+        assert_eq!(
+            run("abc안", 14.0),
+            Some(RunFallback {
+                family: "gulim",
+                ppem: 14
+            })
+        );
+        assert_eq!(
+            run("abc안", 12.0),
+            Some(RunFallback {
+                family: "gulim",
+                ppem: 13
+            })
+        );
+        assert_eq!(
+            run("abcก", 20.0),
+            Some(RunFallback {
+                family: "leelawadee ui",
+                ppem: 20
+            })
+        );
+        assert_eq!(
+            run("abcㄅ", 20.0),
+            Some(RunFallback {
+                family: "simsun",
+                ppem: 20
+            })
+        );
+        for text in [
+            "abc中", "abcあ", "abcア", "abcＡ", "abc　", "abc→", "abc∞", "abc■", "abc★",
+        ] {
+            assert_eq!(
+                run(text, 50.0),
+                Some(RunFallback {
+                    family: "ms pgothic",
+                    ppem: 50
+                }),
+                "{text}"
+            );
+        }
+        for text in [
+            "abcé", "abc€", "abcα", "abcЖ", "abcא", "abc…", "abc™", "abc°",
+        ] {
+            assert_eq!(
+                run(text, 50.0),
+                Some(RunFallback {
+                    family: "arial",
+                    ppem: 50
+                }),
+                "{text}"
+            );
+        }
+        assert_eq!(
+            run("abc€안", 14.0),
+            Some(RunFallback {
+                family: "arial",
+                ppem: 14
+            })
+        );
+        assert_eq!(
+            run("abc안€", 14.0),
+            Some(RunFallback {
+                family: "gulim",
+                ppem: 14
+            })
+        );
+        // Measured whole-run widths (probe-courier, fresh player): "abc안" 12 px = 37
+        // (Gulim at 13: 8+8+8+13), "abc€" 14 px = 31 (Arial 7+8+8+8), "abcあ" 14 px = 34
+        // (MS PGothic 7+7+7+13), "abcก" 14 px = 29 (Leelawadee UI 7+7+7+8).
+        let width = |text: &str, px: f64| -> u32 {
+            let text = WString::from_utf8(text);
+            let run = lookup_run_fallback(&courier, &text, Twips::from_pixels(px));
+            text.chars()
+                .map(|c| {
+                    let c = c.unwrap();
+                    let (family, ppem) = match run {
+                        Some(r) => (r.family, r.ppem),
+                        None => ("courier", px as u32),
+                    };
+                    table().advance(family, false, false, c, ppem).unwrap()
+                })
+                .sum()
+        };
+        assert_eq!(width("abc안", 12.0), 37);
+        assert_eq!(width("abc€", 14.0), 31);
+        assert_eq!(width("abcあ", 14.0), 34);
+        assert_eq!(width("abcก", 14.0), 29);
+        assert_eq!(width("abc", 12.0), 24);
     }
 
     #[test]

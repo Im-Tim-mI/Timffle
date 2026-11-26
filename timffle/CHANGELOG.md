@@ -2,6 +2,16 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26361 — 2026-11-27（Courier 點陣字型的整段補字規則）
+
+小幫手仍是 **1.4.1**。
+
+- **tim 問 26360 剩下的「Courier 非拉丁補字 16 行」是什麼**。追查結果：Windows 的 Courier 是點陣字型，GDI 不能把其他字型的字形混進去，所以 Flash 遇到點陣 Courier 的段落裡有任何 ASCII 以外的字時，**整段（連 ASCII）改用補字字型**，字級 `max(字級, 13)`；Timffle 之前是逐字補，所以「안녕하세요 한국어 …」整串差了 20 px、泰文整串差 28～47 px。
+- **實測**（`fontsurvey/probe-courier/`，Flash 32、Windows 11，五支探針共約 3 萬行）：段的範圍是同字型、同字級、同粗體、同斜體、同一行（顏色不同不分段，`setTextFormat` 改字級／粗體或 `<font face>` 才分段，`\n` 分段）；補字字型由第一個 ASCII 以外的字決定：諺文 → Gulim、泰文 → Leelawadee UI、注音 → SimSun、漢字／假名／CJK 符號／全形半形／箭頭／數學／幾何 → MS PGothic、其他（Latin-1、希臘、西里爾、希伯來、阿拉伯、標點、貨幣、™）→ Arial；行高不變（仍是 Courier 的點陣行高）。**Flash 的選擇有歷史相依性**：同一程序裡後來的段落優先沿用已載入過的補字字型（量過假名後希臘字母變成 MS PGothic），且每個字級各記一次——這無法用表重現；Timffle 採「剛啟動的播放器」的選擇，每一類各用一個新的 Flash 程序實測確認（`probe-courier/fresh/`、`probe-courier/check/`）。
+- **實作**：`windows_metrics::run_fallback`（段的補字字型與字級）、`device_advance_in`；`FontLike::evaluate` 對裝置字型整段決定一次（`EvalParameters::device_run`），版面（`html/layout.rs`）跨「只有顏色不同」的 span 合併成段再決定，並把結果存進 `LayoutBox`，游標、點選、換行都用同一個決定。
+- **驗證**：14 個字元類別各一個新 Flash 程序的檢查（`check-*.swf`：21 個字級 × 4 種樣式 × 6 種字串，含行高），Timffle 26361 在 Linux 上逐字比對（結果見文件第 4 節）；核心單元測試 158 個通過。
+- **未模仿／已知**：Flash 的歷史相依選擇；「€ 與泰文同段」兩種順序都是 Leelawadee UI（第一個字規則會給 Arial）；字形仍由瀏覽器的 Courier New 畫。
+
 ## 0.8.0.26360 — 2026-11-26（字寬表補到底：Courier 點陣字型、FontLink 字型的韓文、Arial Narrow、6～255 px、斜體與大字級的希臘西里爾）
 
 小幫手仍是 **1.4.1**。

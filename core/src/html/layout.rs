@@ -2,6 +2,7 @@
 pub mod context;
 
 use crate::drawing::Drawing;
+use crate::font::windows_metrics;
 use crate::font::{DefaultFont, EvalParameters, Font, FontLike, FontSet, FontType};
 use crate::html::dimensions::{BoxBounds, Position, Size};
 use crate::html::layout::context::LayoutContext;
@@ -107,6 +108,13 @@ pub struct LayoutBuilder<'a, 'gc> {
     /// The right margin of the first span in the current line.
     current_line_span: TextSpan,
 
+    /// Timffle: the span group (same font, size, bold and italic; colour does
+    /// not split it) the span being laid out belongs to, as a range of `text`,
+    /// and the Windows Flash run fallback of the piece being appended (see
+    /// `windows_metrics::run_fallback`).
+    run_group: (usize, usize),
+    device_run: Option<windows_metrics::RunFallback>,
+
     /// The total width of the text field being laid out.
     max_bounds: Twips,
 }
@@ -136,6 +144,8 @@ impl<'a, 'gc> LayoutBuilder<'a, 'gc> {
             is_first_line: true,
             has_line_break: false,
             current_line_span: Default::default(),
+            run_group: (0, 0),
+            device_run: None,
             max_bounds,
             is_input: params.is_input,
             is_word_wrap: params.is_word_wrap,
@@ -144,9 +154,63 @@ impl<'a, 'gc> LayoutBuilder<'a, 'gc> {
     }
 
     fn lay_out_spans(&mut self, fs: &'a FormatSpans) {
-        for (span_start, _end, span_text, span) in fs.iter_spans() {
+        // Timffle: Windows Flash decides device-font fallbacks over runs of the
+        // same font, size, bold and italic, whatever their colours; find the
+        // run each span belongs to first (see `run_fallback_for`).
+        let spans: Vec<_> = fs.iter_spans().collect();
+        let same_run = |a: &TextSpan, b: &TextSpan| {
+            a.font.face == b.font.face
+                && a.font.size == b.font.size
+                && a.style.bold == b.style.bold
+                && a.style.italic == b.style.italic
+        };
+        let mut group_start = 0;
+        for (i, &(span_start, span_end, span_text, span)) in spans.iter().enumerate() {
+            if i > 0 && !same_run(spans[i - 1].3, span) {
+                group_start = span_start;
+            }
+            let mut group_end = span_end;
+            for next in &spans[i + 1..] {
+                if !same_run(span, next.3) {
+                    break;
+                }
+                group_end = next.1;
+            }
+            self.run_group = (group_start, group_end);
             self.lay_out_span(span_start, span_text, span);
         }
+    }
+
+    /// Timffle: the font Windows Flash sets the run containing `start..end` of
+    /// `self.text` in instead of the span's own device font (bitmap Courier
+    /// with non-ASCII text), decided over the whole run: the text between hard
+    /// breaks within the span group of the same font, size, bold and italic.
+    fn run_fallback_for(
+        &self,
+        start: usize,
+        end: usize,
+        span: &TextSpan,
+    ) -> Option<windows_metrics::RunFallback> {
+        let font = self.font_set?.primary_font();
+        let descriptor = font.descriptor();
+        if !windows_metrics::is_bitmap_font(descriptor) {
+            return None;
+        }
+        let (group_start, group_end) = self.run_group;
+        let is_break = |i: usize| matches!(self.text.get(i), Some(0x0A | 0x0D | 0x09));
+        let mut run_start = start.clamp(group_start, group_end);
+        while run_start > group_start && !is_break(run_start - 1) {
+            run_start -= 1;
+        }
+        let mut run_end = end.clamp(group_start, group_end);
+        while run_end < group_end && !is_break(run_end) {
+            run_end += 1;
+        }
+        windows_metrics::run_fallback(
+            descriptor,
+            &self.text[run_start..run_end],
+            Twips::from_pixels(span.font.size),
+        )
     }
 
     fn lay_out_span(&mut self, span_start: usize, span_text: &'a WStr, span: &TextSpan) {
@@ -154,11 +218,14 @@ impl<'a, 'gc> LayoutBuilder<'a, 'gc> {
         self.font_set = Some(font_set);
         self.newspan(span);
 
-        let params = EvalParameters::from_span(span);
-
         for range in span_text.split_indices([b'\n', b'\r', b'\t']) {
             let slice_start = range.start;
-            let text = &span_text[range];
+            let text = &span_text[range.clone()];
+            // Timffle: the Windows Flash run fallback of this piece (decided
+            // over its whole run, see `run_fallback_for`).
+            self.device_run =
+                self.run_fallback_for(span_start + slice_start, span_start + range.end, span);
+            let params = EvalParameters::from_span(span).with_device_run(self.device_run);
 
             let delimiter = if slice_start > 0 {
                 span_text
@@ -678,7 +745,7 @@ impl<'a, 'gc> LayoutBuilder<'a, 'gc> {
         let descent = metrics.descent(params.height());
         let box_origin = self.cursor - (Twips::ZERO, ascent).into();
 
-        let mut new_box = LayoutBox::from_text(text, start, end, font_set, span);
+        let mut new_box = LayoutBox::from_text(text, start, end, font_set, span, self.device_run);
         let text_width = new_box.text_width();
         new_box.bounds = BoxBounds::from_position_and_size(
             box_origin,
@@ -1185,8 +1252,11 @@ impl<'gc> LayoutBox<'gc> {
         end: usize,
         font_set: FontSet<'gc>,
         span: &TextSpan,
+        device_run: Option<windows_metrics::RunFallback>,
     ) -> Self {
-        let params = EvalParameters::from_span(span);
+        // Timffle: the run's Windows Flash fallback font travels with the box
+        // (see `LayoutBuilder::run_fallback_for`).
+        let params = EvalParameters::from_span(span).with_device_run(device_run);
         let mut char_end_pos = Vec::with_capacity(end - start);
 
         font_set.evaluate(text, params, |_, _, _, advance, x| {
