@@ -138,6 +138,7 @@ impl CanvasFontRenderer {
             .map_err(|err| JsValue::from_str(&format!("Not a 2d context: {err:?}")))?;
 
         let font_str = Self::to_font_str(italic, bold, Self::SIZE_PX, font_family);
+        let font_str = Self::with_flash_substitute(&ctx, font_str, font_family)?;
         tracing::debug!("Using the following font string: {font_str}");
         Self::apply_style(&ctx, &font_str);
 
@@ -209,6 +210,31 @@ impl CanvasFontRenderer {
             }
             _ => Ok((ascent, descent)),
         }
+    }
+
+    /// Timffle: a device font the browser does not have is drawn with Flash
+    /// Player's substitute, not the browser's.
+    ///
+    /// Flash Player draws text in a missing device font with its default
+    /// sans-serif font (Arial on Windows, Helvetica on macOS) for the Latin
+    /// glyphs and a CJK font for the ideographs. The browser, given an
+    /// unknown family, picks its own default instead, and the two differ in
+    /// the advance of the ASCII glyphs: the Mole wishing-pool dialog pads a
+    /// line with twenty `&nbsp;` in SimSun 14 px, which Flash draws 4 px
+    /// each (0.28 em, the Arial/Helvetica space) and the browser's fallback
+    /// 5 px, so a character Flash hides under a control came out from under
+    /// it. Ideographs are 1 em wide in every CJK font and stay with whatever
+    /// CJK font the browser falls back to. An installed font, an aliased one
+    /// and the generic families are left alone.
+    fn with_flash_substitute(
+        ctx: &OffscreenCanvasRenderingContext2d,
+        font_str: String,
+        font_family: &str,
+    ) -> Result<String, JsValue> {
+        if Self::is_generic_family(font_family) || Self::is_installed(ctx, &font_str)? {
+            return Ok(font_str);
+        }
+        Ok(format!("{font_str}, Arial, Helvetica, sans-serif"))
     }
 
     /// Whether the browser has the font itself rather than a fallback: text
