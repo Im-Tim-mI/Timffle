@@ -36,7 +36,7 @@
 - **表**（`core/src/font/windows_metrics.bin.z`，格式第 2 版，zlib 270 KB、83 個字體）：6～48 px 的 ASCII／Latin-1／希臘／西里爾字寬全部改用 Flash 實測值寫入（不再只靠 FreeType 推算，MingLiU／PMingLiU 的每個字級因此都對了）；新增 Meiryo（一般／粗體）、Meiryo UI、MS Mincho、MS PMincho、Yu Mincho、Gulim、GulimChe、Dotum、DotumChe、Batang、BatangChe、Gungsuh、GungsuhChe、MS UI Gothic、Microsoft YaHei UI、Microsoft JhengHei UI、MingLiU_HKSCS、Yu Gothic UI、Leelawadee UI；每個字體多存 `usWinAscent`／`usWinDescent` 和每個字級的 ascent／descent。產生時以 68.7 萬筆實測逐字驗證，只剩單獨量的泰文組合符號、上述韓文例外與 MingLiU 粗體重音字母不同。
 - **程式**：`FontMetrics` 多了 `windows_face`，裝置字型的 `ascent()`／`descent()` 依字級回傳 GDI 的整數（`getLineMetrics`、行距、基線都用它）；字形改為相對基線擺放（`Glyph::rendered_at_baseline` 對點陣字形也是 true，canvas 與桌面版 FreeType 兩個繪製器都改），所以表的 ascent 直接決定字形位置，不會和繪製器自己量的 ascent 打架。諺文與漢字一樣走 1 em 規則（韓文字型的諺文不再存進表，表因此少了 500 KB）。
 - **驗證**：Linux、Windows、tim 的 MacBook 三個平台跑同一個全尺寸探針，輸出逐位元組相同；對照 Windows Flash：一般字寬 11,514 行只有 Courier（點陣字型）和上述韓文例外不同；行高 4,472 筆全部相同（粗體行高的探針一開始量到一般字面的值，查明是 Ruffle 在 `text` 設成相同字串時不重排、也不重新套用 `defaultTextFormat`——Flash 會——探針改成先換掉文字；這個上游行為沒有改）；粗體字寬只有 MingLiU 的重音字母不同。核心單元測試 157 個通過。
-- **沒做／已知**：Courier 點陣字型；MingLiU 粗體重音字母；FontLink 字型裡的韓文；Arial Narrow；沒裝日韓字型的 Windows 上 Flash 的替代行為不模仿。
+- **沒做／已知**：Courier 點陣字型；MingLiU 粗體重音字母；FontLink 字型裡的韓文；Arial Narrow；沒裝日韓字型的 Windows 上 Flash 的替代行為不模仿。（以上四項於 26360 處理。）
 
 ## 0.8.0.26357 — 2026-11-26（裝置字型的字寬在每個平台都和 Windows 版 Flash 一樣：內建 Windows 字寬表）
 

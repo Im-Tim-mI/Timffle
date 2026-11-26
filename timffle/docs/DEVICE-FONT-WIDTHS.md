@@ -79,7 +79,7 @@ Flash 內容用「裝置字型」（沒有內嵌字型檔、只寫字型名稱�
 
 - **韓文**：26360 起 FontLink 字型的諺文寬度也實測（每個字級一個值）。沒裝韓文字型的 Windows 上 Flash 畫的是替代字形（14 px 每字 11 px），Timffle 不模仿。
 - **MingLiU／PMingLiU**：這兩個是靠 hinting 程式產生字形的「tricky」字型，FreeType 算不出 GDI 的字寬；6～130 px 的 ASCII／Latin-1 已全部用實測值寫入（26359 起粗體、斜體也是）。
-- **Courier**：26360 起用實測值（6～255 px 的 ASCII／Latin-1／希臘／西里爾與行高）；沒量到的字（其他符號）退回瀏覽器量的寬度。
+- **Courier**：26360 起用實測值（6～255 px 的 ASCII／Latin-1／希臘／西里爾與行高）；沒量到的字（其他符號，以及它補字的假名、全形、泰文——Flash 用別的字型補、寬度與一般字型不同）退回一般的補字規則或瀏覽器量的寬度。
 - **泰文組合符號**單獨量時 Flash 給它一個寬度，表裡是 0（放在字母後面時 Flash 也是 0）。
 - **Arial Narrow**（隨 Office 安裝，基準電腦沒有）無法實測：表裡用線性字寬相同的 Liberation Sans Narrow 近似（hinting 不是 Arial Narrow 的，差 1 px 的字會有），對應裝了 Office 的 Windows；沒裝 Office 的 Windows 上 Flash 畫的是 Times New Roman。**使用者自己安裝、但不在表裡的字型**（例如 Noto Sans TC）在 Timffle 裡一律是 Times New Roman。沒裝日韓補充字型的 Windows 上，Flash 把 Meiryo、Gulim 等當成找不到；Timffle 一律當成有裝。
 - **255 px 以上**用線性字寬取整、行高用 `usWin` 取整；**非整數字級**四捨五入到整數 px 查表。ASCII／Latin-1／希臘／西里爾以外的符號（標點、箭頭、全形字等）在斜體與 49 px 以上是 FreeType 推算值。
