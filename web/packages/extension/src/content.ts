@@ -209,6 +209,40 @@ function isXMLDocument(): boolean {
                             url: data.url,
                         });
                         break;
+                    case "cross_domain": {
+                        // Timffle: the background judges the host's
+                        // crossdomain.xml for this page (crossdomain.ts).
+                        const { origin, seq } = data;
+                        Promise.resolve(
+                            browser.runtime.sendMessage({
+                                type: "cross_domain",
+                                origin,
+                                seq,
+                            }),
+                        )
+                            .then(
+                                (reply) =>
+                                    (reply as { allowed?: unknown })
+                                        ?.allowed === true,
+                                () => false,
+                            )
+                            .then((allowed) =>
+                                window.postMessage(
+                                    {
+                                        to: "ruffle_page",
+                                        index: null,
+                                        id: ID,
+                                        data: {
+                                            type: "cross_domain_result",
+                                            seq,
+                                            allowed,
+                                        },
+                                    },
+                                    "*",
+                                ),
+                            );
+                        break;
+                    }
                     default:
                     // Ignore unknown messages.
                 }

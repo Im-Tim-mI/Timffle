@@ -2,6 +2,16 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26362 — 2026-11-27（跨網域資料照 Flash 的 crossdomain.xml 規則；彈彈堂可以玩了）
+
+小幫手仍是 **1.4.1**。
+
+- **tim：修正 Timffle 遊玩彈彈堂時無法正常載入的問題**（`http://ddt.61.com.tw/main_index.php`）。用 33347753 帳號實際登入追查：遊戲的 `Loading.swf`（在 `sddt.61.com.tw`）向 `questddt.61.com.tw` 要伺服器清單，瀏覽器以 CORS 擋下（對方沒有 `Access-Control-Allow-Origin`），遊戲停在 7ROAD 畫面並報「Load selectList fail!」。原版 Flash 不看 CORS，看的是對方主機的 `crossdomain.xml`（這兩台都寫 `allow-access-from domain="*"`）。
+- **做法（擴充功能 `crossdomain.ts`、`ruffle.ts`、`content.ts`、`background.ts`；`web/src/navigator.rs`）**：播放器要向別的來源抓資料前，先透過頁面腳本問擴充功能；背景程式抓一次那台主機的 `/crossdomain.xml`（每個主機只抓一次，失敗一分鐘後可重問），照 Flash 的規則判斷（`allow-access-from` 的 `*`、`*.example.com`（含 example.com 本身）、完整主機名；HTTPS 的 policy 預設 `secure`，只給 HTTPS 的頁面；`site-control permitted-cross-domain-policies="none"` 全部拒絕；policy 被轉址到別的主機不算）。允許時，為「這個頁面主機 → 那台主機」加一條 `declarativeNetRequest` session 規則，補上 `Access-Control-Allow-Origin: <頁面來源>` 與 `Access-Control-Allow-Credentials: true`（只對 xmlhttprequest／other 類請求、只對這一對主機、瀏覽器關閉即消失），然後請求照常送出。沒有 policy 或 policy 不允許的主機完全不動——跟 Flash 一樣不會多給任何頁面權限。同來源請求、沒裝擴充功能的頁面（獨立播放器）都直接跳過。
+- **驗證**：擴充功能單元測試 338 個通過（新增 `tests/crossdomain.test.mjs` 5 項：policy 解析、網域樣式、secure、site-control、來源判斷）；核心 wasm 型別檢查通過；用 33347753 帳號在 Linux 無頭 Chrome（GT 720、`wgpu-webgl`）實際登入彈彈堂星之城：伺服器清單載入、建角色、進入新手戰鬥畫面。
+- **順帶量到**：彈彈堂用 Stage3D（`requestContext3D`），只有 wgpu 渲染器（WebGPU 或 `wgpu-webgl`）支援；遊戲頁是 http，瀏覽器不給 WebGPU，所以自動落到 `wgpu-webgl`。若使用者在選項頁把渲染器固定成 `webgl`，彈彈堂會停在載入 63%（每幀一筆 `createContext3D` 失敗）。
+- **沒做**：跨網域請求仍照 Ruffle 的規則不帶 cookie（Flash 會帶）；需要 preflight 的請求（自訂標頭、非簡單 POST）沒有處理 OPTIONS 回應；`Security.loadPolicyFile()` 指定的非預設 policy 位置、socket policy 檔仍不看。
+
 ## 0.8.0.26361 — 2026-11-27（Courier 點陣字型的整段補字規則；字寬表第 5 版：非拉丁字串 6～255 px 全部實測）
 
 小幫手仍是 **1.4.1**。

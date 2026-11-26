@@ -5,6 +5,7 @@ import {
     openOnboardPage,
 } from "./utils";
 import { isMessage } from "./messages";
+import { allowCrossDomain, senderOrigin } from "./crossdomain";
 import { applyInstalledDefaults } from "./proxy-settings";
 import { registerSocketBridge } from "./socket-bridge-background";
 
@@ -287,16 +288,30 @@ async function onAdded(permissions: chrome.permissions.Permissions) {
 
 function onMessage(
     request: unknown,
-    _sender: chrome.runtime.MessageSender,
-    _sendResponse: (response: unknown) => void,
-): void {
+    sender: chrome.runtime.MessageSender,
+    sendResponse: (response: unknown) => void,
+): boolean {
     if (isMessage(request)) {
         if (request.type === "open_url_in_player") {
             browser.tabs.create({
                 url: browser.runtime.getURL(`player.html#${request.url}`),
             });
+        } else if (request.type === "cross_domain") {
+            // Timffle: Flash's cross-domain policy for a page's refused request
+            // (crossdomain.ts). Only a page's content script may ask.
+            const page = sender.tab ? senderOrigin(sender) : null;
+            if (!page || typeof request.origin !== "string") {
+                sendResponse({ allowed: false });
+                return false;
+            }
+            allowCrossDomain(page, request.origin).then(
+                (allowed) => sendResponse({ allowed }),
+                () => sendResponse({ allowed: false }),
+            );
+            return true;
         }
     }
+    return false;
 }
 
 (async () => {

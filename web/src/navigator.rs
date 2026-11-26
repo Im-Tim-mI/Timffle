@@ -443,45 +443,51 @@ impl NavigatorBackend for WebNavigatorBackend {
                 init.set_body(&blob);
             }
 
-            let web_request = match WebRequest::new_with_str_and_init(url.as_str(), &init) {
-                Ok(web_request) => web_request,
-                Err(_) => {
-                    return Err(create_specific_fetch_error(
-                        "Unable to create request for",
-                        url.as_str(),
-                        "",
-                    ));
-                }
-            };
-
-            let headers = web_request.headers();
-
-            for (header_name, header_val) in request.headers() {
-                headers
-                    .set(header_name, header_val)
-                    .map_err(|_| ErrorResponse {
-                        url: url.to_string(),
-                        error: Error::FetchError("Got JS error".to_string()),
-                    })?;
-            }
-
-            let window = web_sys::window().expect("window()");
-            let fetchval = JsFuture::from(window.fetch_with_request(&web_request))
-                .await
-                .map_err(|_| {
-                    if url.scheme() == "file" {
-                        create_specific_fetch_error(
-                            "WASM target can't fetch local URL",
+            let build_request = || -> Result<WebRequest, ErrorResponse> {
+                let web_request = match WebRequest::new_with_str_and_init(url.as_str(), &init) {
+                    Ok(web_request) => web_request,
+                    Err(_) => {
+                        return Err(create_specific_fetch_error(
+                            "Unable to create request for",
                             url.as_str(),
                             "",
-                        )
-                    } else {
-                        ErrorResponse {
+                        ));
+                    }
+                };
+
+                let headers = web_request.headers();
+
+                for (header_name, header_val) in request.headers() {
+                    headers
+                        .set(header_name, header_val)
+                        .map_err(|_| ErrorResponse {
                             url: url.to_string(),
                             error: Error::FetchError("Got JS error".to_string()),
-                        }
+                        })?;
+                }
+                Ok(web_request)
+            };
+
+            let window = web_sys::window().expect("window()");
+            // Timffle: another host's data is readable when its crossdomain.xml
+            // allows this page (Flash's rule); the extension makes the browser
+            // agree before the request goes out (see `cross_domain_allowed`).
+            cross_domain_allowed(&window, &url).await;
+            let fetchval = JsFuture::from(window.fetch_with_request(&build_request()?)).await;
+            let fetchval = fetchval.map_err(|_| {
+                if url.scheme() == "file" {
+                    create_specific_fetch_error(
+                        "WASM target can't fetch local URL",
+                        url.as_str(),
+                        "",
+                    )
+                } else {
+                    ErrorResponse {
+                        url: url.to_string(),
+                        error: Error::FetchError("Got JS error".to_string()),
                     }
-                })?;
+                }
+            })?;
 
             let response: WebResponse = fetchval.dyn_into().map_err(|_| ErrorResponse {
                 url: url.to_string(),
@@ -959,5 +965,37 @@ mod tests {
             ];
             assert!(socket_proxy_url(&proxies, "game.example", 443).is_none());
         }
+    }
+}
+
+/// Timffle: a cross-origin request the browser would refuse (CORS) is one
+/// Flash Player still made when the host's `crossdomain.xml` names this page.
+/// The extension's page script (`__timffleCrossDomain`, see the extension's
+/// crossdomain.ts) has the background read that policy once per host and,
+/// when it allows this page, supply the CORS headers for the pair from then
+/// on. Same-origin requests, and pages without the extension, return at once.
+async fn cross_domain_allowed(window: &web_sys::Window, url: &Url) -> bool {
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+    let origin = url.origin().ascii_serialization();
+    if window.location().origin().ok().as_deref() == Some(origin.as_str()) {
+        return false;
+    }
+    let Ok(hook) = js_sys::Reflect::get(window, &JsValue::from_str("__timffleCrossDomain")) else {
+        return false;
+    };
+    let Some(hook) = hook.dyn_ref::<js_sys::Function>() else {
+        return false;
+    };
+    let Ok(answer) = hook.call1(&JsValue::NULL, &JsValue::from_str(&origin)) else {
+        return false;
+    };
+    match answer.dyn_into::<Promise>() {
+        Ok(promise) => JsFuture::from(promise)
+            .await
+            .map(|value| value.is_truthy())
+            .unwrap_or(false),
+        Err(value) => value.is_truthy(),
     }
 }

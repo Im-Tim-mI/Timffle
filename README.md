@@ -71,7 +71,7 @@ Details are in [Install](#install).
 
 ### Games
 
-Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs, and no site is allowed in advance. Whether a particular game then works depends on how much of what it uses Ruffle supports; **one Flash online game has been played with a real account** (logging in, entering the game world, walking, changing maps, taking a seat in a race).
+Timffle is built for **Flash online games in general**: a site you allow can use sockets, whatever game it runs, and no site is allowed in advance. Whether a particular game then works depends on how much of what it uses Ruffle supports; **two Flash online games have been played with real accounts** (one: logging in, entering the game world, walking, changing maps, taking a seat in a race; another, 2026-11-27: logging in, loading the server list from a second host, creating a character and starting the tutorial battle).
 
 **Playing a Flash online game**: open the game's page and start it. The first time it tries to connect, Timffle's question window opens: choose **Allow** (this visit) or **Always allow** if you trust the game. By then the game has usually timed out, so try connecting again in the game. Details: [The first-use question](#the-first-use-question).
 
@@ -238,7 +238,8 @@ Details: [`timffle/docs/ARCHITECTURE.md`](timffle/docs/ARCHITECTURE.md), [`timff
 
 ## Known limitations
 
-- **Which games work**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; only one online game has been played with a real account.
+- **Which games work**: any site you allow can use sockets, but whether a game runs depends on Ruffle's coverage of what it uses; two online games have been played with real accounts.
+- **Cross-domain data**: when a game reads data from another host, the browser's CORS rules would refuse it unless that host sends CORS headers, which Flash-era servers do not. Timffle does what Flash Player did: it reads the host's `crossdomain.xml` and, only when that file names the game's page, lets the page read that host (the browser is told to accept the response for that page–host pair). Hosts without a policy, or whose policy excludes the page, stay refused. Cross-domain requests still carry no cookies, and requests that need a CORS preflight are not handled.
 - **No socket policy files**: real Flash asked the destination server for a socket policy file before every socket connection. Timffle (like Ruffle) does not, so **the game server has no veto**: the allow list and your answer to the first-use question are the only gate. That is why you should allow only online games you trust.
 - **ActionScript 2 `XMLSocket`** goes through the same socket path as `flash.net.Socket`, but only `flash.net.Socket` has been tested.
 - **Platforms**: Windows, macOS and Ubuntu were tested by the author on real machines (2026-10-26); the automated tests run only in Chrome on Linux (headless) and under Wine. The helper is **not signed**: Windows shows a SmartScreen warning, and on macOS you allow it once in System Settings → Privacy & Security. Not tried in Firefox or Safari.

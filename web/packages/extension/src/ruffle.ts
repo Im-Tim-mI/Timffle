@@ -22,6 +22,57 @@ let currentMessageId: string | null = null;
 // reads its socket proxy list (see socket-bridge-arm.ts), not before.
 let askedBridgePort: MessagePort | undefined;
 
+// Timffle: Ruffle's navigator calls `window.__timffleCrossDomain(origin)` when
+// the browser refused a cross-origin request; the answer (from the host's
+// crossdomain.xml, judged by the background) says whether to try again.
+const crossDomainAnswers = new Map<number, (allowed: boolean) => void>();
+const crossDomainOrigins = new Map<string, Promise<boolean>>();
+let crossDomainSeq = 0;
+function askCrossDomain(origin: unknown): Promise<boolean> {
+    if (typeof origin !== "string" || currentMessageId === null) {
+        return Promise.resolve(false);
+    }
+    // One question per host; a refusal is asked again (the host may have been down).
+    const known = crossDomainOrigins.get(origin);
+    if (known) {
+        return known;
+    }
+    const pending = askCrossDomainOnce(origin);
+    crossDomainOrigins.set(origin, pending);
+    pending.then((allowed) => {
+        if (!allowed) {
+            crossDomainOrigins.delete(origin);
+        }
+    });
+    return pending;
+}
+function askCrossDomainOnce(origin: string): Promise<boolean> {
+    const seq = ++crossDomainSeq;
+    return new Promise((resolve) => {
+        crossDomainAnswers.set(seq, resolve);
+        setTimeout(() => {
+            if (crossDomainAnswers.delete(seq)) {
+                resolve(false);
+            }
+        }, 30000);
+        window.postMessage(
+            {
+                to: "ruffle_content",
+                index: null,
+                id: currentMessageId,
+                data: { type: "cross_domain", origin, seq },
+            },
+            "*",
+        );
+    });
+}
+Object.defineProperty(window, "__timffleCrossDomain", {
+    value: askCrossDomain,
+    writable: false,
+    configurable: false,
+    enumerable: false,
+});
+
 function handleMessage(message: Message) {
     switch (message.type) {
         case "load": {
@@ -123,6 +174,12 @@ window.addEventListener("message", (event) => {
 
     const { to, index, data, id } = event.data;
     if (to === "ruffle_page") {
+        if (data?.type === "cross_domain_result") {
+            const answer = crossDomainAnswers.get(data.seq);
+            crossDomainAnswers.delete(data.seq);
+            answer?.(data.allowed === true);
+            return;
+        }
         if (data?.type === "socket_bridge") {
             const port = event.ports[0];
             if (port) {
