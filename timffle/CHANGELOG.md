@@ -2,6 +2,18 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26360 — 2026-11-26（字寬表補到底：Courier 點陣字型、FontLink 字型的韓文、Arial Narrow、6～255 px、斜體與大字級的希臘西里爾）
+
+小幫手仍是 **1.4.1**。
+
+- **tim：剩下的差異也要處理完整**。第五份普查（`fontsurvey/Survey5.hx`，Flash 32、Windows 11）量了：每個字型 6～255 px 一般與粗體的**單一諺文寬度**（`K=` 行）；131～255 px 一般／粗體的 ASCII／Latin-1；49～255 px 一般／粗體的希臘／西里爾；斜體（有粗體檔的加粗斜體）49～255 px 的 ASCII／Latin-1 與 6～255 px 的希臘／西里爾；131～255 px（斜體 49～255 px）每種樣式的 `getLineMetrics`。共 183,765 行。
+- **Courier**：Windows 的 Courier 是點陣字型，沒有字型檔可算，改用純實測字面（`measured_only`）：6～255 px 的 ASCII／Latin-1／希臘／西里爾字寬與行高全部來自實測，沒量到的字退回瀏覽器量的寬度；`Courier` 不再被當成 Courier New。
+- **FontLink 字型裡的韓文**：Tahoma、Microsoft Sans Serif、Lucida Sans Unicode、MS Gothic／PGothic／Mincho／PMincho、NSimSun 的諺文由 Windows 字型連結（登錄檔 `FontLink\SystemLink`：PMingLiU → SimSun → MS PMincho → Batang …）補字並縮放，寬度隨字級不規則但同一字級內每個諺文相同。每個字體現在存 6～255 px 每個字級的諺文寬度（一般與粗體各一），查不到才退回 1 em。
+- **Arial Narrow**：隨 Office 安裝，Windows 本身沒有，tim 的電腦也沒有，無法實測。改用線性字寬相同的 Liberation Sans Narrow（四種樣式）近似，hinting 不是 Arial Narrow 的；裝了 Office 的 Windows 上 Flash 會用本尊。文件標為近似。
+- **6～255 px**：表的範圍擴到 255 px（`TextFormat.size` 到 255 仍正常），寬度與行高欄位改為 16 位元（格式第 4 版）；255 px 以上用線性取整。
+- **斜體與 49 px 以上的希臘／西里爾**：全部改為實測值。
+- **驗證**：產表時以 630 萬筆（survey5）＋147 萬筆（survey4）＋69.7 萬筆（survey3）＋3.1 萬筆（survey2）實測逐字驗證，字寬只剩 Courier 的 1 個假名、行高 0 筆、諺文 0 筆不同；核心單元測試 157 個通過。Timffle 26360 在 **Windows** 與 **Linux** 上各跑全部四份探針（survey3／4／5 共 23.4 萬行與 `text` 語意探針）逐字比對 Windows Flash：除 Arial Narrow（刻意的近似，tim 的電腦上 Flash 畫 Times New Roman）外全部相同，`text` 語意 16 步相同。表與平台無關（26357／26358 已三平台證明逐位元組相同），本版未另跑 Mac。
+
 ## 0.8.0.26359 — 2026-11-26（字寬表：斜體、6～130 px 全部實測、合成粗體／斜體；`text` 設相同字串的 Flash 規則）
 
 小幫手仍是 **1.4.1**。
