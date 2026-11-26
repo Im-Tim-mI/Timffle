@@ -51,9 +51,9 @@ static TABLE_Z: &[u8] = include_bytes!("windows_metrics.bin.z");
 
 /// Smallest pixel size with hinted advances in the table.
 const MIN_PPEM: u32 = 6;
-/// Largest pixel size with hinted advances in the table (Flash was surveyed up
-/// to 130 px; TextFormat.size has no cap there).
-const MAX_PPEM: u32 = 130;
+/// Largest pixel size with measured advances in the table (Flash was surveyed
+/// up to 255 px; TextFormat.size has no cap there).
+const MAX_PPEM: u32 = 255;
 
 /// The family Windows Flash uses for a name it has no font for.
 pub const MISSING_FAMILY: &str = "times new roman";
@@ -124,17 +124,21 @@ struct Face {
     units_per_em: u32,
     /// Sorted code points (BMP).
     code_points: Vec<u16>,
-    /// Linear advance in font units, parallel to `code_points`.
+    /// Linear advance in font units, parallel to `code_points` (0 when
+    /// unknown: a face built from measurements only, Windows' bitmap Courier).
     linear: Vec<u16>,
     /// `(ppem, sorted (glyph index, hinted advance in pixels))`.
-    deltas: Vec<(u8, Vec<(u16, u8)>)>,
+    deltas: Vec<(u8, Vec<(u16, u16)>)>,
     /// OS/2 `usWinAscent`/`usWinDescent` in font units: GDI's line metrics at
     /// sizes outside [`MIN_PPEM`]..=[`MAX_PPEM`].
     win_ascent: u32,
     win_descent: u32,
     /// GDI's ascent and descent in pixels for ppem [`MIN_PPEM`]..=[`MAX_PPEM`]
     /// (the font's `VDMX` record, else the rounded `usWin` values).
-    lines: Vec<(u8, u8)>,
+    lines: Vec<(u16, u16)>,
+    /// The measured width of a Hangul syllable per ppem (0 = unknown, use 1 em):
+    /// font-linked fonts (Tahoma, MS Gothic, …) scale the linked Korean font.
+    hangul: Vec<u16>,
 }
 
 impl Face {
@@ -165,11 +169,26 @@ impl Face {
         None
     }
 
+    /// The measured Hangul width at `ppem`, when the survey has one.
+    fn hangul(&self, ppem: u32) -> Option<u32> {
+        if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
+            && let Some(&w) = self.hangul.get((ppem - MIN_PPEM) as usize)
+            && w != 0
+        {
+            return Some(u32::from(w));
+        }
+        None
+    }
+
     /// The advance of `c` at `ppem` pixels per em, if the face has the glyph.
     fn advance(&self, c: char, ppem: u32) -> Option<u32> {
         let index = self.index_of(c)?;
         if let Some(advance) = self.delta(index, ppem) {
             return Some(advance);
+        }
+        if self.linear[index] == 0 {
+            // Measured only (bitmap Courier): nothing known at this size.
+            return None;
         }
         Some(round_half_up(
             u32::from(self.linear[index]),
@@ -178,17 +197,22 @@ impl Face {
         ))
     }
 
-    /// GDI's ascent and descent in pixels at `ppem`.
-    fn line_metrics(&self, ppem: u32) -> (u32, u32) {
+    /// GDI's ascent and descent in pixels at `ppem` (`None` when unknown: a
+    /// measured-only face at a size the survey did not reach).
+    fn line_metrics(&self, ppem: u32) -> Option<(u32, u32)> {
         if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
             && let Some(&(a, d)) = self.lines.get((ppem - MIN_PPEM) as usize)
+            && (a, d) != (0, 0)
         {
-            return (u32::from(a), u32::from(d));
+            return Some((u32::from(a), u32::from(d)));
         }
-        (
+        if self.win_ascent == 0 && self.win_descent == 0 {
+            return None;
+        }
+        Some((
             round_half_up(self.win_ascent, ppem, self.units_per_em),
             round_half_up(self.win_descent, ppem, self.units_per_em),
-        )
+        ))
     }
 }
 
@@ -226,7 +250,7 @@ impl Table {
             data: &data,
             pos: 0,
         };
-        if r.bytes(4)? != b"TFWM" || r.u8()? != 3 {
+        if r.bytes(4)? != b"TFWM" || r.u8()? != 4 {
             return Err("bad header".into());
         }
         let count = r.u16()? as usize;
@@ -256,7 +280,10 @@ impl Table {
             let win_ascent = u32::from(r.u16()?);
             let win_descent = u32::from(r.u16()?);
             let lines = (0..=(MAX_PPEM - MIN_PPEM))
-                .map(|_| Ok((r.u8()?, r.u8()?)))
+                .map(|_| Ok((r.u16()?, r.u16()?)))
+                .collect::<Result<Vec<_>, String>>()?;
+            let hangul = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| r.u16())
                 .collect::<Result<Vec<_>, String>>()?;
             let n_ppem = r.u8()? as usize;
             let mut deltas = Vec::with_capacity(n_ppem);
@@ -264,7 +291,7 @@ impl Table {
                 let ppem = r.u8()?;
                 let n_d = r.u16()? as usize;
                 let list = (0..n_d)
-                    .map(|_| Ok((r.u16()?, r.u8()?)))
+                    .map(|_| Ok((r.u16()?, r.u16()?)))
                     .collect::<Result<Vec<_>, String>>()?;
                 deltas.push((ppem, list));
             }
@@ -283,6 +310,7 @@ impl Table {
                 win_ascent,
                 win_descent,
                 lines,
+                hangul,
             });
         }
         Ok(Table { faces, by_family })
@@ -295,8 +323,7 @@ impl Table {
         let canonical = match lower.as_str() {
             "_sans" | "sans-serif" | "helvetica" => "arial",
             "_serif" | "serif" | "times" => "times new roman",
-            "_typewriter" | "monospace" | "courier" => "courier new",
-            "nsimsun" => "simsun",
+            "_typewriter" | "monospace" => "courier new",
             other => other,
         };
         match self.by_family.get_key_value(canonical) {
@@ -346,7 +373,7 @@ impl Table {
         ppem: u32,
     ) -> Option<(u32, u32)> {
         let (face, _) = self.face(family, bold, italic)?;
-        Some(face.line_metrics(ppem))
+        face.line_metrics(ppem)
     }
 
     /// The table face a device font resolves to, for [`line_metrics_for`];
@@ -381,6 +408,19 @@ impl Table {
         ppem: u32,
     ) -> Option<u32> {
         let (face, synthetic_bold) = self.face(family, bold, italic)?;
+        if is_hangul(c) {
+            // The measured width of the (linked) Korean font at this size when
+            // the survey has one, else 1 em like the ideographs.
+            if let Some(w) = face.hangul(ppem) {
+                return Some(w + u32::from(synthetic_bold));
+            }
+            if face.synthetic
+                && let Some(base) = self.faces.get(usize::from(face.base?))
+                && let Some(w) = base.hangul(ppem)
+            {
+                return Some(w + u32::from(face.bold && !base.bold));
+            }
+        }
         if is_ideograph(c) || is_hangul(c) {
             // Ideographs and Hangul are 1 em in every font (Korean fonts' own
             // Hangul included); a pixel more when emboldened synthetically,
@@ -413,6 +453,13 @@ impl Table {
         ppem: u32,
     ) -> Option<u32> {
         let bold = synthetic_bold || face.bold;
+        // A measured width for this very glyph and size beats every rule below
+        // (surveyed fallback glyphs the font itself lacks, Leelawadee's Greek…).
+        if let Some(index) = face.index_of(c)
+            && let Some(advance) = face.delta(index, ppem)
+        {
+            return Some(advance + u32::from(synthetic_bold));
+        }
         if is_greek_or_cyrillic(c) && family == "leelawadee ui" {
             // Windows links Leelawadee UI's Greek and Cyrillic to a 1 em font.
             return Some(ppem + u32::from(bold));
@@ -459,7 +506,7 @@ pub fn line_metrics_for(handle: FaceHandle, height: Twips) -> Option<(Twips, Twi
         return None;
     }
     let face = table().faces.get(usize::from(handle.0))?;
-    let (a, d) = face.line_metrics(ppem as u32);
+    let (a, d) = face.line_metrics(ppem as u32)?;
     Some((
         Twips::from_pixels(f64::from(a)),
         Twips::from_pixels(f64::from(d)),
@@ -575,7 +622,9 @@ mod tests {
         assert_eq!(t.resolve("_sans"), Resolution::Known("arial"));
         assert_eq!(t.resolve("sans-serif"), Resolution::Known("arial"));
         assert_eq!(t.resolve("Times"), Resolution::Known("times new roman"));
-        assert_eq!(t.resolve("NSimSun"), Resolution::Known("simsun"));
+        assert_eq!(t.resolve("NSimSun"), Resolution::Known("nsimsun"));
+        assert_eq!(t.resolve("Courier"), Resolution::Known("courier"));
+        assert_eq!(t.resolve("Arial Narrow"), Resolution::Known("arial narrow"));
         // Localized names are not fonts to Windows Flash.
         assert_eq!(t.resolve("宋体"), Resolution::Missing);
         assert_eq!(t.resolve("新細明體"), Resolution::Missing);
