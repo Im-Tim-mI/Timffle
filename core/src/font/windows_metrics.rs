@@ -821,10 +821,9 @@ mod tests {
 
     #[test]
     fn device_advance_uses_the_descriptor() {
-        // The switch stays off in tests: other tests lay device text out with
-        // the renderer's own widths.
+        // (`device_advance` itself is gated by the global switch, which another
+        // test toggles; test the ungated lookup.)
         let d = FontDescriptor::from_parts("Arial", false, false);
-        assert_eq!(device_advance(&d, 'I', Twips::from_pixels(14.0)), None);
         assert_eq!(
             lookup_device_advance(&d, 'I', Twips::from_pixels(14.0)),
             Some(Twips::from_pixels(3.0))
