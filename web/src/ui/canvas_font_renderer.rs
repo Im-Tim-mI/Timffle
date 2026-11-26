@@ -398,7 +398,10 @@ impl CanvasFontRenderer {
 
         let bitmap = Bitmap::new(width, height, BitmapFormat::Rgba, pixels);
         let bitmap_tx = Twips::from_pixels(bitmap_tx);
-        let bitmap_ty = Twips::from_pixels(self.ascent + bitmap_ty);
+        // Timffle: relative to the baseline (the glyph is `rendered_at_baseline`),
+        // not to the line top via this renderer's ascent: the layout's baseline
+        // may come from Windows Flash's line metrics instead.
+        let bitmap_ty = Twips::from_pixels(bitmap_ty);
         let atlas_glyph = self.atlases.rgba().new_glyph(bitmap, bitmap_tx, bitmap_ty);
         Ok(Glyph::from_atlas(character, atlas_glyph, advance))
     }
@@ -424,6 +427,7 @@ impl FontRenderer for CanvasFontRenderer {
             ascent: (self.ascent * Self::SCALE) as i32,
             descent: (self.descent * Self::SCALE) as i32,
             leading: 0,
+            windows_face: None,
         }
     }
 

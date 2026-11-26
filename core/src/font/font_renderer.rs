@@ -192,6 +192,7 @@ mod tests {
                 ascent: 1,
                 descent: 0,
                 leading: 0,
+                windows_face: None,
             }
         }
 

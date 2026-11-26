@@ -93,11 +93,11 @@ impl FreetypeFontRenderer {
         let tx = Twips::from_pixels(glyph.bitmap_left() as f64);
 
         // `bitmap_top` is the distance from the baseline up to the top of
-        // the bitmap. Glyph bitmaps are positioned relative to the top of
-        // the line, not the baseline, so convert it into a downward offset
-        // from the top of the line.
+        // the bitmap. Timffle: atlas glyphs are placed relative to the
+        // baseline (`Glyph::rendered_at_baseline`), so the layout's baseline,
+        // which may come from Windows Flash's line metrics, positions them.
         let bitmap_top = Twips::from_pixels(glyph.bitmap_top() as f64);
-        let ty = self.ascent() - bitmap_top;
+        let ty = -bitmap_top;
 
         let bitmap = Bitmap::new(
             bitmap.width() as u32,
@@ -143,6 +143,7 @@ impl FontRenderer for FreetypeFontRenderer {
             ascent: self.ascent().get(),
             descent: self.descent().get(),
             leading: 0,
+            windows_face: None,
         }
     }
 

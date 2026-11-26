@@ -62,6 +62,16 @@ const JAPANESE_FALLBACK: &str = "ms pgothic";
 /// kana and full-width forms are therefore 1 em, like PMingLiU's.
 const LINKED_TO_MINGLIU: &[&str] = &["tahoma", "microsoft sans serif", "lucida sans unicode"];
 const LINKED_JAPANESE_FALLBACK: &str = "pmingliu";
+/// Traditional-Chinese fonts whose kana Windows takes from MS PGothic (font
+/// link) even though the fonts have kana of their own.
+const KANA_FROM_PGOTHIC: &[&str] = &[
+    "microsoft jhenghei",
+    "microsoft jhenghei ui",
+    "pmingliu",
+    "mingliu",
+    "mingliu_hkscs",
+    "dfkai-sb",
+];
 /// The family whose Thai glyphs stand in for fonts lacking them.
 const THAI_FALLBACK: &str = "leelawadee ui";
 /// The family whose Greek and Cyrillic glyphs stand in for fonts lacking them
@@ -112,6 +122,13 @@ struct Face {
     linear: Vec<u16>,
     /// `(ppem, sorted (glyph index, hinted advance in pixels))`.
     deltas: Vec<(u8, Vec<(u16, u8)>)>,
+    /// OS/2 `usWinAscent`/`usWinDescent` in font units: GDI's line metrics at
+    /// sizes outside [`MIN_PPEM`]..=[`MAX_PPEM`].
+    win_ascent: u32,
+    win_descent: u32,
+    /// GDI's ascent and descent in pixels for ppem [`MIN_PPEM`]..=[`MAX_PPEM`]
+    /// (the font's `VDMX` record, else the rounded `usWin` values).
+    lines: Vec<(u8, u8)>,
 }
 
 impl Face {
@@ -145,6 +162,19 @@ impl Face {
             ppem,
             self.units_per_em,
         ))
+    }
+
+    /// GDI's ascent and descent in pixels at `ppem`.
+    fn line_metrics(&self, ppem: u32) -> (u32, u32) {
+        if (MIN_PPEM..=MAX_PPEM).contains(&ppem)
+            && let Some(&(a, d)) = self.lines.get((ppem - MIN_PPEM) as usize)
+        {
+            return (u32::from(a), u32::from(d));
+        }
+        (
+            round_half_up(self.win_ascent, ppem, self.units_per_em),
+            round_half_up(self.win_descent, ppem, self.units_per_em),
+        )
     }
 }
 
@@ -182,7 +212,7 @@ impl Table {
             data: &data,
             pos: 0,
         };
-        if r.bytes(4)? != b"TFWM" || r.u8()? != 1 {
+        if r.bytes(4)? != b"TFWM" || r.u8()? != 2 {
             return Err("bad header".into());
         }
         let count = r.u16()? as usize;
@@ -205,6 +235,11 @@ impl Table {
             let n = r.u16()? as usize;
             let code_points = (0..n).map(|_| r.u16()).collect::<Result<Vec<_>, _>>()?;
             let linear = (0..n).map(|_| r.u16()).collect::<Result<Vec<_>, _>>()?;
+            let win_ascent = u32::from(r.u16()?);
+            let win_descent = u32::from(r.u16()?);
+            let lines = (0..=(MAX_PPEM - MIN_PPEM))
+                .map(|_| Ok((r.u8()?, r.u8()?)))
+                .collect::<Result<Vec<_>, String>>()?;
             let n_ppem = r.u8()? as usize;
             let mut deltas = Vec::with_capacity(n_ppem);
             for _ in 0..n_ppem {
@@ -225,6 +260,9 @@ impl Table {
                 code_points,
                 linear,
                 deltas,
+                win_ascent,
+                win_descent,
+                lines,
             });
         }
         Ok(Table { faces, by_family })
@@ -276,6 +314,34 @@ impl Table {
         Some((regular, bold && !regular.is_heavy()))
     }
 
+    /// GDI's ascent and descent (pixels) for `family` at `ppem`: the face's
+    /// `VDMX` device metrics, which Flash's `getLineMetrics` reports; a bold
+    /// request without a bold face uses the regular face (emboldening does not
+    /// change them).
+    pub fn line_metrics(
+        &self,
+        family: &str,
+        bold: bool,
+        italic: bool,
+        ppem: u32,
+    ) -> Option<(u32, u32)> {
+        let (face, _) = self.face(family, bold, italic)?;
+        Some(face.line_metrics(ppem))
+    }
+
+    /// The table face a device font resolves to, for [`line_metrics_for`];
+    /// `None` when the switch is off.
+    pub fn face_handle(descriptor: &FontDescriptor) -> Option<FaceHandle> {
+        if !ENABLED.load(Ordering::Relaxed) {
+            return None;
+        }
+        let table = table();
+        let family = table.resolve(descriptor.name()).family();
+        let (face, _) = table.face(family, descriptor.bold(), descriptor.italic())?;
+        let index = table.faces.iter().position(|f| std::ptr::eq(f, face))?;
+        Some(FaceHandle(index as u16))
+    }
+
     /// Which browser family should draw a Windows font the browser lacks.
     pub fn substitute(&self, family: &str) -> Substitute {
         self.face(family, false, false)
@@ -295,11 +361,20 @@ impl Table {
         ppem: u32,
     ) -> Option<u32> {
         let (face, synthetic_bold) = self.face(family, bold, italic)?;
-        if is_ideograph(c) {
-            // 1 em; a pixel more when emboldened synthetically, which the CJK
-            // font standing in for a Latin font always is (none has a bold face).
+        if is_ideograph(c) || is_hangul(c) {
+            // Ideographs and Hangul are 1 em in every font (Korean fonts' own
+            // Hangul included); a pixel more when emboldened synthetically,
+            // which the CJK font standing in for a Latin font always is.
             let real_cjk_bold = face.bold && face.is_cjk();
             return Some(ppem + u32::from(bold && !real_cjk_bold));
+        }
+        if is_greek_or_cyrillic(c) && family == "leelawadee ui" {
+            // Windows links Leelawadee UI's Greek and Cyrillic to a 1 em font.
+            return Some(ppem + u32::from(bold));
+        }
+        if is_kana(c) && KANA_FROM_PGOTHIC.contains(&family) {
+            let (pgothic, _) = self.face(JAPANESE_FALLBACK, false, false)?;
+            return pgothic.advance(c, ppem).map(|a| a + u32::from(bold));
         }
         if let Some(advance) = face.advance(c, ppem) {
             return Some(advance + u32::from(synthetic_bold));
@@ -326,6 +401,24 @@ impl Table {
         let (face, _) = self.face(fallback, false, false)?;
         face.advance(c, ppem).map(|a| a + u32::from(bold))
     }
+}
+
+/// A face of the table, small enough to travel inside `FontMetrics`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FaceHandle(u16);
+
+/// GDI's ascent and descent at `height` (whole pixels, as Twips) for the face.
+pub fn line_metrics_for(handle: FaceHandle, height: Twips) -> Option<(Twips, Twips)> {
+    let ppem = height.to_pixels().round();
+    if !(1.0..=4096.0).contains(&ppem) {
+        return None;
+    }
+    let face = table().faces.get(usize::from(handle.0))?;
+    let (a, d) = face.line_metrics(ppem as u32);
+    Some((
+        Twips::from_pixels(f64::from(a)),
+        Twips::from_pixels(f64::from(d)),
+    ))
 }
 
 fn leak_static(key: &str) -> &'static str {
@@ -356,6 +449,14 @@ fn is_japanese_or_fullwidth(c: char) -> bool {
 
 fn is_thai(c: char) -> bool {
     matches!(u32::from(c), 0x0E00..=0x0E7F)
+}
+
+fn is_kana(c: char) -> bool {
+    matches!(u32::from(c), 0x3040..=0x30FF)
+}
+
+fn is_hangul(c: char) -> bool {
+    matches!(u32::from(c), 0x1100..=0x11FF | 0x3130..=0x318F | 0xAC00..=0xD7A3)
 }
 
 fn is_greek_or_cyrillic(c: char) -> bool {
@@ -530,8 +631,52 @@ mod tests {
         assert_eq!(adv("SimHei", true, 'À', 14), Some(15));
         // Ideographs: 1 em even in a Latin font.
         assert_eq!(adv("Arial", false, '摩', 20), Some(20));
-        // Hangul in a Latin font is not covered.
-        assert_eq!(adv("Arial", false, '안', 14), None);
+        // Hangul in a Latin font: a 1 em Korean font (win-flash3.txt, Korean fonts installed).
+        assert_eq!(adv("Arial", false, '안', 14), Some(14));
+        // Traditional-Chinese fonts take kana from MS PGothic (PMingLiU 14 px あ = 13).
+        assert_eq!(adv("PMingLiU", false, 'あ', 14), Some(13));
+        // Fonts that exist only with the Japanese/Korean font packages are in the table.
+        assert!(adv("Meiryo", false, 'a', 14).is_some());
+        assert_eq!(adv("Gulim", false, 'a', 14), Some(8));
+    }
+
+    #[test]
+    fn line_metrics_are_gdi_integers() {
+        let t = table();
+        // win-flash2.txt: Arial 12 px 12/3, 14 px 13/3, 24 px 21/6 (VDMX); Arial Bold 16 px 15/4;
+        // Tahoma (its VDMX is computed for all glyphs, which GDI ignores) 12 px 12/2; SimSun bold 14 px 12/2.
+        assert_eq!(t.line_metrics("arial", false, false, 12), Some((12, 3)));
+        assert_eq!(t.line_metrics("arial", false, false, 14), Some((13, 3)));
+        assert_eq!(t.line_metrics("arial", false, false, 24), Some((21, 6)));
+        assert_eq!(t.line_metrics("arial", true, false, 16), Some((15, 4)));
+        assert_eq!(t.line_metrics("tahoma", false, false, 12), Some((12, 2)));
+        assert_eq!(t.line_metrics("simsun", true, false, 14), Some((12, 2)));
+        // Localized names: Times New Roman's metrics (新細明體 14 px 13/3).
+        assert_eq!(
+            t.line_metrics(t.resolve("新細明體").family(), false, false, 14),
+            Some((13, 3))
+        );
+        // Beyond the table: rounded usWinAscent/usWinDescent (Arial 1854/434 of 2048 at 64 px).
+        assert_eq!(t.line_metrics("arial", false, false, 64), Some((58, 14)));
+    }
+
+    #[test]
+    fn face_handles_follow_the_descriptor_weight() {
+        set_enabled(true);
+        let regular =
+            Table::face_handle(&FontDescriptor::from_parts("Arial", false, false)).unwrap();
+        let bold = Table::face_handle(&FontDescriptor::from_parts("Arial", true, false)).unwrap();
+        assert_ne!(regular, bold);
+        let px = |h: Option<(Twips, Twips)>| h.map(|(a, d)| (a.to_pixels(), d.to_pixels()));
+        assert_eq!(
+            px(line_metrics_for(regular, Twips::from_pixels(9.0))),
+            Some((9.0, 3.0))
+        );
+        assert_eq!(
+            px(line_metrics_for(bold, Twips::from_pixels(9.0))),
+            Some((9.0, 2.0))
+        );
+        set_enabled(false);
     }
 
     #[test]
@@ -557,7 +702,7 @@ mod tests {
             Some(Twips::from_pixels(15.0))
         );
         assert_eq!(
-            lookup_device_advance(&d, '안', Twips::from_pixels(14.0)),
+            lookup_device_advance(&d, '\u{E000}', Twips::from_pixels(14.0)),
             None
         );
     }

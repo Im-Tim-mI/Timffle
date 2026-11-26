@@ -175,7 +175,10 @@ impl Glyph {
         match self.shape {
             GlyphShape::Swf(_) => true,
             GlyphShape::Drawing(_) => true,
-            GlyphShape::AtlasGlyph(_) => false,
+            // Timffle: atlas glyphs are rasterized relative to the baseline too, so
+            // the layout's baseline (Windows Flash's line metrics for device fonts)
+            // places them; see `CanvasFontRenderer::render_glyph_internal`.
+            GlyphShape::AtlasGlyph(_) => true,
             GlyphShape::None => false,
         }
     }

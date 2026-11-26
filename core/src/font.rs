@@ -267,6 +267,11 @@ pub struct FontMetrics {
     /// another, in EM-square coordinates.
     #[allow(dead_code)] // Web build falsely claims it's unused
     pub leading: i16,
+
+    /// Timffle: the Windows font a device font stands for, whose GDI line
+    /// metrics (whole pixels per size) replace `ascent`/`descent` the way
+    /// Flash Player on Windows lays lines out; see `windows_metrics`.
+    pub windows_face: Option<windows_metrics::FaceHandle>,
 }
 
 impl FontMetrics {
@@ -276,11 +281,17 @@ impl FontMetrics {
         ascent: 0,
         descent: 0,
         leading: 0,
+        windows_face: None,
     };
 
     /// Get the baseline (ascent) from the top of the glyph at a given height.
     #[must_use]
     pub fn ascent(&self, height: Twips) -> Twips {
+        if let Some(face) = self.windows_face
+            && let Some((ascent, _)) = windows_metrics::line_metrics_for(face, height)
+        {
+            return ascent;
+        }
         let scale = height.get() as f32 / self.scale;
         Twips::new((self.ascent as f32 * scale) as i32)
     }
@@ -288,6 +299,11 @@ impl FontMetrics {
     /// Get the descent from the baseline to the bottom of the glyph at a given height.
     #[must_use]
     pub fn descent(&self, height: Twips) -> Twips {
+        if let Some(face) = self.windows_face
+            && let Some((_, descent)) = windows_metrics::line_metrics_for(face, height)
+        {
+            return descent;
+        }
         let scale = height.get() as f32 / self.scale;
         Twips::new((self.descent as f32 * scale) as i32)
     }
@@ -411,6 +427,7 @@ impl<'gc> Font<'gc> {
                             ascent,
                             descent,
                             leading,
+                            windows_face: None,
                         },
                     }
                 },
@@ -580,7 +597,12 @@ impl<'gc> FontLike<'gc> for Font<'gc> {
     }
 
     fn metrics(&self) -> FontMetrics {
-        self.0.glyphs.metrics()
+        let mut metrics = self.0.glyphs.metrics();
+        // Timffle: device text takes Windows Flash's line metrics too.
+        if self.0.font_type == FontType::Device {
+            metrics.windows_face = windows_metrics::Table::face_handle(&self.0.descriptor);
+        }
+        metrics
     }
 
     fn scale(&self) -> f32 {

@@ -163,6 +163,7 @@ impl FontFace {
             ascent: self.ascender,
             descent: self.descender,
             leading: self.leading,
+            windows_face: None,
         }
     }
 
