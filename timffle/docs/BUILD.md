@@ -55,6 +55,7 @@ python3 -I timffle/scripts/package-store.py timffle/build/out/timffle-chrome-<�
 - 商店要求 `manifest.json` 在 ZIP 的最上層，而且不接受 `key` 欄位（商店自己簽章）。`package-store.py` 從發行 ZIP 取出 `extension/` 放到最上層、拿掉 `key`、附上 `LICENSES/` 與 `NOTICE.md`；連線小幫手、安裝程式與 `README.txt` 不放。結果含 PEM 私鑰、執行檔或安裝腳本，或沒通過 `check-no-build-paths.py` 時，它會刪掉輸出並拒絕。
 - 商店項目的 ID 和 `timffle/extension-key/` 算出的 ID 相同（`eandddnbchclalbjkhfelhjhpijifcog`）：建立項目的第一次上傳在 ZIP 最上層附了私鑰 `key.pem`，商店依它沿用了原本的 ID（2026-10-26）。官方文件沒有寫這個做法；之後的上傳都不要再放私鑰。
 - 每次上傳的版本號都必須比前一次大。
+- **商店套件只用來上傳商店，不放到 GitHub 的發行頁**（2026-11-27 起；之前各版附上的已全部刪除）。它沒有 `key`，用「載入未封裝項目」載入時 Chrome 會給隨機 ID，連線小幫手只接受 `eandddnbchclalbjkhfelhjhpijifcog`，於是找不到小幫手。GitHub 只放一般安裝包 `timffle-chrome-<版本>.zip` 與只列它的 `SHA256SUMS`。
 
 ## 3. 驗證過什麼、沒驗證什麼
 
