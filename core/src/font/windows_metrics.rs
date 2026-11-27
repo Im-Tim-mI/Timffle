@@ -534,12 +534,21 @@ impl Table {
         ppem: u32,
     ) -> Option<u32> {
         let (face, synthetic_bold) = self.face(family, bold, italic)?;
-        if bold && italic && !(face.bold && face.italic) {
-            // Bold italic without a measured bold italic face, of a family
-            // whose italic (or bold) Windows synthesizes: GDI applies both,
-            // and the width is the bold width plus what slanting changes
-            // (MS PGothic's kana in a Courier run: the slanted width plus the
-            // emboldening pixel, 250 of 250 surveyed rows).
+        if bold && italic && !(face.bold && face.italic && !face.synthetic) {
+            // Bold italic without a real bold italic face, of a family whose
+            // italic (or bold) Windows synthesizes: GDI applies both, and the
+            // width is the bold width plus what slanting changes (MS PGothic's
+            // kana in a Courier run: the slanted width plus the emboldening
+            // pixel, 250 of 250 surveyed rows; 97.7 % of every such font's
+            // bold italic rows in survey8). A synthetic bold italic face holds
+            // the measured exceptions.
+            if face.bold
+                && face.italic
+                && let Some(index) = face.index_of(c)
+                && let Some(advance) = face.delta(index, ppem)
+            {
+                return Some(advance);
+            }
             if let Some(indices) = self.by_family.get(family)
                 && indices
                     .iter()
@@ -577,6 +586,7 @@ impl Table {
         }
         if (is_ideograph(c) || is_japanese_or_fullwidth(c))
             && !(is_kana(c) && KANA_FROM_PGOTHIC.contains(&family))
+            && !is_halfwidth(c)
         {
             // The measured width of this very glyph at this size first, then
             // the face's uniform width for its kind at this size (see
@@ -735,6 +745,13 @@ fn is_ideograph(c: char) -> bool {
 /// Kana, CJK symbols/punctuation, bopomofo and half/full-width forms.
 fn is_japanese_or_fullwidth(c: char) -> bool {
     matches!(u32::from(c), 0x3000..=0x30FF | 0x3100..=0x312F | 0x31A0..=0x31BF | 0x3200..=0x33FF | 0xFE30..=0xFE4F | 0xFF00..=0xFFEF)
+}
+
+/// Half-width katakana, Hangul and symbols of the Halfwidth and Fullwidth
+/// Forms block: never the face's uniform full-width width (SimSun's `ｱ` is
+/// half an em, from its font link).
+fn is_halfwidth(c: char) -> bool {
+    matches!(u32::from(c), 0xFF61..=0xFFDC | 0xFFE8..=0xFFEE)
 }
 
 fn is_thai(c: char) -> bool {
