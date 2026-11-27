@@ -2,6 +2,15 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26363 — 2026-11-27（字寬表：斜體與粗斜體的非拉丁字串 6～255 px 全部實測）
+
+小幫手仍是 **1.4.1**。
+
+- **第七份普查（`fontsurvey/Survey7.hx`，147,003 行，Flash 約 45 分鐘）**：每個字型在斜體（有粗體檔的字型加量粗斜體）6～255 px 每個字級的 `&nbsp;`／標點／日文／韓文／全形／泰文字串，與每種樣式每個字級的 `getLineMetrics`。這是字寬表裡最後一塊靠 FreeType 推算、沒有實測的範圍（26361 文件第 5 節的「斜體與 49 px 以上的符號是推算值」與「Courier 粗斜體段落裡的假名、`€£¥`」兩條）。
+- **量到的規則**：補字的 MS PGothic 假名在任何字型的斜體／粗斜體裡也被 GDI 合成斜體，「イ」「カ」在 7、8、9、13、17、19、21、22 px 這 8 個字級寬度改變（7～9 px 窄 1 px，13～22 px 寬 1～2 px），「キ」在 9、13 px 寬 1 px；MS PMincho 自己的「あうくケ」在 7～22 px 的 9 個字級不同。Gulim／Dotum／Batang／Gungsuh 的合成斜體在 11～25 px 這 15 個字級改變 ASCII 字母、標點與全形字（含全形空白）的寬度，諺文與漢字不變；GulimChe／DotumChe／BatangChe 只有全形空白在 13、15、17、21、25 px 窄 1 px；MingLiU 的合成斜體在 6～198 px 的 85 個字級改變 `•©®™`。SimSun、SimHei、KaiTi、FangSong、Microsoft YaHei、Tahoma、Microsoft Sans Serif、Lucida Sans Unicode、MS Gothic／UI Gothic／Mincho、Yu Gothic、Yu Mincho、Malgun Gothic 的合成斜體在這些字串上與直立體完全相同；有斜體檔的字型（Times New Roman、Arial、Georgia、Segoe UI、Calibri、Trebuchet MS、Comic Sans MS、Verdana、Meiryo、Courier New）的標點與 `&nbsp;` 旁的字母用斜體檔的 hinted 字寬（Times New Roman 的 `—×…“”` 在每個字級都和直立體不同）。斜體的行高與同粗細的直立體相同（21,000 筆）。沒有實測粗斜體的字型的**粗斜體** = 粗體字寬 +（合成斜體字寬 − 直立體字寬）（MS PGothic 的粗體是 +1，所以 Courier 粗斜體段落裡 MS PGothic 假名 = 合成斜體 + 1，250 列全部吻合；`windows_metrics.rs` `Table::advance` 與 `gen_metrics.py lookup` 鏡像同步；文件第 2 節第 20 條）。文件第 2 節第 17～20 條。
+- **字寬表（格式仍是第 5 版）**：斜體字面（真斜體檔與 Windows 合成的斜體）現在也記每個字級的漢字寬度、假名／全形寬度與諺文寬度（`gen_metrics.py apply_cjk` 的斜體列只寫進確切的斜體字面；沒有任何差異的樣式沿用底字面的值）；普查量到的每個字逐字以實測值寫入，最後一步 `patch_exceptions` 仍把規則算錯的字補成逐字例外。六份普查（survey2～7，1,739 萬筆）產表時逐字驗證 **0 筆不同**，行高 66,060 筆 0 筆不同。表 zlib 5.99 MB，161 個字體。
+- **驗證**：Timffle 26363 在 Linux 跑 survey7（147,003 行）、survey6（268,643 行）與 survey3（18,310 行）逐字比對 Windows Flash：survey7 除 Arial Narrow（刻意近似）外 125 個字型樣式 124,500 行字寬與 20,756 筆行高全部相同；survey6 只剩 Arial Narrow 與 Courier 粗體／粗斜體段落各 486 行（全是 Flash 程序內歷史相依的希臘／西里爾補字字型，文件第 5 節；26361 的 Courier 粗斜體還有 59 行假名與 `€£¥` 不同，現在相同）；survey3 與 26361 相同（Arial Narrow 與 Courier 的歷史相依補字 86 行）；核心單元測試 158 個通過。改版前（26362）survey7 有 7,816 行（69 個字型樣式）不同。
+
 ## 0.8.0.26362 — 2026-11-27（跨網域資料照 Flash 的 crossdomain.xml 規則；彈彈堂可以玩了）
 
 小幫手仍是 **1.4.1**。

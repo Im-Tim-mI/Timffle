@@ -534,6 +534,23 @@ impl Table {
         ppem: u32,
     ) -> Option<u32> {
         let (face, synthetic_bold) = self.face(family, bold, italic)?;
+        if bold && italic && !(face.bold && face.italic) {
+            // Bold italic without a measured bold italic face, of a family
+            // whose italic (or bold) Windows synthesizes: GDI applies both,
+            // and the width is the bold width plus what slanting changes
+            // (MS PGothic's kana in a Courier run: the slanted width plus the
+            // emboldening pixel, 250 of 250 surveyed rows).
+            if let Some(indices) = self.by_family.get(family)
+                && indices
+                    .iter()
+                    .any(|&i| !self.faces[i].bold && self.faces[i].italic)
+                && let Some(wb) = self.advance(family, true, false, c, ppem)
+                && let Some(wi) = self.advance(family, false, true, c, ppem)
+                && let Some(wr) = self.advance(family, false, false, c, ppem)
+            {
+                return Some((wb + wi).saturating_sub(wr));
+            }
+        }
         if is_hangul(c) {
             // The measured width of the (linked) Korean font at this size when
             // the survey has one, else 1 em like the ideographs.
@@ -558,10 +575,13 @@ impl Table {
                 }
             }
         }
-        if is_ideograph(c) || is_japanese_or_fullwidth(c) {
+        if (is_ideograph(c) || is_japanese_or_fullwidth(c))
+            && !(is_kana(c) && KANA_FROM_PGOTHIC.contains(&family))
+        {
             // The measured width of this very glyph at this size first, then
             // the face's uniform width for its kind at this size (see
-            // `Face::uniform`).
+            // `Face::uniform`). The Traditional-Chinese fonts' kana are MS
+            // PGothic's (proportional), decided in `advance_in`, not uniform.
             if let Some(index) = face.index_of(c)
                 && let Some(advance) = face.delta(index, ppem)
             {
@@ -581,8 +601,16 @@ impl Table {
         if is_ideograph(c) || is_hangul(c) {
             // Ideographs and Hangul are 1 em in every font (Korean fonts' own
             // Hangul included); a pixel more when emboldened synthetically,
-            // which the CJK font standing in for a Latin font always is.
-            let real_cjk_bold = face.bold && !face.synthetic && face.is_cjk();
+            // which the CJK font standing in for a Latin font always is. A
+            // synthetic face (GDI's slanted bold italic of Microsoft JhengHei)
+            // has its base's glyphs: a real bold CJK base is not widened.
+            let real = if face.synthetic {
+                face.base.and_then(|b| self.faces.get(usize::from(b)))
+            } else {
+                None
+            }
+            .unwrap_or(face);
+            let real_cjk_bold = real.bold && !real.synthetic && real.is_cjk();
             return Some(ppem + u32::from(bold && !real_cjk_bold));
         }
         if face.synthetic {
@@ -620,6 +648,13 @@ impl Table {
         if let Some(index) = face.index_of(c)
             && let Some(advance) = face.delta(index, ppem)
         {
+            if is_thai(c) && bold && face.linear[index] == 0xFFFF {
+                // Thai the font lacks, in bold text: Leelawadee UI's real bold
+                // face, not the surveyed regular width plus the emboldening
+                // pixel (MingLiU bold italic, whose base holds regular rows).
+                let (leelawadee, _) = self.face(THAI_FALLBACK, true, false)?;
+                return leelawadee.advance(c, ppem);
+            }
             return Some(embolden(advance));
         }
         if is_kana(c) && KANA_FROM_PGOTHIC.contains(&family) {
