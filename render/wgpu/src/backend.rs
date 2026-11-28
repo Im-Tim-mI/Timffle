@@ -96,6 +96,7 @@ impl WgpuRenderBackend<SwapChainTarget> {
     pub async fn for_canvas(
         canvas: web_sys::HtmlCanvasElement,
         webgpu: bool,
+        transparent: bool,
     ) -> Result<Self, Error> {
         let backends = if webgpu {
             wgpu::Backends::BROWSER_WEBGPU
@@ -123,8 +124,13 @@ impl WgpuRenderBackend<SwapChainTarget> {
         )
         .await?;
         let descriptors = Descriptors::new(instance, adapter, device, queue);
-        let target =
-            SwapChainTarget::new(surface, &descriptors.adapter, (1, 1), &descriptors.device);
+        let target = SwapChainTarget::new_with_transparency(
+            surface,
+            &descriptors.adapter,
+            (1, 1),
+            &descriptors.device,
+            transparent,
+        );
         Self::new(Arc::new(descriptors), target)
     }
 

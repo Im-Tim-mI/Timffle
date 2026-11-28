@@ -13,7 +13,10 @@ const DEFAULT_OPTIONS: Required<Options> = {
     ...Config.DEFAULT_CONFIG,
     ruffleEnable: true,
     ignoreOptout: false,
-    autostart: false,
+    // Timffle: Flash Player started every movie by itself; with this off a
+    // page opened without a click showed a play button instead (the audio
+    // stays muted until the first click on the movie, as browsers require).
+    autostart: true,
     showReloadButton: false,
     swfTakeover: true,
 };

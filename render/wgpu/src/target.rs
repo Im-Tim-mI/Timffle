@@ -63,8 +63,21 @@ impl SwapChainTarget {
     pub fn new(
         surface: wgpu::Surface<'static>,
         adapter: &wgpu::Adapter,
+        size: (u32, u32),
+        device: &wgpu::Device,
+    ) -> Self {
+        Self::new_with_transparency(surface, adapter, size, device, false)
+    }
+
+    /// Timffle: `transparent` (a page's `wmode="transparent"`) composites the
+    /// canvas with its alpha over the page instead of over black. Frames are
+    /// premultiplied, so a premultiplied surface is preferred.
+    pub fn new_with_transparency(
+        surface: wgpu::Surface<'static>,
+        adapter: &wgpu::Adapter,
         (width, height): (u32, u32),
         device: &wgpu::Device,
+        transparent: bool,
     ) -> Self {
         // Flash colors and blending are done in sRGB space -- we don't want the GPU to
         // adjust the colors. We prefer a non-sRGB surface format directly, but on platforms
@@ -94,7 +107,25 @@ impl SwapChainTarget {
             height,
             present_mode: wgpu::PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
-            alpha_mode: capabilities.alpha_modes[0],
+            alpha_mode: if transparent {
+                // The browser's WebGPU backend reports only `Opaque`, yet
+                // every WebGPU canvas takes "premultiplied" (wgpu maps
+                // `PreMultiplied` to it when configuring).
+                if adapter.get_info().backend == wgpu::Backend::BrowserWebGpu {
+                    wgpu::CompositeAlphaMode::PreMultiplied
+                } else {
+                    [
+                        wgpu::CompositeAlphaMode::PreMultiplied,
+                        wgpu::CompositeAlphaMode::Inherit,
+                        wgpu::CompositeAlphaMode::PostMultiplied,
+                    ]
+                    .into_iter()
+                    .find(|mode| capabilities.alpha_modes.contains(mode))
+                    .unwrap_or(capabilities.alpha_modes[0])
+                }
+            } else {
+                capabilities.alpha_modes[0]
+            },
             view_formats: if linear_format == format {
                 vec![format]
             } else {

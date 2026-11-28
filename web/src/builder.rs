@@ -622,6 +622,7 @@ impl RuffleInstanceBuilder {
                         match ruffle_render_wgpu::backend::WgpuRenderBackend::for_canvas(
                             canvas.clone(),
                             true,
+                            is_transparent,
                         )
                         .await
                         {
@@ -649,6 +650,7 @@ impl RuffleInstanceBuilder {
                     match ruffle_render_wgpu::backend::WgpuRenderBackend::for_canvas(
                         canvas.clone(),
                         false,
+                        is_transparent,
                     )
                     .await
                     {

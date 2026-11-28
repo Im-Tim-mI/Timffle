@@ -2,6 +2,15 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26366 — 2026-11-28（`wmode="transparent"` 在 WebGPU 下透明；Flash 內容預設自動播放）
+
+小幫手仍是 **1.4.1**。
+
+- **tim：摩爾莊園官網說明頁（`https://molemain.61.com.tw/help/mole.html`）上方選單與左側 NPC 的 Flash，原版會自動播放、看得到背後的背景圖，Timffle 卻是黑底加播放鍵**。兩個問題：
+- **透明背景**：頁面用 `wmode="transparent"`。Timffle 預設用 WebGPU 渲染（0.8.0.26343 起），而透明設定只傳給 WebGL 與 canvas 渲染器，WebGPU 畫布一律設成不透明，舞台清成全透明的地方就顯示成黑色。現在 `WgpuRenderBackend::for_canvas` 多帶 `transparent`，`SwapChainTarget::new_with_transparency` 在透明時把畫布設成預乘透明（`premultiplied`）。注意：wgpu 的瀏覽器 WebGPU 後端只回報支援 `Opaque`，但實際設定接受 `PreMultiplied`，所以在瀏覽器 WebGPU 上直接要求它；其他後端照回報的能力挑。`wmode` 不是 `transparent` 的頁面完全不變。
+- **自動播放**：擴充功能的「自動播放 Flash 內容」預設是關，關的時候 Ruffle 遇到瀏覽器還不准出聲（頁面打開後使用者還沒點過）就改顯示播放鍵；原版 Flash 一律直接播放。現在預設開：影片直接播放，聲音照瀏覽器規定在第一次點擊後才出來。自己在選項或彈出視窗關掉過的使用者維持關閉。
+- **驗證**：無頭 Chrome（GT 720、WebGPU）照 Chrome 真實的自動播放政策（不加 `--autoplay-policy`）開啟說明頁：改版前兩個 Flash 都是黑底加播放鍵；改版後畫布為 `premultiplied`、背景圖可見、選單動畫自動播放，與 WebGL 渲染器的畫面相同。擴充功能單元測試全部通過。
+
 ## 0.8.0.26365 — 2026-11-28（`Loader.unloadAndStop()` 改成真 Flash 的「誰建的」規則：修好彈彈堂「恭喜你開啟了新功能」卡住）
 
 小幫手仍是 **1.4.1**。
