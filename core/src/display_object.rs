@@ -1605,7 +1605,12 @@ fn scaling_grid_regions<'gc>(this: DisplayObject<'gc>) -> Option<Vec<ScalingGrid
         return None;
     }
     let m = base.matrix();
-    let (sx, sy) = (m.a, m.d);
+    // A mirrored object (negative `a` or `d`, which Flash reports as a 180°
+    // rotation with scale 1) is sliced by the size of its scale; the mirroring
+    // itself stays in the object's own matrix. Corner pieces that are copies
+    // of one another flipped into place are the usual case: they must not be
+    // sliced at all.
+    let (sx, sy) = (m.a.abs(), m.d.abs());
     if m.b != 0.0 || m.c != 0.0 || sx == 0.0 || sy == 0.0 || (sx == 1.0 && sy == 1.0) {
         return None;
     }
