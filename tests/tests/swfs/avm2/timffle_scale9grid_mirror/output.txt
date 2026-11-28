@@ -1,0 +1,134 @@
+flipX: scaleX=-1 scaleY=1 rotation=0
+flipX 5,25: ff
+flipX 50,25: ff0000
+flipX 95,25: ff
+flipX 50,5: ff
+flipX 50,45: ff
+flipX 5,5: ff
+flipX 95,5: ffff00
+flipX 95,45: ff
+flipX roundtrip: (a=-1, b=0, c=0, d=1, tx=100, ty=0)
+flipY: scaleX=1 scaleY=-1 rotation=0
+flipY 5,25: ff
+flipY 50,25: ff0000
+flipY 50,5: ff
+flipY 50,45: ff
+flipY 5,5: ff
+flipY 5,45: ffff00
+flipY 95,45: ff
+flipY roundtrip: (a=1, b=0, c=0, d=-1, tx=0, ty=50)
+flipXY: scaleX=-1 scaleY=-1 rotation=0
+flipXY 5,25: ff
+flipXY 50,25: ff0000
+flipXY 5,5: ff
+flipXY 95,5: ff
+flipXY 5,45: ff
+flipXY 95,45: ffff00
+flipXY roundtrip: (a=-1, b=0, c=0, d=-1, tx=100, ty=50)
+flipX-scaled: scaleX=-3 scaleY=2 rotation=0
+flipX-scaled 5,50: ff
+flipX-scaled 15,50: ff
+flipX-scaled 150,50: ff0000
+flipX-scaled 285,50: ff
+flipX-scaled 295,50: ff
+flipX-scaled 150,5: ff
+flipX-scaled 150,15: ff
+flipX-scaled 150,85: ff
+flipX-scaled 150,95: ff
+flipX-scaled 5,5: ff
+flipX-scaled 295,5: ff
+flipX-scaled 5,95: ff
+flipX-scaled 295,95: ff
+flipX-scaled 290,10: ffff00
+flipX-scaled 280,5: ffff00
+flipX-scaled roundtrip: (a=-3, b=0, c=0, d=2, tx=300, ty=0)
+flipY-scaled: scaleX=3 scaleY=-2 rotation=0
+flipY-scaled 5,50: ff
+flipY-scaled 15,50: ff
+flipY-scaled 285,50: ff
+flipY-scaled 295,50: ff
+flipY-scaled 150,5: ff
+flipY-scaled 150,15: ff
+flipY-scaled 150,85: ff
+flipY-scaled 150,95: ff
+flipY-scaled 5,5: ff
+flipY-scaled 295,5: ff
+flipY-scaled 5,95: ff
+flipY-scaled 295,95: ff
+flipY-scaled 10,90: ffff00
+flipY-scaled 5,80: ff
+flipY-scaled roundtrip: (a=3, b=0, c=0, d=-2, tx=0, ty=100)
+flipXY-scaled: scaleX=-3 scaleY=-2 rotation=0
+flipXY-scaled 5,50: ff
+flipXY-scaled 150,50: ff0000
+flipXY-scaled 295,50: ff
+flipXY-scaled 150,5: ff
+flipXY-scaled 150,95: ff
+flipXY-scaled 5,5: ff
+flipXY-scaled 295,5: ff
+flipXY-scaled 5,95: ff
+flipXY-scaled 295,95: ff
+flipXY-scaled roundtrip: (a=-3, b=0, c=0, d=-2, tx=300, ty=100)
+scaled: scaleX=3 scaleY=2 rotation=0
+scaled 5,50: ff
+scaled 15,50: ff0000
+scaled 150,50: ff0000
+scaled 285,50: ff0000
+scaled 295,50: ff
+scaled 150,5: ff
+scaled 150,15: ff0000
+scaled 150,85: ff0000
+scaled 150,95: ff
+scaled 5,5: ffff00
+scaled 10,10: ff0000
+scaled 20,5: ff
+scaled 295,95: ff
+scaled roundtrip: (a=3, b=0, c=0, d=2, tx=0, ty=0)
+matrix-flipX-scaled: scaleX=3 scaleY=-2 rotation=180
+matrix-flipX-scaled 5,50: ff
+matrix-flipX-scaled 15,50: ff
+matrix-flipX-scaled 150,50: ff0000
+matrix-flipX-scaled 285,50: ff
+matrix-flipX-scaled 295,50: ff
+matrix-flipX-scaled 150,5: ff
+matrix-flipX-scaled 150,15: ff
+matrix-flipX-scaled 5,5: ff
+matrix-flipX-scaled 295,5: ff
+matrix-flipX-scaled 290,10: ffff00
+matrix-flipX-scaled 280,5: ffff00
+matrix-flipX-scaled roundtrip: (a=-3, b=0, c=0, d=2, tx=300, ty=0)
+matrix-flipY-scaled: scaleX=3 scaleY=-2 rotation=0
+matrix-flipY-scaled 5,50: ff
+matrix-flipY-scaled 15,50: ff
+matrix-flipY-scaled 150,50: ff0000
+matrix-flipY-scaled 295,50: ff
+matrix-flipY-scaled 150,15: ff
+matrix-flipY-scaled 150,85: ff
+matrix-flipY-scaled 5,5: ff
+matrix-flipY-scaled 295,5: ff
+matrix-flipY-scaled 5,95: ff
+matrix-flipY-scaled 295,95: ff
+matrix-flipY-scaled 10,90: ffff00
+matrix-flipY-scaled 5,80: ff
+matrix-flipY-scaled roundtrip: (a=3, b=0, c=0, d=-2, tx=0, ty=100)
+matrix-rot180: scaleX=1 scaleY=1 rotation=180
+matrix-rot180 5,25: ff
+matrix-rot180 50,25: ff0000
+matrix-rot180 5,5: ff
+matrix-rot180 95,5: ff
+matrix-rot180 5,45: ff
+matrix-rot180 95,45: ffff00
+matrix-rot180 roundtrip: (a=-1, b=0, c=0, d=-1, tx=100, ty=50)
+matrix-rot180-scaled: scaleX=3 scaleY=2 rotation=180
+matrix-rot180-scaled 5,50: ff
+matrix-rot180-scaled 15,50: ff
+matrix-rot180-scaled 150,50: ff0000
+matrix-rot180-scaled 295,50: ff
+matrix-rot180-scaled 150,15: ff
+matrix-rot180-scaled 5,5: ff
+matrix-rot180-scaled 295,5: ff
+matrix-rot180-scaled 5,95: ff
+matrix-rot180-scaled 295,95: ff
+matrix-rot180-scaled 290,90: ffff00
+matrix-rot180-scaled 280,95: ffff00
+matrix-rot180-scaled roundtrip: (a=-3, b=0, c=0, d=-2, tx=300, ty=100)

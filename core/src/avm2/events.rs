@@ -588,7 +588,10 @@ pub fn remove_listeners_of_movie<'gc>(context: &mut UpdateContext<'gc>, movie: S
             continue;
         };
         let owner = match display_object {
-            // Leaf display objects keep their listeners.
+            // Leaf display objects keep their listeners. Measured for `Shape`
+            // (Graphic) and `Bitmap`; `MorphShape`, static `Text` and `Video`
+            // are assumed to behave the same, `TextField` (EditText) was
+            // measured to lose its listeners and falls through below.
             DisplayObject::Graphic(_)
             | DisplayObject::Bitmap(_)
             | DisplayObject::MorphShape(_)

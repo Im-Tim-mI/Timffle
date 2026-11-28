@@ -2,6 +2,20 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26368 — 2026-11-28（審閱 26365–26367：鏡像物件照真 Flash 完全不切 9 宮格；`scaleY` 讀值的正負號）
+
+小幫手仍是 **1.4.1**。
+
+- **tim：檢查 0.8.0.26364 之後的程式有無可優化與待改進處**。審閱了 26365（`unloadAndStop` 監聽器歸屬）、26366（`wmode="transparent"`、自動播放）、26367（9 宮格鏡像）的全部改動；邏輯沒有錯，主要缺口是 26366、26367 沒有回歸測試。補測試時用真 Flash 量到 26367 的規則不對，一併修正。
+- **9 宮格與鏡像（修正 26367）**：真 Flash Player 32 對矩陣 `a` 或 `d` 為負的物件（不論是設 `scaleX = -3`，還是 `transform.matrix` 設成回報為 `rotation = 180` 的矩陣）**完全不做 9 宮格切片**，整個物件照一般方式翻轉並縮放，邊框跟著放大，和旋轉、斜切的處理一樣。26367 改成「依絕對值切」只對「只翻轉、沒縮放」的角件碰巧正確，翻轉又拉長的邊會切出 Flash 沒有的固定寬度邊框。現在 `scaling_grid_regions` 遇到負的 `a` 或 `d` 就不切（`core/src/display_object.rs`）。小花仙外框的三個翻轉角件不受影響（本來就不切），兩條翻轉拉長的直邊改成和 Flash 一樣整條縮放。
+- **`scaleX`／`scaleY`／`rotation` 讀值（AVM2）**：`new Matrix(-3, 0, 0, 2)` Flash 回報 `scaleX = 3`、`scaleY = -2`、`rotation = 180`，`new Matrix(3, 0, 0, -2)` 回報 `scaleY = -2`、`rotation = 0`；Timffle 原本把 `scaleY` 一律算成正值、把差距藏在內部的斜切值裡（回報 `2`）。現在 AVM2 內容的矩陣分解遇到斜切超過四分之一圈就翻到 `scaleY` 的正負號上，讀值與 Flash 相同，矩陣本身不變。AVM1 的 `_yscale` 維持正值：拿 gnash 的 `matrix_test` 在真 Flash 32 跑過，同樣的矩陣 AVM1 回報 `_yscale = 100`、`_rotation = 180`，兩個 VM 本來就不同。
+- **旋轉 90°／180° 後矩陣的零**：把讀值寫回（`s.rotation = s.rotation`）時 Flash 的矩陣 `b`、`c` 是精確的 0，Timffle 原本寫入 `sin(π)` 的 `1.2e-16` 雜訊。現在重算矩陣時把 `1e-12` 以下的三角函數雜訊歸零（角度 0 的結果原樣保留）。這一改讓長期標為「已知失敗」的 gnash `matrix_test`（AVM1 `_xscale`／`_yscale`／`_rotation` 的 100 多個斷言）整個通過，已改為正式測試。
+- **裝置字型文字旋轉 90° 時的版面**：裝置字型文字的 x／y 比例原本用全域矩陣的 `d / a` 算，旋轉 90° 時 `a` 是 0（以前靠雜訊 `6e-17` 剛好算出合理值），改成用兩軸長度的比值（未旋轉時與 `d / a` 相同，含正負號），`edittext_device_transform_negative` 等測試維持原結果。
+- **新增回歸測試** `avm2/timffle_scale9grid_mirror`：6 種 `scaleX`／`scaleY` 設定的翻轉、3 種 `transform.matrix` 設定的翻轉，各搭配縮放與不縮放，加一組正向縮放的對照；期望值是真 Flash Player 32 的輸出。
+- **註解補充**：`remove_listeners_of_movie` 不拆監聽器的葉節點名單標明哪些是實測（`Shape`、`Bitmap`）、哪些是推論（`MorphShape`、靜態文字、`Video`）；`SwapChainTarget` 說明 WebGL2 後端雖只回報 `Opaque`，透明仍靠畫布預設的 alpha 通過。擴充功能「自動播放」的說明文字已確認不需改。
+- **審閱後維持不動的**：`caller_movie` 只在 playerglobal 自己的 AS3 方法裡沿用呼叫端；`EventHandler` 的比對不含 `registered_by`；同一函式由父、子 SWF 重複掛到 Stage 時以第一次的註冊者為準（Flash 行為未量，邊角案例）；`init_from_method` 多的一次指標比較與 `unloadAndStop` 時複製廣播監聽清單都可忽略。
+- **驗證**：完整回歸測試套件（含 `--features imgtests`）4,696 個全部通過，其中新測試 `timffle_scale9grid_mirror` 134 行期望值全為真 Flash 32 的輸出；gnash 的 `matrix_test` 從已知失敗變成通過，gnash `MovieClip-v8` 的 5 份記錄輸出多通過 3 個斷言（旋轉 90° 後 `transform.matrix` 的 `a`、`d` 為 0）並已更新。`_xscale = Infinity` 這類極端值（AVM1 SWF4 `set_property_values`）維持原本的結果。整套測試需用較大的執行緒堆疊跑（`RUST_MIN_STACK=67108864`），否則某個深遞迴測試會把預設堆疊撐爆，與本次改動無關。
+
 ## 0.8.0.26367 — 2026-11-28（9 宮格縮放：鏡像的片段不再缺角）
 
 小幫手仍是 **1.4.1**。

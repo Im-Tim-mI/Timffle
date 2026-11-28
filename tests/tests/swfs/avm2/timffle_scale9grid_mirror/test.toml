@@ -1,0 +1,14 @@
+# Timffle: 9-slice rendering of mirrored (scaleX/scaleY < 0) objects; needs a
+# renderer (BitmapData.draw), run with --features imgtests. The expected pixels
+# were traced on Flash Player 32.
+num_frames = 1
+
+[[compilers]]
+type = "Asc"
+target = "test.swf"
+class = "Test"
+scripts = ["Test.as"]
+swf_version = 32
+
+[player_options]
+with_renderer = { optional = false, quality = "high" }

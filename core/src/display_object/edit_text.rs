@@ -429,13 +429,19 @@ impl<'gc> EditText<'gc> {
     }
 
     fn bounds_x_offset(self) -> Twips {
-        let scale_x = self.base().scale_x().unit();
+        let scale_x = self
+            .base()
+            .scale_x(self.movie().is_action_script_3())
+            .unit();
         let offset = self.0.bounds.get().x_min.to_pixels();
         Twips::from_pixels(scale_x * offset)
     }
 
     fn bounds_y_offset(self) -> Twips {
-        let scale_y = self.base().scale_y().unit();
+        let scale_y = self
+            .base()
+            .scale_y(self.movie().is_action_script_3())
+            .unit();
         let offset = self.0.bounds.get().y_min.to_pixels();
         Twips::from_pixels(scale_y * offset)
     }
@@ -978,7 +984,17 @@ impl<'gc> EditText<'gc> {
 
     fn device_font_scale_x(self) -> f32 {
         let m = self.local_to_global_matrix();
-        m.d / m.a
+        // Timffle: the y/x scale ratio from the axis lengths, not `d / a`,
+        // which divides by (near) zero once the object is rotated a quarter
+        // turn (exactly zero since right-angle rotations write exact zeros).
+        // For an unrotated object this is `d / a` as before, sign included.
+        let scale_x = m.a.hypot(m.b);
+        let scale_y = m.c.hypot(m.d);
+        if scale_x == 0.0 {
+            return 1.0;
+        }
+        let ratio = scale_y / scale_x;
+        if m.a * m.d < 0.0 { -ratio } else { ratio }
     }
 
     /// Returns the matrix for transforming from layout

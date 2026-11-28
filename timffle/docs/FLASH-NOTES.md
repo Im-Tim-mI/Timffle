@@ -93,3 +93,11 @@ Adobe 文件只說「移除 enterFrame／frameConstructed／exitFrame／activate
 | 其他 | 非廣播事件（`addedToStage`、`click`…）不動；卸載後子 SWF 程式的新註冊照常；`render` 沒量。 |
 
 探針的陷阱：`unloadAndStop(true)` 會跑一次回收，所以只被區域變數引用的物件、`useWeakReference=true` 的閉包會「消失」，那不是卸載規則；Haxe 的 `Type.createInstance` 在共用網域裡跑的是父層那份 `Type`（先定義的贏），要用 `untyped __new__(cls)` 才能控制「誰建構」；Haxe 的 `trace()` 畫在舞台上，要寫進 flashlog 得用 `flash.Lib.trace`。
+
+## 12. 鏡像物件不套 `scale9Grid`（真 Flash 32 實測）
+
+2026-11-28 量（回歸測試 `avm2/timffle_scale9grid_mirror`，`output.txt` 就是 Flash 的輸出）：矩陣的 `a` 或 `d` 為負（不論是設 `scaleX = -1`、`scaleX = -3`，還是透過 `transform.matrix` 設成 Flash 回報為 `rotation = 180` 的矩陣），Flash **完全不做 9 宮格切片**，整個物件照一般方式翻轉並縮放（邊框跟著放大），和旋轉、斜切時的處理一樣。正向縮放（對照組）照常切。`a`、`d` 都是 −1 又沒縮放時看起來只是翻轉，和切不切無關。
+
+順帶一提 Flash 的讀值：`new Matrix(-3, 0, 0, 2)` 回報 `scaleX = 3`、`scaleY = -2`、`rotation = 180`；`new Matrix(-1, 0, 0, -1)` 回報 `scaleX = 1`、`scaleY = 1`、`rotation = 180`；直接設 `scaleX = -1` 則維持 `scaleX = -1`、`rotation = 0`。
+
+AVM1 不同：gnash 的 `misc-ming.all/matrix_test`（SWF 6，`transform.matrix` 設成 `(a=-1, b=0, c=0, d=1)`）在真 Flash 32 回報 `_xscale = 100`、`_yscale = 100`、`_rotation = 180`；`(a=1, b=0, c=0, d=-2)` 回報 `_yscale = 200`、`_rotation = 0`。所以「斜切超過四分之一圈就翻到 scaleY 正負號」只套在 AVM2 內容上。另外寫回讀值後 Flash 矩陣裡的 `b`、`c` 是精確的 0，不是 `sin(π)` 的 `1.2e-16`。

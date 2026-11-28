@@ -110,7 +110,10 @@ impl SwapChainTarget {
             alpha_mode: if transparent {
                 // The browser's WebGPU backend reports only `Opaque`, yet
                 // every WebGPU canvas takes "premultiplied" (wgpu maps
-                // `PreMultiplied` to it when configuring).
+                // `PreMultiplied` to it when configuring). The WebGL2 (GL)
+                // backend also reports only `Opaque`, but there the canvas
+                // keeps its default alpha and present copies the frame's
+                // alpha through unblended, so it is transparent regardless.
                 if adapter.get_info().backend == wgpu::Backend::BrowserWebGpu {
                     wgpu::CompositeAlphaMode::PreMultiplied
                 } else {

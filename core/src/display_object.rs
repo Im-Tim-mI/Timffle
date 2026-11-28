@@ -650,10 +650,28 @@ impl<'gc> DisplayObjectBase<'gc> {
         self.edit_trs3d(|trs| trs.scale[2] = scale)
     }
 
+    /// Timffle: `sin`/`cos` of an angle in radians, with the rounding noise at
+    /// multiples of 90° removed. Flash writes `b = 0` into the matrix of an
+    /// object rotated 180°, not the `1.2e-16` that `f64::sin(PI)` gives
+    /// (checked with Flash Player 32 in `timffle_scale9grid_mirror`, where the
+    /// reported values are written back). Exact zeros, including their sign,
+    /// pass through untouched.
+    fn sin_cos_exact(radians: f64) -> (f64, f64) {
+        let (sin, cos) = radians.sin_cos();
+        let snap = |v: f64| if v != 0.0 && v.abs() < 1e-12 { 0.0 } else { v };
+        (snap(sin), snap(cos))
+    }
+
+    /// Timffle: `trig * scale` with an exact-zero trig factor giving an exact
+    /// zero even for an infinite scale (`0 * inf` is NaN in IEEE arithmetic).
+    fn scaled(trig: f64, scale: f64) -> f64 {
+        if trig == 0.0 { 0.0 } else { trig * scale }
+    }
+
     /// Caches the scale and rotation factors for this display object, if necessary.
     /// Calculating these requires heavy trig ops, so we only do it when `_xscale`, `_yscale` or
     /// `_rotation` is accessed.
-    fn cache_scale_rotation(&self) {
+    fn cache_scale_rotation(&self, avm2_sign: bool) {
         if !self.scale_rotation_cached() {
             let Matrix { a, b, c, d, .. } = self.matrix.get();
             let a = f64::from(a);
@@ -678,28 +696,45 @@ impl<'gc> DisplayObjectBase<'gc> {
             let rotation_x = f64::atan2(b, a);
             let rotation_y = f64::atan2(-c, d);
             let scale_x = f64::sqrt(a * a + b * b);
-            let scale_y = f64::sqrt(c * c + d * d);
+            let mut scale_y = f64::sqrt(c * c + d * d);
+            let mut skew = rotation_y - rotation_x;
+            // Timffle: for AVM2 content Flash keeps the skew within a quarter
+            // turn and puts the rest into the sign of scaleY: a matrix whose
+            // y' points against the rotated y-axis (a = -3, d = 2, say) reads
+            // back as rotation 180, scaleY -2 (Flash Player 32,
+            // `timffle_scale9grid_mirror`). AVM1 `_yscale` stays positive for
+            // the same matrix (Flash Player 32 running the gnash
+            // `matrix_test`), so `avm2_sign` selects the convention. Either
+            // way scale, rotation and skew describe the same matrix.
+            if avm2_sign && f64::cos(skew) < 0.0 {
+                scale_y = -scale_y;
+                skew += if skew > 0.0 {
+                    -std::f64::consts::PI
+                } else {
+                    std::f64::consts::PI
+                };
+            }
             self.rotation.set(Degrees::from_radians(rotation_x));
             self.scale_x.set(Percent::from_unit(scale_x));
             self.scale_y.set(Percent::from_unit(scale_y));
-            self.skew.set(rotation_y - rotation_x);
+            self.skew.set(skew);
         }
     }
 
-    fn rotation(&self) -> Degrees {
+    fn rotation(&self, avm2_sign: bool) -> Degrees {
         if self.has_matrix3d() {
             return Degrees::from_radians(self.trs3d.get().rotation[2].to_radians());
         }
-        self.cache_scale_rotation();
+        self.cache_scale_rotation(avm2_sign);
         self.rotation.get()
     }
 
-    fn set_rotation(&self, degrees: Degrees) -> bool {
+    fn set_rotation(&self, degrees: Degrees, avm2_sign: bool) -> bool {
         if self.has_matrix3d() {
             return self.set_rotation_z(degrees.into_radians().to_degrees());
         }
         self.set_transformed_by_script(true);
-        self.cache_scale_rotation();
+        self.cache_scale_rotation(avm2_sign);
         let changed = self.rotation.get() != degrees;
         self.rotation.set(degrees);
 
@@ -717,37 +752,35 @@ impl<'gc> DisplayObjectBase<'gc> {
         }
 
         let skew = self.skew.get();
-        let cos_x = f64::cos(degrees.into_radians());
-        let sin_x = f64::sin(degrees.into_radians());
-        let cos_y = f64::cos(degrees.into_radians() + skew);
-        let sin_y = f64::sin(degrees.into_radians() + skew);
+        let (sin_x, cos_x) = Self::sin_cos_exact(degrees.into_radians());
+        let (sin_y, cos_y) = Self::sin_cos_exact(degrees.into_radians() + skew);
         let scale_x = self.scale_x.get().unit();
         let scale_y = self.scale_y.get().unit();
         let mut matrix = self.matrix.get();
-        matrix.a = (scale_x * cos_x) as f32;
-        matrix.b = (scale_x * sin_x) as f32;
-        matrix.c = (scale_y * -sin_y) as f32;
-        matrix.d = (scale_y * cos_y) as f32;
+        matrix.a = Self::scaled(cos_x, scale_x) as f32;
+        matrix.b = Self::scaled(sin_x, scale_x) as f32;
+        matrix.c = Self::scaled(-sin_y, scale_y) as f32;
+        matrix.d = Self::scaled(cos_y, scale_y) as f32;
         self.matrix.set(matrix);
 
         changed
     }
 
-    fn scale_x(&self) -> Percent {
+    fn scale_x(&self, avm2_sign: bool) -> Percent {
         if self.has_matrix3d() {
             return Percent::from_unit(self.trs3d.get().scale[0]);
         }
-        self.cache_scale_rotation();
+        self.cache_scale_rotation(avm2_sign);
         self.scale_x.get()
     }
 
-    fn set_scale_x(&self, mut value: Percent) -> bool {
+    fn set_scale_x(&self, mut value: Percent, avm2_sign: bool) -> bool {
         if self.has_matrix3d() {
             return self.edit_trs3d(|trs| trs.scale[0] = value.unit());
         }
         let changed = self.scale_x.get() != value;
         self.set_transformed_by_script(true);
-        self.cache_scale_rotation();
+        self.cache_scale_rotation(avm2_sign);
         self.scale_x.set(value);
 
         // Note - in order to match Flash's behavior, the 'scale_x' field is set to NaN
@@ -764,31 +797,30 @@ impl<'gc> DisplayObjectBase<'gc> {
             rot = 0.0;
         }
 
-        let cos = f64::cos(rot);
-        let sin = f64::sin(rot);
+        let (sin, cos) = Self::sin_cos_exact(rot);
         let mut matrix = self.matrix.get();
-        matrix.a = (cos * value.unit()) as f32;
-        matrix.b = (sin * value.unit()) as f32;
+        matrix.a = Self::scaled(cos, value.unit()) as f32;
+        matrix.b = Self::scaled(sin, value.unit()) as f32;
         self.matrix.set(matrix);
 
         changed
     }
 
-    fn scale_y(&self) -> Percent {
+    fn scale_y(&self, avm2_sign: bool) -> Percent {
         if self.has_matrix3d() {
             return Percent::from_unit(self.trs3d.get().scale[1]);
         }
-        self.cache_scale_rotation();
+        self.cache_scale_rotation(avm2_sign);
         self.scale_y.get()
     }
 
-    fn set_scale_y(&self, mut value: Percent) -> bool {
+    fn set_scale_y(&self, mut value: Percent, avm2_sign: bool) -> bool {
         if self.has_matrix3d() {
             return self.edit_trs3d(|trs| trs.scale[1] = value.unit());
         }
         let changed = self.scale_y.get() != value;
         self.set_transformed_by_script(true);
-        self.cache_scale_rotation();
+        self.cache_scale_rotation(avm2_sign);
         self.scale_y.set(value);
 
         // Note - in order to match Flash's behavior, the 'scale_y' field is set to NaN
@@ -806,11 +838,10 @@ impl<'gc> DisplayObjectBase<'gc> {
         }
 
         let skew = self.skew.get();
-        let cos = f64::cos(rot + skew);
-        let sin = f64::sin(rot + skew);
+        let (sin, cos) = Self::sin_cos_exact(rot + skew);
         let mut matrix = self.matrix.get();
-        matrix.c = (-sin * value.unit()) as f32;
-        matrix.d = (cos * value.unit()) as f32;
+        matrix.c = Self::scaled(-sin, value.unit()) as f32;
+        matrix.d = Self::scaled(cos, value.unit()) as f32;
         self.matrix.set(matrix);
 
         changed
@@ -1605,13 +1636,13 @@ fn scaling_grid_regions<'gc>(this: DisplayObject<'gc>) -> Option<Vec<ScalingGrid
         return None;
     }
     let m = base.matrix();
-    // A mirrored object (negative `a` or `d`, which Flash reports as a 180°
-    // rotation with scale 1) is sliced by the size of its scale; the mirroring
-    // itself stays in the object's own matrix. Corner pieces that are copies
-    // of one another flipped into place are the usual case: they must not be
-    // sliced at all.
-    let (sx, sy) = (m.a.abs(), m.d.abs());
-    if m.b != 0.0 || m.c != 0.0 || sx == 0.0 || sy == 0.0 || (sx == 1.0 && sy == 1.0) {
+    // A mirrored object (negative `a` or `d`, whether set as a negative scale
+    // or as a matrix Flash reports as rotation 180) is never 9-sliced: Flash
+    // Player 32 draws it whole and scaled, like a rotated one (the
+    // `timffle_scale9grid_mirror` test). Corner pieces that are copies of one
+    // another flipped into place are the usual case.
+    let (sx, sy) = (m.a, m.d);
+    if m.b != 0.0 || m.c != 0.0 || sx <= 0.0 || sy <= 0.0 || (sx == 1.0 && sy == 1.0) {
         return None;
     }
     let bounds = this.bounds(BoundsMode::Engine);
@@ -2519,7 +2550,7 @@ pub trait TDisplayObject<'gc>:
     /// Returned by the `_rotation`/`rotation` ActionScript properties.
     #[no_dynamic]
     fn rotation(self) -> Degrees {
-        let degrees = self.base().rotation();
+        let degrees = self.base().rotation(self.movie().is_action_script_3());
         self.set_scale_rotation_cached();
         degrees
     }
@@ -2529,7 +2560,10 @@ pub trait TDisplayObject<'gc>:
     /// This invalidates any ancestors cacheAsBitmap automatically.
     #[no_dynamic]
     fn set_rotation(self, radians: Degrees) {
-        if self.base().set_rotation(radians) {
+        if self
+            .base()
+            .set_rotation(radians, self.movie().is_action_script_3())
+        {
             self.set_scale_rotation_cached();
             if let Some(parent) = self.parent() {
                 // Self-transform changes are automatically handled,
@@ -2543,7 +2577,7 @@ pub trait TDisplayObject<'gc>:
     /// Returned by the `_xscale`/`scaleX` ActionScript properties.
     #[no_dynamic]
     fn scale_x(self) -> Percent {
-        let percent = self.base().scale_x();
+        let percent = self.base().scale_x(self.movie().is_action_script_3());
         self.set_scale_rotation_cached();
         percent
     }
@@ -2553,7 +2587,10 @@ pub trait TDisplayObject<'gc>:
     /// This invalidates any ancestors cacheAsBitmap automatically.
     #[no_dynamic]
     fn set_scale_x(self, value: Percent) {
-        if self.base().set_scale_x(value) {
+        if self
+            .base()
+            .set_scale_x(value, self.movie().is_action_script_3())
+        {
             self.set_scale_rotation_cached();
             if let Some(parent) = self.parent() {
                 // Self-transform changes are automatically handled,
@@ -2567,7 +2604,7 @@ pub trait TDisplayObject<'gc>:
     /// Returned by the `_yscale`/`scaleY` ActionScript properties.
     #[no_dynamic]
     fn scale_y(self) -> Percent {
-        let percent = self.base().scale_y();
+        let percent = self.base().scale_y(self.movie().is_action_script_3());
         self.set_scale_rotation_cached();
         percent
     }
@@ -2577,7 +2614,10 @@ pub trait TDisplayObject<'gc>:
     /// This invalidates any ancestors cacheAsBitmap automatically.
     #[no_dynamic]
     fn set_scale_y(self, value: Percent) {
-        if self.base().set_scale_y(value) {
+        if self
+            .base()
+            .set_scale_y(value, self.movie().is_action_script_3())
+        {
             self.set_scale_rotation_cached();
             if let Some(parent) = self.parent() {
                 // Self-transform changes are automatically handled,
