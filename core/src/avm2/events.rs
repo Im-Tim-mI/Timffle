@@ -6,7 +6,7 @@ use crate::avm2::function::FunctionArgs;
 use crate::avm2::globals::slots::flash_events_event_dispatcher as slots;
 use crate::avm2::object::{EventObject, FunctionObject, Object, TObject as _};
 use crate::context::UpdateContext;
-use crate::display_object::TDisplayObject;
+use crate::display_object::{DisplayObject, TDisplayObject};
 use crate::string::AvmString;
 use crate::tag_utils::SwfMovie;
 use fnv::FnvHashMap;
@@ -222,8 +222,9 @@ impl<'gc> DispatchList<'gc> {
         priority: i32,
         handler: FunctionObject<'gc>,
         use_capture: bool,
+        registered_by: Option<SwfMovie<'gc>>,
     ) {
-        let new_handler = EventHandler::new(handler, use_capture);
+        let new_handler = EventHandler::new(handler, use_capture, registered_by);
 
         if let Some(event_sheaf) = self.get_event(event) {
             for other_set in event_sheaf.values() {
@@ -247,7 +248,7 @@ impl<'gc> DispatchList<'gc> {
         handler: FunctionObject<'gc>,
         use_capture: bool,
     ) {
-        let old_handler = EventHandler::new(handler, use_capture);
+        let old_handler = EventHandler::new(handler, use_capture, None);
 
         for set in self.get_event_mut(event).values_mut() {
             if let Some(pos) = set.iter().position(|h| *h == old_handler) {
@@ -259,14 +260,14 @@ impl<'gc> DispatchList<'gc> {
     /// Timffle: removes every handler for which `owned` is true; `event`
     /// restricts the removal to one event type, `None` means all of them.
     /// Used by `Loader.unloadAndStop()` to drop the unloaded SWF's listeners.
-    pub fn remove_event_listeners_where(
+    fn remove_event_listeners_where(
         &mut self,
         event: Option<AvmString<'gc>>,
-        mut owned: impl FnMut(FunctionObject<'gc>) -> bool,
+        mut owned: impl FnMut(&EventHandler<'gc>) -> bool,
     ) {
         let mut remove_from = |sheaf: &mut BTreeMap<i32, Vec<EventHandler<'gc>>>| {
             for set in sheaf.values_mut() {
-                set.retain(|handler| !owned(handler.handler));
+                set.retain(|handler| !owned(handler));
             }
         };
         match event {
@@ -335,13 +336,23 @@ struct EventHandler<'gc> {
     /// (when `true`), or if it should only be called for bubbling and
     /// at-target events (when `false`).
     use_capture: bool,
+
+    /// Timffle: the SWF whose code called `addEventListener` (`None` when
+    /// it was not AS3 code). `Loader.unloadAndStop()` removes the Stage
+    /// listeners the unloaded SWF's code added. Not part of the identity.
+    registered_by: Option<SwfMovie<'gc>>,
 }
 
 impl<'gc> EventHandler<'gc> {
-    fn new(handler: FunctionObject<'gc>, use_capture: bool) -> Self {
+    fn new(
+        handler: FunctionObject<'gc>,
+        use_capture: bool,
+        registered_by: Option<SwfMovie<'gc>>,
+    ) -> Self {
         Self {
             handler,
             use_capture,
+            registered_by,
         }
     }
 }
@@ -541,24 +552,21 @@ pub fn broadcast_event<'gc>(
     dispatch_event_to_target(activation, this, target, target, event, false);
 }
 
-/// Timffle: whether `handler` is code compiled into `movie` (its method's
-/// translation unit comes from that SWF). This is the "of the child SWF file"
-/// test `Loader.unloadAndStop()` applies to listeners; it does not depend on
-/// the ApplicationDomain the child was loaded into.
-pub fn handler_is_from_movie<'gc>(handler: FunctionObject<'gc>, movie: SwfMovie<'gc>) -> bool {
-    let owner = handler.executable().method().translation_unit().movie();
-    SwfMovie::ptr_eq(&owner, &movie)
-}
-
-/// Timffle: `Loader.unloadAndStop()`: "Stage event listeners are removed.
-/// Event listeners for enterFrame, frameConstructed, exitFrame, activate and
-/// deactivate are removed." Removes the listeners of `movie`'s code from the
-/// Stage (every event type) and the broadcast-event listeners it registered on
-/// any object (Ruffle keeps every object with such a listener in the AVM2
-/// broadcast list). Listeners on other objects/events stay, as in Flash.
+/// Timffle: `Loader.unloadAndStop()` on the listeners the unloaded SWF left
+/// behind, as measured on Flash Player 32 (a child loaded with `loadBytes`
+/// into the parent's ApplicationDomain; timffle/docs/FLASH-NOTES.md section
+/// 11 and the `timffle_unload_and_stop_owner` test):
+///
+/// - Stage listeners: removed when the child's *code* called
+///   `addEventListener`, whichever SWF the handler function comes from.
+/// - enterFrame / exitFrame / frameConstructed listeners: removed from every
+///   display object the child's code *constructed* (the code that ran `new`,
+///   whichever SWF defines the class; symbol instances count as their own
+///   SWF's), again whoever the handler is; `Shape` and `Bitmap` keep theirs.
+///   Listeners on objects the parent constructed stay even when the handler
+///   is the child's code (that is what a TweenLite ticker or a view class
+///   living in an unloaded module relies on). `render` is left alone.
 pub fn remove_listeners_of_movie<'gc>(context: &mut UpdateContext<'gc>, movie: SwfMovie<'gc>) {
-    let owned = |handler: FunctionObject<'gc>| handler_is_from_movie(handler, movie);
-
     if let Some(stage) = context.stage.object2() {
         let stage: Object<'gc> = stage.into();
         if let Some(list) = stage
@@ -567,18 +575,41 @@ pub fn remove_listeners_of_movie<'gc>(context: &mut UpdateContext<'gc>, movie: S
             .and_then(|o| o.as_dispatch_object())
         {
             list.dispatch_mut(context.gc())
-                .remove_event_listeners_where(None, owned);
+                .remove_event_listeners_where(None, |handler| {
+                    handler
+                        .registered_by
+                        .is_some_and(|by| SwfMovie::ptr_eq(&by, &movie))
+                });
         }
     }
 
     for (event, object) in Avm2::broadcast_listeners(context) {
+        let Some(display_object) = object.as_display_object() else {
+            continue;
+        };
+        let owner = match display_object {
+            // Leaf display objects keep their listeners.
+            DisplayObject::Graphic(_)
+            | DisplayObject::Bitmap(_)
+            | DisplayObject::MorphShape(_)
+            | DisplayObject::Text(_)
+            | DisplayObject::Video(_) => continue,
+            // A Loader's own movie is a placeholder; who constructed it counts.
+            DisplayObject::LoaderDisplay(loader) => loader.constructed_by(),
+            // Script-constructed objects carry the constructing SWF, symbol
+            // instances their asset SWF.
+            _ => Some(display_object.movie()),
+        };
+        if !owner.is_some_and(|owner| SwfMovie::ptr_eq(&owner, &movie)) {
+            continue;
+        }
         if let Some(list) = object
             .get_slot(slots::DISPATCH_LIST)
             .as_object()
             .and_then(|o| o.as_dispatch_object())
         {
             list.dispatch_mut(context.gc())
-                .remove_event_listeners_where(Some(event), owned);
+                .remove_event_listeners_where(Some(event), |_| true);
         }
     }
 }

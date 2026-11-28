@@ -30,7 +30,8 @@ pub fn simple_button_allocator<'gc>(
     let orig_class = class;
     while let Some(class) = class_def {
         if class == simplebutton_cls {
-            let button = Avm2Button::empty_button(activation.context);
+            let movie = activation.caller_movie_or_root();
+            let button = Avm2Button::empty_button(activation.context, movie);
             // [NA] Buttons specifically need to PO'd
             button.post_instantiation(activation.context, None, Instantiator::Avm2, false);
             let display_object = button.into();

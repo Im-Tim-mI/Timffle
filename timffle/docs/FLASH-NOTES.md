@@ -80,3 +80,16 @@ Flash（avmplus `DomainEnv::getNamedScript`）詢問名稱時**父網域優先**
 - `Matrix3D.decompose` 對奇異矩陣回傳未初始化的記憶體：標 `~`。除此之外目前沒有需要標 `~` 的行（計時與版本字串除外）。
 - 以真 Flash 為標準時，每個黃金答案至少跑兩次確認一致。
 - 用 Wine 下的 standalone projector 當參考，與瀏覽器外掛或原生 Windows 可能有細微差異；事件順序的結論要保守。
+
+## 11. `Loader.unloadAndStop()` 會停掉什麼（真 Flash 32 實測）
+
+Adobe 文件只說「移除 enterFrame／frameConstructed／exitFrame／activate／deactivate 的監聽器、Stage 的監聽器、計時器」，沒說「誰的」。2026-11-28 用 Wine 下的除錯版播放器量（Haxe 探針在 `timffle-work/unload-work/probe/`，子 SWF 以 `loadBytes` 載進父層的 ApplicationDomain，像遊戲安裝程式模組那樣；回歸測試 `avm2/timffle_unload_and_stop_owner` 的 `output.txt` 就是這份輸出）：
+
+| 項目 | 規則 |
+|---|---|
+| `enterFrame`／`exitFrame`／`frameConstructed` | 只從**被卸載 SWF 的程式碼建構的顯示物件**拆掉——誰執行 `new` 算誰的，類別定義在哪個 SWF、監聽函式是誰的都無關。`Sprite`、`MovieClip`、`TextField`、`SimpleButton`、`Loader` 與 AS 子類別都算；`Shape` 與 `Bitmap` 不拆。父層建構的物件掛了子 SWF 的函式也留著；素材 SWF 的符號實例不管誰載入素材、誰建構實例都不拆。 |
+| Stage 監聽器 | 看**誰呼叫 `addEventListener`**：子 SWF 程式掛上的（連父層的函式）都拆，父層程式掛上的子 SWF 函式留著。 |
+| 計時器 | 看**誰建 `Timer`、誰呼叫 `setTimeout`／`setInterval`**：子 SWF 建的全停（父層的處理函式也停），父層建的 `Timer` 掛子 SWF 函式照跑。 |
+| 其他 | 非廣播事件（`addedToStage`、`click`…）不動；卸載後子 SWF 程式的新註冊照常；`render` 沒量。 |
+
+探針的陷阱：`unloadAndStop(true)` 會跑一次回收，所以只被區域變數引用的物件、`useWeakReference=true` 的閉包會「消失」，那不是卸載規則；Haxe 的 `Type.createInstance` 在共用網域裡跑的是父層那份 `Type`（先定義的贏），要用 `untyped __new__(cls)` 才能控制「誰建構」；Haxe 的 `trace()` 畫在舞台上，要寫進 flashlog 得用 `flash.Lib.trace`。

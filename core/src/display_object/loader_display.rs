@@ -42,6 +42,12 @@ pub struct LoaderDisplayData<'gc> {
     container: RefLock<ChildContainer<'gc>>,
     avm2_object: Lock<Option<Avm2StageObject<'gc>>>,
     movie: SwfMovie<'gc>,
+
+    /// Timffle: the SWF whose code ran `new Loader()` (`movie` is only a
+    /// placeholder until something is loaded). `Loader.unloadAndStop()`
+    /// drops the enterFrame-style listeners of Loaders the unloaded SWF
+    /// constructed, as Flash Player does.
+    constructed_by: Option<SwfMovie<'gc>>,
 }
 
 impl<'gc> LoaderDisplay<'gc> {
@@ -53,12 +59,18 @@ impl<'gc> LoaderDisplay<'gc> {
                 container: RefLock::new(ChildContainer::new(&movie)),
                 avm2_object: Lock::new(None),
                 movie,
+                constructed_by: activation.caller_movie(),
             },
         ));
 
         obj.set_placed_by_avm2_script(true);
         activation.context.orphan_manager.add_orphan_obj(obj.into());
         obj
+    }
+
+    /// Timffle: the SWF whose code constructed this Loader, if AS3 code did.
+    pub fn constructed_by(self) -> Option<SwfMovie<'gc>> {
+        self.0.constructed_by
     }
 
     pub fn downgrade(self) -> LoaderDisplayWeak<'gc> {

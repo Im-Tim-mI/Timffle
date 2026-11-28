@@ -43,7 +43,13 @@ pub fn add_event_listener<'gc>(
     dispatch_list
         .as_dispatch_mut(activation.gc())
         .expect("Internal properties should have what I put in them")
-        .add_event_listener(event_type, priority, listener, use_capture);
+        .add_event_listener(
+            event_type,
+            priority,
+            listener,
+            use_capture,
+            activation.caller_movie(),
+        );
 
     Avm2::register_broadcast_listener(activation.context, this, event_type);
 

@@ -144,9 +144,8 @@ impl<'gc> Avm2Button<'gc> {
         ))
     }
 
-    pub fn empty_button(context: &mut UpdateContext<'gc>) -> Self {
-        // TODO: Should this be using the caller movie?
-        let movie = *context.root_swf;
+    /// `movie`: the SWF whose code ran `new SimpleButton()`.
+    pub fn empty_button(context: &mut UpdateContext<'gc>, movie: SwfMovie<'gc>) -> Self {
         let button_record = swf::Button {
             id: 0,
             is_track_as_menu: false,

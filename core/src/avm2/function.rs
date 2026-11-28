@@ -53,11 +53,6 @@ impl<'gc> BoundMethod<'gc> {
         }
     }
 
-    /// Timffle: the method this executable runs.
-    pub fn method(&self) -> Method<'gc> {
-        self.method
-    }
-
     pub fn exec(
         &self,
         unbound_receiver: Value<'gc>,
@@ -330,6 +325,8 @@ pub fn exec<'gc>(
             let stack = activation.context.avm2.stack;
             let stack_frame = stack.get_frame_for_method(method);
 
+            let caller_movie = activation.caller_movie();
+
             // This used to be a one step called Activation::from_method,
             // but avoiding moving an Activation around helps perf
             let mut activation = Activation::from_nothing(activation.context);
@@ -342,6 +339,7 @@ pub fn exec<'gc>(
                 bound_superclass,
                 callee,
                 caller_dxns,
+                caller_movie,
             ) {
                 // If an error is thrown during verification or argument coercion,
                 // we still need to call cleanup to dispose of the stack frame

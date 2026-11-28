@@ -350,6 +350,7 @@ impl<'a, 'gc> Activation<'a, 'gc> {
         bound_superclass_object: Option<ClassObject<'gc>>,
         callee: Option<FunctionObject<'gc>>,
         caller_dxns: Option<AvmString<'gc>>,
+        caller_movie: Option<SwfMovie<'gc>>,
     ) -> Result<(), Error<'gc>> {
         let body = method
             .body()
@@ -364,7 +365,18 @@ impl<'a, 'gc> Activation<'a, 'gc> {
         self.num_locals = num_locals;
         self.outer = outer;
         self.caller_domain = Some(outer.domain());
-        self.caller_movie = Some(method.owner_movie());
+        // Timffle: playerglobal's own AS3 methods (Stage.addEventListener,
+        // ...) act for whoever called them, so "the original AS3 caller"
+        // stays the SWF that called into playerglobal.
+        self.caller_movie = if method
+            .translation_unit()
+            .domain()
+            .is_playerglobals_domain(self.avm2())
+        {
+            caller_movie.or_else(|| Some(method.owner_movie()))
+        } else {
+            Some(method.owner_movie())
+        };
         self.bound_superclass_object = bound_superclass_object;
         self.stack = stack_frame;
         self.scope_depth = self.context.avm2.scope_stack.len();

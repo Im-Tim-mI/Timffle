@@ -2,6 +2,17 @@
 
 版本號 `0.8.0.N`：前三段是基底 Ruffle 的版本（0.8.0），最後一段 `N` 是流水號（沿用前身專案的編號）。擴充功能與小幫手分開記版本：小幫手目前是 **1.4.1（protocol 2）**，只有在下面明確寫「小幫手有更新」時才需要重跑安裝程式。日期為 UTC。0.8.0.26295 以前是前身專案的紀錄。
 
+## 0.8.0.26365 — 2026-11-28（`Loader.unloadAndStop()` 改成真 Flash 的「誰建的」規則：修好彈彈堂「恭喜你開啟了新功能」卡住）
+
+小幫手仍是 **1.4.1**。
+
+- **症狀**：彈彈堂新角色走完新手教學、按「跳過新手」升到 20 級後，「恭喜你開啟了新功能」彈窗的圖示停在 0.3 倍、沒有標題、永遠點不掉；真 Flash（Mac 的 FlashBrowser2，Pepper Flash 32）同一流程正常。
+- **原因**：彈彈堂把程式模組用 `loadBytes` 裝進同一個 ApplicationDomain，裝完就對每個載入器呼叫 `unloadAndStop(true)`（新手教學結束時也一樣）。26313 起 Timffle 的 (c) 步驟是「監聽函式的程式碼來自被卸載的 SWF 就拆掉」，在這裡把 TweenLite 的 ticker（靜態 `Shape` 上的 `updateAll`）、`ProcessManager.__onFrame`、`Map.__enterFrame`、aswing／road7th 的鍵盤 Stage 監聽器全部拆掉，之後所有 TweenLite 補間都不動——彈窗正是靠補間放大圖示、淡入標題。加記錄的核心在 Linux 重現時逐條記到。
+- **真 Flash 32 量到的規則**（Wine 下的除錯版播放器，Haxe 探針三輪＋素材符號一輪，子 SWF 以 `loadBytes` 載進父層網域）：`enterFrame`／`exitFrame`／`frameConstructed` 監聽器只從**被卸載 SWF 的程式碼建構的顯示物件**拆掉（誰執行 `new` 算誰的，與類別定義在哪個 SWF、監聽函式是誰的都無關；`Sprite`／`MovieClip`／`TextField`／`SimpleButton`／`Loader` 與 AS 子類別都算，`Shape` 與 `Bitmap` 不拆；父層建構的物件就算掛的是子 SWF 的函式也留著；素材 SWF 的符號實例不管誰載入、誰建構都不拆）；Stage 監聽器看**是誰呼叫 `addEventListener`**（子 SWF 程式掛上的父層函式也拆，父層掛上的子 SWF 函式留著）；計時器看**誰建立 `Timer`／誰呼叫 `setTimeout`**（父層建的 `Timer` 配子 SWF 處理函式照跑）；非廣播事件（`addedToStage`…）不動；卸載後的新註冊照常。
+- **實作**：`remove_listeners_of_movie` 改依物件：腳本建構的顯示物件記得建構它的 SWF（`DisplayObject::movie()`；`Loader` 的 movie 只是占位，新增 `constructed_by`；`new SimpleButton()` 的空按鈕改記呼叫端 SWF 而不是主 SWF），符號實例屬於素材 SWF；`EventHandler` 新增 `registered_by`（呼叫 `addEventListener` 的 SWF）給 Stage 用。playerglobal 自己的 AS3 方法（`Stage.addEventListener` 覆寫）現在沿用原始呼叫端的 SWF 當 `caller_movie`（原本會算成 playerglobal）。
+- **測試**：新 `avm2/timffle_unload_and_stop_owner`（Haxe 原始碼附在測試目錄；期望輸出是真 Flash 的 trace），舊 `timffle_unload_and_stop` 仍通過。
+- **驗證**：(1) 加記錄的 26364 核心在 Linux 無頭 Chrome 用新角色重現：進大廳那一刻（新手教學載入器 `unloadAndStop`）記到 TweenLite `updateAll`、ProcessManager、Map、鍵盤管理器的監聽器被拆，彈窗卡住；(2) 新規則的核心跑彈彈堂：登入、大廳、20 級登入時的「恭喜你開啟了新功能」動畫完整；完整走一次「新角色→教學→跳過新手」需要沒用過的伺服器，測試帳號都已有角色，沒再跑；(3) Ruffle 回歸套件 4,361 支全過，核心單元測試 158 個全過（並行跑時 `wrap_line_breakpoint_irregular_sized_words` 偶發失敗，單執行緒全過，與本次無關）。
+
 ## 0.8.0.26364 — 2026-11-27（字寬表：符號、假名、注音與合成粗斜體實測）
 
 小幫手仍是 **1.4.1**。

@@ -1,0 +1,7 @@
+# Timffle: what Loader.unloadAndStop() stops, measured on the real Flash Player 32 debugger
+# (output.txt is its trace output). The child is loaded with loadBytes into the parent's
+# ApplicationDomain, the way games install code modules and then unloadAndStop the loader.
+# Source: Test.hx + ParentSprite.hx + child/*.hx (Haxe 4.3.7):
+#   (cd child && haxe -cp . -main Child -swf loaded.swf -swf-version 17 -D swf-header=40:40:30:FFFFFF)
+#   haxe -cp . -main Test -swf test.swf -swf-version 17 -D swf-header=400:300:30:FFFFFF -resource child/loaded.swf@child
+num_frames = 95
